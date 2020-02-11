@@ -270,7 +270,15 @@ function extract_dynamics!(vars, odevars, prevars, callvars, ode_init, sym::Symb
   end
 end
 
-function init_obj(ode_init,odevars,prevars,isstatic)
+function init_obj(ode_init,_odevars,prevars,isstatic,ismixed,odeexpr)
+  if ismixed
+    #in MixedPK, the init should only be the non-PK vars
+    pkvars = varnames(getproperty(Pumas,odeexpr[1]))
+    odevars = symdiff(_odevars,pkvars)
+  else
+    odevars = _odevars
+  end
+
   if isstatic
     vecexpr = []
     for p in odevars
@@ -371,10 +379,11 @@ function dynamics_obj(odeexpr::Expr, pre, odevars, callvars, bvars, eqs, isstati
   quote
     let
       $fname = $f_ex
-      $jname = $J_ex
-      $Wname = $W_ex
-      $W_tname = $W_t_ex
-      $funcname = ODEFunction($fname,jac=$jname,Wfact=$Wname,Wfact_t=$W_tname)
+      #$jname = $J_ex
+      #$Wname = $W_ex
+      #$W_tname = $W_t_ex
+      #$funcname = ODEFunction($fname,jac=$jname,Wfact=$Wname,Wfact_t=$W_tname)
+      $funcname = ODEFunction($fname)
       $diffeq
     end
   end
@@ -389,7 +398,8 @@ end
 # Mixed PK
 function dynamics_obj(odename::Tuple{Symbol,Expr}, pre, odevars, callvars, bvars, eqs, isstatic)
   ex1 = dynamics_obj(odename[1], pre, odevars, callvars, bvars, eqs, isstatic)
-  ex2 = dynamics_obj(odename[2], pre, odevars, callvars, bvars, eqs, isstatic)
+  pkvars = varnames(getproperty(Pumas,odename[1]))
+  ex2 = dynamics_obj(odename[2], [collect(pre);collect(pkvars)], symdiff(pkvars,odevars), callvars, bvars, eqs, isstatic)
   quote
     pkprob = $ex1
     prob2 = $ex2
@@ -632,7 +642,7 @@ macro model(expr)
   callvars  = OrderedSet{Symbol}()
   local vars, params, randoms, covariates, prevars, preexpr, odeexpr, odevars
   local ode_init, eqs, derivedexpr, derivedvars, observedvars, observedexpr
-  local isstatic, bvars, callvars
+  local isstatic, bvars, callvars, ismixed
 
   isstatic = true
   odeexpr = :()
@@ -656,9 +666,11 @@ macro model(expr)
       extract_defs!(vars,ode_init, add_vars(ex.args[3], bvars))
     elseif ex.args[1] == Symbol("@dynamics")
       if length(ex.args) == 3
+        ismixed = false
         isstatic = extract_dynamics!(vars, odevars, prevars, callvars, ode_init, ex.args[3], eqs)
         odeexpr = ex.args[3]
       elseif length(ex.args) == 4
+        ismixed = true
         extract_dynamics!(vars, odevars, prevars, callvars, ode_init, ex.args[3], eqs)
         isstatic = extract_dynamics!(vars, odevars, prevars, callvars, ode_init, ex.args[4], eqs)
         odeexpr = (ex.args[3],ex.args[4])
@@ -679,7 +691,7 @@ macro model(expr)
     $(param_obj(params)),
     $(random_obj(randoms,params)),
     $(pre_obj(preexpr,prevars,params,randoms,covariates)),
-    $(init_obj(ode_init,odevars,prevars,isstatic)),
+    $(init_obj(ode_init,odevars,prevars,isstatic,ismixed,odeexpr)),
     $(dynamics_obj(odeexpr,prevars,odevars,callvars,bvars,eqs,isstatic)),
     $(derived_obj(derivedexpr,derivedvars,prevars,odevars,params,randoms)),
     $(observed_obj(observedexpr,observedvars,prevars,odevars,derivedvars)))

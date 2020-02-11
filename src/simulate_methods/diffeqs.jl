@@ -10,7 +10,6 @@ function _build_diffeq_problem(m::PumasModel, subject::Subject, args...;
   col0 = col(prob.tspan[1]) # would be great to get the numtype without this
   u0 = prob.u0
 
-  @show col0,u0,tspan
   T = promote_type(numtype(col0), numtype(u0), numtype(tspan))
   # we don't want to promote units
   if T <: Unitful.Quantity
