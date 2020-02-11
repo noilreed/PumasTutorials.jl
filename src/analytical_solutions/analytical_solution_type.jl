@@ -71,7 +71,7 @@ struct AnalyticalPKSolution{T,N,uType,tType,S1,S2} <: DiffEqBase.AbstractTimeser
   AnalyticalPKSolution(u,t,pksol,numsol) = AnalyticalPKSolution(u,t,pksol,numsol,(size(u[1])..., length(u)))
   AnalyticalPKSolution(u::AbstractVector{T},t,pksol,numsol,dims::NTuple{N}) where {T, N} =
         new{eltype(T),N,eltype(u),eltype(t),typeof(pksol),typeof(numsol)}(u,t,pksol,numsol,
-            pksol==:Success && numsol==:Success ? :Success : :Failure)
+            pksol.retcode ==:Success && numsol.retcode ==:Success ? :Success : :Failure)
 end
 Base.summary(A::AnalyticalPKSolution) = string("Timeseries Solution with uType Float64 and tType Float64")
 function Base.show(io::IO, A::AnalyticalPKSolution)

@@ -139,6 +139,8 @@ mdsl2 = @model begin
 end
 sol3 = solve(mdsl2,subject,param,randeffs,abstol=1e-12,reltol=1e-12)
 
+@test sol3[1] isa SLArray
+
 t = 0.25:0.25:19.0
 @test all(sol1(t[i])[3] .- sol2(t[i])[3] < 1e-8 for i in 1:length(t))
 @test all(sol1.numsol[i][1] .- sol2[i][3] < 1e-8 for i in 1:length(sol1.numsol))
