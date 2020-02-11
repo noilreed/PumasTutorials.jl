@@ -130,10 +130,18 @@ function _problem(m::PumasModel, subject, col, args...;
     function _col(t)
       col_t = col(t)
       ___pk = pksol(t)
-      (col=col, ___pk=___pk)
+      (col_t..., Depot = ___pk.Depot, Central = ___pk.Central)
     end
     u0  = m.init(col, tspan[1])
-    _prob = PresetAnalyticalPKProblem(remake(m.prob.prob2; p=_col, u0=u0, tspan=tspan, saveat=saveat),pksol)
+
+    mtmp = PumasModel(m.param,
+                     m.random,
+                     m.pre,
+                     m.init,
+                     remake(m.prob.prob2; p=_col, u0=u0, tspan=tspan),
+                     m.derived,
+                     m.observed)
+    _prob = PresetAnalyticalPKProblem(_build_diffeq_problem(mtmp, subject, args...;saveat=saveat, make_events=false, kwargs...),pksol)
   else
     u0  = m.init(col, tspan[1])
     mtmp = PumasModel(m.param,
@@ -143,7 +151,9 @@ function _problem(m::PumasModel, subject, col, args...;
                      remake(m.prob; p=col, u0=u0, tspan=tspan),
                      m.derived,
                      m.observed)
-    _prob = _build_diffeq_problem(mtmp, subject, args...;saveat=saveat, kwargs...)
+    _prob = _build_diffeq_problem(mtmp, subject, args...;saveat=saveat,
+                                  make_events=!isempty(subject.events) && !isnothing(subject.events),
+                                  kwargs...)
   end
   _prob
 end

@@ -380,6 +380,23 @@ function dynamics_obj(odeexpr::Expr, pre, odevars, callvars, bvars, eqs, isstati
   end
 end
 
+function dynamics_obj(odename::Symbol, pre, odevars, callvars, bvars, eqs, isstatic)
+  quote
+    ($odename isa Type && $odename <: ExplicitModel) ? $odename() : $odename
+  end
+end
+
+# Mixed PK
+function dynamics_obj(odename::Tuple{Symbol,Expr}, pre, odevars, callvars, bvars, eqs, isstatic)
+  ex1 = dynamics_obj(odename[1], pre, odevars, callvars, bvars, eqs, isstatic)
+  ex2 = dynamics_obj(odename[2], pre, odevars, callvars, bvars, eqs, isstatic)
+  quote
+    pkprob = $ex1
+    prob2 = $ex2
+    AnalyticalPKProblem(pkprob,prob2)
+  end
+end
+
 function convert_rhs_to_Expression(s::Symbol, bvars, dvars, params, t)
   s == t.op.name && return t
   i = findfirst(x->x.op.name == s,dvars)
@@ -427,12 +444,6 @@ function convert_rhs_to_Expression(ex,bvars,dvars,params,t)
       var = params[j]
     end
     return var(convert_rhs_to_Expression.(ex.args[2:end],(bvars,),(dvars,),(params,),t)...)
-  end
-end
-
-function dynamics_obj(odename::Symbol, pre, odevars, callvars, bvars, eqs, isstatic)
-  quote
-    ($odename isa Type && $odename <: ExplicitModel) ? $odename() : $odename
   end
 end
 
@@ -644,8 +655,14 @@ macro model(expr)
     elseif ex.args[1] == Symbol("@init")
       extract_defs!(vars,ode_init, add_vars(ex.args[3], bvars))
     elseif ex.args[1] == Symbol("@dynamics")
-      isstatic = extract_dynamics!(vars, odevars, prevars, callvars, ode_init, ex.args[3], eqs)
-      odeexpr = ex.args[3]
+      if length(ex.args) == 3
+        isstatic = extract_dynamics!(vars, odevars, prevars, callvars, ode_init, ex.args[3], eqs)
+        odeexpr = ex.args[3]
+      elseif length(ex.args) == 4
+        extract_dynamics!(vars, odevars, prevars, callvars, ode_init, ex.args[3], eqs)
+        isstatic = extract_dynamics!(vars, odevars, prevars, callvars, ode_init, ex.args[4], eqs)
+        odeexpr = (ex.args[3],ex.args[4])
+      end
     elseif ex.args[1] == Symbol("@derived")
       extract_randvars!(vars, derivedvars, derivedexpr, add_vars(ex.args[3], bvars))
       observedvars = copy(derivedvars)

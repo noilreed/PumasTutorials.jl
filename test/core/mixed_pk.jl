@@ -35,8 +35,7 @@ function init_f(col,t0)
 end
 
 function onecompartment_f(u,p,t)
-    Depot, Central = p(t).___pk
-    @SVector [Depot-Central]
+    @SVector [p.Depot-p.Central]
 end
 
 pkprob = Depots1Central1()
@@ -104,7 +103,46 @@ mdsl = @model begin
 end
 sol2 = solve(mdsl,subject,param,randeffs,abstol=1e-12,reltol=1e-12)
 
+mdsl2 = @model begin
+    @param begin
+        θ ∈ VectorDomain(4, lower=zeros(4), init=ones(4))
+        Ω ∈ PSDDomain(2)
+        Σ ∈ RealDomain(lower=0.0, init=1.0)
+        a ∈ ConstDomain(0.2)
+    end
+
+    @random begin
+        η ~ MvNormal(Ω)
+    end
+
+    @covariates sex wt etn
+
+    @pre begin
+        θ1 := θ[1]
+        Ka = θ1
+        CL = θ[2] * ((wt/70)^0.75) * (θ[4]^sex) * exp(η[1])
+        V  = θ[3] * exp(η[2])
+    end
+
+    @dynamics Depots1Central1 begin
+        Res' = Depot - Central
+    end
+
+    @derived begin
+      dv ~ @. Normal(conc, conc*Σ)
+      T_max = maximum(t)
+    end
+
+    @observed begin
+      obs_cmax = maximum(dv)
+    end
+end
+sol3 = solve(mdsl2,subject,param,randeffs,abstol=1e-12,reltol=1e-12)
+
 t = 0.25:0.25:19.0
 @test all(sol1(t[i])[3] .- sol2(t[i])[3] < 1e-8 for i in 1:length(t))
 @test all(sol1.numsol[i][1] .- sol2[i][3] < 1e-8 for i in 1:length(sol1.numsol))
 @test all(sol1(t) .- sol2(t) .< 1e-8)
+@test all(sol1(t[i])[3] .- sol3(t[i])[3] < 1e-8 for i in 1:length(t))
+@test all(sol1.numsol[i][1] .- sol3[i][3] < 1e-8 for i in 1:length(sol1.numsol))
+@test all(sol1(t) .- sol3(t) .< 1e-8)

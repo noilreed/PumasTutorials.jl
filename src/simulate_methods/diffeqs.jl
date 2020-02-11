@@ -2,13 +2,15 @@ function _build_diffeq_problem(m::PumasModel, subject::Subject, args...;
                                saveat=Float64[],
                                save_discont= isnothing(saveat) || isempty(saveat),
                                continuity=:right,
-                               callback = nothing, kwargs...)
+                               callback = nothing,
+                               make_events = true, kwargs...)
   prob = typeof(m.prob) <: DiffEqBase.AbstractJumpProblem ? m.prob.prob : m.prob
   tspan = prob.tspan
   col = prob.p
   col0 = col(prob.tspan[1]) # would be great to get the numtype without this
   u0 = prob.u0
 
+  @show col0,u0,tspan
   T = promote_type(numtype(col0), numtype(u0), numtype(tspan))
   # we don't want to promote units
   if T <: Unitful.Quantity
@@ -43,6 +45,22 @@ function _build_diffeq_problem(m::PumasModel, subject::Subject, args...;
   else
     new_f = make_function(prob,fd)
   end
+
+  # figure out callbacks and convert type for tspan if necessary
+  # d_discontinuities are used to inform diffeq about the places where things change
+  # suddenly in the model and introduce discontinuities in the derivates (such as
+  # time varying covariates etc)
+
+  if make_events
+    tstops,_cb,d_discontinuities = ith_subject_cb(col,subject,Tu0,tspan[1],typeof(prob),saveat,save_discont,continuity)
+  else
+    tstops,_cb,d_discontinuities = Float64[],nothing,Float64[]
+  end
+
+  cb = CallbackSet(_cb, callback)
+
+  Tt = promote_type(t_numtype(u0,cb), numtype(tstops), numtype(tspan))
+  _tspan = Tt.(tspan)
 
   # Remake problem of correct type
   remake(m.prob; f=new_f, u0=Tu0, tspan=_tspan, callback=cb, saveat=saveat,
