@@ -642,9 +642,10 @@ macro model(expr)
   callvars  = OrderedSet{Symbol}()
   local vars, params, randoms, covariates, prevars, preexpr, odeexpr, odevars
   local ode_init, eqs, derivedexpr, derivedvars, observedvars, observedexpr
-  local isstatic, bvars, callvars, ismixed
+  local isstatic, bvars, callvars
 
   isstatic = true
+  ismixed = false
   odeexpr = :()
   lnndict = Dict{Symbol,LineNumberNode}()
 
@@ -676,7 +677,6 @@ macro model(expr)
       4 with ex.args[3] == AnalyticalSolChoice and ex.args[4] being the ODE
       =#
       if length(ex.args) == 3
-        ismixed = false
         isstatic = extract_dynamics!(vars, odevars, prevars, callvars, ode_init, ex.args[3], eqs)
         odeexpr = ex.args[3]
       elseif length(ex.args) == 4
