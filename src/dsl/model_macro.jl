@@ -665,6 +665,16 @@ macro model(expr)
     elseif ex.args[1] == Symbol("@init")
       extract_defs!(vars,ode_init, add_vars(ex.args[3], bvars))
     elseif ex.args[1] == Symbol("@dynamics")
+
+      #=
+      If the block is `@dynamics AnalyticalSolChoice` then length(ex.args) == 3
+      because of the line number node.
+
+      If the block is `@dynamics begin ... end` it's also 3
+
+      If the block is `@dynamics AnalyticalSolChoice begin ... end`, then it's
+      4 with ex.args[3] == AnalyticalSolChoice and ex.args[4] being the ODE
+      =#
       if length(ex.args) == 3
         ismixed = false
         isstatic = extract_dynamics!(vars, odevars, prevars, callvars, ode_init, ex.args[3], eqs)
