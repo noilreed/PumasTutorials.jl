@@ -1,5 +1,6 @@
 
-using Pumas, Plots, CSV
+using Pumas, Plots, CSV, Random
+Random.seed!(0)
 
 
 single_dose_regimen = DosageRegimen(100, time=0)
@@ -38,7 +39,7 @@ mymodel = @model begin
   end
   @covariates Wt
 
-  @dynamics OneCompartmentModel
+  @dynamics Depots1Central1
     #@dynamics begin
     #    Depot' =  -Ka*Depot
     #    Central' =  Ka*Depot - (CL/V)*Central
@@ -62,7 +63,7 @@ simdf = DataFrame(obs)
 first(simdf, 6)
 
 
-simdf.route = "ev"
+simdf[!, :route] .= "ev"
 
 
 timeu = u"hr"
@@ -116,10 +117,4 @@ first(ebes, 6)
 
 resout = DataFrame(inspect(res))
 first(resout, 6)
-
-
-vpc(res,200) |> plot
-
-
-vpc(res,200, stratify_on=[:Wt]) |> plot
 

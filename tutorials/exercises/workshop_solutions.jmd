@@ -10,7 +10,8 @@ Parameters are: `Ka = 1 hr-1`, `CL = 1 L/hr`, `V = 20 L/hr`.
 ## Part 1: Setup the population
 
 ```julia
-using Pumas, Plots, CSV
+using Pumas, Plots, CSV, Random
+Random.seed!(0)
 ```
 
 ```julia
@@ -74,7 +75,7 @@ mymodel = @model begin
   end
   @covariates Wt
 
-  @dynamics OneCompartmentModel
+  @dynamics Depots1Central1
     #@dynamics begin
     #    Depot' =  -Ka*Depot
     #    Central' =  Ka*Depot - (CL/V)*Central
@@ -125,7 +126,7 @@ a `route` specification which can either be `iv` or `ev`. Since this is an oral 
 to the `simdf`.
 
 ```julia
-simdf.route = "ev"
+simdf[!, :route] .= "ev"
 ```
 Next we can define time, concentration and dose units so the report includes the units for the pharmacokinetic parameters.
 The general syntax for units are `u` followed by the unit in quotes `""`.
@@ -242,18 +243,4 @@ _Note that this function below fails to convert into a dataframe due to a bug. W
 ```julia;eval=false
 resout = DataFrame(inspect(res))
 first(resout, 6)
-```
-
-# Problem 4: Validate your model
-
-Finally validate your model with a visual predictive check
-
-```julia
-vpc(res,200) |> plot
-```
-
-or stratify it based on bodyweight
-
-```julia
-vpc(res,200, stratify_on=[:Wt]) |> plot
 ```
