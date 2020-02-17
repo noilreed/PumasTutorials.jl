@@ -87,17 +87,18 @@ give them a name as follows:
     γ       = θ[10]*exp(η[9])
     Vmax    = θ[11]*exp(η[10])
     Km      = θ[12]*exp(η[11])
+    Resp0   = θ[6]/θ[7]
 end
 ```
 
 Next we define the `@init` block which gives the inital values for our
 differential equations. Any variable not mentioned in this block is assumed to
 have a zero for its starting value. We wish to only set the starting value for
-`Resp`, and thus we use:
+`Resp`, and thus we use `Resp0` defined in the pre-block:
 
 ```{julia;eval=false}
 @init begin
-    Resp = θ[6]/θ[7]
+    Resp = Resp0
 end
 ```
 
@@ -153,10 +154,11 @@ model = @model begin
         γ       = θ[10]*exp(η[9])
         Vmax    = θ[11]*exp(η[10])
         Km      = θ[12]*exp(η[11])
+        Resp0   = θ[6]/θ[7]
     end
 
     @init begin
-        Resp = θ[6]/θ[7]
+        Resp = Resp0
     end
 
     @dynamics begin

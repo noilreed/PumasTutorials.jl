@@ -30,11 +30,12 @@ end
     γ       = θ[10]*exp(η[9])
     Vmax    = θ[11]*exp(η[10])
     Km      = θ[12]*exp(η[11])
+    Resp0   = θ[6]/θ[7]
 end
 
 
 @init begin
-    Resp = θ[6]/θ[7]
+    Resp = Resp0
 end
 
 
@@ -78,10 +79,11 @@ model = @model begin
         γ       = θ[10]*exp(η[9])
         Vmax    = θ[11]*exp(η[10])
         Km      = θ[12]*exp(η[11])
+        Resp0   = θ[6]/θ[7]
     end
 
     @init begin
-        Resp = θ[6]/θ[7]
+        Resp = Resp0
     end
 
     @dynamics begin
