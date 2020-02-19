@@ -347,7 +347,7 @@ function dynamics_obj(odeexpr::Expr, pre, odevars, callvars, bvars, eqs, isstati
   f_ex = ModelingToolkit.generate_function(ODESystem(mteqs),dvars,params)[1]
   J_ex = ModelingToolkit.generate_jacobian(ODESystem(mteqs),dvars,params)[1]
   if length(eqs.args) < 12
-    W_exs = ModelingToolkit.generate_factorized_W(ODESystem(mteqs),dvars,params)
+    W_exs = ModelingToolkit.generate_factorized_W(ODESystem(mteqs),dvars,params,simplify=false)
     W_ex = W_exs[1][1]
     W_t_ex = W_exs[2][1]
   else
