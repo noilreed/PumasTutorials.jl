@@ -44,7 +44,7 @@ mymodel = @model begin
 
   @derived begin
       cp := @. 1000*(Central / Vc) # We use := because we don't want simobs to store with variable
-      dv ~ @. Normal(cp, sqrt(cp^2*σ_prop))
+      dv ~ @. Normal(cp, abs(cp)*σ_prop)
     end
 end
 
@@ -118,4 +118,3 @@ wres_misspec = wresiduals(result_misspec)
 p1 = plot([w.wres.dv for w in wres], title="Correctly specified", legend=false)
 p2 = plot([w.wres.dv for w in wres_misspec], title = "Misspecified", legend=false)
 plot(p1, p2)
-
