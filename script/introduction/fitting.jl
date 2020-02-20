@@ -105,7 +105,7 @@ mymodel_misspec = @model begin
 
   @derived begin
       cp = @. 1000*(Central / V)
-      dv ~ @. Normal(cp, sqrt(cp^2*σ_prop))
+      dv ~ @. Normal(cp, abs(cp)*σ_prop)
     end
 end
 
