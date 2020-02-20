@@ -93,7 +93,9 @@ The `simobs` function is used to simulate individual time series. We input
 the model, the population of Subjects that currently only have dosage regimens
 and covariates, the parameter vector and the times where we want to simulate.
 Since we have a proportional error model we avoid observations at time zero to
-avoid degenerate distributions of the dependent variable. Let's use the default
+avoid degenerate distributions of the dependent variable. The problem is, that
+if the concentration is zero the variance in distribution of the
+explained variable will also be zero. Let's use the default
 parameters, as set in the `@param`-block, and simulate the data
 
 ```julia
@@ -156,7 +158,13 @@ This time we see similar estimates, but much narrower confidence intervals
 across the board.
 
 ## Estimating a misspecified model
-
+To explore some of the diagnostics tools available in Julia, we can try 
+to set up a model that does not fit out data generating process. This time
+we propose a one compartent model. The problem with estimating a one compartment
+model when the data comes from a two compartment model, is that we cannot capture
+the change in slope on the concentration profile you get with a two compartment model.
+This means that even if we can capture the model fit someone well on average, we
+should expect to see systematic trends in the residual diagnostics post estimation.
 ```julia
 mymodel_misspec = @model begin
   @param   begin
