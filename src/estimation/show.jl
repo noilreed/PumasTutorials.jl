@@ -191,7 +191,7 @@ function Base.show(io::IO, mime::MIME"text/plain", pmi::FittedPumasModelInspecti
   println(io, "Likehood approximations used for")
   println(io, " * Predictions:        $(first(predict(pmi)).approx)")
   println(io, " * Weighted residuals: $(first(wresiduals(pmi)).approx)")
-  println(io, " * Empirical bayes:    $(first(empirical_bayes(pmi)).approx)\n")
+  println(io, " * Empirical bayes:    $(pmi.ebes.approx)\n")
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", sens::SobolOutput)

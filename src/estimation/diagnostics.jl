@@ -552,11 +552,6 @@ function DataFrames.DataFrame(vpred::Vector{<:SubjectPrediction}; include_covari
   df
 end
 
-struct SubjectEBES{T1, T2, T3}
-  ebes::T1
-  subject::T2
-  approx::T3
-end
 function empirical_bayes(fpm::FittedPumasModel, approx=fpm.approx)
   subjects = fpm.data
 
@@ -564,10 +559,10 @@ function empirical_bayes(fpm::FittedPumasModel, approx=fpm.approx)
 
   if approx == fpm.approx
     ebes = fpm.vvrandeffsorth
-    return [SubjectEBES(TransformVariables.transform(trf, e), s, approx) for (e, s) in zip(ebes, subjects)]
+    return [TransformVariables.transform(trf, e) for (e, s) in zip(ebes, subjects)]
   else
     # re-estimate under approx
-    return [SubjectEBES(
+    return [
       TransformVariables.transform(
         trf,
         _orth_empirical_bayes(
@@ -575,23 +570,9 @@ function empirical_bayes(fpm::FittedPumasModel, approx=fpm.approx)
           coef(fpm),
           approx,
           fpm.args...; fpm.kwargs...
-        ),
-        subject,
-        approx
-      )
-    ) for subject in subjects]
+        )
+      ) for subject in subjects]
   end
-end
-
-function DataFrames.DataFrame(vebes::Vector{<:SubjectEBES}; include_covariates=true)
-  subjects = [ebes.subject for ebes in vebes]
-  df = select!(DataFrame(subjects; include_covariates=include_covariates, include_dvs=false), Not(:evid))
-  for i = 1:length(first(vebes).ebes)
-    df[!,Symbol("ebe_$i")] .= vcat((fill(ebes.ebes[i], length(ebes.subject.time)) for ebes in vebes)...)
-  end
-  df[!,:ebes_approx] .= vcat((fill(ebes.approx, length(ebes.subject.time)) for ebes in vebes)...)
-
-  df
 end
 
 struct FittedPumasModelInspection{T1, T2, T3, T4}
@@ -616,15 +597,31 @@ function inspect(fpm; pred_approx=fpm.approx, wres_approx=fpm.approx, ebes_appro
   print(", empirical bayes")
   ebes = empirical_bayes(fpm, ebes_approx)
   println(". Done.")
-  FittedPumasModelInspection(fpm, pred, res, ebes)
+  FittedPumasModelInspection(fpm, pred, res, (ebes=ebes, approx=ebes_approx))
 end
 function DataFrames.DataFrame(i::FittedPumasModelInspection; include_covariates=true)
   pred_df = DataFrame(i.pred; include_covariates=include_covariates)
   res_df = select!(select!(DataFrame(i.wres; include_covariates=false), Not(:id)), Not(:time))
-  ebes_df = select!(select!(DataFrame(i.ebes; include_covariates=false), Not(:id)), Not(:time))
-
+  ebes = i.ebes.ebes
+  ebe_keys = keys(first(ebes))
+  ebe_types = map(typeof, first(ebes))
+  ebes_df = select!(DataFrame(i.o.data; include_covariates=false, include_dvs=false), Not(:evid))
+  for k ∈ ebe_keys
+    ebe_type = ebe_types[k]
+    if ebe_type <: Number
+      ebes_df[!, k] .= vcat((fill(ebes[n][k], length(i.o.data[n].time)) for n = 1:length(i.o.data))...)
+    elseif ebe_type <: AbstractVector
+      for j = 1:length(first(ebes)[k])
+        ebes_df[!, Symbol(string(k)*"_$j")] .= vcat((fill(ebes[n][k][j], length(i.o.data[n].time)) for n = 1:length(i.o.data))...)
+      end
+    end
+  end
+  ebes_df[!, :ebes_approx] .= summary(i.ebes.approx)
+  ebes_df = select!(select!(ebes_df, Not(:id)), Not(:time))
   df = hcat(pred_df, res_df, ebes_df)
 end
+
+
 
 
 ################################################################################
