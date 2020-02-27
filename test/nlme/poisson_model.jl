@@ -34,9 +34,9 @@ using Pumas, Test
   randeffs = init_randeffs(poisson_model, param)
 
   @test solve(poisson_model, df[1], param, randeffs) isa Pumas.NullDESolution
-  @test simobs(poisson_model, df, param,randeffs) != nothing
+  @test simobs(poisson_model, df, param, fill(randeffs, length(df))) != nothing
 
-  res = simobs(poisson_model, df, param, randeffs)
+  res = simobs(poisson_model, df, param, fill(randeffs, length(df)))
 
   initial_estimates = [-8.31130E-01,
                        -9.51865E-01,

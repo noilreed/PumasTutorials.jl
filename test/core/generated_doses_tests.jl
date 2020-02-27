@@ -41,7 +41,6 @@ param = (
     )
 
 randeffs = (η=randn(3),)
-
 subject = Subject(evs = DosageRegimen([10, 20], ii = 24, addl = 2, ss = 1:2, time = [0, 12], cmt = 2),
                   cvs = cvs=(isPM="no", Wt=70))
 
@@ -60,16 +59,18 @@ pop = Population([Subject(id = id,
             evs = DosageRegimen([10rand(), 20rand()],
             ii = 24, addl = 2, ss = 1:2, time = [0, 12],
             cmt = 2),cvs = cvs=(isPM="no", Wt=70)) for id in 1:10])
+vrandeffs = fill(randeffs, length(pop))
 pop_obs1 = simobs(m_diffeq, pop[1], param, randeffs, ensemblealg = EnsembleSerial())
-pop_obs1 = simobs(m_diffeq, pop, param, randeffs, ensemblealg = EnsembleSerial())
+pop_obs1 = simobs(m_diffeq, pop, param, vrandeffs, ensemblealg = EnsembleSerial())
 _data = DataFrame(pop_obs1)
 
 pop = Population([Subject(id = id,
             evs = DosageRegimen(10,
             ii = 24, addl = 2, ss = 1:2, time = [0, 12],
             cmt = 2),cvs = cvs=(isPM="no", Wt=70)) for id in 1:10])
+vrandeffs = fill(randeffs, length(pop))
 pop_obs1 = simobs(m_diffeq, pop[1], param, randeffs, ensemblealg = EnsembleSerial())
-pop_obs1 = simobs(m_diffeq, pop, param, randeffs, ensemblealg = EnsembleSerial())
+pop_obs1 = simobs(m_diffeq, pop, param, vrandeffs, ensemblealg = EnsembleSerial())
 @test all(x->x[:conc] == pop_obs1[1][:conc],pop_obs1)
 pop_obs1 = simobs(m_diffeq, pop, param, ensemblealg = EnsembleSerial())
 @test all(x->x[:conc] !== pop_obs1[1][:conc],pop_obs1[2:end])
@@ -83,7 +84,7 @@ data = read_pumas(_data,cvs = [:isPM,:Wt],dvs = [:conc,:dv])
 obs2 = simobs(m_diffeq, data[1], param, randeffs)
 @test_broken _data2 = DataFrame(obs2)
 
-pop_obs2 = simobs(m_diffeq, data, param, randeffs)
+pop_obs2 = simobs(m_diffeq, data, param, fill(randeffs, length(data)))
 @test_broken _data2 = DataFrame(pop_obs2)
 #@test all(_data.conc .== _data2.conc)
 #@test !all(_data.dv .== _data2.dv)

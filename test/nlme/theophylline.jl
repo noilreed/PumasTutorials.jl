@@ -340,6 +340,8 @@ end
   o_predict_df = DataFrame(o_predict)
   o_empirical_bayes = empirical_bayes(o)
   o_empirical_bayes_df = DataFrame(o_empirical_bayes)
+  
+  @test_throws DimensionMismatch simobs(o.model, theopp, coef(o), empirical_bayes(o)[1:end-1])
 
   # Verify that show runs
   io_buffer = IOBuffer()
@@ -468,6 +470,10 @@ end
 
   o = fit(theopmodel_foce, theopp, param, Pumas.FOCE(), ensemblealg=EnsembleThreads())
   @test_throws ArgumentError fit(theopmodel_foce, theopp, param, Pumas.FOCE(), ensemblealg=EnsembleDistributed())
+
+  o_simobs_1 = simobs(theopmodel_foce, theopp, coef(o), empirical_bayes(o))
+  o_simobs_2 = simobs(theopmodel_foce, theopp, coef(o), fill((η=[0,0],), length(theopp)))
+  o_simobs = simobs(o)
 
   o_estimates = coef(o)
   o_stderror  = stderror(o)
@@ -739,6 +745,10 @@ end
 
   o = fit(theopmodel_foce, theopp, param, Pumas.FOCE(), ensemblealg=EnsembleThreads())
   @test_throws ArgumentError fit(theopmodel_foce, theopp, param, Pumas.FOCE(), ensemblealg=EnsembleDistributed())
+  
+  o_simobs_1 = simobs(theopmodel_foce, theopp, coef(o), empirical_bayes(o))
+  o_simobs_2 = simobs(theopmodel_foce, theopp, coef(o), fill((η₁=0, η₂=0), length(theopp)))
+  o_simobs = simobs(o)
 
   o_estimates = coef(o)
   o_stderror  = stderror(o)

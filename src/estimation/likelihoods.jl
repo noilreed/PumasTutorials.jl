@@ -1021,6 +1021,7 @@ struct FittedPumasModel{T1<:PumasModel,T2<:Population,T3,T4<:LikelihoodApproxima
   kwargs::T7
   fixedtrf::T8
 end
+simobs(fpm::FittedPumasModel) = simobs(fpm.model, fpm.data, coef(fpm), empirical_bayes(fpm); fpm.kwargs...)
 
 struct DefaultOptimizeFN{A,K}
   alg::A
