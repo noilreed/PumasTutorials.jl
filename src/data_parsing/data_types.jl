@@ -321,7 +321,8 @@ Base.hash(subject::Subject, h::UInt) = hash(
 
 Base.:(==)(subject1::Subject, subject2::Subject) = hash(subject1) == hash(subject2)
 
-function DataFrames.DataFrame(subject::Subject; include_covariates=true, include_dvs=true)
+function DataFrames.DataFrame(subject::Subject; include_covariates=true, include_dvs=true, include_events=true)
+
   # Build a DataFrame that holds the events
   df_events = DataFrame(build_event_list(subject.events, true))
   # Remove events with evid==-1
@@ -371,9 +372,11 @@ function DataFrames.DataFrame(subject::Subject; include_covariates=true, include
         end
       end
       # ... and do the same for df
-      for df_name in names(df_events)
-        if df_name ∉ names(df)
-          df[!, df_name] .= missing
+      if include_events
+        for df_name in names(df_events)
+          if df_name ∉ names(df)
+            df[!, df_name] .= missing
+          end
         end
       end
     end
@@ -382,7 +385,7 @@ function DataFrames.DataFrame(subject::Subject; include_covariates=true, include
   # If there are no observations, just go with df_events
   if isnothing(subject.time)
     df = df_events
-  elseif include_dvs
+  elseif include_dvs && include_events
     df = vcat(df, df_events)
   else
     df
@@ -393,11 +396,10 @@ function DataFrames.DataFrame(subject::Subject; include_covariates=true, include
   # Sort the df according to time first, and use :base_time to ensure that events
   # come before observations (they are missing for observations, so they will come
   # last).
-  sort_bys = include_dvs ? (:time, :base_time) : (:time,)
+  sort_bys = include_dvs && include_events ? (:time, :base_time) : (:time,)
   sort!(df, sort_bys)
-
   # Find the amount (amt) column, and insert dose and tad columns after it
-  if include_dvs
+  if include_dvs && include_events
     amt_pos = findfirst(isequal(:amt), names(df))
     insertcols!(df, amt_pos+1, :dose => 0.0)
     insertcols!(df, amt_pos+2, :tad => 0.0)
@@ -482,8 +484,8 @@ A `Population` is an `AbstractVector` of `Subject`s.
 const Population{T} = AbstractVector{T} where T<:Subject
 Population(obj::Population...) = reduce(vcat, obj)::Population
 
-function DataFrames.DataFrame(pop::Population; include_covariates=true, include_dvs=true)
-  vcat((DataFrame(subject; include_covariates=include_covariates, include_dvs=include_dvs) for subject in pop)...)
+function DataFrames.DataFrame(pop::Population; include_covariates=true, include_dvs=true, include_events=true)
+  vcat((DataFrame(subject; include_covariates=include_covariates, include_dvs=include_dvs, include_events=include_events) for subject in pop)...)
 end
 
 ### Display

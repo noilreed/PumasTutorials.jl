@@ -540,14 +540,14 @@ function StatsBase.predict(
   predict(fpm.model, subject, coef(fpm), approx, vrandeffsorth, fpm.args...; fpm.kwargs...)
 end
 
-function DataFrames.DataFrame(vpred::Vector{<:SubjectPrediction}; include_covariates=true)
+function DataFrames.DataFrame(vpred::Vector{<:SubjectPrediction}; include_covariates=true, include_dvs=true)
   subjects = [pred.subject for pred in vpred]
-  df = select!(DataFrame(subjects; include_covariates=include_covariates, include_dvs=false), Not(:evid))
+  df = DataFrame(subjects; include_covariates=include_covariates, include_dvs=include_dvs, include_events=false)
   _keys = keys(first(subjects).observations)
   for name in  _keys
-    df[!,Symbol(string(name)*"_pred")] .= vcat((pred.pred[name] for pred in vpred)...)
-    df[!,Symbol(string(name)*"_ipred")] .= vcat((pred.ipred[name] for pred in vpred)...)
-    df[!,:pred_approx] .= vcat((fill(pred.approx, length(pred.subject.time)) for pred in vpred)...)
+    df[!, Symbol(string(name)*"_pred")] = vcat((pred.pred[name] for pred in vpred)...)
+    df[!, Symbol(string(name)*"_ipred")] = vcat((pred.ipred[name] for pred in vpred)...)
+    df[!,:pred_approx] .= summary(vpred[1].approx)
   end
   df
 end
@@ -616,7 +616,7 @@ function DataFrames.DataFrame(i::FittedPumasModelInspection; include_covariates=
       end
     end
   end
-  ebes_df[!, :ebes_approx] .= summary(i.ebes.approx)
+  ebes_df[!, :ebes_approx] .= fill(summary(i.ebes.approx), size(ebes_df, 1))
   ebes_df = select!(select!(ebes_df, Not(:id)), Not(:time))
   df = hcat(pred_df, res_df, ebes_df)
 end

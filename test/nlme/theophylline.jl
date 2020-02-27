@@ -123,6 +123,8 @@ end
   @test predict(o_inspect, theopp)[3].pred.dv ≈ predict(o_inspect)[3].pred.dv
   @test predict(o_inspect, theopp)[3].ipred.dv ≈ predict(o_inspect)[3].ipred.dv
   o_predict_df = DataFrame(o_predict)
+  @test in(:dv, names(o_predict_df))
+
   o_empirical_bayes = empirical_bayes(o)
   o_empirical_bayes_df = DataFrame(o_empirical_bayes)
 
@@ -161,12 +163,12 @@ end
     @test pred_foce[1].approx == Pumas.FOCE()
     @test pred_focei[1].approx == Pumas.FOCEI()
 
-    @test all(dfpred[!,:pred_approx].== Ref(Pumas.FO()))
-    @test all(dfpred_no_covar[!,:pred_approx].== Ref(Pumas.FO()))
-    @test all(dfpred_foce[!,:pred_approx].== Ref(Pumas.FOCE()))
-    @test all(dfpred_foce_no_covar[!,:pred_approx].== Ref(Pumas.FOCE()))
-    @test all(dfpred_focei[!,:pred_approx].== Ref(Pumas.FOCEI()))
-    @test all(dfpred_focei_no_covar[!,:pred_approx].== Ref(Pumas.FOCEI()))
+    @test all(dfpred[!,:pred_approx].== summary(Pumas.FO()))
+    @test all(dfpred_no_covar[!,:pred_approx].== summary(Pumas.FO()))
+    @test all(dfpred_foce[!,:pred_approx].== summary(Pumas.FOCE()))
+    @test all(dfpred_foce_no_covar[!,:pred_approx].== summary(Pumas.FOCE()))
+    @test all(dfpred_focei[!,:pred_approx].== summary(Pumas.FOCEI()))
+    @test all(dfpred_focei_no_covar[!,:pred_approx].== summary(Pumas.FOCEI()))
 
     @test hasproperty(dfpred, :dv_pred)
     @test hasproperty(dfpred, :dv_ipred)
