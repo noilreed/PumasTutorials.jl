@@ -59,7 +59,9 @@ function Base.show(io::IO, mime::MIME"text/plain", vfpm::Vector{<:FittedPumasMod
   for (paramname, paramval) in pairs(coef(first(vfpm)))
     _paramval = [coef(fpm)[paramname] for fpm in vfpm]
     parammean = mean(_paramval)
-    paramstd = parammean*std(_paramval)/100
+    # _push_varinfo! computes relative standard errors and we'd like to report standard errors
+    # so make the reverse computation below before passing to values to _push_varinfo!
+    paramstd = parammean.*std(_paramval)/100
     _push_varinfo!(paramnames, paramvals, paramstds, nothing, paramname, parammean, paramstd, nothing)
   end
   getdecimal = x -> findfirst(c -> c=='.', x)

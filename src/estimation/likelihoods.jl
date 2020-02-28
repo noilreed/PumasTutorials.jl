@@ -1425,35 +1425,49 @@ function _observed_information(f::FittedPumasModel,
 
     _f = function (_j, _vparam)
       _param = TransformVariables.transform(trf, _vparam)
-      vrandeffsorth = _orth_empirical_bayes(f.model, subject, _param, f.approx, args...; kwargs...)
+
+      if f.approx isa NaivePooled
+        vrandeffsorth = []
+      else
+        vrandeffsorth = _orth_empirical_bayes(f.model, subject, _param, f.approx, args...; kwargs...)
+      end
+
       marginal_nll_gradient!(
-      _j,
-      f.model,
-      subject,
-      _vparam,
-      vrandeffsorth,
-      f.approx,
-      trf,
-      args...;
-      reltol=reltol,
-      fdtype=Val{:central}(),
-      fdrelstep=fdrelstep_hessian,
-      fdabsstep=fdrelstep_hessian^2,
-      kwargs...)
+        _j,
+        f.model,
+        subject,
+        _vparam,
+        vrandeffsorth,
+        f.approx,
+        trf,
+        args...;
+        reltol=reltol,
+        fdtype=Val{:central}(),
+        fdrelstep=fdrelstep_hessian,
+        fdabsstep=fdrelstep_hessian^2,
+        kwargs...)
+
       return nothing
     end
 
     # Compute Hessian contribution and update Hessian
-    FiniteDiff.finite_difference_jacobian!(_H,_f,vparam,
-                                                     Val{:central};
-                                                     relstep=fdrelstep_hessian,
-                                                     absstep=fdrelstep_hessian^2)
+    FiniteDiff.finite_difference_jacobian!(
+      _H,
+      _f,
+      vparam,
+      Val{:central};
+      relstep=fdrelstep_hessian,
+      absstep=fdrelstep_hessian^2)
 
     H .+= _H
 
     if Score
       # Compute score contribution
-      vrandeffsorth = _orth_empirical_bayes(f.model, subject, coef(f), f.approx, args...; kwargs...)
+      if f.approx isa NaivePooled
+        vrandeffsorth = []
+      else
+        vrandeffsorth = _orth_empirical_bayes(f.model, subject, coef(f), f.approx, args...; kwargs...)
+      end
       marginal_nll_gradient!(
         g,
         f.model,
@@ -1473,6 +1487,7 @@ function _observed_information(f::FittedPumasModel,
       S .+= g .* g'
     end
   end
+
   return H, S
 end
 
