@@ -1,7 +1,7 @@
 using Pumas, Pumas.IVIVC, Test
 
 # read vitro data
-vitro_data = read_vitro("../examples/ivivc_test_data/vitro_data.csv")
+vitro_data = @test_nowarn read_vitro(Pumas.example_data("ivivc_test_data/vitro_data"))
 vitro_subs = vitro_data.subjects
 
 @test typeof(vitro_subs) <: AbstractVector
@@ -23,7 +23,7 @@ k = keys(vitro_data[1])
 @test vitro_data[1]["medium"].id == 1
 
 # read vivo data
-vivo_data = read_vivo("../examples/ivivc_test_data/vivo_data.csv")
+vivo_data = @test_nowarn read_vivo(Pumas.example_data("ivivc_test_data/vivo_data"))
 vivo_subs = vivo_data.subjects
 
 @test typeof(vivo_subs) <: AbstractVector
@@ -43,3 +43,22 @@ k = keys(vivo_data[1])
 @test vivo_data[1]["fast"].id == 1
 @test vivo_data[1]["slow"].id == 1
 @test vivo_data[1]["medium"].id == 1
+
+# Exception tests
+using CSV
+using Pumas.IVIVC: ___read_vitro, ___read_uir, ___read_vivo
+
+file = Pumas.example_data("ivivc_test_data/vitro_data")
+df = CSV.read(file)
+rename!(df, :conc => :concc)
+data = @test_throws ArgumentError ___read_vitro(df)
+
+file = Pumas.example_data("ivivc_test_data/vivo_data")
+df = CSV.read(file)
+rename!(df, :id => :idd)
+data = @test_throws ArgumentError ___read_vivo(df)
+
+file = Pumas.example_data("ivivc_test_data/uir_data")
+df = CSV.read(file)
+rename!(df, :dose => :does)
+data = @test_throws ArgumentError ___read_uir(df)

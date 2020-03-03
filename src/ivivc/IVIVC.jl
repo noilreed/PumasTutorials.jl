@@ -31,7 +31,7 @@ export InVivoForm, InVivoData
 export read_vitro, read_vivo, read_uir
 export emax, emax_ng, weibull, double_weibull, makoid
 export estimate_fdiss, get_avail_models, estimate_fabs
-export estimate_uir, get_avail_vivo_models, get_ivivc_p0_and_bounds, to_csv
+export estimate_uir, get_avail_vivo_models, to_csv
 export calc_input_rate, wagner_nelson, IVIVCModel, predict_vivo, percentage_prediction_error
 export loglikelihood, nullloglikelihood, dof, nobs, deviance, mss,
        rss, aic, aicc, bic, r2

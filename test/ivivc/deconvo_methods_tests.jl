@@ -1,6 +1,6 @@
-using Pumas.IVIVC, Test
+using Pumas, Pumas.IVIVC, Test
 # Tests for Wagner Nelson method
-vivo_pop = @test_nowarn read_vivo("../examples/ivivc_test_data/vivo_data.csv")
+vivo_pop = @test_nowarn read_vivo(Pumas.example_data("ivivc_test_data/vivo_data"))
 vivo_fast = vivo_pop[1]["fast"]
 kel = 0.39
 @test_nowarn wagner_nelson(vivo_fast.conc, vivo_fast.time, kel)
@@ -8,7 +8,7 @@ kel = 0.39
 # Tests for calc_input_rate function
 
 # read reference vivo data
-ref_vivo = @test_nowarn read_uir("../examples/ivivc_test_data/ref_vivo.csv")
+ref_vivo = @test_nowarn read_uir(Pumas.example_data("ivivc_test_data/uir_data"))
 
 ref_vivo_form = ref_vivo.form
 ref_vivo_time = ref_vivo.time
@@ -19,7 +19,7 @@ ref_vivo_time = ref_vivo.time
 ka, kel, V = ref_vivo.pmin
 
 # read vitro data and model with Emax
-vitro_sub = @test_nowarn read_vitro("../examples/ivivc_test_data/vitro_data.csv")[1]["fast"]
+vitro_sub = @test_nowarn read_vitro(Pumas.example_data("ivivc_test_data/vitro_data"))[1]["fast"]
 
 @test_nowarn estimate_fdiss(vitro_sub, :e)
 
