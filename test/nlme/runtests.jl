@@ -38,6 +38,7 @@ end
 if group == "All" || group == "NLME_ML3"
   @time @safetestset "Maximum-likelihood models 3" begin
     @time @safetestset "Time-varying covariates"                     begin include("tvcov.jl")                  end
+    @time @safetestset "Multiple dependent variables"             begin include("mdv.jl")                  end
   end
 end
 

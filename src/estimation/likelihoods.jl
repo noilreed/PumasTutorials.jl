@@ -966,30 +966,25 @@ function ∂²l∂η²(m::PumasModel,
                 approx::LaplaceI,
                 args...; kwargs...)
 
-  if length(subject.observations) > 1
-    throw("LaplaceI currently does not support multiple DVs, use FOCEI instead.")
-  end
-  # Initialize HessianResult for computing Hessian, gradient and value of negative loglikelihood in one go
-  T = promote_type(numtype(param), numtype(vrandeffsorth))
-  _vrandeffsorth = convert(AbstractVector{T}, vrandeffsorth)
-  diffres = DiffResults.HessianResult(_vrandeffsorth)
-
-  # Compute the derivates
-  ForwardDiff.hessian!(diffres,
-    vηorth -> conditional_nll(
+  _f_ = vηorth -> conditional_nll(
       m,
       subject,
       param,
       TransformVariables.transform(totransform(m.random(param)), vηorth),
       approx,
-      args...;
-      kwargs...),
-  vrandeffsorth)
+      args...; kwargs...)
 
-#   # Extract the derivatives
-  return  DiffResults.value(diffres), DiffResults.gradient(diffres), DiffResults.hessian(diffres)
+  # Initialize HessianResult for computing Hessian, gradient and value of negative loglikelihood in one go
+  T = promote_type(numtype(param), numtype(vrandeffsorth))
+  _vrandeffsorth = convert(AbstractVector{T}, vrandeffsorth)
+  diffres = DiffResults.HessianResult(_vrandeffsorth)
+  cfg = ForwardDiff.HessianConfig(_f_, diffres, _vrandeffsorth, ForwardDiff.Chunk{1}())
 
-  return map(x -> (nl, dldη, W), subject.observations)
+  # Compute the derivates
+  ForwardDiff.hessian!(diffres, _f_, _vrandeffsorth, cfg)
+
+  # Extract the derivatives
+  return DiffResults.value(diffres), DiffResults.gradient(diffres), DiffResults.hessian(diffres)
 end
 
 # Fallbacks
