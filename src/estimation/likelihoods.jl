@@ -1730,6 +1730,7 @@ function infer(fpm::FittedPumasModel; level = 0.95)
   println(". Done.")
   FittedPumasModelInference(fpm, _vcov, level)
 end
+StatsBase.coef(pmi::FittedPumasModelInference) = coef(pmi.fpm)
 function StatsBase.stderror(pmi::FittedPumasModelInference)
   ss = sqrt.(diag(pmi.vcov))
   trf = tostderrortransform(pmi.fpm.model.param)

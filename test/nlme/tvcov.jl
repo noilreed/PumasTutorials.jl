@@ -146,35 +146,43 @@ df = identity.(df)
     # FIXME! Test how based below requires using the default convergence tolerance so enable/adjust once
     # time-vraying covarites have been made faster. Meanwhile we just test deviance with a rough tolerance
     @test deviance(ft_normal) ≈ 8784.102132877919 rtol=1e-5
-    # @test sprint((io, t) -> show(io, MIME"text/plain"(), t), ft_normal) == """
-    # FittedPumasModel
+    @test sprint((io, t) -> show(io, MIME"text/plain"(), t), ft_normal) == """
+FittedPumasModel
 
-    # Successful minimization:                true
+Successful minimization:                true
 
-    # Likelihood approximation:        Pumas.FOCEI
-    # Deviance:                          8802.6439
-    # Total number of observation records:    4669
-    # Number of active observation records:   4669
-    # Number of subjects:                        7
+Likelihood approximation:        Pumas.FOCEI
+Deviance:                           8784.103
+Total number of observation records:    4669
+Number of active observation records:   4669
+Number of subjects:                        7
 
-    # -----------------------
-    #              Estimate
-    # -----------------------
-    # tvcl          0.15967
-    # tvv           3.7096
-    # tvka          0.88369
-    # ec50         15.0
-    # gaeffect     10.97
-    # Ω₁,₁          0.071157
-    # Ω₂,₂          0.085358
-    # σ_prop        0.040622
-    # -----------------------
-    # """
+-----------------------
+             Estimate
+-----------------------
+tvcl          0.15966
+tvv           3.7094
+tvka          0.88407
+ec50         15.004
+gaeffect     10.968
+Ω₁,₁          0.071168
+Ω₂,₂          0.085341
+σ_prop        0.040622
+-----------------------
+"""
   end
 
     # Currently disable since it's too slow. Enable once evaluation of time-varying covariates is faster
   # @testset "Fit gamma model" begin
-  #     ft_gamma = fit(tvcov_model_gamma, tvcov_pd, param_gamma, Pumas.FOCE(), optimize_fn = Pumas.DefaultOptimizeFN(show_trace=true))
+  #     ft_gamma = fit(
+  #       tvcov_model_gamma,
+  #       tvcov_pd,
+  #       param_gamma,
+  #       Pumas.FOCE(),
+  #       optimize_fn = Pumas.DefaultOptimizeFN(
+  #         show_trace=true,
+  #         g_tol=1e-1))
+
   #   #   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), ft_normal) == """
   #   # FittedPumasModel
 

@@ -18,21 +18,36 @@ function _print_fit_header(io, fpm)
   println(io)
 end
 
-function Base.show(io::IO, mime::MIME"text/plain", fpm::FittedPumasModel)
-  println(io, "FittedPumasModel\n")
-  _print_fit_header(io, fpm)
-  # Get all names
-  paramnames = []
-  paramvals = []
+"""
+    coeftable(fpm::FittedPumasModel) -> DataFrame
+
+Construct a DataFrame of parameter names and estimates from `fpm`.
+"""
+function StatsBase.coeftable(fpm::FittedPumasModel)
+  paramnames = String[]
+  paramvals = numtype(coef(fpm))[]
   for (paramname, paramval) in pairs(coef(fpm))
     _push_varinfo!(paramnames, paramvals, nothing, nothing, paramname, paramval, nothing, nothing)
   end
+  return DataFrame(parameter=paramnames, estimate=paramvals)
+end
+
+function Base.show(io::IO, mime::MIME"text/plain", fpm::FittedPumasModel)
+  println(io, "FittedPumasModel\n")
+  _print_fit_header(io, fpm)
+
+  # Get a table with the estimates
+  coefdf = coeftable(fpm)
+
+  # Round numerical values and convert to strings
+  paramvals = map(t -> string(round(t, sigdigits=5)), coefdf.estimate)
+
   getdecimal = x -> findfirst(c -> c=='.', x)
-  maxname = maximum(length, paramnames)
+  maxname = maximum(length, coefdf.parameter)
   maxval = max(maximum(length, paramvals), length("Estimate "))
-  labels = " "^(maxname+Int(round(maxval/1.2))-3)*"Estimate"
+  labels = " "^(maxname+Int(round(maxval/1.2)) - 3)*"Estimate"
   stringrows = []
-  for (name, val) in zip(paramnames, paramvals)
+  for (name, val) in zip(coefdf.parameter, paramvals)
     push!(stringrows, string(name, " "^(maxname-length(name)-getdecimal(val)+Int(round(maxval/1.2))), val, "\n"))
   end
   println(io,"-"^max(length(labels)+1,maximum(length.(stringrows))))
@@ -43,93 +58,148 @@ function Base.show(io::IO, mime::MIME"text/plain", fpm::FittedPumasModel)
   end
   println(io,"-"^max(length(labels)+1,maximum(length.(stringrows))))
 end
+
 TreeViews.hastreeview(x::FittedPumasModel) = true
 function TreeViews.treelabel(io::IO,x::FittedPumasModel,
                              mime::MIME"text/plain" = MIME"text/plain"())
   show(io, mime, Base.Text(Base.summary(x)))
 end
-function Base.show(io::IO, mime::MIME"text/plain", vfpm::Vector{<:FittedPumasModel})
-  println(io, "Vector{<:FittedPumasModel} with $(length(vfpm)) entries\n")
-  # _print_fit_header(io, fpm)
-  # Get all names
-  paramnames = []
-  paramvals = []
-  paramstds = []
+
+"""
+    coeftable(cfpm::Vector{<:FittedPumasModel}) -> DataFrame
+
+Construct a DataFrame of parameter names and estimates and their standard deviation
+from vector of fitted single-subject models `vfpm`.
+"""
+function StatsBase.coeftable(vfpm::Vector{<:FittedPumasModel})
+  paramnames = String[]
+  paramvals = Float64[]
+  paramstds = Float64[]
 
   for (paramname, paramval) in pairs(coef(first(vfpm)))
     _paramval = [coef(fpm)[paramname] for fpm in vfpm]
     parammean = mean(_paramval)
     # _push_varinfo! computes relative standard errors and we'd like to report standard errors
     # so make the reverse computation below before passing to values to _push_varinfo!
-    paramstd = parammean.*std(_paramval)/100
+    paramstd = std(_paramval)
     _push_varinfo!(paramnames, paramvals, paramstds, nothing, paramname, parammean, paramstd, nothing)
   end
+
+  return DataFrame(parameter=paramnames, estimate=paramvals, standard_deviation=paramstds)
+end
+
+function Base.show(io::IO, mime::MIME"text/plain", vfpm::Vector{<:FittedPumasModel})
+  println(io, "Vector{<:FittedPumasModel} with $(length(vfpm)) entries\n")
+
+  # _print_fit_header(io, fpm)
+  # Get a table with the estimates
+  coefdf = coeftable(vfpm)
+
   getdecimal = x -> findfirst(c -> c=='.', x)
-  maxname = maximum(length, paramnames)
+  maxname = maximum(length, coefdf.parameter)
+  paramvals = map(t -> string(round(t, sigdigits=5)), coefdf.estimate)
+  paramstds = map(t -> string(round(t, sigdigits=5)), coefdf.standard_deviation)
   maxval = max(maximum(length, paramvals), length("Mean"))
   maxstd = max(maximum(length, paramstds), length("Std"))
-  labels = " "^(maxname+Int(round(maxval/1.2))-3)*rpad("Mean", Int(round(maxstd/1.2))+maxval+3)*"Std"
+  labels = " "^(maxname + Int(round(maxval/1.2)) - 3)*rpad("Mean", Int(round(maxstd/1.2)) + maxval + 3)*"Std"
   stringrows = []
-  for (name, val, std) in zip(paramnames, paramvals, paramstds)
-    push!(stringrows, string(name, " "^(maxname-length(name)-getdecimal(val)+Int(round(maxval/1.2))), val, " "^(maxval-(length(val)-getdecimal(val))-getdecimal(std)+Int(round(maxstd/1.2))), std, "\n"))
+  for (name, val, std) in zip(coefdf.parameter, paramvals, paramstds)
+    push!(stringrows,
+      string(
+        name,
+        " "^(maxname - length(name) - getdecimal(val) + Int(round(maxval/1.2))),
+        val,
+        " "^(maxval-(length(val) - getdecimal(val)) - getdecimal(std) + Int(round(maxstd/1.2))),
+        std,
+        "\n"))
   end
   println(io, "Parameter statistics")
-  println(io, "-"^max(length(labels)+1,maximum(length.(stringrows))))
+  println(io, "-"^max(length(labels) + 1, maximum(length.(stringrows))))
   print(io, labels)
-  println(io,"\n" ,"-"^max(length(labels)+1,maximum(length.(stringrows))))
+  println(io,"\n" ,"-"^max(length(labels) + 1, maximum(length.(stringrows))))
   for stringrow in stringrows
     print(io, stringrow)
   end
-  println(io,"-"^max(length(labels)+1,maximum(length.(stringrows))))
+  println(io,"-"^max(length(labels) + 1, maximum(length.(stringrows))))
 end
+
 TreeViews.hastreeview(x::Vector{<:FittedPumasModel}) = true
 function TreeViews.treelabel(io::IO,x::Vector{<:FittedPumasModel},
                              mime::MIME"text/plain" = MIME"text/plain"())
   show(io, mime, Base.Text(Base.summary(x)))
 end
 
-function _push_varinfo!(_names, _vals, _rse, _confint, paramname, paramval::PDMat, std, quant)
+# _push_varinfo! methods
+function _push_varinfo!(_names, _vals, _se, _confint, paramname, paramval::PDMat, std, quant)
   mat = paramval.mat
   for j = 1:size(mat, 2)
     for i = j:size(mat, 1)
-      # We set stdij to nothing in case RSEs are not requested to avoid indexing
+      # We set stdij to nothing in case SEs are not requested to avoid indexing
       # into `nothing`.
-      stdij = _rse == nothing ? nothing : std[i, j]
+      stdij = _se == nothing ? nothing : std[i, j]
       _name = string(paramname)*"$(_to_subscript(i)),$(_to_subscript(j))"
-      _push_varinfo!(_names, _vals, _rse, _confint, _name, mat[i, j], stdij, quant)
+      _push_varinfo!(_names, _vals, _se, _confint, _name, mat[i, j], stdij, quant)
     end
   end
 end
-function _push_varinfo!(_names, _vals, _rse, _confint, paramname, paramval::PDiagMat, std, quant)
+function _push_varinfo!(_names, _vals, _se, _confint, paramname, paramval::PDiagMat, std, quant)
   mat = paramval.diag
     for i = 1:length(mat)
-      # We set stdii to nothing in case RSEs are not requested to avoid indexing
+      # We set stdii to nothing in case SEs are not requested to avoid indexing
       # into `nothing`.
-      stdii = _rse == nothing ? nothing : std.diag[i]
+      stdii = _se == nothing ? nothing : std.diag[i]
       _name = string(paramname)*"$(_to_subscript(i)),$(_to_subscript(i))"
-      _push_varinfo!(_names, _vals, _rse, _confint, _name, mat[i], stdii, quant)
+      _push_varinfo!(_names, _vals, _se, _confint, _name, mat[i], stdii, quant)
     end
 end
-_push_varinfo!(_names, _vals, _rse, _confint, paramname, paramval::Diagonal, std, quant) =
-  _push_varinfo!(_names, _vals, _rse, _confint, paramname, PDiagMat(paramval.diag), std, quant)
-function _push_varinfo!(_names, _vals, _rse, _confint, paramname, paramval::AbstractVector, std, quant)
+_push_varinfo!(_names, _vals, _se, _confint, paramname, paramval::Diagonal, std, quant) =
+  _push_varinfo!(_names, _vals, _se, _confint, paramname, PDiagMat(paramval.diag), std, quant)
+function _push_varinfo!(_names, _vals, _se, _confint, paramname, paramval::AbstractVector, std, quant)
   for i in 1:length(paramval)
-    # We set stdi to nothing in case RSEs are not requested to avoid indexing
+    # We set stdi to nothing in case SEs are not requested to avoid indexing
     # into `nothing`.
-    stdi = _rse == nothing ? nothing : std[i]
-    _push_varinfo!(_names, _vals, _rse, _confint, string(paramname, _to_subscript(i)), paramval[i], stdi, quant)
+    stdi = _se == nothing ? nothing : std[i]
+    _push_varinfo!(_names, _vals, _se, _confint, string(paramname, _to_subscript(i)), paramval[i], stdi, quant)
   end
 end
-function _push_varinfo!(_names, _vals, _rse, _confint, paramname, paramval::Number, std, quant)
-  # Push variable names and values. Values are truncated to five significant
-  # digits to control width of output.
+function _push_varinfo!(_names, _vals, _se, _confint, paramname, paramval::Number, std, quant)
+  # Push variable names and values.
   push!(_names, string(paramname))
-  push!(_vals, string(round(paramval; sigdigits=5)))
-  # We only update RSEs and confints if an array was input.
-  !(_rse == nothing) && push!(_rse, string(round(100*std/paramval; sigdigits=5)))
-  !(_confint == nothing) && push!(_confint, string("[", round(paramval - std*quant; sigdigits=5), ";", round(paramval+std*quant; sigdigits=5), "]"))
+  push!(_vals, paramval)
+  # We only update SEs and confints if an array was input.
+  if _se !== nothing
+    push!(_se, std)
+  end
+  if _confint !== nothing
+    push!(_confint, (paramval - std*quant, paramval+std*quant))
+  end
 end
 
+"""
+    coeftable(pmi::FittedPumasModelInference) -> DataFrame
+
+Construct a DataFrame of parameter names, estimates, standard error, and confidence
+interval from a `pmi`.
+"""
+function StatsBase.coeftable(pmi::FittedPumasModelInference)
+  standard_errors = stderror(pmi)
+
+  T = numtype(coef(pmi))
+
+  paramnames   = String[]
+  paramvals    = T[]
+  paramse      = T[]
+  paramconfint = Tuple{T,T}[]
+
+  quant = quantile(Normal(), pmi.level + (1 - pmi.level)/2)
+
+  for (paramname, paramval) in pairs(coef(pmi))
+    std = standard_errors[paramname]
+    _push_varinfo!(paramnames, paramvals, paramse, paramconfint, paramname, paramval, std, quant)
+  end
+
+  return DataFrame(parameter=paramnames, estimate=paramvals, se=paramse, ci_lower=first.(paramconfint), ci_upper=last.(paramconfint))
+end
 
 function Base.show(io::IO, mime::MIME"text/plain", pmi::FittedPumasModelInference)
   fpm = pmi.fpm
@@ -137,41 +207,36 @@ function Base.show(io::IO, mime::MIME"text/plain", pmi::FittedPumasModelInferenc
   println(io, "FittedPumasModelInference\n")
   _print_fit_header(io, pmi.fpm)
 
-  # Get all names
-  standard_errors = stderror(pmi)
-  paramnames = []
-  paramvals = []
-  paramrse = []
-  paramconfint = []
+  # Get a table with the estimates standard errors and confidense intervals
+  coefdf = coeftable(pmi)
 
-  quant = quantile(Normal(), pmi.level + (1.0 - pmi.level)/2)
+  paramvals    = map(t -> string(round(t, sigdigits=5)), coefdf.estimate)
+  paramse      = map(t -> string(round(t, sigdigits=5)), coefdf.se)
+  paramconfint = map(t -> string("[", round(t[1], sigdigits=5), ";", round(t[2], sigdigits=5), "]"), zip(coefdf.ci_lower, coefdf.ci_upper))
 
-  for (paramname, paramval) in pairs(coef(fpm))
-    std = standard_errors[paramname]
-    _push_varinfo!(paramnames, paramvals, paramrse, paramconfint, paramname, paramval, std, quant)
-  end
   getdecimal = x -> occursin("NaN", x) ? 2 : findfirst(isequal('.'), x)
   getsemicolon = x -> findfirst(c -> c==';', x)
   getafterdec = x -> getsemicolon(x) - getdecimal(x)
   getdecaftersemi = x -> getdecimal(x[getsemicolon(x):end])
   getaftersemdec = x -> occursin("NaN", x) ? length(x) - 1 : findall(isequal('.'), x)[2]
   getafterdecsemi = x -> length(x) - getaftersemdec(x)
-  maxname = maximum(length, paramnames)
+  maxname = maximum(length, coefdf.parameter)
   maxval = max(maximum(length, paramvals), length("Estimate"))
-  maxrs = max(maximum(length, paramrse), length("RSE"))
+  maxrs = max(maximum(length, paramse), length("SE"))
   maxconfint = max(maximum(length, paramconfint) + 1, length(string(round(pmi.level*100, sigdigits=6))*"% C.I."))
   maxdecconf = maximum(getdecimal, paramconfint)
   maxaftdec = maximum(getafterdec, paramconfint)
   maxdecaftsem = maximum(getdecaftersemi, paramconfint)
   maxaftdecsem = maximum(getafterdecsemi, paramconfint)
-  labels = " "^(maxname+Int(round(maxval/1.2))-3)*rpad("Estimate", Int(round(maxrs/1.2))+maxval+3)*rpad("RSE", Int(round(maxconfint/1.2))+maxrs-3)*string(round(pmi.level*100, sigdigits=6))*"% C.I."
+  labels = " "^(maxname+Int(round(maxval/1.2))-3)*rpad("Estimate", Int(round(maxrs/1.2))+maxval+3)*rpad("SE", Int(round(maxconfint/1.2))+maxrs-3)*string(round(pmi.level*100, sigdigits=6))*"% C.I."
 
   stringrows = []
-  for (name, val, rse, confint) in zip(paramnames, paramvals, paramrse, paramconfint)
+  for (name, val, se, confint) in zip(coefdf.parameter, paramvals, paramse, paramconfint)
     confint = string("["," "^(maxdecconf - getdecimal(confint)), confint[2:getsemicolon(confint)-1]," "^(maxaftdec-getafterdec(confint)),"; "," "^(maxdecaftsem - getdecaftersemi(confint)), confint[getsemicolon(confint)+1:end-1], " "^(maxaftdecsem - getafterdecsemi(confint)), "]")
-    row = string(name, " "^(maxname-length(name)-getdecimal(val)+Int(round(maxval/1.2))), val, " "^(maxval-(length(val)-getdecimal(val))-getdecimal(rse)+Int(round(maxrs/1.2))), rse, " "^(maxrs-(length(rse)-getdecimal(rse))-getsemicolon(confint)+Int(round(maxconfint/1.2))), confint, "\n")
+    row = string(name, " "^(maxname-length(name)-getdecimal(val)+Int(round(maxval/1.2))), val, " "^(maxval-(length(val)-getdecimal(val))-getdecimal(se)+Int(round(maxrs/1.2))), se, " "^(maxrs-(length(se)-getdecimal(se))-getsemicolon(confint)+Int(round(maxconfint/1.2))), confint, "\n")
     push!(stringrows, row)
   end
+
   println(io, "-"^max(length(labels)+1,length(stringrows[1])))
   print(io, labels)
   println(io, "\n",  "-"^max(length(labels)+1,length(stringrows[1])))
@@ -204,7 +269,7 @@ function Base.show(io::IO, mime::MIME"text/plain", sens::SobolOutput)
   println(io, sens.total_order, "\n")
   if sens.second_order != nothing
     println(io, "Second Order Indices")
-    println(io, sens.second_order, "\n")    
+    println(io, sens.second_order, "\n")
   end
 end
 

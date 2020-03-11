@@ -65,7 +65,7 @@ export ηshrinkage, ϵshrinkage
 export read_pumas, example_data
 export @model, @nca
 # From StatsBase
-export fit, stderror, vcov, aic, bic, deviance, informationmatrix
+export fit, stderror, vcov, aic, bic, deviance, informationmatrix, coeftable
 export infer, inspect
 export gsa
 export mean, std, var, coef
