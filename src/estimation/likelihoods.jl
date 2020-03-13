@@ -833,18 +833,22 @@ _var( d::NegativeBinomial) = (1 - d.p)/d.p^2*d.r
 _log(::Distribution, obs) = obs
 _log(::LogNormal   , obs) = log(obs)
 
-function _∂²l∂η²(obsdv::AbstractVector, dv::AbstractVector{<:Union{Normal,LogNormal}}, ::FO)
+function _∂²l∂η²(obsdv::AbstractVector, dv_d::AbstractVector{<:Union{Normal,LogNormal}}, ::FO)
   # The dimension of the random effect vector
-  nrfx = length(ForwardDiff.partials(first(dv).μ))
+  nrfx = length(ForwardDiff.partials(first(dv_d).μ))
 
   # Initialize Hessian matrix and gradient vector
-  ## FIXME! Careful about hardcoding for Float64 here
-  H    = @SMatrix zeros(nrfx, nrfx)
-  dldη = @SVector zeros(nrfx)
-  nl   = 0.0
+  # We evaluate _lpdf for the first non-missing dv to determine the correct
+  # element type. For efficiency, we use static vectors for the gradient
+  # vector but we use an normal (heap allocated) matrix for the Hessian since
+  # very large static arrays can cause exptreme compilition slowdowns.
+  i    = findfirst(!ismissing, obsdv)
+  nl   = zero(ForwardDiff.value(_lpdf(dv_d[i], obsdv[i])))
+  dldη = @SVector fill(nl, nrfx)
+  H    = fill(nl, nrfx, nrfx)
 
   # Loop through the distribution vector and extract derivative information
-  for j in eachindex(dv)
+  for j in eachindex(dv_d)
     obsj = obsdv[j]
 
     # We ignore missing observations when estimating the model
@@ -852,12 +856,13 @@ function _∂²l∂η²(obsdv::AbstractVector, dv::AbstractVector{<:Union{Normal
       continue
     end
 
-    dvj = dv[j]
+    dvj = dv_d[j]
     r = ForwardDiff.value(dvj.σ)^2
     f = SVector(ForwardDiff.partials(dvj.μ).values)
     fdr = f/r
 
-    H    += fdr*f'
+    # H is updated in place to avoid heap allocations in the loop
+    H   .+= fdr .* f'
     dldη += fdr*(_log(dvj, obsj) - ForwardDiff.value(dvj.μ))
     nl   -= ForwardDiff.value(_lpdf(dvj, obsj))
   end
@@ -877,10 +882,14 @@ function _∂²l∂η²(obsdv::AbstractVector, dv_d::AbstractVector{<:Distributi
   nrfx = length(ForwardDiff.partials(mean(first(dv_d))))
 
   # Initialize Hessian matrix and gradient vector
-  ## FIXME! Careful about hardcoding for Float64 here
-  H    = @SMatrix zeros(nrfx, nrfx)
-  dldη = @SVector zeros(nrfx)
-  nl   = 0.0
+  # We evaluate _lpdf for the first non-missing dv to determine the correct
+  # element type. For efficiency, we use static vectors for the gradient
+  # vector but we use an normal (heap allocated) matrix for the Hessian since
+  # very large static arrays can cause exptreme compilition slowdowns.
+  i    = findfirst(!ismissing, obsdv)
+  nl   = zero(ForwardDiff.value(_lpdf(dv_d[i], obsdv[i])))
+  dldη = @SVector fill(nl, nrfx)
+  H    = fill(nl, nrfx, nrfx)
 
   for j in eachindex(dv_d)
     obsj = obsdv[j]
@@ -890,7 +899,8 @@ function _∂²l∂η²(obsdv::AbstractVector, dv_d::AbstractVector{<:Distributi
     dvj   = dv_d[j]
     f     = SVector(ForwardDiff.partials(_mean(dvj)).values)
     fdr   = f/ForwardDiff.value(_var(dvj))
-    H    += fdr*f'
+    # H is updated in place to avoid heap allocations in the loop
+    H   .+= fdr .* f'
     dldη -= fdr*(_log(dvj, obsj) - ForwardDiff.value(_mean(dvj)))
     nl   -= ForwardDiff.value(_lpdf(dvj, obsj))
   end
@@ -904,10 +914,14 @@ function _∂²l∂η²(obsdv::AbstractVector, dv_d::AbstractVector{<:Categorica
   nrfx = length(ForwardDiff.partials(mean(first(dv_d))))
 
   # Initialize Hessian matrix and gradient vector
-  ## FIXME! Careful about hardcoding for Float64 here
-  H    = @SMatrix zeros(nrfx, nrfx)
-  dldη = @SVector zeros(nrfx)
-  nl   = 0.0
+  # We evaluate _lpdf for the first non-missing dv to determine the correct
+  # element type. For efficiency, we use static vectors for the gradient
+  # vector but we use an normal (heap allocated) matrix for the Hessian since
+  # very large static arrays can cause exptreme compilition slowdowns.
+  i    = findfirst(!ismissing, obsdv)
+  nl   = zero(ForwardDiff.value(_lpdf(dv_d[i], obsdv[i])))
+  dldη = @SVector fill(nl, nrfx)
+  H    = fill(nl, nrfx, nrfx)
 
   for j in eachindex(dv_d)
     obsj = obsdv[j]
@@ -922,7 +936,8 @@ function _∂²l∂η²(obsdv::AbstractVector, dv_d::AbstractVector{<:Categorica
       if l == obsj
         dldη -= fdp
       end
-      H += fdp*f'
+      # H is updated in place to avoid heap allocations in the loop
+      H .+= fdp*f'
     end
     nl   -= ForwardDiff.value(_lpdf(dvj, obsj))
   end
@@ -930,28 +945,33 @@ function _∂²l∂η²(obsdv::AbstractVector, dv_d::AbstractVector{<:Categorica
   return nl, dldη, H
 end
 
-function _∂²l∂η²(obsdv::AbstractVector, dv::AbstractVector{<:Union{Normal,LogNormal}}, ::FOCEI)
+function _∂²l∂η²(obsdv::AbstractVector, dv_d::AbstractVector{<:Union{Normal,LogNormal}}, ::FOCEI)
   # Loop through the distribution vector and extract derivative information
-  nrfx = length(ForwardDiff.partials(first(dv).μ))
+  nrfx = length(ForwardDiff.partials(first(dv_d).μ))
 
   # Initialize Hessian matrix and gradient vector
-  ## FIXME! Careful about hardcoding for Float64 here
-  H    = @SMatrix zeros(nrfx, nrfx)
-  dldη = @SVector zeros(nrfx)
-  nl   = 0.0
+  # We evaluate _lpdf for the first non-missing dv to determine the correct
+  # element type. For efficiency, we use static vectors for the gradient
+  # vector but we use an normal (heap allocated) matrix for the Hessian since
+  # very large static arrays can cause exptreme compilition slowdowns.
+  i    = findfirst(!ismissing, obsdv)
+  nl   = zero(ForwardDiff.value(_lpdf(dv_d[i], obsdv[i])))
+  dldη = @SVector fill(nl, nrfx)
+  H    = fill(nl, nrfx, nrfx)
 
-  for j in eachindex(dv)
+  for j in eachindex(dv_d)
     obsj = obsdv[j]
     if ismissing(obsj)
       continue
     end
-    dvj   = dv[j]
+    dvj   = dv_d[j]
     r_inv = inv(ForwardDiff.value(dvj.σ^2))
     f     = SVector(ForwardDiff.partials(dvj.μ).values)
     del_r = SVector(ForwardDiff.partials(dvj.σ.^2).values)
     res   = _log(dvj, obsj) - ForwardDiff.value(dvj.μ)
 
-    H    += f*r_inv*f' + (r_inv*del_r*r_inv*del_r')/2
+    # H is updated in place to avoid heap allocations in the loop
+    H   .+= f .* r_inv .* f' .+ del_r .* r_inv^2 .* del_r' ./ 2
     dldη -= (-del_r/2 + f*res + res^2*del_r*r_inv/2)*r_inv
     nl   -= ForwardDiff.value(_lpdf(dvj, obsj))
   end

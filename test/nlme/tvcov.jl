@@ -137,22 +137,21 @@ df = identity.(df)
         Pumas.FOCEI();
         optimize_fn = Pumas.DefaultOptimizeFN(
           show_trace=true,
-          # Use a very rough convergence tolerance to avoid time out on CI. Once the time-varying
-          # covariate handling has been fixed, it should be possible to use the default tolerance
-          g_tol=1e-1,
+          x_reltol=1e-3,
         ),
+        # We use a slightly lower tolerance in the ODE solves to avoid a very slow
+        # last iteration.
+        reltol=1e-9
       )
 
-    # FIXME! Test how based below requires using the default convergence tolerance so enable/adjust once
-    # time-vraying covarites have been made faster. Meanwhile we just test deviance with a rough tolerance
-    @test deviance(ft_normal) ≈ 8784.102132877919 rtol=1e-5
+    @test deviance(ft_normal) ≈ 8784.101866341049 rtol=1e-5
     @test sprint((io, t) -> show(io, MIME"text/plain"(), t), ft_normal) == """
 FittedPumasModel
 
 Successful minimization:                true
 
 Likelihood approximation:        Pumas.FOCEI
-Deviance:                           8784.103
+Deviance:                          8784.1019
 Total number of observation records:    4669
 Number of active observation records:   4669
 Number of subjects:                        7
@@ -160,13 +159,13 @@ Number of subjects:                        7
 -----------------------
              Estimate
 -----------------------
-tvcl          0.15966
-tvv           3.7094
-tvka          0.88407
+tvcl          0.15973
+tvv           3.7072
+tvka          0.88405
 ec50         15.004
 gaeffect     10.968
-Ω₁,₁          0.071168
-Ω₂,₂          0.085341
+Ω₁,₁          0.071242
+Ω₂,₂          0.085379
 σ_prop        0.040622
 -----------------------
 """
