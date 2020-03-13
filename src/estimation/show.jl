@@ -182,8 +182,12 @@ Construct a DataFrame of parameter names, estimates, standard error, and confide
 interval from a `pmi`.
 """
 function StatsBase.coeftable(pmi::FittedPumasModelInference)
-  standard_errors = stderror(pmi)
 
+  if pmi.vcov isa Exception
+    standard_errors = NamedTuple{keys(coef(pmi))}(fill(NaN, TransformVariables.dimension(totransform(pmi.fpm.model.param))))
+  else
+    standard_errors = stderror(pmi)
+  end
   T = numtype(coef(pmi))
 
   paramnames   = String[]
@@ -243,7 +247,11 @@ function Base.show(io::IO, mime::MIME"text/plain", pmi::FittedPumasModelInferenc
   for stringrow in stringrows
     print(io, stringrow)
   end
-  println(io, "-"^max(length(labels)+1,length(stringrows[1])))
+  println(io,  "-"^max(length(labels)+1,length(stringrows[1])))
+  if pmi.vcov isa Exception
+    println(io, """\n\nVariance-covariance matrix could not be be\nevaluated. The random effects may be over-\nparameterized. Check the coefficients for\nvariance estimates near zero.""")
+  end
+
 end
 TreeViews.hastreeview(x::FittedPumasModelInference) = true
 function TreeViews.treelabel(io::IO,x::FittedPumasModelInference,
