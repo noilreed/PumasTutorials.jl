@@ -335,7 +335,11 @@ function marginal_nll(m::PumasModel,
                       args...; kwargs...)
 
   if approx isa NaivePooled
-    vrandeffsorth = []
+    if length(m.random(param).params) > 0
+      vvrandeffsorth     = zero(_vecmean(m.random(param)))
+    else
+      vvrandeffsorth     = []
+    end
   else
     rfxset = m.random(param)
     vrandeffsorth = TransformVariables.inverse(totransform(rfxset), randeffs)
@@ -361,7 +365,13 @@ function marginal_nll(m::PumasModel,
                       args...; kwargs...)::promote_type(numtype(param), numtype(vrandeffsorth))
 
   # The negative loglikelihood function. There are no random effects.
-  conditional_nll(m, subject, param, NamedTuple(), args...;kwargs...)
+  if length(m.random(param).params) > 0
+    randeffstransform = totransform(m.random(param))
+    randeffs = TransformVariables.transform(randeffstransform, zero(vrandeffsorth))
+  else
+    randeffs = NamedTuple()
+  end
+  conditional_nll(m, subject, param, randeffs, args...;kwargs...)
 
 end
 function marginal_nll(m::PumasModel,
@@ -1034,7 +1044,7 @@ struct FittedPumasModel{T1<:PumasModel,T2<:Population,T3,T4<:LikelihoodApproxima
   vvrandeffsorth::T5
   args::T6
   kwargs::T7
-  fixedtrf::T8
+  fixedparamset::T8
 end
 simobs(fpm::FittedPumasModel) = simobs(fpm.model, fpm.data, coef(fpm), empirical_bayes(fpm); fpm.kwargs...)
 
@@ -1075,28 +1085,41 @@ function (A::DefaultOptimizeFN)(cost, p, callback)
 end
 
 """
-    _fixed_to_constanttransform(trf::TransformTuple, param::NamedTuple, fixed::NamedTuple)
+    _fixed_to_constant_paramset(paramset::ParamSet, param::NamedTuple, fixed::NamedTuple, omegas::Tuple)
 
-Replace individual parameter transformations in `trf` with `ConstantTranform` if
-the parameter has an entry in `fixed`. Return a new parameter `NamedTuple` with
+Replace individual parameter Domains in `paramset` with `ConstantTranform` if
+the parameter has an entry in `fixed`. Return a new parameter `ParamSet` with
 the values in `fixed` in place of the values in input `param`.
 """
-function _fixed_to_constanttransform(trf, param, fixed)
+function _fixed_to_constant_paramset(paramset, param, fixed, omegas)
   fix_keys = keys(fixed)
-  _keys = keys(trf.transformations)
+  _keys = keys(paramset.params)
   _vals = []
-  _paramval = []
+  _par = []
   for key in _keys
     if key ∈ fix_keys
-      push!(_vals, ConstantTransform(fixed[key]))
-      push!(_paramval, fixed[key])
+      push!(_vals, ConstDomain(fixed[key]))
+      push!(_par, fixed[key])
+    elseif key ∈ omegas
+      _init = init(paramset)[key]
+      if _init isa PDMats.PDiagMat
+        _init = Diagonal(zero(_init.diag))
+      elseif _init isa PDMats.PDMat
+        _init = zero(_init.mat)
+      else
+        _init = zero(_init)
+      end
+      dom = ConstDomain(_init)
+      push!(_vals, dom)
+      push!(_par, _init)
     else
-      push!(_vals, trf.transformations[key])
-      push!(_paramval, param[key])
+      push!(_vals, paramset.params[key])
+      push!(_par, param[key])
     end
   end
-  new_param = NamedTuple{_keys}(_paramval)
-  return new_param, TransformVariables.TransformTuple(NamedTuple{_keys}(_vals))
+  fixedparamset = ParamSet(NamedTuple{_keys}(_vals))
+  fixedparam = NamedTuple{_keys}(_par)
+  return fixedparamset, fixedparam
 end
 
 function _update_ebes_and_evaluate_marginal_nll!(
@@ -1242,15 +1265,15 @@ function Distributions.fit(m::PumasModel,
                            # in zero. In addition, the returned object should support a opt_minimizer method
                            # that returns the optimized parameters.
                            optimize_fn = DefaultOptimizeFN(),
-                           constantcoef = NamedTuple(),
+                           constantcoef::NamedTuple = NamedTuple(),
+                           omegas::Tuple = tuple(),
                            ensemblealg::DiffEqBase.EnsembleAlgorithm = EnsembleSerial(),
                            kwargs...)
 
   # Compute transform object defining the transformations from NamedTuple to Vector while applying any parameter restrictions and apply the transformations
-  trf = totransform(m.param)
-  fixedtrf=trf
-  param, fixedtrf = _fixed_to_constanttransform(trf, param, constantcoef)
-  vparam = TransformVariables.inverse(fixedtrf, param)
+  fixedparamset, fixedparam = _fixed_to_constant_paramset(m.param, param, constantcoef, omegas)
+  fixedtrf = totransform(fixedparamset)
+  vparam = TransformVariables.inverse(fixedtrf, fixedparam)
 
   # We'll store the orthogonalized random effects estimate in vvrandeffsorth which allows us to carry the estimates from last
   # iteration and use them as staring values in the next iteration. We also allocate a buffer to store the
@@ -1258,11 +1281,15 @@ function Distributions.fit(m::PumasModel,
   # before the new value has been found. We then define a callback which will store values of vvrandeffsorth_tmp
   # in vvrandeffsorth once the iteration is done.
   if approx isa NaivePooled
-    vvrandeffsorth     = [[] for subject in population]
+    if length(m.random(fixedparam).params) > 0
+      vvrandeffsorth     = [zero(_vecmean(m.random(fixedparam))) for subject in population]
+    else
+      vvrandeffsorth     = [[] for subject in population]
+    end
     vvrandeffsorth_tmp = [copy(vrandefforths) for vrandefforths in vvrandeffsorth]
     cb(state) = false
   else
-    vvrandeffsorth     = [zero(_vecmean(m.random(param))) for subject in population]
+    vvrandeffsorth     = [zero(_vecmean(m.random(fixedparam))) for subject in population]
     vvrandeffsorth_tmp = [copy(vrandefforths) for vrandefforths in vvrandeffsorth]
     cb = state -> begin
       for i in eachindex(vvrandeffsorth)
@@ -1350,7 +1377,7 @@ function Distributions.fit(m::PumasModel,
     end
   end
 
-  return FittedPumasModel(m, population, o, approx, vvrandeffsorth, args, kwargs, fixedtrf)
+  return FittedPumasModel(m, population, o, approx, vvrandeffsorth, args, kwargs, fixedparamset)
 end
 
 function Distributions.fit(m::PumasModel,
@@ -1381,8 +1408,8 @@ function StatsBase.coef(fpm::FittedPumasModel)
   # we need to use the transform that takes into account that the fixed param
   # are transformed according to the ConstantTransformations, and not the
   # transformations given in totransform(model.param)
-  trf = fpm.fixedtrf
-  TransformVariables.transform(trf, opt_minimizer(fpm.optim))
+  paramset = fpm.fixedparamset
+  TransformVariables.transform(totransform(paramset), opt_minimizer(fpm.optim))
 end
 function Base.getproperty(f::FittedPumasModel{<:Any,<:Any,<:Optim.MultivariateOptimizationResults}, s::Symbol)
   if s === :param
@@ -1417,7 +1444,7 @@ function _observed_information(f::FittedPumasModel,
                                kwargs...) where Score
   # Transformation the NamedTuple of parameters to a Vector
   # without applying any bounds (identity transform)
-  trf = toidentitytransform(f.model.param)
+  trf = toidentitytransform(f.fixedparamset)
   param = coef(f)
   vparam = TransformVariables.inverse(trf, param)
 
@@ -1442,7 +1469,11 @@ function _observed_information(f::FittedPumasModel,
       _param = TransformVariables.transform(trf, _vparam)
 
       if f.approx isa NaivePooled
-        vrandeffsorth = []
+        if length(f.model.random(param).params) > 0
+          vrandeffsorth     = zero(_vecmean(f.model.random(param)))
+        else
+          vrandeffsorth     = []
+        end
       else
         vrandeffsorth = _orth_empirical_bayes(f.model, subject, _param, f.approx, args...; kwargs...)
       end
@@ -1479,7 +1510,11 @@ function _observed_information(f::FittedPumasModel,
     if Score
       # Compute score contribution
       if f.approx isa NaivePooled
-        vrandeffsorth = []
+        if length(f.model.random(param).params) > 0
+          vrandeffsorth     = zero(_vecmean(f.model.random(param)))
+        else
+          vrandeffsorth     = []
+        end
       else
         vrandeffsorth = _orth_empirical_bayes(f.model, subject, coef(f), f.approx, args...; kwargs...)
       end
@@ -1761,7 +1796,7 @@ end
 StatsBase.coef(pmi::FittedPumasModelInference) = coef(pmi.fpm)
 function StatsBase.stderror(pmi::FittedPumasModelInference)
   ss = sqrt.(diag(pmi.vcov))
-  trf = tostderrortransform(pmi.fpm.model.param)
+  trf = tostderrortransform(pmi.fpm.fixedparamset)
   return TransformVariables.transform(trf, ss)
 end
 

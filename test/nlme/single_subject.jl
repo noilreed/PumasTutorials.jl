@@ -32,7 +32,6 @@ using Random
   for approx in (Pumas.FO, Pumas.FOI, Pumas.FOCE, Pumas.FOCEI, Pumas.LaplaceI, Pumas.LLQuad)
     @test_throws ArgumentError fit(mdsl1, data[1], param, approx())
   end
-
 end
 
 @testset "Readme roundtrip" begin
@@ -90,8 +89,7 @@ end
   fitone = fit(model, first(data), param)
 
 @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone) ==
-"""
-FittedPumasModel
+"""FittedPumasModel
 
 Successful minimization:                true
 
@@ -114,8 +112,7 @@ pmoncl     -0.7008
   fitnp = fit(model, data, param, Pumas.NaivePooled())
 
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(fitnp)) ==
-"""
-FittedPumasModelInference
+"""FittedPumasModelInference
 
 Successful minimization:                true
 
@@ -138,8 +135,7 @@ pmoncl    -0.69962         0.00059607        [-0.70079 ; -0.69845 ]
   fit2s = fit(model, data, param, Pumas.TwoStage())
 
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fit2s) ==
-"""
-Vector{<:FittedPumasModel} with 1000 entries
+"""Vector{<:FittedPumasModel} with 1000 entries
 
 Parameter statistics
 -------------------------------------
@@ -152,4 +148,292 @@ pmoncl    -0.70006         0.0045627
 -------------------------------------
 """
 
+end
+
+
+@testset "with random" begin
+  data = read_pumas(example_data("sim_data_model1"))
+
+  mdsl1 = @model begin
+      @param begin
+          θ ∈ VectorDomain(1, init=[0.5], lower = [0.0], upper=[20.0])
+          Ω ∈ PDiagDomain(init=[0.04])
+          Σ ∈ ConstDomain(0.1)
+      end
+
+      @random begin
+          η ~ MvNormal(Ω)
+      end
+
+      @pre begin
+          CL = θ[1] * exp(η[1])
+          V  = 1.0
+      end
+
+      @vars begin
+          conc = Central / V
+      end
+
+      @dynamics Central1
+
+      @derived begin
+          dv ~ @. Normal(conc,conc*sqrt(Σ)+eps())
+      end
+  end
+  mdsl1full = @model begin
+      @param begin
+          θ ∈ VectorDomain(1, init=[0.5], lower = [0.0], upper=[20.0])
+          Ω ∈ PSDDomain(init=[0.04])
+          Σ ∈ ConstDomain(0.1)
+      end
+
+      @random begin
+          η ~ MvNormal(Ω)
+      end
+
+      @pre begin
+          CL = θ[1] * exp(η[1])
+          V  = 1.0
+      end
+
+      @vars begin
+          conc = Central / V
+      end
+
+      @dynamics Central1
+
+      @derived begin
+          dv ~ @. Normal(conc,conc*sqrt(Σ)+eps())
+      end
+  end
+  mdsl1_noeta = @model begin
+      @param begin
+          θ ∈ VectorDomain(1, init=[0.5])
+          Σ ∈ ConstDomain(0.1)
+      end
+
+      @pre begin
+          CL = θ[1]
+          V  = 1.0
+      end
+
+      @vars begin
+          conc = Central / V
+      end
+
+      @dynamics Central1
+
+      @derived begin
+          dv ~ @. Normal(conc,conc*sqrt(Σ)+eps())
+      end
+  end
+
+
+  param_noeta = init_param(mdsl1_noeta)
+  fitone_noeta = fit(mdsl1_noeta, first(data), param_noeta)
+
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_noeta) ==
+"""FittedPumasModel
+
+Successful minimization:                true
+
+Likelihood approximation:  Pumas.NaivePooled
+Deviance:                          4.4609099
+Total number of observation records:       2
+Number of active observation records:      2
+Number of subjects:                        1
+
+----------------
+       Estimate
+----------------
+θ₁      0.13038
+Σ       0.1
+----------------
+"""
+  infer_noeta = infer(fitone_noeta)
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_noeta) ==
+"""FittedPumasModelInference
+
+Successful minimization:                true
+
+Likelihood approximation:  Pumas.NaivePooled
+Deviance:                          4.4609099
+Total number of observation records:       2
+Number of active observation records:      2
+Number of subjects:                        1
+
+---------------------------------------------------------
+      Estimate           SE                  95.0% C.I.
+---------------------------------------------------------
+θ₁     0.13038         1.0297e-5       [0.13036; 0.1304]
+Σ      0.1             NaN             [ NaN   ;  NaN    ]
+---------------------------------------------------------
+"""
+
+  param = init_param(mdsl1)
+  fitone_constantcoef = fit(mdsl1, first(data), param; constantcoef=(Ω=[0.0],))
+    @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_constantcoef) ==
+"""FittedPumasModel
+
+Successful minimization:                true
+
+Likelihood approximation:  Pumas.NaivePooled
+Deviance:                            4.46091
+Total number of observation records:       2
+Number of active observation records:      2
+Number of subjects:                        1
+
+----------------
+       Estimate
+----------------
+θ₁      0.1305
+Ω₁      0.0
+Σ       0.1
+----------------
+"""
+
+  infer_constantcoef = infer(fitone_constantcoef)
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_constantcoef) ==
+"""FittedPumasModelInference
+
+Successful minimization:                true
+
+Likelihood approximation:  Pumas.NaivePooled
+Deviance:                            4.46091
+Total number of observation records:       2
+Number of active observation records:      2
+Number of subjects:                        1
+
+----------------------------------------------------------
+      Estimate           SE                   95.0% C.I.
+----------------------------------------------------------
+θ₁     0.1305          0.00010387       [0.13029; 0.1307]
+Ω₁     0.0             NaN              [ NaN   ;  NaN    ]
+Σ      0.1             NaN              [ NaN   ;  NaN    ]
+----------------------------------------------------------
+"""
+
+  fitone_omegas = fit(mdsl1, first(data), param; omegas=(:Ω,))
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_omegas) ==
+"""FittedPumasModel
+
+Successful minimization:                true
+
+Likelihood approximation:  Pumas.NaivePooled
+Deviance:                            4.46091
+Total number of observation records:       2
+Number of active observation records:      2
+Number of subjects:                        1
+
+------------------
+         Estimate
+------------------
+θ₁        0.1305
+Ω₁,₁      0.0
+Σ         0.1
+------------------
+"""
+  infer_omegas = infer(fitone_omegas)
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_omegas) ==
+"""FittedPumasModelInference
+
+Successful minimization:                true
+
+Likelihood approximation:  Pumas.NaivePooled
+Deviance:                            4.46091
+Total number of observation records:       2
+Number of active observation records:      2
+Number of subjects:                        1
+
+------------------------------------------------------------
+        Estimate           SE                   95.0% C.I.
+------------------------------------------------------------
+θ₁       0.1305          0.00010387       [0.13029; 0.1307]
+Ω₁,₁     0.0             NaN              [ NaN   ;  NaN    ]
+Σ        0.1             NaN              [ NaN   ;  NaN    ]
+------------------------------------------------------------
+"""
+
+  param = init_param(mdsl1full)
+  fitone_constantcoef = fit(mdsl1full, first(data), param; constantcoef=(Ω=[0.0],))
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_constantcoef) ==
+"""FittedPumasModel
+
+Successful minimization:                true
+
+Likelihood approximation:  Pumas.NaivePooled
+Deviance:                            4.46091
+Total number of observation records:       2
+Number of active observation records:      2
+Number of subjects:                        1
+
+----------------
+       Estimate
+----------------
+θ₁      0.1305
+Ω₁      0.0
+Σ       0.1
+----------------
+"""
+  infer_constantcoef = infer(fitone_constantcoef)
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_constantcoef) ==
+"""FittedPumasModelInference
+
+Successful minimization:                true
+
+Likelihood approximation:  Pumas.NaivePooled
+Deviance:                            4.46091
+Total number of observation records:       2
+Number of active observation records:      2
+Number of subjects:                        1
+
+----------------------------------------------------------
+      Estimate           SE                   95.0% C.I.
+----------------------------------------------------------
+θ₁     0.1305          0.00010387       [0.13029; 0.1307]
+Ω₁     0.0             NaN              [ NaN   ;  NaN    ]
+Σ      0.1             NaN              [ NaN   ;  NaN    ]
+----------------------------------------------------------
+"""
+
+  fitone_omegas = fit(mdsl1full, first(data), param; omegas=(:Ω,))
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_omegas) ==
+"""FittedPumasModel
+
+Successful minimization:                true
+
+Likelihood approximation:  Pumas.NaivePooled
+Deviance:                            4.46091
+Total number of observation records:       2
+Number of active observation records:      2
+Number of subjects:                        1
+
+----------------
+       Estimate
+----------------
+θ₁      0.1305
+Ω₁      0.0
+Σ       0.1
+----------------
+"""
+  infer_omegas = infer(fitone_omegas)
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_omegas) ==
+"""FittedPumasModelInference
+
+Successful minimization:                true
+
+Likelihood approximation:  Pumas.NaivePooled
+Deviance:                            4.46091
+Total number of observation records:       2
+Number of active observation records:      2
+Number of subjects:                        1
+
+----------------------------------------------------------
+      Estimate           SE                   95.0% C.I.
+----------------------------------------------------------
+θ₁     0.1305          0.00010387       [0.13029; 0.1307]
+Ω₁     0.0             NaN              [ NaN   ;  NaN    ]
+Σ      0.1             NaN              [ NaN   ;  NaN    ]
+----------------------------------------------------------
+"""
 end
