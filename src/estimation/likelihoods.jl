@@ -28,7 +28,7 @@ if !hasmethod(MvNormal, Tuple{Diagonal})
   Distributions.MvNormal(D::Diagonal) = MvNormal(PDiagMat(D.diag))
 end
 
-zval(d) = 0.0
+zval(d) = zero(eltype(d))
 zval(d::Distributions.Normal{T}) where {T} = zero(T)
 
 """
@@ -39,8 +39,6 @@ The log pdf: this differs from `Distributions.logdpf` definintion in a couple of
 - if `x` is `NaN` or `Missing`, it returns 0.
 - if `d` is a `NamedTuple` of distributions, and `x` is a `NamedTuple` of observations, it computes the sum of the observed variables.
 """
-_lpdf(d::Number, x::Number) = d == x ? 0.0 : -Inf
-_lpdf(d::ConstDomain, x) = _lpdf(d.val, x)
 _lpdf(d::Distributions.Sampleable, x::Missing) = zval(d)
 _lpdf(d::Distributions.UnivariateDistribution, x::AbstractVector) = sum(t -> _lpdf(d, t), x)
 _lpdf(d::Distributions.MultivariateDistribution, x::AbstractVector) = logpdf(d,x)
@@ -117,29 +115,6 @@ end
   return -ll
 end
 
-conditional_nll(m::PumasModel,
-                subject::Subject,
-                param::NamedTuple,
-                randeffs::NamedTuple,
-                approx::Union{FOI,FOCE,FOCEI,LaplaceI},
-                args...; kwargs...) = conditional_nll(m, subject, param, randeffs, args...; kwargs...)
-
-function conditional_nll(m::PumasModel,
-                         subject::Subject,
-                         param::NamedTuple,
-                         randeffs::NamedTuple,
-                         approx::FO,
-                         args...; kwargs...)
-
-  collated_numtype = numtype(m.pre(param, randeffs, subject))
-  dist = _derived(m, subject, param, randeffs, args...;kwargs...)
-
-  if any(d->d isa Nothing, dist)
-    return collated_numtype(Inf)
-  end
-
-  return conditional_nll(m, subject, param, randeffs, dist)::collated_numtype
-end
 
 """
     penalized_conditional_nll(m::PumasModel, subject::Subject, param::NamedTuple, randeffs::NamedTuple, args...; kwargs...)
@@ -251,7 +226,7 @@ function _orth_empirical_bayes!(
     end
 
     if F !== nothing
-      return penalized_conditional_nll(m, subject, param, x, approx, args...; kwargs...)
+      return penalized_conditional_nll(m, subject, param, x, args...; kwargs...)
     end
   end
 
@@ -284,13 +259,19 @@ function empirical_bayes_dist(m::PumasModel,
                               subject::Subject,
                               param::NamedTuple,
                               vrandeffsorth::AbstractVector,
-                              approx::Union{FOCE,FOCEI,LaplaceI},
+                              approx::Union{FO,FOCE,FOCEI,LaplaceI},
                               args...; kwargs...)
 
   parset = m.random(param)
   trf = totransform(parset)
 
-  _, _, _∂²l∂η² = ∂²l∂η²(m, subject, param, vrandeffsorth, approx, args...; kwargs...)
+  if approx isa FO
+    _vrandeffsorth = _orth_empirical_bayes(m, subject, param, LaplaceI(), args...; kwargs...)
+    _, _, _∂²l∂η² = ∂²l∂η²(m, subject, param, _vrandeffsorth, LaplaceI(), args...; kwargs...)
+  else
+    _, _, _∂²l∂η² = ∂²l∂η²(m, subject, param, vrandeffsorth, approx, args...; kwargs...)
+  end
+
   V = inv(_∂²l∂η² + I)
 
   i = 1
@@ -304,7 +285,7 @@ function empirical_bayes_dist(m::PumasModel,
       if t.d.Σ isa PDiagMat
         U = Diagonal(sqrt.(t.d.Σ.diag))
       else
-        U = cholesky(t.d.Σ)
+        U = cholesky(t.d.Σ).U
       end
       return MvNormal(μ, Symmetric(U'*(Vᵢ*U)))
     elseif t isa NormalTransform
@@ -318,34 +299,15 @@ function empirical_bayes_dist(m::PumasModel,
 end
 
 """
-    marginal_nll(model, subject, param[, param], approx, ...)
+    marginal_nll(model, subject, param, approx, ...)
     marginal_nll(model, population, param, approx, ...)
 
 Compute the marginal negative loglikelihood of a subject or dataset, using the integral
-approximation `approx`. If no random effect (`param`) is provided, then this is estimated
-from the data.
+approximation `approx`.
 
 See also [`deviance`](@ref).
 """
-function marginal_nll(m::PumasModel,
-                      subject::Subject,
-                      param::NamedTuple,
-                      randeffs::NamedTuple,
-                      approx::LikelihoodApproximation,
-                      args...; kwargs...)
-
-  if approx isa NaivePooled
-    if length(m.random(param).params) > 0
-      vvrandeffsorth     = zero(_vecmean(m.random(param)))
-    else
-      vvrandeffsorth     = []
-    end
-  else
-    rfxset = m.random(param)
-    vrandeffsorth = TransformVariables.inverse(totransform(rfxset), randeffs)
-  end
-  return marginal_nll(m, subject, param, vrandeffsorth, approx, args...; kwargs...)
-end
+marginal_nll
 
 function marginal_nll(m::PumasModel,
                       subject::Subject,
@@ -531,8 +493,7 @@ end
 
 # deviance is NONMEM-equivalent marginal negative loglikelihood
 """
-    deviance(model, subject, param[, param], approx, ...)
-    deviance(model, data, param, approx, ...)
+    deviance(model, subject, param, approx, ...)
 
 Compute the deviance of a subject or dataset:
 this is scaled and shifted slightly from [`marginal_nll`](@ref).
@@ -604,7 +565,6 @@ function marginal_nll_gradient!(g::AbstractVector,
     subject,
     param,
     vηorth,
-    approx,
     args...; kwargs...)
   cs = min(length(vrandeffsorth), 3)
   cfg_∂²ℓᵖ∂η² = ForwardDiff.HessianConfig(_f_∂²ℓᵖ∂η², vrandeffsorth, ForwardDiff.Chunk{cs}())
@@ -618,7 +578,6 @@ function marginal_nll_gradient!(g::AbstractVector,
         subject,
         _param,
         vηorth,
-        approx,
         args...; kwargs...),
       vrandeffsorth
     )
@@ -993,7 +952,7 @@ function ∂²l∂η²(m::PumasModel,
                 subject::Subject,
                 param::NamedTuple,
                 vrandeffsorth::AbstractVector,
-                approx::LaplaceI,
+                ::LaplaceI,
                 args...; kwargs...)
 
   _f_ = vηorth -> conditional_nll(
@@ -1001,7 +960,6 @@ function ∂²l∂η²(m::PumasModel,
       subject,
       param,
       TransformVariables.transform(totransform(m.random(param)), vηorth),
-      approx,
       args...; kwargs...)
 
   # Initialize HessianResult for computing Hessian, gradient and value of negative loglikelihood in one go
@@ -1684,29 +1642,15 @@ parameters.
 """
 StatsBase.stderror(f::FittedPumasModel) = stderror(infer(f))
 
-function Statistics.mean(vfpm::Vector{<:FittedPumasModel})
-  names = keys(coef(first(vfpm)))
-  means = []
-  for name in names
-    push!(means, mean([coef(fpm)[name] for fpm in vfpm]))
+for f in (:mean, :std, :var)
+  @eval function Statistics.$(f)(vfpm::Vector{<:FittedPumasModel})
+    names = keys(coef(first(vfpm)))
+    means = []
+    for name in names
+      push!(means, ($f)([coef(fpm)[name] for fpm in vfpm]))
+    end
+    NamedTuple{names}(means)
   end
-  NamedTuple{names}(means)
-end
-function Statistics.std(vfpm::Vector{<:FittedPumasModel})
-  names = keys(coef(first(vfpm)))
-  stds = []
-  for name in names
-    push!(stds, std([coef(fpm)[name] for fpm in vfpm]))
-  end
-  NamedTuple{names}(stds)
-end
-function Statistics.var(vfpm::Vector{<:FittedPumasModel})
-  names = keys(coef(first(vfpm)))
-  vars = []
-  for name in names
-    push!(vars, var([coef(fpm)[name] for fpm in vfpm]))
-  end
-  NamedTuple{names}(vars)
 end
 
 # This is called with dual numbered "param"
@@ -1741,30 +1685,6 @@ function _E_and_V(model::PumasModel,
   V = FF*FF' + Diagonal(dd)
 
   return E, V
-end
-
-function _E_and_V(m::PumasModel,
-                  subject::Subject,
-                  param::NamedTuple,
-                  vrandeffsorth::AbstractVector,
-                  ::FOCE,
-                  args...; kwargs...)
-
-  randeffstransform = totransform(m.random(param))
-  y = subject.observations.dv
-  dist0 = _derived(m, subject, param, TransformVariables.transform(randeffstransform, zero(vrandeffsorth)))
-  dist  = _derived(m, subject, param, TransformVariables.transform(randeffstransform, vrandeffsorth))
-
-  F = ForwardDiff.jacobian(
-    _vrandeffs -> begin
-      _randeffs = TransformVariable.transform(randeffstransform, _vrandeffs)
-      return mean.(_derived(m, subject, param, _randeffs).dv)
-    end,
-    vrandeffsorth
-  )
-  V = Symmetric(F*F' + Diagonal(var.(dist0.dv)))
-
-  return mean.(dist.dv) .- F*vrandeffsorth, V
 end
 
 struct FittedPumasModelInference{T1, T2, T3}

@@ -552,26 +552,28 @@ function DataFrames.DataFrame(vpred::Vector{<:SubjectPrediction}; include_covari
   df
 end
 
-function empirical_bayes(fpm::FittedPumasModel, approx=fpm.approx)
+function empirical_bayes(fpm::FittedPumasModel)
   subjects = fpm.data
 
   trf = totransform(fpm.model.random(coef(fpm)))
 
-  if approx == fpm.approx
+  if fpm.approx ∈ (Pumas.FOCE(), Pumas.FOCEI(), Pumas.LaplaceI())
     ebes = fpm.vvrandeffsorth
     return [TransformVariables.transform(trf, e) for (e, s) in zip(ebes, subjects)]
-  else
-    # re-estimate under approx
+  elseif fpm.approx === FO()
+    # estimate under LaplaceI
     return [
       TransformVariables.transform(
         trf,
         _orth_empirical_bayes(
           fpm.model, subject,
           coef(fpm),
-          approx,
+          LaplaceI(),
           fpm.args...; fpm.kwargs...
         )
       ) for subject in subjects]
+  else
+    throw(ArgumentError("empirical_bayes not implemented for $(fpm.approx)"))
   end
 end
 
@@ -588,16 +590,16 @@ StatsBase.predict(insp::FittedPumasModelInspection, args...) = predict(insp.o, a
 wresiduals(insp::FittedPumasModelInspection) = insp.wres
 empirical_bayes(insp::FittedPumasModelInspection) = insp.ebes
 
-function inspect(fpm; pred_approx=fpm.approx, wres_approx=fpm.approx, ebes_approx=fpm.approx)
+function inspect(fpm; pred_approx=fpm.approx, wres_approx=fpm.approx)
   print("Calculating: ")
   print("predictions")
   pred = predict(fpm, pred_approx)
   print(", weighted residuals")
   res = wresiduals(fpm, wres_approx)
   print(", empirical bayes")
-  ebes = empirical_bayes(fpm, ebes_approx)
+  ebes = empirical_bayes(fpm)
   println(". Done.")
-  FittedPumasModelInspection(fpm, pred, res, (ebes=ebes, approx=ebes_approx))
+  FittedPumasModelInspection(fpm, pred, res, (ebes=ebes,))
 end
 function DataFrames.DataFrame(i::FittedPumasModelInspection; include_covariates=true)
   pred_df = DataFrame(i.pred; include_covariates=include_covariates)
@@ -616,7 +618,6 @@ function DataFrames.DataFrame(i::FittedPumasModelInspection; include_covariates=
       end
     end
   end
-  ebes_df[!, :ebes_approx] .= fill(summary(i.ebes.approx), size(ebes_df, 1))
   ebes_df = select!(select!(ebes_df, Not(:id)), Not(:time))
   df = hcat(pred_df, res_df, ebes_df)
 end

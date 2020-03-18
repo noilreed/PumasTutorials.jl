@@ -125,15 +125,16 @@ end
   o_predict_df = DataFrame(o_predict)
   @test in(:dv, names(o_predict_df))
 
-  o_empirical_bayes = empirical_bayes(o)
-  o_empirical_bayes_df = DataFrame(o_empirical_bayes)
-
+  @test empirical_bayes(o)[1].η ≈ [-2.41894177806061, -0.01824682682564875, -1.2477915226281944] rtol=1e-5
+  @test Pumas.empirical_bayes_dist(o)[1].η.Σ.mat ≈ [
+    0.03282388757574916    -0.00041459973200541107 -0.006289667479989163
+   -0.00041459973200541107  2.8084159378198597e-5   0.0006126638425598551
+   -0.006289667479989163    0.0006126638425598551   0.014897292696384252  ] rtol=1e-5
 
   # Verify that show runs
   io_buffer = IOBuffer()
   show(io_buffer, o)
   show(io_buffer, o_infer)
-
 
   @test deviance(o) ≈ 71.979975297638589
 
@@ -342,7 +343,7 @@ end
   o_predict_df = DataFrame(o_predict)
   o_empirical_bayes = empirical_bayes(o)
   o_empirical_bayes_df = DataFrame(o_empirical_bayes)
-  
+
   @test_throws DimensionMismatch simobs(o.model, theopp, coef(o), empirical_bayes(o)[1:end-1])
 
   # Verify that show runs

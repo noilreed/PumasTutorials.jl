@@ -18,18 +18,24 @@ function _print_fit_header(io, fpm)
   println(io)
 end
 
+
+function _coeftable(nt::NamedTuple)
+  _keys   = String[]
+  _values = numtype(nt)[]
+  for (_key, _value) in pairs(nt)
+    _push_varinfo!(_keys, _values, nothing, nothing, _key, _value, nothing, nothing)
+  end
+  return DataFrame(key=_keys, value=_values)
+end
+
 """
     coeftable(fpm::FittedPumasModel) -> DataFrame
 
 Construct a DataFrame of parameter names and estimates from `fpm`.
 """
 function StatsBase.coeftable(fpm::FittedPumasModel)
-  paramnames = String[]
-  paramvals = numtype(coef(fpm))[]
-  for (paramname, paramval) in pairs(coef(fpm))
-    _push_varinfo!(paramnames, paramvals, nothing, nothing, paramname, paramval, nothing, nothing)
-  end
-  return DataFrame(parameter=paramnames, estimate=paramvals)
+  _df = _coeftable(coef(fpm))
+  return DataFrame(parameter=_df.key, estimate=_df.value)
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", fpm::FittedPumasModel)
@@ -72,20 +78,11 @@ Construct a DataFrame of parameter names and estimates and their standard deviat
 from vector of fitted single-subject models `vfpm`.
 """
 function StatsBase.coeftable(vfpm::Vector{<:FittedPumasModel})
-  paramnames = String[]
-  paramvals = Float64[]
-  paramstds = Float64[]
 
-  for (paramname, paramval) in pairs(coef(first(vfpm)))
-    _paramval = [coef(fpm)[paramname] for fpm in vfpm]
-    parammean = mean(_paramval)
-    # _push_varinfo! computes relative standard errors and we'd like to report standard errors
-    # so make the reverse computation below before passing to values to _push_varinfo!
-    paramstd = std(_paramval)
-    _push_varinfo!(paramnames, paramvals, paramstds, nothing, paramname, parammean, paramstd, nothing)
-  end
+  _mean = _coeftable(mean(vfpm))
+  _std  = _coeftable(std(vfpm))
 
-  return DataFrame(parameter=paramnames, estimate=paramvals, standard_deviation=paramstds)
+  return DataFrame(parameter=_mean.key, mean=_mean.value, standard_deviation=_std.value)
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", vfpm::Vector{<:FittedPumasModel})
@@ -97,7 +94,7 @@ function Base.show(io::IO, mime::MIME"text/plain", vfpm::Vector{<:FittedPumasMod
 
   getdecimal = x -> findfirst(c -> c=='.', x)
   maxname = maximum(length, coefdf.parameter)
-  paramvals = map(t -> string(round(t, sigdigits=5)), coefdf.estimate)
+  paramvals = map(t -> string(round(t, sigdigits=5)), coefdf.mean)
   paramstds = map(t -> string(round(t, sigdigits=5)), coefdf.standard_deviation)
   maxval = max(maximum(length, paramvals), length("Mean"))
   maxstd = max(maximum(length, paramstds), length("Std"))
@@ -266,7 +263,6 @@ function Base.show(io::IO, mime::MIME"text/plain", pmi::FittedPumasModelInspecti
   println(io, "Likehood approximations used for")
   println(io, " * Predictions:        $(first(predict(pmi)).approx)")
   println(io, " * Weighted residuals: $(first(wresiduals(pmi)).approx)")
-  println(io, " * Empirical bayes:    $(pmi.ebes.approx)\n")
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", sens::SobolOutput)
