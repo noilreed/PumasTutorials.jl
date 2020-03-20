@@ -274,11 +274,6 @@ hasdose(nca::NCASubject) = nca.dose !== nothing
 hasdose(nca::NCAPopulation) = hasdose(first(nca))
 
 # Summary and report
-struct NCAReport{S,V}
-  settings::S
-  values::V
-end
-
 macro defkwargs(sym, expr...)
   :((nca; kwargs...) -> $sym(nca; $(expr...), kwargs...)) |> esc
 end
@@ -426,54 +421,10 @@ function NCAReport(pop::NCAPopulation; pred=nothing, normalize=nothing, auctype=
   end
   values = [i == 1 ? val : (rename!(val, names(val)[1]=>name)) for (i, (val, name)) in enumerate(zip(vals, _names))]
 
-  NCAReport(settings, values)
+  return hcat(values...)
 end
 
-Base.summary(::NCAReport) = "NCAReport"
-
-function Base.show(io::IO, report::NCAReport)
-  println(io, summary(report))
-  print(io, "  keys: $(map(x->names(x)[1], report.values))")
-end
-
-# units go under the header
-to_dataframe(report::NCAReport) = convert(DataFrame, report)
-DataFrames.DataFrame(report::NCAReport) = to_dataframe(report)
-function Base.convert(::Type{DataFrame}, report::NCAReport)
-  #report.settings[:subject] && return DataFrame(map(x->[x], report.values))
-  hcat(report.values...)
-end
-
-to_markdown(report::NCAReport) = convert(Markdown.MD, report)
-Markdown.MD(report::NCAReport) = to_markdown(report)
-function Base.convert(::Type{Markdown.MD}, report::NCAReport)
-  _io = IOBuffer()
-  println(_io, "# Noncompartmental Analysis Report")
-  println(_io, "Pumas version " * string(Pkg.installed()["Pumas"]))
-  println(_io, "Julia version " * string(VERSION))
-  println(_io, "")
-  println(_io, "Date and Time: " * Dates.format(Dates.now(), "yyyy-mm-dd HH:MM:SS"))
-  println(_io, "")
-
-  println(_io, "## Calculation Setting")
-  # TODO
-  println(_io, "")
-
-  println(_io, "## Calculated Values")
-  println(_io, "|         Name         |    Value   |")
-  println(_io, "|:---------------------|-----------:|")
-  for entry in report.values
-    _name = string(names(entry)[1])
-    name = replace(_name, "_"=>"\\_") # escape underscore
-    entry[end] === missing && (@printf(_io, "| %s | %s |\n", name, "missing"); continue)
-    for v in entry[end]
-      val =  v isa Number ? round(ustrip(v), digits=2)*oneunit(v) :
-             v
-      @printf(_io, "| %s | %s |\n", name, val)
-    end
-  end
-  return Markdown.parse(String(take!(_io)))
-end
+to_dataframe(report) = (@warn("`to_dataframe` is removed. `NCAReport` now returns a DataFrame directly."); report)
 
 @recipe function f(subj::NCASubject{C,TT,T,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,V,R,RT}; linear=true, loglinear=true) where {C,TT,T,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,V,R,RT}
   subj = urine2plasma(subj)

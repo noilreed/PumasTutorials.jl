@@ -27,5 +27,4 @@ for f in fieldnames(NCASubject)
     @test getfield(plpop1, f) == getfield(plsub1, f)
 end
 
-report = NCAReport(pop)
-reportdf = NCA.to_dataframe(report)
+@test_nowarn report = NCAReport(pop)

@@ -17,10 +17,7 @@ ncapop = @test_nowarn read_nca(data, id=:ID, time=:TIME, conc=:CObs, amt=:AMT_IV
 @test ncapop[1] isa NCASubject
 @test ncapop[2:end-1] isa NCAPopulation
 
-popncareport = NCAReport(ncapop, ithdose=1)
-@test_nowarn popncareport
-@test_skip display(NCA.to_markdown(popncareport))
-@test_nowarn DataFrame(popncareport)
+@test_nowarn popncareport = NCAReport(ncapop, ithdose=1)
 
 lambdazdf = @test_nowarn NCA.lambdaz(ncapop)
 @test size(lambdazdf, 2) == 2
@@ -167,9 +164,6 @@ for i in 1:24
   @test NCA.aumc_extrap_percent(nca) === NCA.aumc_extrap_percent(conc[idx], t[idx])
   @test NCA.auc_extrap_percent(nca) === NCA.auc_extrap_percent(conc[idx], t[idx])
   ncareport = @test_nowarn NCAReport(nca)
-  i == 1 && @test_nowarn ncareport
-  i == 1 && @test_skip display(NCA.to_markdown(ncareport))
-  i == 1 && @test_nowarn NCA.to_dataframe(ncareport)
   i == 1 && @test normalizedose(missing, nca) === missing
 end
 

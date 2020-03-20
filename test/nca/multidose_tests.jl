@@ -52,24 +52,18 @@ lambdazdf = @test_nowarn NCA.lambdaz(mncapop)
 @test NCA.auc_back_extrap_percent(mncapop[1])[1] == 0
 @test all(ismissing, NCA.auc_back_extrap_percent(mncapop[1])[2:end])
 
-ncareport1 = NCAReport(mncapop[1])
-@test_nowarn ncareport1
-@test_skip display(NCA.to_markdown(ncareport1))
-@test_nowarn DataFrame(ncareport1)
+@test_nowarn ncareport1 = NCAReport(mncapop[1])
 
-popncareport = NCAReport(mncapop)
+df = NCAReport(mncapop)
 NCA.cleancache!(mncapop)
 @test all(i->all(x->x == 0, mncapop[i].points), eachindex(mncapop))
 @test all(i->all(x->x == -oneunit(mncapop[i].auc_last[1]), mncapop[i].auc_last), eachindex(mncapop))
 @test all(i->all(x->x == -oneunit(mncapop[i].aumc_last[1]), mncapop[i].aumc_last), eachindex(mncapop))
-@test_skip display(NCA.to_markdown(popncareport))
-df = @test_nowarn NCA.to_dataframe(popncareport)
 @test count(!ismissing, df.cl_obs) == 24
 @test count(!ismissing, df.cl_f_obs) == 72
 @test count(!ismissing, df.cl_pred) == 24
 @test count(!ismissing, df.cl_f_pred) == 72
-popncareport = NCAReport(mncapop, sigdigits=2)
-df = @test_nowarn NCA.to_dataframe(popncareport)
+df = NCAReport(mncapop, sigdigits=2)
 @test df.lambda_z[2] == round(ustrip(df.lambda_z[2]), sigdigits=2)*oneunit(df.lambda_z[2])
 
 # check retcode
