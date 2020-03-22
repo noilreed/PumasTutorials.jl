@@ -65,7 +65,7 @@ end
 
 Calculate ``C_{max}_{t_1}^{t_2}``
 """
-function cmax(nca::NCASubject; normalize=false, kwargs...)
+function cmax(nca::NCASubject; kwargs...)
   dose = nca.dose
   cmax′ = _cmax(nca; kwargs...)
   if dose !== nothing && dose.ss

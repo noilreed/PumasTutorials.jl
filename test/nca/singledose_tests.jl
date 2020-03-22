@@ -17,6 +17,8 @@ ncapop = @test_nowarn read_nca(data, id=:ID, time=:TIME, conc=:CObs, amt=:AMT_IV
 @test ncapop[1] isa NCASubject
 @test ncapop[2:end-1] isa NCAPopulation
 
+@test NCA.cmax(ncapop[1], normalize=true) == NCA.cmax(ncapop[1]) / ncapop[1].dose.amt
+
 @test_nowarn popncareport = NCAReport(ncapop, ithdose=1)
 
 lambdazdf = @test_nowarn NCA.lambdaz(ncapop)
