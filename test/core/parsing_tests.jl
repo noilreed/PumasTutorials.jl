@@ -22,6 +22,7 @@ using Pumas, Test, CSV
     @test ev.rate_dir == data[1].events[1].rate_dir
     @test ev.cmt == 1
   end
+
   @testset "Dosage Regimen" begin
     gen_subject = Subject(evs = DosageRegimen(100, ii = 12, addl = 3))
     @test data[1].id == gen_subject.id
@@ -33,11 +34,13 @@ using Pumas, Test, CSV
     @test isa(DosageRegimen(e1, e2, e3), DosageRegimen)
   end
 end
+
 @testset "Time Variant Covariates" begin
   data = read_pumas(example_data("time_varying_covariates"), cvs = [:weight, :dih])
   @test data[1].covariates.weight |> (x -> isa(x, AbstractVector{Int}) && length(x) == 7)
   @test data[1].covariates.dih == 2
 end
+
 @testset "Chronological Observations" begin
   data = DataFrame(time = [0, 1, 2, 2], dv = rand(4), evid = 0)
   @test isa(read_pumas(data), Population)
@@ -45,6 +48,7 @@ end
   @test_throws AssertionError read_pumas(data)
   @test_throws AssertionError Subject(obs=DataFrame(x=[2:3;], time=1:-1:0))
 end
+
 @testset "event_data" begin
   data = DataFrame(time = [0, 1, 2, 2], amt = zeros(4), dv = rand(4), evid = 1)
   @test_throws AssertionError read_pumas(data)
@@ -61,6 +65,7 @@ end
   ev = reduce(DosageRegimen, [firstdose, seconddose, thirddose])
   @test isa(generate_population(ev), Population)
 end
+
 @testset "Population Constructors" begin
   e1 = DosageRegimen(100, ii = 24, addl = 6)
   e2 = DosageRegimen(50,  ii = 12, addl = 13)
@@ -73,18 +78,26 @@ end
   pop3 = Population(s3)
   @test Population(s1, s2, s3) == Population(pop1, pop2, pop3)
 end
+
 @testset "Missing Observables" begin
-  data = read_pumas(DataFrame(time = [0, 1, 2, 4],
-                                  evid = [1, 1, 0, 0],
-                                  dv1 = [0, 0, 1, missing],
-                                  dv2 = [0, 0, missing, 2],
-                                  x = [missing, missing, 0.5, 0.75],
-                                  amt = [0.25, 0.25, 0, 0]),
-                         cvs = [:x],
-                         dvs = [:dv1, :dv2])
+  data = read_pumas(
+    DataFrame(
+      time = [0, 1, 2, 4],
+      evid = [1, 1, 0, 0],
+      dv1 = [0, 0, 1, missing],
+      dv2 = [0, 0, missing, 2],
+      x = [missing, missing, 0.5, 0.75],
+      amt = [0.25, 0.25, 0, 0]),
+    cvs = [:x],
+    dvs = [:dv1, :dv2])
   @test isa(data, Population)
   isa(data[1].observations[1], NamedTuple{(:dv1,:dv2),NTuple{2, Union{Missing,Float64}}})
+
+  df = DataFrame(id=[1], time=0.0, dv=[0.0], evid=0, cv1=1, cv2=missing)
+  @test_throws ArgumentError read_pumas(df, cvs=[:cv2])
+  @test_throws ArgumentError read_pumas(df, cvs=[:cv1, :cv2])
 end
+
 @testset "DataFrames Constructors" begin
   e1 = DosageRegimen(100, ii = 24, addl = 6)
   e2 = DosageRegimen(50, ii = 12, addl = 13)

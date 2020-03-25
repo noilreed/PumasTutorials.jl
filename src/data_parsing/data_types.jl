@@ -263,7 +263,9 @@ struct Subject{T1,T2,T3,T4,T5,T6}
     ==#
 
     # build individual interpolants and use them to create a batch interpolant
-    covar_times, tvcov = build_tvcov(cvs, data, time)
+    ## Pass the ID to build_tvcov to make error message more informative
+    _id_string = string(first(data[!,id]))
+    covar_times, tvcov = build_tvcov(cvs, data, time, _id_string)
     ## FIXME we still keep the old covar
     covariates = isempty(cvs) ? nothing : to_nt(data[!, cvs])
     ## Events
@@ -290,8 +292,7 @@ struct Subject{T1,T2,T3,T4,T5,T6}
       build_event_list!(events, event_data, t, _evid, _amt, _addl, _ii, _cmt, _rate, ss′)
     end
     sort!(events)
-    new{typeof(observations),typeof(covariates),typeof(events),typeof(_obs_times), typeof(tvcov), typeof(covar_times)}(
-      string(first(data[!,id])), observations, covariates, events, _obs_times, tvcov, covar_times)
+    new{typeof(observations),typeof(covariates),typeof(events),typeof(_obs_times), typeof(tvcov), typeof(covar_times)}(_id_string, observations, covariates, events, _obs_times, tvcov, covar_times)
   end
 
   function Subject(;id = "1",
@@ -303,7 +304,7 @@ struct Subject{T1,T2,T3,T4,T5,T6}
                    event_data = true,)
     obs = build_observation_list(obs)
     evs = build_event_list(evs, event_data)
-    covar_times, tvcov = build_tvcov(cvs, cvstime)
+    covar_times, tvcov = build_tvcov(cvs, cvstime, id)
     # Check that time is well-specified (not nothing, not missing and increasing)
     _time = isnothing(time) ? nothing : Missings.disallowmissing(time)
     @assert isnothing(time) || issorted(_time) "Time is not monotonically increasing within subject"
