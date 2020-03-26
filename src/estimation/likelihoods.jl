@@ -1371,8 +1371,8 @@ function StatsBase.coef(fpm::FittedPumasModel)
 end
 function Base.getproperty(f::FittedPumasModel{<:Any,<:Any,<:Optim.MultivariateOptimizationResults}, s::Symbol)
   if s === :param
-    # deprecate?
-    coef(f)
+    Base.depwarn("the `fpm.param` property has been deprecated in favor of `coef(fpm)`", :getproperty)
+    return coef(f)
   else
     return getfield(f, s)
   end
