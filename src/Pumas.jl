@@ -9,6 +9,8 @@ using LinearAlgebra
 using AdvancedHMC: DiagEuclideanMetric, Hamiltonian, NUTS, Leapfrog, find_good_eps, StanHMCAdaptor, Preconditioner, NesterovDualAveraging
 import MCMCChains: Chains
 
+using Base.Threads # for bootstrap
+
 import DiffResults: DiffResult
 
 import DataInterpolations
@@ -34,6 +36,7 @@ include("models/model_utils.jl")
 
 include("estimation/transforms.jl")
 include("estimation/likelihoods.jl")
+include("estimation/bootstrap.jl")
 include("estimation/bayes.jl")
 include("estimation/diagnostics.jl")
 include("estimation/gsa.jl")
@@ -64,9 +67,8 @@ export predict, residuals, wresiduals, empirical_bayes
 export ηshrinkage, ϵshrinkage
 export read_pumas, example_data
 export @model, @nca
-# From StatsBase
 export fit, stderror, vcov, aic, bic, deviance, informationmatrix, coeftable
-export infer, inspect
+export infer, inspect, bootstrap
 export gsa
 export mean, std, var, coef
 export expectation, KoopmanExpectation, MonteCarloExpectation
