@@ -29,9 +29,11 @@ function Subject(simsubject::SimulatedObservations)
 end
 
 # DataFrame conversion
-function DataFrames.DataFrame(obs::SimulatedObservations;
-  include_events=true, event_order_reverse=true,
+function DataFrames.DataFrame(
+  obs::SimulatedObservations;
+  include_events=!isempty(obs.subject.events),
   include_covariates=true)
+
   nrows = length(obs.times)
   events = obs.subject.events
   nev = events isa Array ? length(events) : 0
@@ -40,6 +42,7 @@ function DataFrames.DataFrame(obs::SimulatedObservations;
   ntime = length(obs.times)
   observed = obs.observed
   df = DataFrame(time=deepcopy(times))
+
   for k in keys(observed)
     var = observed[k]
     lenvar = length(var)
@@ -55,10 +58,12 @@ function DataFrames.DataFrame(obs::SimulatedObservations;
     df[!,k] .= deepcopy(var)
   end
   obs_columns = [keys(obs.observed)...]
+
   # Allow all dv columns to be missing
   for cols in obs_columns
     allowmissing!(df, cols)
   end
+
   if include_events
     # Append event columns
     ## For observations we have `evid=0` and `cmt=0`, the latter
@@ -83,14 +88,15 @@ function DataFrames.DataFrame(obs::SimulatedObservations;
         push!(df, ev_row)
       end
     end
+
     # Remove negative evid's
-    df = df[df[!, :evid].!=-1,:]
-    sort!(df, (:time, order(:evid, rev=event_order_reverse)))
+    df = filter(i -> i.evid != -1, df)
+    sort!(df, (:time, order(:evid, rev=true)))
   end
 
   include_covariates && _add_covariates!(df, obs.subject)
 
-  df
+  return df
 end
 
 @recipe function f(obs::SimulatedObservations; obsnames=nothing)

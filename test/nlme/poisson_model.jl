@@ -1,9 +1,9 @@
-using Pumas, Test
+using Pumas, Test, CSV
 
 @testset "Poisson model" begin
 
-  df = read_pumas(example_data("sim_poisson"),cvs = [:dose])
-
+  df = CSV.read(example_data("sim_poisson"))
+  pd = read_pumas(df, cvs = [:dose])
 
   poisson_model = @model begin
     @param begin
@@ -29,14 +29,17 @@ using Pumas, Test
     end
   end
 
-
   param = init_param(poisson_model)
   randeffs = init_randeffs(poisson_model, param)
 
-  @test solve(poisson_model, df[1], param, randeffs) isa Pumas.NullDESolution
-  @test simobs(poisson_model, df, param, fill(randeffs, length(df))) != nothing
+  @test solve(poisson_model, pd[1], param, randeffs) isa Pumas.NullDESolution
+  @test simobs(poisson_model, pd, param, fill(randeffs, length(pd))) != nothing
 
-  res = simobs(poisson_model, df, param, fill(randeffs, length(df)))
+  res = simobs(poisson_model, pd, param, fill(randeffs, length(pd)))
+
+  @testset "Check DataFrame(::SimulatedObservations) constructor works" begin
+    @test DataFrame(res).dose == df.dose
+  end
 
   initial_estimates = [-8.31130E-01,
                        -9.51865E-01,
@@ -62,12 +65,12 @@ using Pumas, Test
 
   for _approx in (Pumas.FOCE(), Pumas.LaplaceI())
     for (i, est) in enumerate(initial_estimates)
-      @test (sqrt(param.Ω)*Pumas._orth_empirical_bayes(poisson_model, df[i], param, _approx))[1] ≈ est rtol=1e-5
+      @test (sqrt(param.Ω)*Pumas._orth_empirical_bayes(poisson_model, pd[i], param, _approx))[1] ≈ est rtol=1e-5
     end
 
-    @test 2*Pumas.marginal_nll(poisson_model, df, param, _approx) ≈ 4015.70427796336 rtol=1e-3
+    @test 2*Pumas.marginal_nll(poisson_model, pd, param, _approx) ≈ 4015.70427796336 rtol=1e-3
 
-    o = fit(poisson_model, df, param, _approx)
+    o = fit(poisson_model, pd, param, _approx)
     @test 2*Pumas.marginal_nll(o) ≈ 3809.80599298763 rtol=1e-3
 
     p = coef(o)
@@ -77,6 +80,6 @@ using Pumas, Test
   end
 
   # FO/FOCEI not supported for
-  @test_throws ArgumentError fit(poisson_model, df, param, Pumas.FO())
-  @test_throws ArgumentError fit(poisson_model, df, param, Pumas.FOCEI())
+  @test_throws ArgumentError fit(poisson_model, pd, param, Pumas.FO())
+  @test_throws ArgumentError fit(poisson_model, pd, param, Pumas.FOCEI())
 end

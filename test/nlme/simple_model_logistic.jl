@@ -34,7 +34,7 @@ using Pumas, Test, StatsFuns
 
     @testset "Conversion of simulation output to DataFrame when dv is scalar" begin
         sim = simobs(mdsl, data, param)
-        @test DataFrame(sim, include_events=false) isa DataFrame
+        @test DataFrame(sim) isa DataFrame
     end
 
     @testset "testing with $approx approximation" for
