@@ -154,7 +154,9 @@ function ith_subject_cb(pre,datai::Subject,u0,t0,ProbType,saveat,save_discont,co
           integrator.opts.save_on = false
 
           post_steady_state[] = false
-          ProbType <: DiffEqBase.SDEProblem && (integrator.W.save_everystep=false)
+          if ProbType <: DiffEqBase.SDEProblem
+            integrator.W.save_everystep=false
+          end
 
           ss_time[] = integrator.t
           _duration = cur_ev.amt/cur_ev.rate
@@ -162,14 +164,18 @@ function ith_subject_cb(pre,datai::Subject,u0,t0,ProbType,saveat,save_discont,co
           ss_overlap_duration[] = mod(_duration,cur_ev.ii)
           ss_ii[] = cur_ev.ii
           ss_end[] = integrator.t + cur_ev.ii
-          cur_ev.rate > 0 && (ss_rate_multiplier[] = 1 + round((_duration>cur_ev.ii)*(_duration ÷ cur_ev.ii)))
+          if cur_ev.rate > 0
+            ss_rate_multiplier[] = 1 + (_duration > cur_ev.ii)*floor(_duration / cur_ev.ii)
+          end
           ss_rate_end[] = integrator.t + ss_overlap_duration[]
           ss_idx[] = length(integrator.sol)
           ss_cache .= integrator.u
           ss_reset_cache .= integrator.u
           ss_dose!(integrator,integrator.u,cur_ev,ss_rate_multiplier,ss_rate_end)
           add_tstop!(integrator,ss_end[])
-          cur_ev.rate > 0 && add_tstop!(integrator,ss_rate_end[])
+          if cur_ev.rate > 0
+            add_tstop!(integrator,ss_rate_end[])
+          end
         elseif integrator.t == ss_end[]
           integrator.t = ss_time[]
           ProbType <: DiffEqBase.SDEProblem && (integrator.W.curt = integrator.t)
