@@ -131,29 +131,20 @@ end
    -0.00041459973200541107  2.8084159378198597e-5   0.0006126638425598551
    -0.006289667479989163    0.0006126638425598551   0.014897292696384252  ] rtol=1e-5
 
-  bts = bootstrap(o; samples=31)
+  bts = bootstrap(o; samples=5)
     @test sprint((io, t) -> show(io, MIME"text/plain"(), t), bts) == """
 Bootstrap inference results
 
-Successful fits: 31 out of 31
+Successful fits: 5 out of 5
 No stratifiation.
 """
-  bts = bootstrap(o; samples=31, stratify_by=:SEX)
+  bts = bootstrap(o; samples=5, stratify_by=:SEX)
     @test sprint((io, t) -> show(io, MIME"text/plain"(), t), bts) == """
 Bootstrap inference results
 
-Successful fits: 31 out of 31
+Successful fits: 5 out of 5
 Stratification by SEX.
 """
-  bts = bootstrap(o; samples=31, stratify_by=:WT)
-    @test sprint((io, t) -> show(io, MIME"text/plain"(), t), bts) == """
-Bootstrap inference results
-
-Successful fits: 31 out of 31
-Stratification by WT.
-"""
-
-
 
 
   # Verify that show runs
@@ -371,26 +362,19 @@ end
 
   @test_throws DimensionMismatch simobs(o.model, theopp, coef(o), empirical_bayes(o)[1:end-1])
 
-  bts = bootstrap(o; samples=31)
+  bts = bootstrap(o; samples=5)
     @test sprint((io, t) -> show(io, MIME"text/plain"(), t), bts) == """
 Bootstrap inference results
 
-Successful fits: 31 out of 31
+Successful fits: 5 out of 5
 No stratifiation.
 """
-  bts = bootstrap(o; samples=31, stratify_by=:SEX)
+  bts = bootstrap(o; samples=5, stratify_by=:SEX)
     @test sprint((io, t) -> show(io, MIME"text/plain"(), t), bts) == """
 Bootstrap inference results
 
-Successful fits: 31 out of 31
+Successful fits: 5 out of 5
 Stratification by SEX.
-"""
-  bts = bootstrap(o; samples=31, stratify_by=:WT)
-    @test sprint((io, t) -> show(io, MIME"text/plain"(), t), bts) == """
-Bootstrap inference results
-
-Successful fits: 31 out of 31
-Stratification by WT.
 """
 
   # Verify that show runs
@@ -533,10 +517,8 @@ end
   @test in(Symbol("η_1"), names(o_inspect_df))
   @test in(Symbol("η_2"), names(o_inspect_df))
 
-
-  bts = bootstrap(o; samples=31)
-  bts = bootstrap(o; samples=31, stratify_by=:SEX)
-  bts = bootstrap(o; samples=31, stratify_by=:WT)
+  bts = bootstrap(o; samples=5)
+  bts = bootstrap(o; samples=5, stratify_by=:SEX)
 
   @test deviance(o) ≈ 121.89849119366599 rtol=1e-7
 
