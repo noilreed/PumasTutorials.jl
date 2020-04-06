@@ -101,7 +101,11 @@ function ith_subject_cb(pre,datai::Subject,u0,t0,ProbType,saveat,save_discont,co
   cur_tstop = Ref(1)
 
   function condition(u,t,integrator)
-    tstops[cur_tstop[]] - t
+    if cur_tstop[] > length(tstops)
+      Inf*t
+    else
+      tstops[cur_tstop[]] - t
+    end
   end
 
   # searchsorted is empty iff t ∉ target_time
@@ -332,7 +336,10 @@ function ith_subject_cb(pre,datai::Subject,u0,t0,ProbType,saveat,save_discont,co
     end
   end
   save_positions = save_discont ? (true, true) : (false, false)
-  tstops,ContinuousCallback(condition,affect!,subject_cb_initialize!,save_positions),d_discontinuities
+  tstops,ContinuousCallback(condition,affect!,
+                            initialize = subject_cb_initialize!,
+                            save_positions=save_positions,
+                            interp_points=0),d_discontinuities
 end
 
 function dose!(integrator,u,cur_ev,last_restart)
@@ -387,7 +394,7 @@ end
 
 
 function subject_cb_initialize!(cb,t,u,integrator)
-  if cb.condition(t,u,integrator)
+  if cb.condition(t,u,integrator) == 0
     cb.affect!(integrator)
     u_modified!(integrator,true)
   else
