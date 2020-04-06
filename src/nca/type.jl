@@ -133,6 +133,12 @@ function NCASubject(conc, time;
   _lambdaz = inv(unittime)
   lambdaz_proto = lambdaz === nothing ? _lambdaz : lambdaz
   if multidose
+    # Dosing events maybe be longer than the observing time, so we need to chop
+    # it off. As we don't assume doses are sorted, we cannot use
+    # `findfirst(x->x.time >= time[1], dose):findlast(x->x.time <= time[end], dose)`.
+    # Sorting events takes O(n⋅log(n)) time, while linear search takes O(n)
+    # time, so we take are just going to use `filter`.
+    dose = filter(x->time[1] <= x.time <= time[end], dose)
     n = length(dose)
     abstime = clean ? typeof(unittime)[] : time
     ct = let time=time, dose=dose
