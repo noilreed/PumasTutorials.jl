@@ -146,9 +146,10 @@ function NCASubject(conc, time;
     n = length(dose)
     abstime = clean ? typeof(unittime)[] : time
     istad = all(x->iszero(x.time), dose)
+    startidxs = istad ? findall(iszero, time) : nothing
     ct = let time=time, dose=dose
       map(1:length(dose)) do i
-        idxs = ithdoseidxs(time, dose, i; check=i==1, istad=istad) # only check once
+        idxs = ithdoseidxs(time, dose, startidxs, i; check=i==1) # only check once
         conci, timei = @view(conc[idxs]), @view(time[idxs])
         check && checkconctime(conci, timei; dose=dose, kwargs...)
         if clean

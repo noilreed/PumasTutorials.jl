@@ -230,11 +230,11 @@ normalizedose(x::AbstractArray, d::AbstractVector{<:NCADose}) = normalizedose.(x
 normalizedose(x, subj::NCASubject) = normalizedose(x, subj.dose)
 
 # internally, we convert everything to `tad`
-Base.@propagate_inbounds function ithdoseidxs(time, dose, i::Integer; check=true, istad=true)
+Base.@propagate_inbounds function ithdoseidxs(time, dose, startidxs, i::Integer; check=true)
   m = length(dose)
   @boundscheck 1 <= i <= m || throw(BoundsError(dose, i))
-  if istad
-    _idxs = findall(iszero, time)
+  if startidxs !== nothing
+    _idxs = startidxs
     idx1 = _idxs[i]
     idxs = if i === m
       idx1:length(time)
