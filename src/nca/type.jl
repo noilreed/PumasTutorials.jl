@@ -144,11 +144,11 @@ function NCASubject(conc, time;
     # time, so we take are just going to use `filter`.
     dose = filter(x->time[1] <= x.time <= time[end], dose)
     n = length(dose)
-    length(unique(x->x.time, dose)) == n || throw(InvalidStateException("Dosing events have non-unique time", :dose))
     abstime = clean ? typeof(unittime)[] : time
+    istad = all(x->iszero(x.time), dose)
     ct = let time=time, dose=dose
-      map(eachindex(dose)) do i
-        idxs = ithdoseidxs(time, dose, i)
+      map(1:length(dose)) do i
+        idxs = ithdoseidxs(time, dose, i; check=i==1, istad=istad) # only check once
         conci, timei = @view(conc[idxs]), @view(time[idxs])
         check && checkconctime(conci, timei; dose=dose, kwargs...)
         if clean
