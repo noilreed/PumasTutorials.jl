@@ -101,6 +101,9 @@ end
     NCASubject(conc, time; concu=true, timeu=true, id=1, group=nothing, dose=nothing, llq=nothing, lambdaz=nothing, clean=true, check=true, kwargs...)
 
 Constructs a NCASubject
+
+Setting `clean=false` disables all checks to remove the cost of checking
+and cleaning data. It should only be used when the data is for sure "clean".
 """
 function NCASubject(conc, time;
                     start_time=nothing, end_time=nothing, volume=nothing, concu=true, timeu=true, volumeu=true,
