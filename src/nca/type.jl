@@ -102,8 +102,9 @@ end
 
 Constructs a NCASubject
 
-Setting `clean=false` disables all checks to remove the cost of checking
-and cleaning data. It should only be used when the data is for sure "clean".
+Setting `clean=false` disables all checks on `conc` and `time` to remove the
+cost of checking and cleaning data. It should only be used when the data is for
+sure "clean".
 """
 function NCASubject(conc, time;
                     start_time=nothing, end_time=nothing, volume=nothing, concu=true, timeu=true, volumeu=true,
@@ -143,6 +144,7 @@ function NCASubject(conc, time;
     # time, so we take are just going to use `filter`.
     dose = filter(x->time[1] <= x.time <= time[end], dose)
     n = length(dose)
+    length(unique(x->x.time, dose)) == n || throw(InvalidStateException("Dosing events have non-unique time", :dose))
     abstime = clean ? typeof(unittime)[] : time
     ct = let time=time, dose=dose
       map(eachindex(dose)) do i
