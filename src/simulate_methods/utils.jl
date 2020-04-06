@@ -160,11 +160,7 @@ numtype(x::Integer) = Float32
 
 t_numtype(u0,callback::Nothing) = Float32
 function t_numtype(u0,callback)
-  if callback.continuous_callbacks === ()
-    Float32
-  else
-    eltype(u0)
-  end
+  eltype(u0)
 end
 
 zero(x) = Base.zero(x)

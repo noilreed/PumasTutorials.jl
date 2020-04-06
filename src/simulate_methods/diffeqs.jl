@@ -98,14 +98,21 @@ function ith_subject_cb(pre,datai::Subject,u0,t0,ProbType,saveat,save_discont,co
   last_restart = Ref(-one(eltype(tstops)))
   save_on_cache = Ref(true)
 
-  # searchsorted is empty iff t ∉ target_time
-  # this is a fast way since target_time is sorted
+  cur_tstop = Ref(1)
+
   function condition(u,t,integrator)
-    (post_steady_state[] && t == (ss_time[] + ss_overlap_duration[] + ss_dropoff_counter[]*ss_ii[])) ||
-    t == ss_rate_end[] || (ss_mode[] && t == ss_end[] || !isempty(searchsorted(tstops,t)))
+    tstops[cur_tstop[]] - t
   end
 
+  # searchsorted is empty iff t ∉ target_time
+  # this is a fast way since target_time is sorted
+  #function condition(u,t,integrator)
+  #  (post_steady_state[] && t == (ss_time[] + ss_overlap_duration[] + ss_dropoff_counter[]*ss_ii[])) ||
+  #  t == ss_rate_end[] || (ss_mode[] && t == ss_end[] || !isempty(searchsorted(tstops,t)))
+  #end
+
   function affect!(integrator)
+    cur_tstop[] += 1
 
     if ProbType <: DiffEqBase.DDEProblem
       f = integrator.f
@@ -325,7 +332,7 @@ function ith_subject_cb(pre,datai::Subject,u0,t0,ProbType,saveat,save_discont,co
     end
   end
   save_positions = save_discont ? (true, true) : (false, false)
-  tstops,DiscreteCallback(condition,affect!,subject_cb_initialize!,save_positions),d_discontinuities
+  tstops,ContinuousCallback(condition,affect!,subject_cb_initialize!,save_positions),d_discontinuities
 end
 
 function dose!(integrator,u,cur_ev,last_restart)
