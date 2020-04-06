@@ -181,9 +181,18 @@ function ith_subject_cb(pre,datai::Subject,u0,t0,ProbType,saveat,save_discont,co
           ProbType <: DiffEqBase.SDEProblem && (integrator.W.curt = integrator.t)
           ProbType <: DiffEqBase.DDEProblem && (integrator.integrator.t = integrator.t)
           ss_cache .-= integrator.u
-          err = integrator.opts.internalnorm(ss_cache,integrator.t)
+
+          if hasproperty(integrator.opts,:internalnorm)
+            # Common interface alg, but not all integrators have it
+            err = integrator.opts.internalnorm(ss_cache,integrator.t)
+            reltolcalc = integrator.opts.internalnorm(integrator.u,integrator.t)
+          else
+            err = norm(ss_cache)
+            reltolcalc = norm(integrator.u)
+          end
+
           if ss_counter[] == ss_max_iters || (err < ss_abstol &&
-                                              err/integrator.opts.internalnorm(integrator.u,integrator.t) < ss_reltol)
+                                              err/reltolcalc < ss_reltol)
             # Steady state complete
             ss_mode[] = false
             post_steady_state[] = true

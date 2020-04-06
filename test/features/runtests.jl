@@ -6,6 +6,8 @@
     include("unit_handling_tests.jl") end
 @time @safetestset "UQ Expectation Tests" begin
     include("expectation.jl") end
+@time @safetestset "Sundials Tests" begin
+    include("sundials.jl") end
 #=
 @time @safetestset "Physical Measurements Tests" begin
     include("measurement_tests.jl") end
