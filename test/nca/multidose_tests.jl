@@ -130,3 +130,9 @@ df[!,:id] .= 1
 subj = @test_nowarn read_nca(df, llq=0concu, timeu=timeu, concu=concu, amtu=amtu)[1]
 @test !subj.dose[1].ss
 @test subj.dose[2].ss
+
+valid_dose = NCADose(1, 0.1, 0, NCA.IVBolus)
+subj = NCASubject(1:2, 1:2, dose=[NCADose(0, 0.1, 0, NCA.IVBolus), NCADose(10, 0.1, 0, NCA.IVBolus), valid_dose])
+@test subj.dose[1] === valid_dose
+
+@test_throws InvalidStateException NCASubject(1:2, 1:2, dose=[NCADose(0, 0.1, 0, NCA.IVBolus), NCADose(10, 0.1, 0, NCA.IVBolus), valid_dose, valid_dose])

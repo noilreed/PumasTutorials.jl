@@ -229,11 +229,12 @@ normalizedose(x::Number, d::NCADose) = x/d.amt
 normalizedose(x::AbstractArray, d::AbstractVector{<:NCADose}) = normalizedose.(x, d)
 normalizedose(x, subj::NCASubject) = normalizedose(x, subj.dose)
 
-Base.@propagate_inbounds function ithdoseidxs(time, dose, i::Integer)
+# internally, we convert everything to `tad`
+Base.@propagate_inbounds function ithdoseidxs(time, dose, startidxs, i::Integer; check=true)
   m = length(dose)
   @boundscheck 1 <= i <= m || throw(BoundsError(dose, i))
-  if all(d->iszero(d.time), dose) # if we got TAD
-    _idxs = findall(iszero, time)
+  if startidxs !== nothing
+    _idxs = startidxs
     idx1 = _idxs[i]
     idxs = if i === m
       idx1:length(time)
@@ -241,6 +242,7 @@ Base.@propagate_inbounds function ithdoseidxs(time, dose, i::Integer)
       idx1:_idxs[i+1]-1
     end
   else
+    check && (length(unique(x->x.time, dose)) == m || throw(InvalidStateException("Dosing events have non-unique time", :dose)))
     # get the first index of the `i`-th dose interval
     idx1 = searchsortedfirst(time, dose[i].time)
     idxs = if i === m

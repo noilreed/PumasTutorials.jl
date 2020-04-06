@@ -101,6 +101,10 @@ end
     NCASubject(conc, time; concu=true, timeu=true, id=1, group=nothing, dose=nothing, llq=nothing, lambdaz=nothing, clean=true, check=true, kwargs...)
 
 Constructs a NCASubject
+
+Setting `clean=false` disables all checks on `conc` and `time` to remove the
+cost of checking and cleaning data. It should only be used when the data is for
+sure "clean".
 """
 function NCASubject(conc, time;
                     start_time=nothing, end_time=nothing, volume=nothing, concu=true, timeu=true, volumeu=true,
@@ -133,11 +137,19 @@ function NCASubject(conc, time;
   _lambdaz = inv(unittime)
   lambdaz_proto = lambdaz === nothing ? _lambdaz : lambdaz
   if multidose
+    # Dosing events maybe be longer than the observing time, so we need to chop
+    # it off. As we don't assume doses are sorted, we cannot use
+    # `findfirst(x->x.time >= time[1], dose):findlast(x->x.time <= time[end], dose)`.
+    # Sorting events takes O(n⋅log(n)) time, while linear search takes O(n)
+    # time, so we take are just going to use `filter`.
+    dose = filter(x->time[1] <= x.time <= time[end], dose)
     n = length(dose)
     abstime = clean ? typeof(unittime)[] : time
+    istad = all(x->iszero(x.time), dose)
+    startidxs = istad ? findall(iszero, time) : nothing
     ct = let time=time, dose=dose
-      map(eachindex(dose)) do i
-        idxs = ithdoseidxs(time, dose, i)
+      map(1:length(dose)) do i
+        idxs = ithdoseidxs(time, dose, startidxs, i; check=i==1) # only check once
         conci, timei = @view(conc[idxs]), @view(time[idxs])
         check && checkconctime(conci, timei; dose=dose, kwargs...)
         if clean
