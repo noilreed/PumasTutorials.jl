@@ -176,7 +176,7 @@ end
 
     grad_FD = FD_gradient(test_fun, θ₀)
     grad_AD = AD_gradient(test_fun, θ₀)
-    @test_broken grad_FD[4] ≈ grad_AD[4] # is NaN
+    @test grad_FD[4] ≈ grad_AD[4]
 
     subject = read_pumas(example_data("event_data/data2"), dvs = [:cp])[1]
 

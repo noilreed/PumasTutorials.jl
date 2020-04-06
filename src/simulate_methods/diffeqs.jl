@@ -102,7 +102,7 @@ function ith_subject_cb(pre,datai::Subject,u0,t0,ProbType,saveat,save_discont,co
 
   function condition(u,t,integrator)
     if cur_tstop[] > length(tstops)
-      Inf*t
+      t
     else
       tstops[cur_tstop[]] - t
     end
