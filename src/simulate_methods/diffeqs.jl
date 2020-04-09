@@ -47,7 +47,8 @@ function _build_diffeq_problem(m::PumasModel, subject::Subject, args...;
 
   # Remake problem of correct type
   remake(m.prob; f=new_f, u0=Tu0, tspan=_tspan, callback=cb, saveat=saveat,
-                 tstops = tstops, d_discontinuities=d_discontinuities,
+                 #tstops = tstops, 
+                 d_discontinuities=d_discontinuities,
                  save_first = !isnothing(saveat) && tspan[1] ∈ saveat)
 end
 
