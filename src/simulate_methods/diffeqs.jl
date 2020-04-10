@@ -18,20 +18,6 @@ function _build_diffeq_problem(m::PumasModel, subject::Subject, args...;
     Tu0 = convert.(T,u0)
   end
 
-  # build a "modified" problem using DiffEqWrapper
-  fd = DiffEqWrapper(prob.f.f, 0, zero(u0)./oneunit(eltype(tspan)))
-  if typeof(prob) <: DiffEqBase.AbstractODEProblem
-    _jac   = DiffEqBase.has_jac(prob.f) ? ParamUnwrap{DiffEqBase.isinplace(prob)}(prob.f.jac) : nothing
-    _Wfact = DiffEqBase.has_Wfact(prob.f) ? ParamUnwrap{DiffEqBase.isinplace(prob)}(prob.f.Wfact) : nothing
-    _Wfact_t = DiffEqBase.has_Wfact_t(prob.f) ? ParamUnwrap{DiffEqBase.isinplace(prob)}(prob.f.Wfact_t) : nothing
-    new_f = ODEFunction{DiffEqBase.isinplace(prob)}(fd,
-                          jac=_jac,
-                          Wfact=_Wfact,
-                          Wfact_t = _Wfact_t)
-  else
-    new_f = make_function(prob,fd)
-  end
-
   # figure out callbacks and convert type for tspan if necessary
   # d_discontinuities are used to inform diffeq about the places where things change
   # suddenly in the model and introduce discontinuities in the derivates (such as
@@ -45,9 +31,23 @@ function _build_diffeq_problem(m::PumasModel, subject::Subject, args...;
   Tt = promote_type(t_numtype(u0,cb), numtype(tstops), numtype(tspan))
   _tspan = Tt.(tspan)
 
+  # build a "modified" problem using DiffEqWrapper
+  fd = DiffEqWrapper(prob.f.f, 0, zero(u0).*_tspan[1])
+  if typeof(prob) <: DiffEqBase.AbstractODEProblem
+    _jac   = DiffEqBase.has_jac(prob.f) ? ParamUnwrap{DiffEqBase.isinplace(prob)}(prob.f.jac) : nothing
+    _Wfact = DiffEqBase.has_Wfact(prob.f) ? ParamUnwrap{DiffEqBase.isinplace(prob)}(prob.f.Wfact) : nothing
+    _Wfact_t = DiffEqBase.has_Wfact_t(prob.f) ? ParamUnwrap{DiffEqBase.isinplace(prob)}(prob.f.Wfact_t) : nothing
+    new_f = ODEFunction{DiffEqBase.isinplace(prob)}(fd,
+                          jac=_jac,
+                          Wfact=_Wfact,
+                          Wfact_t = _Wfact_t)
+  else
+    new_f = make_function(prob,fd)
+  end
+
   # Remake problem of correct type
   remake(m.prob; f=new_f, u0=Tu0, tspan=_tspan, callback=cb, saveat=saveat,
-                 #tstops = tstops, 
+                 #tstops = tstops,
                  d_discontinuities=d_discontinuities,
                  save_first = !isnothing(saveat) && tspan[1] ∈ saveat)
 end

@@ -274,7 +274,9 @@ end
         end
     end
 
-    subject = read_pumas(example_data("event_data/data2"), dvs = [:cp])[1]
+    data = CSV.read(example_data("event_data/data2"))
+    data[!,:rate] .= -2
+    subject = read_pumas(data, dvs = [:cp])[1]
 
     θ₀ = [1.5, 1.0, 30.0, 5.0]
     param = (θ = θ₀,)
