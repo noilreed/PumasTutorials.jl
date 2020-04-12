@@ -323,7 +323,7 @@ function dynamics_obj(odeexpr::Expr, pre, odevars, callvars, bvars, eqs, isstati
   # Combines symbols (v's), the Variable constructor and
   # the differential `D` to create dynamic variables of
   # the type ModelingToolkit.Operation.
-  t = Variable(:t; known = true)()
+  t = Variable(:t)()
   D = Differential(t)
   for v in odevars
     push!(dvars, Variable(v)(t))
@@ -332,9 +332,9 @@ function dynamics_obj(odeexpr::Expr, pre, odevars, callvars, bvars, eqs, isstati
   # Param
   for p in pre
     if p ∈ callvars
-      push!(params, Variable(p; known=true))
+      push!(params, Variable(p))
     else
-      push!(params, Variable(p; known=true)())
+      push!(params, Variable(p)())
     end
   end
 
@@ -344,10 +344,10 @@ function dynamics_obj(odeexpr::Expr, pre, odevars, callvars, bvars, eqs, isstati
     push!(mteqs,lhsvar ~ convert_rhs_to_Expression(rhseq,bvars,dvars,params,t))
   end
 
-  f_ex = ModelingToolkit.generate_function(ODESystem(mteqs),dvars,params)[1]
-  J_ex = ModelingToolkit.generate_jacobian(ODESystem(mteqs),dvars,params)[1]
+  f_ex = ModelingToolkit.generate_function(ODESystem(mteqs,dvars,params))[1]
+  J_ex = ModelingToolkit.generate_jacobian(ODESystem(mteqs,dvars,params))[1]
   if length(eqs.args) < 4
-    W_exs = ModelingToolkit.generate_factorized_W(ODESystem(mteqs),dvars,params,false)
+    W_exs = ModelingToolkit.generate_factorized_W(ODESystem(mteqs,dvars,params),false)
     W_ex = W_exs[1][1]
     W_t_ex = W_exs[2][1]
   else
