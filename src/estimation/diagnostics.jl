@@ -109,7 +109,7 @@ function wresiduals(
 
   randeffstransform = totransform(model.random(param))
   randeffs = TransformVariables.transform(randeffstransform, vrandeffsorth)
-  dist = _derived(model, subject, param, randeffs)
+  dist = _derived(model, subject, param, randeffs, args...; kwargs...)
 
   F   = _mean_derived_vηorth_jacobian(model, subject, param, vrandeffsorth, args...; kwargs...)
   res = residuals(subject, dist)
@@ -168,7 +168,7 @@ function _predict(
   end
 
   randeffs = TransformVariables.transform(totransform(m.random(param)), vrandeffsorth)
-  dist = _derived(m, subject, param, randeffs)
+  dist = _derived(m, subject, param, randeffs, args...; kwargs...)
   return map(d -> mean.(d), NamedTuple{keys(subject.observations)}(dist))
 end
 
@@ -188,7 +188,7 @@ function _predict(
 
   randeffstransform = totransform(m.random(param))
   randeffs = TransformVariables.transform(randeffstransform, vrandeffsorth)
-  dist = _derived(m, subject, param, randeffs)
+  dist = _derived(m, subject, param, randeffs, args...; kwargs...)
 
 
   _dv_keys = keys(subject.observations)
@@ -196,7 +196,7 @@ function _predict(
     F = ForwardDiff.jacobian(
       _vrandeffs -> begin
         _randeffs = TransformVariables.transform(randeffstransform, _vrandeffs)
-        return mean.(_derived(m, subject, param, _randeffs)[name])
+        return mean.(_derived(m, subject, param, _randeffs, args...; kwargs...)[name])
       end,
       vrandeffsorth
     )
@@ -219,13 +219,13 @@ function _predict(
 
   randeffstransform = totransform(m.random(param))
   randeffs = TransformVariables.transform(randeffstransform, vrandeffsorth)
-  dist = _derived(m, subject, param, randeffs)
+  dist = _derived(m, subject, param, randeffs, args...; kwargs...)
   _dv_keys = keys(subject.observations)
   return map(NamedTuple{_dv_keys}(_dv_keys)) do name
     F = ForwardDiff.jacobian(
       _vrandeffs -> begin
         _randeffs = TransformVariables.transform(randeffstransform, _vrandeffs)
-        mean.(_derived(m, subject, param, _randeffs)[name])
+        mean.(_derived(m, subject, param, _randeffs, args...; kwargs...)[name])
       end,
       vrandeffsorth
     )
@@ -264,7 +264,7 @@ function iwresiduals(
    end
 
   randeffs = TransformVariables.transform(totransform(m.random(param)), vrandeffsorth)
-  dist = _derived(m, subject, param, randeffs)
+  dist = _derived(m, subject, param, randeffs, args...; kwargs...)
 
   _dv_keys = keys(subject.observations)
   _res = residuals(subject, dist)
@@ -286,7 +286,7 @@ function iwresiduals(
 
   randeffstransform = totransform(m.random(param))
   randeffsEBE = TransformVariables.transform(randeffstransform, vrandeffsorth)
-  dist = _derived(m, subject, param, randeffsEBE)
+  dist = _derived(m, subject, param, randeffsEBE, args...; kwargs...)
 
   _dv_keys = keys(subject.observations)
 
@@ -316,7 +316,7 @@ function iwresiduals(
   end
 
   randeffs = TransformVariables.transform(totransform(m.random(param)), vrandeffsorth)
-  dist = _derived(m, subject, param, randeffs)
+  dist = _derived(m, subject, param, randeffs, args...; kwargs...)
   _dv_keys = keys(subject.observations)
   _res = residuals(subject, dist)
   return map(name -> _res[name] ./ std.(dist[name]), NamedTuple{_dv_keys}(_dv_keys))
