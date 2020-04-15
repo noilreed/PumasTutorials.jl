@@ -1,4 +1,4 @@
-using Pumas, ForwardDiff, FiniteDiff, Test, Random, LabelledArrays, DiffResults
+using Pumas, ForwardDiff, FiniteDiff, Test, Random, LabelledArrays, DiffResults, CSV
 
 AD_gradient = ForwardDiff.gradient
 AD_hessian = ForwardDiff.hessian
