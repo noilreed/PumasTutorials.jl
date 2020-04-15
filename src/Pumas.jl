@@ -6,7 +6,7 @@ using FiniteDiff, Reexport, StatsBase,
       Missings, RecipesBase, RecursiveArrayTools, Quadrature,
       Statistics, DiffEqSensitivity
 using LinearAlgebra
-using AdvancedHMC: DiagEuclideanMetric, Hamiltonian, NUTS, Leapfrog, find_good_eps, StanHMCAdaptor, Preconditioner, NesterovDualAveraging
+using AdvancedHMC: DiagEuclideanMetric, Hamiltonian, NUTS, Leapfrog, find_good_stepsize, StanHMCAdaptor, MassMatrixAdaptor, StepSizeAdaptor, MultinomialTS, GeneralisedNoUTurn
 import MCMCChains: Chains
 
 using Base.Threads # for bootstrap

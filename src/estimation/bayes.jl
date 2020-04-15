@@ -138,8 +138,9 @@ function Distributions.fit(
   # Set up the NUTS sampler from AdvancedHMC
   metric  = DiagEuclideanMetric(length(vparam_aug))
   h       = Hamiltonian(metric, l, dldθ)
-  prop    = NUTS(Leapfrog(find_good_eps(h, vparam_aug)))
-  adaptor = StanHMCAdaptor(nadapts, Preconditioner(metric), NesterovDualAveraging(0.8, prop.integrator.ϵ))
+  integrator = Leapfrog(find_good_stepsize(h, vparam_aug))
+  prop    = NUTS{MultinomialTS, GeneralisedNoUTurn}(integrator)
+  adaptor = StanHMCAdaptor(MassMatrixAdaptor(metric), StepSizeAdaptor(0.8, prop.integrator))
 
   # Run the MCMC sampler
   samples, stats = sample(h, prop, vparam_aug, nsamples, adaptor, nadapts; progress=Base.is_interactive)
