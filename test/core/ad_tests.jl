@@ -171,7 +171,7 @@ end
     test_fun = function(θ)
         _param = (θ = θ,)
         sim = simobs(mlag, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
-        sim[:cmax]
+        sim[:cp][end]
     end
 
     grad_FD = FD_gradient(test_fun, θ₀)
@@ -187,12 +187,12 @@ end
     test_fun = function(θ)
         _param = (θ = θ,)
         sim = simobs(mlag, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
-        sim[:cmax]
+        sim[:cp][end] # cmax doesn't actually change w.r.t. lag
     end
 
     grad_FD = FD_gradient(test_fun, θ₀)
     grad_AD = AD_gradient(test_fun, θ₀)
-    @test_broken grad_FD[4] ≈ grad_AD[4] # is NaN
+    @test grad_FD[4] ≈ grad_AD[4]
 end
 
 @testset "DCP - rate" begin
@@ -285,7 +285,7 @@ end
     test_fun = function(θ)
         _param = (θ = θ,)
         sim = simobs(mduration, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
-        sim[:cmax]
+        sim[:cp][end]
     end
 
     grad_FD = FD_gradient(test_fun, θ₀)
@@ -301,7 +301,7 @@ end
     test_fun = function(θ)
         _param = (θ = θ,)
         sim = simobs(mduration, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
-        sim[:cmax]
+        sim[:cp][end]
     end
 
     grad_FD = FD_gradient(test_fun, θ₀)
