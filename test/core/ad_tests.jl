@@ -221,7 +221,6 @@ end
         end
 
         @derived begin
-            x := @show Central,V
             cp = @. Central / V
             cmax = maximum(cp)
         end
