@@ -125,7 +125,7 @@ function ith_subject_cb(pre,datai::Subject,u0,t0,ProbType,saveat,save_discont,co
       f = integrator.f
     end
 
-    while counter <= length(events) && events[counter].time <= integrator.t+sqrt(eps())
+    while counter <= length(events) && events[counter].time <= integrator.t+sqrt(eps(t))
       cur_ev = events[counter]
       @inbounds if (cur_ev.evid == 1 || cur_ev.evid == -1) && cur_ev.ss == 0
         dose!(integrator,integrator.u,cur_ev,last_restart)
