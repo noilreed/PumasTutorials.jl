@@ -54,8 +54,8 @@ using Pumas
     [Pumas._orth_empirical_bayes(mdsl2, subject, param, Pumas.FOCEI()) for subject in theopp_nlme]).dv ≈ 0.09091976569587323 rtol = 1e-3
   @test ϵshrinkage(mdsl2, theopp_nlme, param, Pumas.FOCEI()).dv ≈ 0.09091976569587323 rtol = 1e-3
 
-  @test aic(mdsl2, theopp_nlme, param, Pumas.FOCEI()) ≈ 357.43064186213104 rtol = 1e-3 #regression test
-  @test bic(mdsl2, theopp_nlme, param, Pumas.FOCEI()) ≈ 389.1414630105811 rtol = 1e-3 #regression test
+  @test aic(ft_focei) ≈ 357.43064186213104 rtol = 1e-3 #regression test
+  @test bic(ft_focei) ≈ 389.1414630105811  rtol = 1e-3 #regression test
 
   param = init_param(mdsl2)
   randeffsorth = [Pumas._orth_empirical_bayes(mdsl2, subject, param, Pumas.FOCEI()) for subject in theopp_nlme]

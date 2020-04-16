@@ -463,6 +463,8 @@ function StatsBase.aic(m::PumasModel,
   2*(marginal_nll(m, data, param, approx, args...; kwargs...) + numparam)
 end
 
+StatsBase.aic(fpm::FittedPumasModel) = StatsBase.aic(fpm.model, fpm.data, coef(fpm), fpm.approx; fpm.kwargs...)
+
 function StatsBase.bic(m::PumasModel,
                        data::Population,
                        param::NamedTuple,
@@ -472,6 +474,8 @@ function StatsBase.bic(m::PumasModel,
   numparam = TransformVariables.dimension(totransform(m.param))
   2*marginal_nll(m, data, param, approx, args...; kwargs...) + numparam*log(sum(t -> length(t.time), data))
 end
+
+StatsBase.bic(fpm::FittedPumasModel) = StatsBase.bic(fpm.model, fpm.data, coef(fpm), fpm.approx, ; fpm.kwargs...)
 
 ### Predictions
 struct SubjectPrediction{T1, T2, T3, T4}
