@@ -17,7 +17,7 @@ include("simple.jl")
 export DataFrame
 
 export NCASubject, NCAPopulation, NCADose, showunits
-export read_nca, add_ii!
+export read_nca
 export NCAReport
 export normalizedose
 
