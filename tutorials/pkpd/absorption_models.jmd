@@ -16,9 +16,10 @@ In this tutorial, we will cover the following absorption models
 * zero-order
 * two parallel first-order
 * first-order + zero-order simultaneously
-* Erlang absorption
-* transit absorption
 * Weibull absorption
+* Erlang absorption
+* Transit absorption (WIP)
+
 
 ## Generating the population
 
@@ -342,4 +343,78 @@ wb_reg = DosageRegimen(100,cmt=1,time=0)
 wb_reg_with_covariates = Population(map(i -> Subject(id=i,evs=wb_reg,cvs=choose_covariates()),1:10))
 obs = simobs(wb_abs,wb_reg_with_covariates, param, obstimes=0:1:48)
 wb_plot = plot(obs, title =  "Weibull absorption")
+```
+
+## Erlang absorption
+
+```julia
+erlangabs = @model begin
+  @param begin
+    tvcl ∈ RealDomain(lower=0)
+    tvv ∈ RealDomain(lower=0)
+    tvktr ∈ RealDomain(lower=0)
+    tvq ∈ RealDomain(lower=0)
+    tvvp ∈ RealDomain(lower=0)
+    Ω ∈ PSDDomain(4)
+  end
+
+  @random begin
+    η ~ MvNormal(Ω)
+  end
+
+  @covariates Wt
+
+  @pre begin
+    CL = tvcl*(Wt/70)^0.75*exp(η[1])
+    Vc  = tvv*(Wt/70)*exp(η[2])
+    Ktr = tvktr*exp(η[3])
+    Q  = tvq*(Wt/70)^0.75*exp(η[4])
+    Vp  = tvvp*(Wt/70)
+    K  = CL/Vc
+    K21 = Q/Vp
+    K12 = Q/Vc
+    N = 5 # number of compartments
+  end
+
+  @dynamics begin
+    Depot' = -Ktr*Depot
+    DELA1' = Ktr*Depot-Ktr*DELA1
+    DELA2' = Ktr*DELA1-Ktr*DELA2
+    DELA3' = Ktr*DELA2-Ktr*DELA3
+    DELA4' = Ktr*DELA3-Ktr*DELA4
+    DELA5' = Ktr*DELA4-Ktr*DELA5
+    Central' = Ktr*DELA5 - Central*K + K21*Periph -K12*Central
+    Periph' = - K21*Periph + K12*Central
+  end
+
+  @derived begin
+    conc = @. Central/Vc
+  end
+
+end
+
+```
+
+and below are the set of parameters for this model
+
+```julia
+param = (
+  tvcl = 27, tvv = 77.4, tvktr = 7.74, tvq = 23.7, tvvp = 55.6,
+  Ω = diagm(0 => [0.09,0.22,0.10,0.52])
+  )
+```
+
+We can now use the data and model with parameters to simulate a erlang absorption profile
+
+```julia
+erlang_reg = DosageRegimen(100,cmt=1,time=0)
+erlang_reg_with_covariates = Population(map(i -> Subject(id=i,evs=erlang_reg,cvs=choose_covariates()),1:10))
+obs = simobs(erlangabs,erlang_reg_with_covariates, param, obstimes=0:1:24)
+erlang_plot = plot(obs, title =  "Erlang absorption")
+```
+
+
+```julia{echo=false,skip="notebook"}
+using PumasTutorials
+PumasTutorials.tutorial_footer(WEAVE_ARGS[:folder],WEAVE_ARGS[:file])
 ```
