@@ -14,7 +14,7 @@ showing how to do pharmaceutical modeling and simulation with Pumas.jl.
   - [Workshop Exercise Solutions](https://tutorials.pumas.ai/html/exercises/workshop_solutions.html)
   - [Workshop Exercise Fitting](https://tutorials.pumas.ai/html/exercises/fitting.html)
 - Models
-  - [Absorption models](https://tutorials.pumas.ai/html/discrete/absorption_models.html)
+  - [Absorption models](https://tutorials.pumas.ai/html/pkpd/absorption_models.html)
   - [Discrete Response Models](https://tutorials.pumas.ai/html/discrete/discrete_response_models.html)
   - [Indirect Response Models](https://tutorials.pumas.ai/html/pkpd/indirect_response_models.html)
 
