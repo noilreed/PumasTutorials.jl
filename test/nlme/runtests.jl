@@ -69,7 +69,7 @@ if group == "All" || group == "NLME_ML4"
       include("simple_model.jl")
     end
     @time @safetestset "Simple Model (logistic regression)" begin
-      include("simple_model_logistic.jl")
+      include("logistic.jl")
     end
     @time @safetestset "Simple Model with T-distributed error model" begin
       include("simple_model_tdist.jl")

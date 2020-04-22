@@ -6,10 +6,11 @@ using FiniteDiff, Reexport, StatsBase,
       Missings, RecipesBase, RecursiveArrayTools, Quadrature,
       Statistics, DiffEqSensitivity
 using LinearAlgebra
-using AdvancedHMC: DiagEuclideanMetric, Hamiltonian, NUTS, Leapfrog, find_good_stepsize, StanHMCAdaptor, MassMatrixAdaptor, StepSizeAdaptor, MultinomialTS, GeneralisedNoUTurn
-import MCMCChains: Chains
-
 using Base.Threads # for bootstrap
+using AdvancedHMC: DiagEuclideanMetric, Hamiltonian, NUTS, Leapfrog, find_good_stepsize, StanHMCAdaptor, MassMatrixAdaptor, StepSizeAdaptor, MultinomialTS, GeneralisedNoUTurn
+using StatsFuns: logistic
+
+import MCMCChains: Chains
 
 import DiffResults: DiffResult
 
@@ -63,16 +64,27 @@ export PumasModel, init_param, init_randeffs, sample_randeffs
 export simobs, pre
 export tad, eventnum
 export conditional_nll
-export predict, residuals, wresiduals, empirical_bayes
+export wresiduals, empirical_bayes
 export ηshrinkage, ϵshrinkage
 export read_pumas, example_data
 export @model, @nca
-export fit, stderror, vcov, aic, bic, deviance, informationmatrix, coeftable
-export infer, inspect, bootstrap
-export gsa
-export mean, std, var, coef
+export infer, inspect
+
 export expectation, KoopmanExpectation, MonteCarloExpectation
+
 # From LinearAlgebra
 export diagm, Diagonal, I
+
+# From Statistics
+export mean, std, var
+
+# From StatsBase
+export aic, bic, coef, coeftable, deviance, fit, informationmatrix, predict, residuals, stderror, vcov, bootstrap
+
+# From StatsFuns
+export logistic
+
+# From SensitivityDiffEq
+export gsa
 
 end # module

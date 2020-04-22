@@ -102,16 +102,15 @@ end
                                  param::NamedTuple,
                                  randeffs::NamedTuple,
                                  dist::NamedTuple)
+
   pre = m.pre(param, randeffs, subject)
-  # Could we define a `pre` struct that can more easily have its
-  # numtype calculated? Say by having a field for prevars, thetas, etas
-  collated_numtype = numtype(pre(0.0))
+
   if any(d->d isa Nothing, dist)
-    return collated_numtype(Inf)
+    return Inf
   end
 
   clean_dist = NamedTuple{keys(subject.observations)}(dist)
-  ll = _lpdf(clean_dist, subject.observations)::collated_numtype
+  ll = _lpdf(clean_dist, subject.observations)
   return -ll
 end
 
