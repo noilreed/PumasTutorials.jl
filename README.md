@@ -3,17 +3,6 @@
 PumasTutorials.jl holds PDFs, webpages, and interactive Jupyter notebooks
 showing how to do pharmaceutical modeling and simulation with Pumas.jl.
 
-## Interactive Notebooks
-
-To run the tutorials interactively via Jupyter notebooks, install the package
-and open the tutorials like:
-
-```julia
-using Pkg; Pkg.add("PumasTutorials") # Run the first time to add the package
-using PumasTutorials
-PumasTutorials.open_notebooks()
-```
-
 ## Table of Contents
 
 - Introduction
@@ -23,7 +12,9 @@ PumasTutorials.open_notebooks()
 - Workshop Materials
   - [Workshop Exercises](https://tutorials.pumas.ai/html/exercises/workshop_exercises.html)
   - [Workshop Exercise Solutions](https://tutorials.pumas.ai/html/exercises/workshop_solutions.html)
+  - [Workshop Exercise Fitting](https://tutorials.pumas.ai/html/exercises/fitting.html)
 - Models
+  - [Absorption models](https://tutorials.pumas.ai/html/pkpd/absorption_models.html)
   - [Discrete Response Models](https://tutorials.pumas.ai/html/discrete/discrete_response_models.html)
   - [Indirect Response Models](https://tutorials.pumas.ai/html/pkpd/indirect_response_models.html)
 
