@@ -1,66 +1,86 @@
-function StatsBase.residuals(fpm::FittedPumasModel)
-  # Return the residuals
-  return [residuals(fpm.model, subject, coef(fpm), vrandeffsorth, fpm.args...; fpm.kwargs...) for (subject, vrandeffsorth) in zip(fpm.data, fpm.vvrandeffsorth)]
-end
-function StatsBase.residuals(model::PumasModel, subject::Subject, param::NamedTuple, vrandeffs::AbstractArray, args...; kwargs...)
+# Internal _residuals helper function
+function _residuals(model::PumasModel, subject::Subject, param::NamedTuple, vrandeffs::AbstractArray, args...; kwargs...)
   rtrf = totransform(model.random(param))
   randeffs = TransformVariables.transform(rtrf, vrandeffs)
   # Calculated the dependent variable distribution objects
   dist = _derived(model, subject, param, randeffs, args...; kwargs...)
   # Return the residuals
-  return residuals(subject, dist)
+  return _residuals(subject, dist)
 end
-function StatsBase.residuals(subject::Subject, dist)
+
+function _residuals(subject::Subject, dist)
   # Return the residuals
   _keys = keys(subject.observations)
   return map(x->x[1] .- mean.(x[2]), NamedTuple{_keys}(zip(subject.observations, dist)))
 end
-"""
-  npde(model, subject, param, simulations_count)
 
-To calculate the Normalised Prediction Distribution Errors (NPDE).
-"""
-function npde(m::PumasModel,
-              subject::Subject,
-              param::NamedTuple,
-              nsim::Integer)
+
+# npde
+function npde(
+  m::PumasModel,
+  subject::Subject,
+  param::NamedTuple;
+  nsim::Union{Nothing,Integer}=nothing)
+
+  if nsim === nothing
+    throw(ArgumentError("the number of simulations argument (nsim) was not specified."))
+  end
+  if nsim < 1
+    throw(ArgumentError("the number of simulations argument (nsim) must be positive"))
+  end
 
   _names = keys(subject.observations)
   sims = [simobs(m, subject, param).observed for i in 1:nsim]
 
   return map(NamedTuple{_names}(_names)) do name
-           y = subject.observations[name]
-           ysims = getproperty.(sims, name)
-           mean_y = mean(ysims)
-           cov_y = Symmetric(cov(ysims))
-           Fcov_y = cholesky(cov_y)
-           y_decorr = Fcov_y.U'\(y .- mean_y)
+    y        = subject.observations[name]
+    ysims    = getproperty.(sims, name)
+    mean_y   = mean(ysims)
+    cov_y    = Symmetric(cov(ysims))
+    Fcov_y   = cholesky(cov_y)
+    y_decorr = Fcov_y.U'\(y .- mean_y)
 
-           φ = mean(ysims) do y_l
-             y_decorr_l = Fcov_y.U'\(y_l .- mean_y)
-             Int.(y_decorr_l .< y_decorr)
-           end
+    φ = mean(ysims) do y_l
+      y_decorr_l = Fcov_y.U'\(y_l .- mean_y)
+      Int.(y_decorr_l .< y_decorr)
+    end
 
-           return quantile.(Normal(), φ)
-         end
+    return quantile.(Normal(), φ)
+  end
 end
 
+# FIXME! make this run in parallel
+"""
+  npde(fpm::FittedPumasModel; nsim::Integer)
+
+To calculate the normalised prediction distribution errors (NPDE).
+"""
+npde(fpm::FittedPumasModel; nsim=nothing) = [npde(fpm.model, subject, coef(fpm); nsim=nsim, fpm.kwargs...) for subject in fpm.data]
+
+
+# SubjectResidual
 struct SubjectResidual{T1, T2, T3, T4}
   wres::T1
   iwres::T2
   subject::T3
   approx::T4
 end
-function wresiduals(fpm::FittedPumasModel, approx::LikelihoodApproximation=fpm.approx; nsim=nothing)
-  subjects = fpm.data
-  if approx == fpm.approx
-    vvrandeffsorth = fpm.vvrandeffsorth
-  else
-    # re-estimate under approx
-    vvrandeffsorth = [_orth_empirical_bayes(fpm.model, subject, coef(fpm), approx, fpm.args...; fpm.kwargs...) for subject in subjects]
+
+function DataFrames.DataFrame(vresid::Vector{<:SubjectResidual}; include_covariates=true)
+  subjects = [resid.subject for resid in vresid]
+  df = select!(DataFrame(subjects; include_covariates=include_covariates, include_dvs=false), Not(:evid))
+
+  _keys = keys(first(subjects).observations)
+  for name in (_keys)
+    df[!,Symbol(string(name)*"_wres")] .= vcat((resid.wres[name] for resid in vresid)...)
+    df[!,Symbol(string(name)*"_iwres")] .= vcat((resid.iwres[name] for resid in vresid)...)
+    df[!,:wres_approx] .= vcat((fill(resid.approx, length(resid.subject.time)) for resid in vresid)...)
   end
-  [wresiduals(fpm, subjects[i], approx, vvrandeffsorth[i], fpm.args...; nsim=nsim, fpm.kwargs...) for i = 1:length(subjects)]
+  df
 end
+
+
+# wresiduals
 function wresiduals(
   fpm::FittedPumasModel,
   subject::Subject,
@@ -82,19 +102,6 @@ function wresiduals(
   SubjectResidual(wres, iwres, subject, approx)
 end
 
-function DataFrames.DataFrame(vresid::Vector{<:SubjectResidual}; include_covariates=true)
-  subjects = [resid.subject for resid in vresid]
-  df = select!(DataFrame(subjects; include_covariates=include_covariates, include_dvs=false), Not(:evid))
-
-  _keys = keys(first(subjects).observations)
-  for name in (_keys)
-    df[!,Symbol(string(name)*"_wres")] .= vcat((resid.wres[name] for resid in vresid)...)
-    df[!,Symbol(string(name)*"_iwres")] .= vcat((resid.iwres[name] for resid in vresid)...)
-    df[!,:wres_approx] .= vcat((fill(resid.approx, length(resid.subject.time)) for resid in vresid)...)
-  end
-  df
-end
-
 function wresiduals(
   model::PumasModel,
   subject::Subject,
@@ -112,7 +119,7 @@ function wresiduals(
   dist = _derived(model, subject, param, randeffs, args...; kwargs...)
 
   F   = _mean_derived_vηorth_jacobian(model, subject, param, vrandeffsorth, args...; kwargs...)
-  res = residuals(subject, dist)
+  res = _residuals(subject, dist)
 
   _dv_keys = keys(subject.observations)
 
@@ -154,7 +161,23 @@ function wresiduals(
   end
 end
 
-# PRED like _predict
+function wresiduals(
+  fpm::FittedPumasModel,
+  approx::LikelihoodApproximation=fpm.approx;
+  nsim=nothing)
+
+  subjects = fpm.data
+  if approx == fpm.approx
+    vvrandeffsorth = fpm.vvrandeffsorth
+  else
+    # re-estimate under approx
+    vvrandeffsorth = [_orth_empirical_bayes(fpm.model, subject, coef(fpm), approx, fpm.args...; fpm.kwargs...) for subject in subjects]
+  end
+  [wresiduals(fpm, subjects[i], approx, vvrandeffsorth[i], fpm.args...; nsim=nsim, fpm.kwargs...) for i = 1:length(subjects)]
+end
+
+# predict
+## PRED like _predict
 function _predict(
   m::PumasModel,
   subject::Subject,
@@ -172,8 +195,7 @@ function _predict(
   return map(d -> mean.(d), NamedTuple{keys(subject.observations)}(dist))
 end
 
-
-# CPRED like
+## CPRED like
 function _predict(
   m::PumasModel,
   subject::Subject,
@@ -204,7 +226,7 @@ function _predict(
   end
 end
 
-# CPREDI like
+## CPREDI like
 function _predict(
   m::PumasModel,
   subject::Subject,
@@ -233,24 +255,39 @@ function _predict(
   end
 end
 
-"""
-  epredict(model, subject, param, simulations_count[, args...; kwarg...])
 
-To calculate the Expected Simulation based Population Predictions.
-"""
+# epredict
 function epredict(
   m::PumasModel,
   subject::Subject,
   param::NamedTuple,
-  nsim::Integer,
-  args...; kwargs...)
+  args...;
+  nsim::Union{Nothing,Integer}=nothing,
+  kwargs...)
+
+  if nsim === nothing
+    throw(ArgumentError("the number of simulations argument (nsim) was not specified."))
+  end
+  if nsim < 1
+    throw(ArgumentError("the number of simulations argument (nsim) must be positive"))
+  end
 
   sims = [simobs(m, subject, param, args...; kwargs...).observed for i in 1:nsim]
   _dv_keys = keys(subject.observations)
   return map(name -> mean(getproperty.(sims, name)), NamedTuple{_dv_keys}(_dv_keys))
 end
 
-# IWRES like
+# FIXME! Make it parallel over subjects
+"""
+  epredict(fpm::FittedPumasModel, nsim::Integer)
+
+To calculate the expected simulation based population predictions.
+"""
+epredict(fpm::FittedPumasModel; nsim=nothing) = [epredict(fpm.model, subject, coef(fpm); nsim=nsim, fpm.kwargs...) for subject in fpm.data]
+
+
+# iwresiduals
+## IWRES like
 function iwresiduals(
   m::PumasModel,
   subject::Subject,
@@ -267,11 +304,11 @@ function iwresiduals(
   dist = _derived(m, subject, param, randeffs, args...; kwargs...)
 
   _dv_keys = keys(subject.observations)
-  _res = residuals(subject, dist)
+  _res = _residuals(subject, dist)
   return map(name -> _res[name] ./ std.(dist[name]), NamedTuple{_dv_keys}(_dv_keys))
 end
 
-# ICWRES like
+## ICWRES like
 function iwresiduals(
   m::PumasModel,
   subject::Subject,
@@ -297,11 +334,11 @@ function iwresiduals(
     nothing
   end
 
-  _res = residuals(subject, dist)
+  _res = _residuals(subject, dist)
   return map(name -> _res[name] ./ std.(dist[name]), NamedTuple{_dv_keys}(_dv_keys))
 end
 
-# ICWRESI like
+## ICWRESI like
 function iwresiduals(
   m::PumasModel,
   subject::Subject,
@@ -318,7 +355,7 @@ function iwresiduals(
   randeffs = TransformVariables.transform(totransform(m.random(param)), vrandeffsorth)
   dist = _derived(m, subject, param, randeffs, args...; kwargs...)
   _dv_keys = keys(subject.observations)
-  _res = residuals(subject, dist)
+  _res = _residuals(subject, dist)
   return map(name -> _res[name] ./ std.(dist[name]), NamedTuple{_dv_keys}(_dv_keys))
 end
 
@@ -418,6 +455,7 @@ function ηshrinkage(m::PumasModel,
   return NamedTuple{keys(first(vtrandeffs))}(randeffsstd)
 end
 
+ηshrinkage(fpm::FittedPumasModel) = ηshrinkage(fpm.model, fpm.data, coef(fpm), fpm.approx, ; fpm.kwargs...)
 
 function ϵshrinkage(m::PumasModel,
                     data::Population,
@@ -453,6 +491,8 @@ function ϵshrinkage(m::PumasModel,
   map(name -> 1 - std(vec(VectorOfArray(getproperty.(_icwres, name))), corrected = false), NamedTuple{_keys_dv}(_keys_dv))
 end
 
+ϵshrinkage(fpm::FittedPumasModel) = ϵshrinkage(fpm.model, fpm.data, coef(fpm), fpm.approx, ; fpm.kwargs...)
+
 function StatsBase.aic(m::PumasModel,
                        data::Population,
                        param::NamedTuple,
@@ -463,7 +503,7 @@ function StatsBase.aic(m::PumasModel,
   2*(marginal_nll(m, data, param, approx, args...; kwargs...) + numparam)
 end
 
-StatsBase.aic(fpm::FittedPumasModel) = StatsBase.aic(fpm.model, fpm.data, coef(fpm), fpm.approx; fpm.kwargs...)
+StatsBase.aic(fpm::FittedPumasModel) = aic(fpm.model, fpm.data, coef(fpm), fpm.approx; fpm.kwargs...)
 
 function StatsBase.bic(m::PumasModel,
                        data::Population,
@@ -475,7 +515,7 @@ function StatsBase.bic(m::PumasModel,
   2*marginal_nll(m, data, param, approx, args...; kwargs...) + numparam*log(sum(t -> length(t.time), data))
 end
 
-StatsBase.bic(fpm::FittedPumasModel) = StatsBase.bic(fpm.model, fpm.data, coef(fpm), fpm.approx, ; fpm.kwargs...)
+StatsBase.bic(fpm::FittedPumasModel) = bic(fpm.model, fpm.data, coef(fpm), fpm.approx, ; fpm.kwargs...)
 
 ### Predictions
 struct SubjectPrediction{T1, T2, T3, T4}
@@ -556,6 +596,7 @@ function DataFrames.DataFrame(vpred::Vector{<:SubjectPrediction}; include_covari
   df
 end
 
+# empirical_bayes
 function empirical_bayes(fpm::FittedPumasModel)
   subjects = fpm.data
 
@@ -581,18 +622,23 @@ function empirical_bayes(fpm::FittedPumasModel)
   end
 end
 
+
+# Inspection
 struct FittedPumasModelInspection{T1, T2, T3, T4}
   o::T1
   pred::T2
   wres::T3
   ebes::T4
 end
+
 StatsBase.predict(insp::FittedPumasModelInspection) = insp.pred
 # We allow args... here since the called method will only use the saved args...
 # from the fitting stage
+
 StatsBase.predict(insp::FittedPumasModelInspection, args...) = predict(insp.o, args...)
 wresiduals(insp::FittedPumasModelInspection) = insp.wres
 empirical_bayes(insp::FittedPumasModelInspection) = insp.ebes
+
 
 function inspect(fpm; pred_approx=fpm.approx, wres_approx=fpm.approx)
   print("Calculating: ")
@@ -605,6 +651,7 @@ function inspect(fpm; pred_approx=fpm.approx, wres_approx=fpm.approx)
   println(". Done.")
   FittedPumasModelInspection(fpm, pred, res, (ebes=ebes,))
 end
+
 function DataFrames.DataFrame(i::FittedPumasModelInspection; include_covariates=true)
   pred_df = DataFrame(i.pred; include_covariates=include_covariates)
   res_df = select!(select!(DataFrame(i.wres; include_covariates=false), Not(:id)), Not(:time))
@@ -695,7 +742,6 @@ function _paramnames(f::FittedPumasModel)
 end
 
 # This will use default args and kwargs!!
-findinfluential(fpm::FittedPumasModel) = findinfluential(fpm.model, fpm.data, coef(fpm), fpm.approx, fpm.args...; fpm.kwargs...)
 function findinfluential(
   m::PumasModel,
   data::Population,
@@ -708,3 +754,5 @@ function findinfluential(
   p = partialsortperm(d, 1:k, rev=true)
   return [(data[pᵢ].id, d[pᵢ]) for pᵢ in p]
 end
+
+findinfluential(fpm::FittedPumasModel) = findinfluential(fpm.model, fpm.data, coef(fpm), fpm.approx, fpm.args...; fpm.kwargs...)

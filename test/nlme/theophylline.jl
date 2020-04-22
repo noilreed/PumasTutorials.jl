@@ -539,7 +539,22 @@ end
     @test ebe_cov[i].η.Σ.mat[:] ≈ foce_ebes_cov[i,:] atol=1e-3
   end
 
-  @test length(Pumas.epredict(theopmodel_foce, theopp[1], param, 1000).dv) == 11
+  @testset "epredict" begin
+    Random.seed!(123)
+    @test Pumas.epredict(o, nsim=1000)[1].dv ≈ [
+      -0.009486557445285057
+       2.730920242955558
+       4.314639086766728
+       4.8572061680076155
+       1.5442111858108558
+    -146.43247741258824
+   -2506.4612432706485
+ -211515.07971241107
+      -2.4858764482778806e7
+      -3.910532698399744e10
+      -3.0504017627161996e23] rtol=1e-3
+  end
+
   @test Pumas._predict(  theopmodel_foce, theopp[1], param, Pumas.FOCE()).dv ≈ [
     0.0
     4.9049755499300955
@@ -782,7 +797,7 @@ end
 
   o = fit(theopmodel_foce, theopp, param, Pumas.FOCE(), ensemblealg=EnsembleThreads())
   @test_throws ArgumentError fit(theopmodel_foce, theopp, param, Pumas.FOCE(), ensemblealg=EnsembleDistributed())
-  
+
   o_simobs_1 = simobs(theopmodel_foce, theopp, coef(o), empirical_bayes(o))
   o_simobs_2 = simobs(theopmodel_foce, theopp, coef(o), fill((η₁=0, η₂=0), length(theopp)))
   o_simobs = simobs(o)
@@ -814,7 +829,22 @@ end
   #  @test ebe_cov[i].η₂.σ^2 ≈ foce_ebes_cov[i,2] atol=1e-2
   #end
 
-  @test length(Pumas.epredict(theopmodel_foce, theopp[1], param, 1000).dv) == 11
+  @testset "epredict" begin
+    Random.seed!(123)
+    @test Pumas.epredict(o, nsim=1000)[1].dv ≈ [
+      -0.009486499926587882
+       2.730732462830414
+       4.314322980785372
+       4.856654737084268
+       1.5421045169975245
+    -146.53829323888365
+   -2508.783755427784
+ -211784.65803870826
+      -2.4899564195251968e7
+      -3.9191328978627914e10
+      -3.063904238107589e23] rtol=1e-3
+  end
+
   @test Pumas._predict(  theopmodel_foce, theopp[1], param, Pumas.FOCE()).dv ≈ [
     0.0
     4.9049755499300955
@@ -1084,7 +1114,22 @@ end
     @test ebe_cov[i].η.Σ.mat[:] ≈ focei_ebes_cov[i,:] atol=1e-3
   end
 
-  @test length(Pumas.epredict(theopmodel_focei, theopp[1], param, 1000).dv) == 11
+  @testset "epredict" begin
+    Random.seed!(123)
+    @test Pumas.epredict(o, nsim=1000)[1].dv ≈ [
+       -0.006059507309997296
+       2.604810337054598
+       4.165483661930028
+       4.779324471504899
+       1.922666298338817
+    -119.92850878575545
+   -2087.7315464726044
+ -143843.9651559656
+      -1.2514375387240592e7
+      -2.0014235877248787e10
+      -5.428287229012377e22] rtol=1e-3
+  end
+
   @test_throws ArgumentError Pumas._predict(  theopmodel_focei, theopp[1], param, Pumas.FOCE()).dv
   @test Pumas._predict( theopmodel_focei, theopp[1], param, Pumas.FOCEI()).dv ≈ [
     0.0

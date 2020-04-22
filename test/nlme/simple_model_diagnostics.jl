@@ -66,7 +66,7 @@ param = init_param(mdsl_proportional)
 
 @testset "NPDE" begin
   Random.seed!(123)
-  pnpde = [Pumas.npde(mdsl_proportional, data[i], param, 10000) for i in 1:10]
+  pnpde = [Pumas.npde(mdsl_proportional, data[i], param, nsim=10000) for i in 1:10]
 
   pnpde_ref = [[ 0.1616264843867025 ,  1.676705932336667  ],
                [-1.3793073867704224 , -0.21803736327085665],
@@ -80,13 +80,13 @@ param = init_param(mdsl_proportional)
                [ 0.9066347103972062 ,  0.32206955765069145]]
 
   for (dt, _ref) in zip(data, pnpde_ref)
-    @test Pumas.npde(mdsl_proportional, dt, param, 10000).dv ≈ _ref
+    @test Pumas.npde(mdsl_proportional, dt, param, nsim=10000).dv ≈ _ref
   end
 end
 
 @testset "Expected population predictions" for dt in data
   Random.seed!(123)
-  @test Pumas.epredict(mdsl_proportional, dt, param, 10000).dv ≈ [10.012101953804612, 6.048942906285506] rtol=1e-6
+  @test Pumas.epredict(mdsl_proportional, dt, param, nsim=10000).dv ≈ [10.012101953804612, 6.048942906285506] rtol=1e-6
 end
 
 @testset "_predict(::FO) (PRED)" for
