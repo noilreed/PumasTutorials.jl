@@ -35,10 +35,10 @@ function _build_analytical_problem(m::PumasModel, subject::Subject, tspan, col,
   events = adjust_event(subject.events,col,u0)
   times = sorted_approx_unique(events)
 
-  prob = PKPDAnalyticalProblem{false}(f, Tu0, Ttspan,  events, times, col)
+  prob = AnalyticalPKPDProblem{false}(f, Tu0, Ttspan,  events, times, col)
 end
 
-function DiffEqBase.solve(prob::PKPDAnalyticalProblem,
+function DiffEqBase.solve(prob::AnalyticalPKPDProblem,
                           args...; continuity = :right, kwargs...)
   f = prob.f
   Tu0 = prob.u0
