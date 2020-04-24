@@ -188,7 +188,7 @@ function _orth_empirical_bayes!(
   m::PumasModel,
   subject::Subject,
   param::NamedTuple,
-  ::Union{FO,FOI,LLQuad},
+  ::Union{NaivePooled,FO,FOI,LLQuad},
   args...; kwargs...)
 
   fill!(vrandeffsorth, 0)
@@ -1241,7 +1241,7 @@ function Distributions.fit(m::PumasModel,
     if length(m.random(fixedparam).params) > 0
       vvrandeffsorth     = [zero(_vecmean(m.random(fixedparam))) for subject in population]
     else
-      vvrandeffsorth     = [[] for subject in population]
+      vvrandeffsorth     = [eltype(vparam)[] for subject in population]
     end
     vvrandeffsorth_tmp = [copy(vrandefforths) for vrandefforths in vvrandeffsorth]
     cb(state) = false
@@ -1328,10 +1328,8 @@ function Distributions.fit(m::PumasModel,
   o = optimize_fn(cost, vparam, cb)
 
   # Update the random effects after optimization
-  if !(approx isa FO || approx isa NaivePooled)
-    for (vrandefforths, subject) in zip(vvrandeffsorth, population)
-      _orth_empirical_bayes!(vrandefforths, m, subject, TransformVariables.transform(fixedtrf, opt_minimizer(o)), approx, args...; kwargs...)
-    end
+  for (vrandefforths, subject) in zip(vvrandeffsorth, population)
+    _orth_empirical_bayes!(vrandefforths, m, subject, TransformVariables.transform(fixedtrf, opt_minimizer(o)), approx, args...; kwargs...)
   end
 
   return FittedPumasModel(m, population, o, approx, vvrandeffsorth, args, kwargs, fixedparamset)

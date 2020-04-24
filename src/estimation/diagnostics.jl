@@ -102,6 +102,21 @@ function wresiduals(
   SubjectResidual(wres, iwres, subject, approx)
 end
 
+wresiduals(
+  model::PumasModel,
+  subject::Subject,
+  param::NamedTuple,
+  ::NaivePooled,
+  vrandeffsorth::Union{Nothing, AbstractVector}=nothing,
+  args...; kwargs...) = iwresiduals(
+    model,
+    subject,
+    param,
+    NaivePooled(),
+    vrandeffsorth,
+    args...; kwargs...)
+
+
 function wresiduals(
   model::PumasModel,
   subject::Subject,
@@ -287,17 +302,16 @@ epredict(fpm::FittedPumasModel; nsim=nothing) = [epredict(fpm.model, subject, co
 
 
 # iwresiduals
-## IWRES like
 function iwresiduals(
   m::PumasModel,
   subject::Subject,
   param::NamedTuple,
-  approx::FO,
+  approx::LikelihoodApproximation,
   vrandeffsorth::Union{Nothing, AbstractVector}=nothing,
   args...; kwargs...)
 
    if vrandeffsorth isa Nothing
-     vrandeffsorth = _orth_empirical_bayes(m, subject, param, FO(), args...; kwargs...)
+     vrandeffsorth = _orth_empirical_bayes(m, subject, param, approx, args...; kwargs...)
    end
 
   randeffs = TransformVariables.transform(totransform(m.random(param)), vrandeffsorth)
@@ -308,56 +322,6 @@ function iwresiduals(
   return map(name -> _res[name] ./ std.(dist[name]), NamedTuple{_dv_keys}(_dv_keys))
 end
 
-## ICWRES like
-function iwresiduals(
-  m::PumasModel,
-  subject::Subject,
-  param::NamedTuple,
-  approx::FOCE,
-  vrandeffsorth::Union{Nothing, AbstractVector}=nothing,
-  args...; kwargs...)
-
-  if vrandeffsorth isa Nothing
-    vrandeffsorth = _orth_empirical_bayes(m, subject, param, FOCE(), args...; kwargs...)
-  end
-
-  randeffstransform = totransform(m.random(param))
-  randeffsEBE = TransformVariables.transform(randeffstransform, vrandeffsorth)
-  dist = _derived(m, subject, param, randeffsEBE, args...; kwargs...)
-
-  _dv_keys = keys(subject.observations)
-
-  foreach(_dv_keys) do _key
-    if !_is_homoscedastic(dist[_key])
-      throw(ArgumentError("dispersion parameter is not allowed to depend on the random effects when using FOCE"))
-    end
-    nothing
-  end
-
-  _res = _residuals(subject, dist)
-  return map(name -> _res[name] ./ std.(dist[name]), NamedTuple{_dv_keys}(_dv_keys))
-end
-
-## ICWRESI like
-function iwresiduals(
-  m::PumasModel,
-  subject::Subject,
-  param::NamedTuple,
-  approx::Union{FOCEI,LaplaceI},
-  vrandeffsorth::Union{Nothing, AbstractVector}=nothing,
-  args...;
-  kwargs...)
-
-  if vrandeffsorth isa Nothing
-    vrandeffsorth = _orth_empirical_bayes(m, subject, param, FOCEI(), args...; kwargs...)
-  end
-
-  randeffs = TransformVariables.transform(totransform(m.random(param)), vrandeffsorth)
-  dist = _derived(m, subject, param, randeffs, args...; kwargs...)
-  _dv_keys = keys(subject.observations)
-  _res = _residuals(subject, dist)
-  return map(name -> _res[name] ./ std.(dist[name]), NamedTuple{_dv_keys}(_dv_keys))
-end
 
 """
   eiwres(model, subject, param, simulations_count)
@@ -389,51 +353,18 @@ function _ipredict(
   m::PumasModel,
   subject::Subject,
   param::NamedTuple,
-  approx::FO,
+  approx::LikelihoodApproximation,
   vrandeffsorth::Union{Nothing, AbstractVector}=nothing,
   args...;
   kwargs...)
 
   if vrandeffsorth isa Nothing
-    vrandeffsorth = _orth_empirical_bayes(m, subject, param, FO(), args...; kwargs...)
+    _vrandeffsorth = _orth_empirical_bayes(m, subject, param, approx, args...; kwargs...)
+  else
+    _vrandeffsorth = vrandeffsorth
   end
+  randeffs = TransformVariables.transform(totransform(m.random(param)), _vrandeffsorth)
 
-  randeffs = TransformVariables.transform(totransform(m.random(param)), vrandeffsorth)
-  dist = _derived(m, subject, param, randeffs, args...; kwargs...)
-  return map(d->mean.(d), dist)
-end
-
-function _ipredict(
-  m::PumasModel,
-  subject::Subject,
-  param::NamedTuple,
-  approx::FOCE,
-  vrandeffsorth::Union{Nothing, AbstractVector}=nothing,
-  args...;
-  kwargs...)
-
-  if vrandeffsorth isa Nothing
-    vrandeffsorth = _orth_empirical_bayes(m, subject, param, FOCE(), args...; kwargs...)
-  end
-
-  randeffs = TransformVariables.transform(totransform(m.random(param)), vrandeffsorth)
-  dist = _derived(m, subject, param, randeffs, args...; kwargs...)
-  return map(d->mean.(d), dist)
-end
-
-function _ipredict(
-  m::PumasModel,
-  subject::Subject,
-  param::NamedTuple,
-  approx::Union{FOCEI, LaplaceI},
-  vrandeffsorth::Union{Nothing, AbstractVector}=nothing,
-  args...; kwargs...)
-
-  if vrandeffsorth isa Nothing
-    vrandeffsorth = _orth_empirical_bayes(m, subject, param, FOCEI(), args...; kwargs...)
-  end
-
-  randeffs = TransformVariables.transform(totransform(m.random(param)), vrandeffsorth)
   dist = _derived(m, subject, param, randeffs, args...; kwargs...)
   return map(d->mean.(d), dist)
 end
@@ -534,8 +465,12 @@ function StatsBase.predict(
   args...; kwargs...
   )
 
-  pred = _predict(model, subject, param, approx, vvrandeffsorth, args...; kwargs...)
   ipred = _ipredict(model, subject, param, approx, vvrandeffsorth, args...; kwargs...)
+  if approx isa NaivePooled
+    pred = ipred
+  else
+    pred = _predict(model, subject, param, approx, vvrandeffsorth, args...; kwargs...)
+  end
   SubjectPrediction(pred, ipred, subject, approx)
 end
 
@@ -605,7 +540,7 @@ function empirical_bayes(fpm::FittedPumasModel)
   if fpm.approx ∈ (Pumas.FOCE(), Pumas.FOCEI(), Pumas.LaplaceI())
     ebes = fpm.vvrandeffsorth
     return [TransformVariables.transform(trf, e) for (e, s) in zip(ebes, subjects)]
-  elseif fpm.approx === FO()
+  elseif fpm.approx isa FO
     # estimate under LaplaceI
     return [
       TransformVariables.transform(
@@ -617,6 +552,8 @@ function empirical_bayes(fpm::FittedPumasModel)
           fpm.args...; fpm.kwargs...
         )
       ) for subject in subjects]
+  elseif fpm.approx isa NaivePooled
+    return fill(NamedTuple(), length(fpm.data))
   else
     throw(ArgumentError("empirical_bayes not implemented for $(fpm.approx)"))
   end

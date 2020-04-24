@@ -132,6 +132,9 @@ pmoncl    -0.69962         0.00059607        [-0.70079 ; -0.69845 ]
 --------------------------------------------------------------------
 """
 
+  inspect_np = DataFrame(inspect(fitnp))
+  @test mean(inspect_np.dv_iwres) < 1e-6
+
   fit2s = fit(model, data, param, Pumas.TwoStage())
 
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fit2s) ==
