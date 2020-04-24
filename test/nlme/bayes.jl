@@ -4,40 +4,39 @@ theopp = read_pumas(example_data("event_data/THEOPP"),cvs = [:WT,:SEX])
 
 @testset "Model with analytical solution" begin
   theopmodel_bayes = @model begin
-      @param begin
-        θ ~ Constrained(MvNormal([1.9,0.0781,0.0463,1.5,0.4],
-                                 Diagonal([9025, 15.25, 5.36, 5625, 400])),
-                        lower=[0.1,0.008,0.0004,0.1,0.0001],
-                        upper=[5,0.5,0.09,5,1.5],
-                        init=[1.9,0.0781,0.0463,1.5,0.4]
-                        )
-        Ω ~ InverseWishart(2, fill(0.9,1,1) .* (2 + 1 + 1)) # NONMEM specifies the inverse Wishart in terms of its mode
-        σ ∈ RealDomain(lower=0.0, init=0.388)
-      end
+    @param begin
+      θ ~ Constrained(
+        MvNormal([1.9, 0.0781, 0.0463, 1.5, 0.4], Diagonal([9025, 15.25, 5.36, 5625, 400])),
+        lower=[0.1, 0.008,0.0004,0.1,0.0001],
+        upper=[5, 0.5, 0.09, 5, 1.5],
+        init =[1.9, 0.0781, 0.0463, 1.5, 0.4])
+      Ω ~ InverseWishart(2, fill(0.9, 1, 1) .* (2 + 1 + 1)) # NONMEM specifies the inverse Wishart in terms of its mode
+      σ² ~ Gamma(1.0, 0.388)
+    end
 
-      @random begin
-        η ~ MvNormal(Ω)
-      end
+    @random begin
+      η ~ MvNormal(Ω)
+    end
 
-      @pre begin
-        Ka = (SEX == 1 ? θ[1] : θ[4]) + η[1]
-        K = θ[2]
-        CL  = θ[3]*(WT/70)^θ[5]
-        V = CL/K
-        SC = V/(WT/70)
-      end
+    @pre begin
+      Ka = (SEX == 1 ? θ[1] : θ[4]) + η[1]
+      K  = θ[2]
+      CL = θ[3]*(WT/70)^θ[5]
+      V  = CL/K
+      SC = V/(WT/70)
+    end
 
-      @covariates SEX WT
+    @covariates SEX WT
 
-      @vars begin
-          conc = Central / SC
-      end
+    @vars begin
+      conc = Central / SC
+    end
 
-      @dynamics Depots1Central1
+    @dynamics Depots1Central1
 
-      @derived begin
-          dv ~ @. Normal(conc,sqrt(σ)+eps())
-      end
+    @derived begin
+      dv ~ @. Normal(conc, sqrt(σ²))
+    end
   end
 
   param = Pumas.init_param(theopmodel_bayes)
@@ -47,28 +46,10 @@ theopp = read_pumas(example_data("event_data/THEOPP"),cvs = [:WT,:SEX])
     ldp = Pumas.BayesLogDensity(theopmodel_bayes, theopp)
     vparam_aug = [vparam; zeros(length(theopp)*ldp.dim_rfx)]
     v = Pumas.logdensity(ldp, vparam_aug)
-    @test v ≈ -612.6392449413322 + log(2π)/2*length(theopp)
+    @test v ≈ -601.6652326035172 rtol=1e-5
     vg = Pumas.logdensitygrad(ldp, vparam_aug)
     @test vg[1] ≈ v
-    @test vg[2] ≈ [8.023571333788356
-                 878.2155638921361
-                -763.9131862639041
-                 114.23979126237558
-                   9.92024209941143
-                   1.6
-                 449.2675514859391
-                  29.39690239835657
-                  28.081124185351662
-                  28.928080707496264
-                   7.428841866509832
-                  25.018349868626906
-                  -5.042079192537069
-                 -21.001561268109093
-                  -2.437719761098346
-                  30.403288395312458
-                 -13.08640380207791
-                  20.644305593350005
-                  -7.709095620537834]
+    @test vg[2] ≈ [8.023571333788357, 878.2155638921363, -763.9131862639041, 114.23979126237573, 9.920242099411428, 1.6, 448.2675514859392, 29.396902398356612, 28.081124185351687, 28.928080707496285, 7.428841866509859, 25.018349868626935, -5.042079192537065, -21.001561268109096, -2.4377197610983528, 30.403288395312448, -13.086403802077923, 20.64430559335001, -7.709095620537856] rtol=1e-6
   end
 
   Random.seed!(1)
@@ -83,7 +64,7 @@ theopp = read_pumas(example_data("event_data/THEOPP"),cvs = [:WT,:SEX])
   @test m.θ[4] ≈ 1.73E+00 rtol=0.1
   @test m.θ[5] ≈ 4.32E-01 rtol=0.1
   @test_broken m.Ω[1] ≈ 1.09E+00 rtol=0.1
-  @test m.σ ≈ 1.24E+00 rtol=0.1
+  @test m.σ² ≈ 1.24E+00 rtol=0.1
 
   s = Pumas.param_std(b)
 
@@ -93,7 +74,7 @@ theopp = read_pumas(example_data("event_data/THEOPP"),cvs = [:WT,:SEX])
   @test s.θ[4] ≈ 4.74E-01 rtol=0.2
   @test s.θ[5] ≈ 1.54E-01 rtol=0.1
   @test_broken s.Ω[1] ≈ 7.00E-01 rtol=0.1
-  @test s.σ    ≈ 1.68E-01 rtol=0.2
+  @test s.σ²    ≈ 1.68E-01 rtol=0.2
 
   # Check that the parameters are not interchanged
   c = Pumas.Chains(b)
@@ -103,7 +84,7 @@ theopp = read_pumas(example_data("event_data/THEOPP"),cvs = [:WT,:SEX])
   @test mean(c.value[:, "θ₃"  , 1]) ≈ m.θ[3]
   @test mean(c.value[:, "θ₄"  , 1]) ≈ m.θ[4]
   @test mean(c.value[:, "θ₅"  , 1]) ≈ m.θ[5]
-  @test mean(c.value[:, "σ"   , 1]) ≈ m.σ
+  @test mean(c.value[:, "σ²"  , 1]) ≈ m.σ²
 
 # The MCMC sampler is very sensitive to rounding so we can't enable the test below
 #   @test sprint((io, o) -> show(io, MIME"text/plain"(), o), b) == """
@@ -147,43 +128,42 @@ end
 
 @testset "Model with ODE solver" begin
   theopmodel_bayes2 = @model begin
-      @param begin
-        θ ~ Constrained(MvNormal([1.9,0.0781,0.0463,1.5,0.4],
-                                 Diagonal([9025, 15.25, 5.36, 5625, 400])),
-                        lower=[0.1,0.008,0.0004,0.1,0.0001],
-                        upper=[5,0.5,0.09,5,1.5],
-                        init=[1.9,0.0781,0.0463,1.5,0.4]
-                        )
-        Ω ~ InverseWishart(2, fill(0.9,1,1) .* (2 + 1 + 1)) # NONMEM specifies the inverse Wishart in terms of its mode
-        σ ∈ RealDomain(lower=0.0, init=0.388)
-      end
+    @param begin
+      θ ~ Constrained(
+        MvNormal([1.9, 0.0781, 0.0463, 1.5, 0.4], Diagonal([9025, 15.25, 5.36, 5625, 400])),
+        lower=[0.1, 0.008 , 0.0004, 0.1, 0.0001],
+        upper=[5.0, 0.5   , 0.09,   5.0, 1.5   ],
+        init =[1.9, 0.0781, 0.0463, 1.5, 0.4   ])
+      Ω ~ InverseWishart(2, fill(0.9, 1, 1) .* (2 + 1 + 1)) # NONMEM specifies the inverse Wishart in terms of its mode
+      σ² ~ Gamma(1.0, 0.388)
+    end
 
-      @random begin
-        η ~ MvNormal(Ω)
-      end
+    @random begin
+      η ~ MvNormal(Ω)
+    end
 
-      @pre begin
-        Ka = (SEX == 1 ? θ[1] : θ[4]) + η[1]
-        K = θ[2]
-        CL  = θ[3]*(WT/70)^θ[5]
-        V = CL/K
-        SC = V/(WT/70)
-      end
+    @pre begin
+      Ka = (SEX == 1 ? θ[1] : θ[4]) + η[1]
+      K  = θ[2]
+      CL = θ[3]*(WT/70)^θ[5]
+      V  = CL/K
+      SC = V/(WT/70)
+    end
 
-      @covariates SEX WT
+    @covariates SEX WT
 
-      @vars begin
-          conc = Central / SC
-      end
+    @vars begin
+      conc = Central / SC
+    end
 
-      @dynamics begin
-          Depot'   = -Ka*Depot
-          Central' =  Ka*Depot - K*Central
-      end
+    @dynamics begin
+      Depot'   = -Ka*Depot
+      Central' =  Ka*Depot - K*Central
+    end
 
-      @derived begin
-          dv ~ @. Normal(conc,sqrt(σ))
-      end
+    @derived begin
+      dv ~ @. Normal(conc, sqrt(σ²))
+    end
   end
 
   param2 = Pumas.init_param(theopmodel_bayes2)
@@ -194,28 +174,10 @@ end
                                  reltol = 1e-12, abstol = 1e-12)
     vparam2_aug = [vparam2; zeros(length(theopp)*ldp2.dim_rfx)]
     v2 = Pumas.logdensity(ldp2, vparam2_aug)
-    @test v2 ≈ -612.6392449413325  + log(2π)/2*length(theopp) rtol=1e-6
+    @test v2 ≈ -601.6652326035172 rtol=1e-5
     vg2 = Pumas.logdensitygrad(ldp2, vparam2_aug)
     @test vg2[1] ≈ v2
-    @test vg2[2] ≈ [8.023571333787114,
-                  878.2155638921338,
-                 -763.9131862639034,
-                  114.23979126237346,
-                    9.920242099411354,
-                    1.6,
-                  449.2675514859412,
-                   29.396902398356797,
-                   28.081124185351225,
-                   28.92808070749575,
-                    7.428841866508794,
-                   25.01834986862622,
-                   -5.042079192536745,
-                  -21.00156126810926,
-                   -2.4377197610988577,
-                   30.403288395311726,
-                  -13.086403802077223,
-                   20.644305593350268,
-                   -7.709095620538378] rtol=1e-6
+    @test vg2[2] ≈ [8.023571333788363, 878.2155638921357, -763.9131862639035, 114.23979126237566, 9.92024209941141, 1.6, 448.2675514859386, 29.3969023983566, 28.081124185351666, 28.928080707496267, 7.42884186650985, 25.018349868626917, -5.042079192537063, -21.001561268109082, -2.437719761098352, 30.403288395312426, -13.086403802077914, 20.644305593349998, -7.709095620537853] rtol=1e-6
   end
 
 #   Random.seed!(1)
@@ -282,4 +244,55 @@ end
 # │ 6   │ θ₅         │ 0.293041  │ 0.397551  │ 0.427208  │ 0.508322  │ 0.623495  │
 # │ 7   │ σ          │ 0.570415  │ 1.14983   │ 1.27373   │ 1.43195   │ 3.10419   │
 # """
+end
+
+@testset "Model with no priors" begin
+  theopmodel_bayes = @model begin
+    @param begin
+      θ ∈ VectorDomain(5,
+        lower=[0.1,0.008,0.0004,0.1,0.0001],
+        upper=[5,0.5,0.09,5,1.5],
+        init=[1.9,0.0781,0.0463,1.5,0.4]
+      )
+      Ω  ∈ PSDDomain(1)
+      σ² ~ Uniform(0.0, 2*0.388)
+    end
+
+    @random begin
+      η ~ MvNormal(Ω)
+    end
+
+    @pre begin
+      Ka = (SEX == 1 ? θ[1] : θ[4]) + η[1]
+      K  = θ[2]
+      CL = θ[3]*(WT/70)^θ[5]
+      V  = CL/K
+      SC = V/(WT/70)
+    end
+
+    @covariates SEX WT
+
+    @vars begin
+      conc = Central / SC
+    end
+
+    @dynamics Depots1Central1
+
+    @derived begin
+      dv ~ @. Normal(conc, sqrt(σ²))
+    end
+  end
+
+  param = Pumas.init_param(theopmodel_bayes)
+
+  @testset "Test logdensity" begin
+    vparam = Pumas.TransformVariables.inverse(Pumas.totransform(theopmodel_bayes.param), param)
+    ldp = Pumas.BayesLogDensity(theopmodel_bayes, theopp)
+    vparam_aug = [vparam; zeros(length(theopp)*ldp.dim_rfx)]
+    v = Pumas.logdensity(ldp, vparam_aug)
+    @test v ≈ -582.1757519457573 rtol=1e-5
+    vg = Pumas.logdensitygrad(ldp, vparam_aug)
+    @test vg[1] ≈ v
+    @test vg[2] ≈ [8.023571333788357, 878.2155638921363, -763.9131862639041, 114.23979126237573, 9.920242099411428, 2.0, 224.1337757429696, 29.396902398356612, 28.081124185351687, 28.928080707496285, 7.428841866509859, 25.018349868626935, -5.042079192537065, -21.001561268109096, -2.4377197610983528, 30.403288395312448, -13.086403802077923, 20.64430559335001, -7.709095620537856] rtol=1e-6
+  end
 end

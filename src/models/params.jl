@@ -83,9 +83,11 @@ function Domain(d::MvNormal)
   VectorDomain(fill(-∞, n), fill(∞, n), mean(d))
 end
 Domain(d::InverseWishart) = PSDDomain(Distributions.dim(d))
+Domain(d::Uniform) = RealDomain(lower=minimum(d), upper=maximum(d), init=mean(d))
+Domain(d::Union{Gamma,InverseGamma,Exponential,Chisq}) = RealDomain(lower=zero(partype(d)), upper=∞, init=mean(d))
 
-function Domain(d::ContinuousUnivariateDistribution)
-  RealDomain(minimum(d), maximum(d), median(d))
+function Domain(d::Distribution)
+  throw(ArgumentError("no Domain(::$(typeof(d))) constructor defined"))
 end
 
 
