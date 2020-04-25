@@ -176,7 +176,7 @@ end
 
     grad_FD = FD_gradient(test_fun, θ₀)
     grad_AD = AD_gradient(test_fun, θ₀)
-    @test grad_FD[4] ≈ grad_AD[4]
+    @test grad_FD ≈ grad_AD
 
     grad_FD = FD_hessian(test_fun, θ₀)
     grad_AD = AD_hessian(test_fun, θ₀)
@@ -196,11 +196,34 @@ end
 
     grad_FD = FD_gradient(test_fun, θ₀)
     grad_AD = AD_gradient(test_fun, θ₀)
-    @test grad_FD[4] ≈ grad_AD[4]
+    @test grad_FD ≈ grad_AD
 
     grad_FD = FD_hessian(test_fun, θ₀)
     grad_AD = AD_hessian(test_fun, θ₀)
     @test grad_FD ≈ grad_AD atol=1e-4
+
+    subject = read_pumas(example_data("event_data/data5"), dvs = [:cp])[1]
+
+    θ₀ = [1.5, 1.0, 30.0, 5.0]
+    param = (θ = θ₀,)
+    randeffs = (η = [0.0,0.0],)
+
+    test_fun = function(θ)
+        _param = (θ = θ,)
+        sim = simobs(mlag, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
+        sim[:cp][end]
+    end
+
+    grad_FD = FD_gradient(test_fun, θ₀)
+    grad_AD = AD_gradient(test_fun, θ₀)
+    @test grad_FD[1] ≈ grad_AD[1]
+    @test_broken grad_FD[2] ≈ grad_AD[2]
+    @test_broken grad_FD[3] ≈ grad_AD[3]
+    @test grad_FD[4] ≈ grad_AD[4]
+
+    grad_FD = FD_hessian(test_fun, θ₀)
+    grad_AD = AD_hessian(test_fun, θ₀)
+    @test grad_FD ≈ grad_AD atol=1e-3
 end
 
 @testset "DCP - rate" begin
@@ -240,14 +263,12 @@ end
 
     grad_FD = FD_gradient(test_fun, θ₀)
     grad_AD = AD_gradient(test_fun, θ₀)
-    @test grad_FD[4] ≈ grad_AD[4]
+    @test grad_FD ≈ grad_AD
 
     grad_FD = FD_hessian(test_fun, θ₀)
     grad_AD = AD_hessian(test_fun, θ₀)
     @test grad_FD ≈ grad_AD atol=1e-4
 
-    #=
-    # Steady state is broken
     subject = read_pumas(example_data("event_data/data5"), dvs = [:cp])[1]
 
     θ₀ = [1.5, 1.0, 30.0, 5.0]
@@ -262,12 +283,11 @@ end
 
     grad_FD = FD_gradient(test_fun, θ₀)
     grad_AD = AD_gradient(test_fun, θ₀)
-    @test grad_FD[4] ≈ grad_AD[4]
+    @test grad_FD ≈ grad_AD
 
     grad_FD = FD_hessian(test_fun, θ₀)
     grad_AD = AD_hessian(test_fun, θ₀)
     @test grad_FD ≈ grad_AD atol=1e-4
-    =#
 end
 
 @testset "DCP - duration" begin
@@ -309,14 +329,12 @@ end
 
     grad_FD = FD_gradient(test_fun, θ₀)
     grad_AD = AD_gradient(test_fun, θ₀)
-    @test grad_FD[4] ≈ grad_AD[4]
+    @test grad_FD ≈ grad_AD
 
     grad_FD = FD_hessian(test_fun, θ₀)
     grad_AD = AD_hessian(test_fun, θ₀)
-    @test grad_FD ≈ grad_AD atol=1e-4
+    @test grad_FD ≈ grad_AD atol=1e-3
 
-    #=
-    # Steady State is broken
     subject = read_pumas(example_data("event_data/data5"), dvs = [:cp])[1]
 
     θ₀ = [1.5, 1.0, 30.0, 5.0]
@@ -335,8 +353,7 @@ end
 
     grad_FD = FD_hessian(test_fun, θ₀)
     grad_AD = AD_hessian(test_fun, θ₀)
-    @test grad_FD ≈ grad_AD atol=1e-4
-    =#
+    @test grad_FD ≈ grad_AD atol=1e-3
 end
 
 @testset "DCP - bioav" begin
@@ -376,7 +393,7 @@ end
 
     grad_FD = FD_gradient(test_fun, θ₀)
     grad_AD = AD_gradient(test_fun, θ₀)
-    @test grad_FD[4] ≈ grad_AD[4]
+    @test grad_FD ≈ grad_AD
 
     grad_FD = FD_hessian(test_fun, θ₀)
     grad_AD = AD_hessian(test_fun, θ₀)
@@ -396,14 +413,11 @@ end
 
     grad_FD = FD_gradient(test_fun, θ₀)
     grad_AD = AD_gradient(test_fun, θ₀)
-    @test grad_FD[4] ≈ grad_AD[4]
+    @test grad_FD ≈ grad_AD
 
     grad_FD = FD_hessian(test_fun, θ₀)
     grad_AD = AD_hessian(test_fun, θ₀)
     @test grad_FD ≈ grad_AD atol=1e-4
-
-    #=
-    # Steady state is broken
 
     subject = Subject(evs=DosageRegimen(100,ss=1,rate=10.0,ii=12,cmt=2))
     θ₀ = [1.5, 1.0, 30.0, 0.412]
@@ -435,5 +449,4 @@ end
     grad_FD = FD_gradient(test_fun, θ₀)
     grad_AD = AD_gradient(test_fun, θ₀)
     @test_broken grad_FD[4] ≈ grad_AD[4]
-    =#
 end

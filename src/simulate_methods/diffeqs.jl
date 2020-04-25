@@ -24,7 +24,6 @@ function _build_diffeq_problem(m::PumasModel, subject::Subject, args...;
   # time varying covariates etc)
 
   tstops,_cb,d_discontinuities = ith_subject_cb(col,subject,Tu0,tspan[1],typeof(prob),saveat,save_discont,continuity)
-  # tstops,cb,d_discontinuities = ith_subject_cb(col,subject,Tu0,tspan[1],typeof(prob),saveat,save_discont,continuity)
 
   cb = CallbackSet(_cb, callback)
 
@@ -47,7 +46,7 @@ function _build_diffeq_problem(m::PumasModel, subject::Subject, args...;
 
   # Remake problem of correct type
   remake(m.prob; f=new_f, u0=Tu0, tspan=_tspan, callback=cb, saveat=saveat,
-                 #tstops = tstops,
+                 tstops = tstops,
                  d_discontinuities=d_discontinuities,
                  save_first = !isnothing(saveat) && tspan[1] ∈ saveat)
 end
@@ -99,8 +98,6 @@ function ith_subject_cb(pre,datai::Subject,u0,t0,ProbType,saveat,save_discont,co
   last_restart = Ref(-one(eltype(tstops)))
   save_on_cache = Ref(true)
 
-  cur_tstop = Ref(1)
-
   istimediff = numtype(tstops) <: ForwardDiff.Dual
 
 
@@ -115,8 +112,8 @@ function ith_subject_cb(pre,datai::Subject,u0,t0,ProbType,saveat,save_discont,co
     # this is the same condition as the standard one, rewritten to be a rootfinding
     # condition to connect time to autodiff.
     condition = function (u,t,integrator)
-      cond1 = if cur_tstop[] <= length(tstops)
-        tstops[cur_tstop[]] - t
+      cond1 = if counter <= length(tstops)
+        tstops[counter] - t
       else
         -1
       end
@@ -140,7 +137,6 @@ function ith_subject_cb(pre,datai::Subject,u0,t0,ProbType,saveat,save_discont,co
   end
 
   function affect!(integrator)
-    cur_tstop[] += 1
 
     if ProbType <: DiffEqBase.DDEProblem
       f = integrator.f
@@ -425,9 +421,17 @@ function ss_dose!(integrator,u::Union{SArray,SLArray,FieldVector},cur_ev,ss_rate
   end
 end
 
-
-function subject_cb_initialize!(cb,t,u,integrator)
+function subject_cb_initialize!(cb::ContinuousCallback,t,u,integrator)
   if cb.condition(t,u,integrator) == 0
+    cb.affect!(integrator)
+    u_modified!(integrator,true)
+  else
+    u_modified!(integrator,false)
+  end
+end
+
+function subject_cb_initialize!(cb::DiscreteCallback,t,u,integrator)
+  if cb.condition(t,u,integrator)
     cb.affect!(integrator)
     u_modified!(integrator,true)
   else
