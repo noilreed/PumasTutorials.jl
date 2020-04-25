@@ -343,11 +343,11 @@ function dynamics_obj(odeexpr::Expr, pre, odevars, callvars, bvars, eqs, isstati
     rhseq = eq.args[3]
     push!(mteqs,lhsvar ~ convert_rhs_to_Expression(rhseq,bvars,dvars,params,t))
   end
-
-  f_ex = ModelingToolkit.generate_function(ODESystem(mteqs,dvars,params))[1]
-  J_ex = ModelingToolkit.generate_jacobian(ODESystem(mteqs,dvars,params))[1]
+  sys = ODESystem(mteqs,t,dvars,params)
+  f_ex = ModelingToolkit.generate_function(sys)[1]
+  J_ex = ModelingToolkit.generate_jacobian(sys)[1]
   if length(eqs.args) < 4
-    W_exs = ModelingToolkit.generate_factorized_W(ODESystem(mteqs,dvars,params),false)
+    W_exs = ModelingToolkit.generate_factorized_W(sys,false)
     W_ex = W_exs[1][1]
     W_t_ex = W_exs[2][1]
   else
