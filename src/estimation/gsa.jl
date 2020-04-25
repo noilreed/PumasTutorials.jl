@@ -1,3 +1,25 @@
+"""
+DiffEqSensitivity.gsa(model, population, params, method,
+                    vars, p_range_low, p_range_high, 
+                    args...; kwargs...)
+
+Function to perform global sensitivty analysis
+
+The arguments are:
+
+- `model`: a `PumasModel`, either defined by the `@model` DSL or the function-based
+  interface.
+- `population`: a `Population`.
+- `params`: a named tuple of parameters.
+-  `method`: one of the `GSAMethod`s from DiffEqSensitivity.jl, `Sobol()`, `Morris()`, `eFAST()`, 
+    `RegressionGSA()`. 
+-  `vars`: a list of the derived variables to run GSA on.
+-  `p_range_low` & `p_range_high`: the lower and upper bounds for the parameters you want to run the GSA on.
+
+For method specific arguments that are passed with the method constructor you can refer to the 
+[DiffEqSensitivity.jl](https://docs.sciml.ai/dev/analysis/global_sensitivity/#gsa-1) documentation.
+
+"""
 function DiffEqSensitivity.gsa(m::PumasModel, subject::Subject, params::NamedTuple, method::DiffEqSensitivity.GSAMethod, vars = [:dv], 
                                 p_range_low=NamedTuple{keys(params)}([par.*0.05 for par in values(params)]), 
                                 p_range_high=NamedTuple{keys(params)}([par.*1.95 for par in values(params)]), args...; kwargs...)
