@@ -216,10 +216,7 @@ end
 
     grad_FD = FD_gradient(test_fun, θ₀)
     grad_AD = AD_gradient(test_fun, θ₀)
-    @test grad_FD[1] ≈ grad_AD[1]
-    @test_broken grad_FD[2] ≈ grad_AD[2]
-    @test_broken grad_FD[3] ≈ grad_AD[3]
-    @test grad_FD[4] ≈ grad_AD[4]
+    @test grad_FD ≈ grad_AD
 
     grad_FD = FD_hessian(test_fun, θ₀)
     grad_AD = AD_hessian(test_fun, θ₀)
@@ -349,7 +346,7 @@ end
 
     grad_FD = FD_gradient(test_fun, θ₀)
     grad_AD = AD_gradient(test_fun, θ₀)
-    @test grad_FD[4] ≈ grad_AD[4]
+    @test grad_FD ≈ grad_AD
 
     grad_FD = FD_hessian(test_fun, θ₀)
     grad_AD = AD_hessian(test_fun, θ₀)

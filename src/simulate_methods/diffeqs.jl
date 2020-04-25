@@ -26,9 +26,9 @@ function _build_diffeq_problem(m::PumasModel, subject::Subject, args...;
   tstops,_cb,d_discontinuities = ith_subject_cb(col,subject,Tu0,tspan[1],typeof(prob),saveat,save_discont,continuity)
 
   cb = CallbackSet(_cb, callback)
-
   Tt = promote_type(t_numtype(u0,cb), numtype(tstops), numtype(tspan))
   _tspan = Tt.(tspan)
+  _tstops = typeof(_cb) <: DiscreteCallback ? tstops : Tt[]
 
   # build a "modified" problem using DiffEqWrapper
   fd = DiffEqWrapper(prob.f.f, 0, zero(u0).*_tspan[1])
@@ -46,7 +46,7 @@ function _build_diffeq_problem(m::PumasModel, subject::Subject, args...;
 
   # Remake problem of correct type
   remake(m.prob; f=new_f, u0=Tu0, tspan=_tspan, callback=cb, saveat=saveat,
-                 tstops = tstops,
+                 tstops = _tstops,
                  d_discontinuities=d_discontinuities,
                  save_first = !isnothing(saveat) && tspan[1] ∈ saveat)
 end
