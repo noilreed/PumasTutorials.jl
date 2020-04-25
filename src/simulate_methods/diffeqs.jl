@@ -101,20 +101,43 @@ function ith_subject_cb(pre,datai::Subject,u0,t0,ProbType,saveat,save_discont,co
 
   cur_tstop = Ref(1)
 
-  function condition(u,t,integrator)
-    if cur_tstop[] > length(tstops)
-      t
-    else
-      tstops[cur_tstop[]] - t
+  istimediff = numtype(tstops) <: ForwardDiff.Dual
+
+
+  if !istimediff
+    # searchsorted is empty iff t ∉ target_time
+    # this is a fast way since target_time is sorted
+    condition = function (u,t,integrator)
+      (post_steady_state[] && t == (ss_time[] + ss_overlap_duration[] + ss_dropoff_counter[]*ss_ii[])) ||
+      t == ss_rate_end[] || (ss_mode[] && t == ss_end[] || !isempty(searchsorted(tstops,t)))
+    end
+  else
+    # this is the same condition as the standard one, rewritten to be a rootfinding
+    # condition to connect time to autodiff.
+    condition = function (u,t,integrator)
+      cond1 = if cur_tstop[] <= length(tstops)
+        tstops[cur_tstop[]] - t
+      else
+        -1
+      end
+
+      cond2 = if post_steady_state[]
+        ss_time[] + ss_overlap_duration[] + ss_dropoff_counter[]*ss_ii[] - t
+      else
+        -1
+      end
+
+      cond3 = if ss_mode[]
+        ss_end[] - t
+      else
+        -1
+      end
+
+      cond4 = ss_rate_end[] - t
+
+      cond1*cond2*cond3*cond4
     end
   end
-
-  # searchsorted is empty iff t ∉ target_time
-  # this is a fast way since target_time is sorted
-  #function condition(u,t,integrator)
-  #  (post_steady_state[] && t == (ss_time[] + ss_overlap_duration[] + ss_dropoff_counter[]*ss_ii[])) ||
-  #  t == ss_rate_end[] || (ss_mode[] && t == ss_end[] || !isempty(searchsorted(tstops,t)))
-  #end
 
   function affect!(integrator)
     cur_tstop[] += 1
@@ -337,10 +360,19 @@ function ith_subject_cb(pre,datai::Subject,u0,t0,ProbType,saveat,save_discont,co
     end
   end
   save_positions = save_discont ? (true, true) : (false, false)
-  tstops,ContinuousCallback(condition,affect!,
-                            initialize = subject_cb_initialize!,
-                            save_positions=save_positions,
-                            interp_points=0),d_discontinuities
+
+  if !istimediff
+    cb = DiscreteCallback(condition,affect!,
+                          initialize = subject_cb_initialize!,
+                          save_positions=save_positions)
+  else
+    cb = ContinuousCallback(condition,affect!,
+                              initialize = subject_cb_initialize!,
+                              save_positions=save_positions,
+                              interp_points=0)
+  end
+
+  tstops,cb,d_discontinuities
 end
 
 function dose!(integrator,u,cur_ev,last_restart)
