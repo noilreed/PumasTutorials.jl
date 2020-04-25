@@ -1,15 +1,18 @@
-function DiffEqSensitivity.gsa(m::PumasModel, subject::Subject, params::NamedTuple, method::DiffEqSensitivity.GSAMethod, vars = [:dv], p_range_low=NamedTuple{keys(params)}([par.*0.05 for par in values(params)]), p_range_high=NamedTuple{keys(params)}([par.*1.95 for par in values(params)]), args...; kwargs...)
-    vlowparam = TransformVariables.inverse(toidentitytransform(m.param), p_range_low)
-    vhighparam = TransformVariables.inverse(toidentitytransform(m.param), p_range_high)
-    p_range = [[vlowparam[i], vhighparam[i]] for i in 1:length(vlowparam)]
+function DiffEqSensitivity.gsa(m::PumasModel, subject::Subject, params::NamedTuple, method::DiffEqSensitivity.GSAMethod, vars = [:dv], 
+                                p_range_low=NamedTuple{keys(params)}([par.*0.05 for par in values(params)]), 
+                                p_range_high=NamedTuple{keys(params)}([par.*1.95 for par in values(params)]), args...; kwargs...)
 
-    trf_ident = toidentitytransform(m.param)
+    vlowparam = values(p_range_low)
+    vhighparam = values(p_range_high)
+    p_range = [[vlowparam[i], vhighparam[i]] for i in 1:length(vlowparam)]
+    symparsnotsa = setdiff(keys(params), keys(p_range_low))
+    par_vals = [params[sym] for sym in symparsnotsa]
 
     sim_ = simobs(m, subject, params, args...; kwargs...)
     length_vars = [length(sim_.observed[key]) for key in vars]
 
     function f(p)
-        param = TransformVariables.transform(trf_ident, p)
+        param = NamedTuple{Tuple(vcat(symparsnotsa...,keys(p_range_low)...))}(vcat(par_vals..., p...))
         sim = simobs(m, subject, param, args...; kwargs...)
         collect(Iterators.flatten([sim.observed[key] for key in vars])) 
     end
@@ -19,18 +22,21 @@ function DiffEqSensitivity.gsa(m::PumasModel, subject::Subject, params::NamedTup
     return sens_result(sensitivity, p_range_low, vars, length_vars)
 end
 
-function DiffEqSensitivity.gsa(m::PumasModel, population::Population, params::NamedTuple, method::DiffEqSensitivity.GSAMethod, vars = [:dv], p_range_low=NamedTuple{keys(params)}([par.*0.05 for par in values(params)]), p_range_high=NamedTuple{keys(params)}([par.*1.95 for par in values(params)]), args...; kwargs...)
-    vlowparam = TransformVariables.inverse(toidentitytransform(m.param), p_range_low)
-    vhighparam = TransformVariables.inverse(toidentitytransform(m.param), p_range_high)
+function DiffEqSensitivity.gsa(m::PumasModel, population::Population, params::NamedTuple, method::DiffEqSensitivity.GSAMethod, vars = [:dv], 
+                                p_range_low=NamedTuple{keys(params)}([par.*0.05 for par in values(params)]), 
+                                p_range_high=NamedTuple{keys(params)}([par.*1.95 for par in values(params)]), args...; kwargs...)
+    
+    vlowparam = values(p_range_low)
+    vhighparam = values(p_range_high)
     p_range = [[vlowparam[i], vhighparam[i]] for i in 1:length(vlowparam)]
-
-    trf_ident = toidentitytransform(m.param)
+    symparsnotsa = setdiff(keys(params), keys(p_range_low))
+    par_vals = [params[sym] for sym in symparsnotsa]
 
     sim_ = simobs(m, population, params, args...; kwargs...)
     length_vars = [length(sim_[1].observed[key]) for key in vars]
 
     function f(p)
-        param = TransformVariables.transform(trf_ident, p)
+        param = NamedTuple{Tuple(vcat(symparsnotsa...,keys(p_range_low)...))}(vcat(par_vals..., p...))
         sim = simobs(m, population, param, args...; kwargs...)
         mean([collect(Iterators.flatten([sim[i].observed[key] for key in vars])) for i in 1:length(sim)])
     end
