@@ -1,0 +1,170 @@
+---
+title: Global Sensitivity Analysis on HCV model
+author: Vaibhav Dixit
+date: April 25, 2020
+---
+
+```julia
+using Pumas, DiffEqSensitivity, Plots
+```
+
+# Introduction
+
+In this tutorial, we will cover running global sensitivity analysis on the HCV model.
+
+### Model Code
+
+```julia
+peg_inf_model = @model begin
+
+  @param begin
+    logθKa   ∈  RealDomain()
+    logθKe   ∈  RealDomain()
+    logθVd   ∈  RealDomain()
+    logθn    ∈  RealDomain()
+    logθδ    ∈  RealDomain()
+    logθc    ∈  RealDomain()
+    logθEC50 ∈  RealDomain()
+    ω²Ka   ∈ RealDomain(lower=0.0)
+    ω²Ke   ∈ RealDomain(lower=0.0)
+    ω²Vd   ∈ RealDomain(lower=0.0)
+    ω²n    ∈ RealDomain(lower=0.0)
+    ω²δ    ∈ RealDomain(lower=0.0)
+    ω²c    ∈ RealDomain(lower=0.0)
+    ω²EC50 ∈ RealDomain(lower=0.0)
+    σ²PK ∈ RealDomain(lower=0.0)
+    σ²PD ∈ RealDomain(lower=0.0)
+  end
+
+  @random begin
+    ηKa   ~ Normal(0.0, sqrt(ω²Ka))
+    ηKe   ~ Normal(0.0, sqrt(ω²Ke))
+    ηVd   ~ Normal(0.0, sqrt(ω²Vd))
+    ηn    ~ Normal(0.0, sqrt(ω²n))
+    ηδ    ~ Normal(0.0, sqrt(ω²δ))
+    ηc    ~ Normal(0.0, sqrt(ω²c))
+    ηEC50 ~ Normal(0.0, sqrt(ω²EC50))
+  end
+
+  @pre begin
+    # constants
+    p = 100.0
+    d = 0.001
+    e = 1e-7
+    s = 20000.0
+    logKa   = logθKa   + ηKa
+    logKe   = logθKe   + ηKe
+    logVd   = logθVd   + ηVd
+    logn    = logθn    + ηn
+    logδ    = logθδ    + ηδ
+    logc    = logθc    + ηc
+    logEC50 = logθEC50 + ηEC50
+  end
+
+  @init begin
+    T = exp(logc + logδ)/(p*e)
+    I = (s*e*p - d*exp(logc + logδ))/(p*exp(logδ)*e)
+    W = (s*e*p - d*exp(logc + logδ))/(exp(logc + logδ)*e)
+  end
+
+  @dynamics begin
+    X' = -exp(logKa)*X
+    A' = exp(logKa)*X - exp(logKe)*A
+    T' = s - T*(e*W + d)
+    I' = e*W*T - exp(logδ)*I
+    W' = p/((A/exp(logVd)/exp(logEC50) + 1e-100)^exp(logn) + 1)*I - exp(logc)*W
+  end
+
+  @derived begin
+    conc   = @. A/exp(logVd)
+    log10W = @. log10(max.(W, 1e-5))
+    yPK ~ @. Normal(A/exp(logVd), sqrt(σ²PK))
+    yPD ~ @. Normal(log10W, sqrt(σ²PD))
+    nca1 := @nca conc
+    cmax_pk = NCA.cmax(nca1)
+    nca2 := @nca log10W
+    cmax_pd = NCA.cmax(nca2)
+  end
+
+end
+```
+
+We generate a population to simulate with.  
+
+```julia
+  peg_inf_dr = DosageRegimen(180.0, ii=7.0, addl=3, duration=1.0)
+  t = collect(0.0:1.0:28.0)
+  _pop = map(i -> Subject(id=i, obs=(yPK=[], yPD=[]), evs=peg_inf_dr, time=t), 1:3)
+```
+
+### GSA
+
+Let's define the parameters now, we'll fix the ω parameters to neutralize effect of random effects and run the GSA only on the population parameters 
+`logθKa` ,`logθKe` ,`logθVd` ,`logθn` ,`logθδ` ,`logθc` and `logθEC50`. 
+
+```julia
+  param_PKPD = (
+    logθKa   = log(0.80),
+    logθKe   = log(0.15),
+    logθVd   = log(100.0),
+    logθn    = log(2.0),
+    logθδ    = log(0.20),
+    logθc    = log(7.0),
+    logθEC50 = log(0.12),
+    # random effects variance parameters, set to 0 to neutralize effect of random effects
+    ω²Ka   = 0.0,
+    ω²Ke   = 0.0,
+    ω²Vd   = 0.0,
+    ω²n    = 0.0,
+    ω²δ    = 0.0,
+    ω²c    = 0.0,
+    ω²EC50 = 0.0,
+    # variance parameter in proportional error model
+    σ²PK = 0.04,
+    σ²PD = 0.04)
+```
+
+We'll run the Morris method and Sobol method. The derived variables `cmax_pk` and `cmax_pd` which are CMAX outputs of NCA will be analysed.
+
+Let's take a look at the simulation of the model to ensure everything is working as expected.
+
+```julia
+  simdata = simobs(peg_inf_model, _pop, param_PKPD, ensemblealg = EnsembleSerial())
+```
+
+To run the GSA we'll define the parameter ranges for our parameters of interest. Let's set the range between half and twice of the initial values.
+
+```julia
+  p_range_low =  (logθKa   = log(0.80)/2,
+                  logθKe   = log(0.15)/2,
+                  logθVd   = log(100.0)/2,
+                  logθn    = log(2.0)/2,
+                  logθδ    = log(0.20)/2,
+                  logθc    = log(7.0)/2,
+                  logθEC50 = log(0.12)/2, )
+
+  p_range_high = (logθKa   = log(0.80)*2,
+                  logθKe   = log(0.15)*2,
+                  logθVd   = log(100.0)*2,
+                  logθn    = log(2.0)*2,
+                  logθδ    = log(0.20)*2,
+                  logθc    = log(7.0)*2,
+                  logθEC50 = log(0.12)*2, )
+
+```
+
+Now, we are ready to run GSA on our model. 
+
+First, the Morris Method.
+
+```julia
+  morris_ = Pumas.gsa(peg_inf_model,_pop,param_PKPD,DiffEqSensitivity.Morris(),[:cmax_pk,:cmax_pd],p_range_low,p_range_high)
+```
+
+The Sobol Method
+
+```julia
+  sobol_ = Pumas.gsa(peg_inf_model,_pop,param_PKPD,DiffEqSensitivity.Sobol(),[:cmax_pk,:cmax_pd],p_range_low,p_range_high,N=1000)
+```
+
+
