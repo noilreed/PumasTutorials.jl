@@ -428,8 +428,12 @@ end
     end
 
     grad_FD = FD_gradient(test_fun, θ₀)
-    @test_broken AD_gradient(test_fun, θ₀) isa Vector
-    #@test grad_FD[4] ≈ grad_AD[4]
+    grad_AD = AD_gradient(test_fun, θ₀)
+    @test grad_FD ≈ grad_AD
+
+    grad_FD = FD_hessian(test_fun, θ₀)
+    grad_AD = AD_hessian(test_fun, θ₀)
+    @test grad_FD ≈ grad_AD atol=1e-4
 
     # Test 5 of template_model_ev_system.jl
     subject = read_pumas(example_data("event_data/data5"), dvs = [:cp])[1]
@@ -445,5 +449,9 @@ end
 
     grad_FD = FD_gradient(test_fun, θ₀)
     grad_AD = AD_gradient(test_fun, θ₀)
-    @test_broken grad_FD[4] ≈ grad_AD[4]
+    @test grad_FD ≈ grad_AD
+
+    grad_FD = FD_hessian(test_fun, θ₀)
+    grad_AD = AD_hessian(test_fun, θ₀)
+    @test grad_FD ≈ grad_AD atol=1e-4
 end

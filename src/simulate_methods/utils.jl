@@ -23,26 +23,27 @@ const DEFAULT_BIOAV = 1
 const DEFAULT_LAGS = 0
 
 function _adjust_event(ev::Event,u0,lags,bioav,rate,duration)
+  _bioav = _cmt_value(ev, u0, bioav, DEFAULT_BIOAV)
   if ev.rate == -2
     if rate != DEFAULT_RATE
       _rate = rate
       _duration = ev.amt
       _duration /= _cmt_value(ev, u0, rate, DEFAULT_RATE)
-      _duration *= _cmt_value(ev, u0, bioav, DEFAULT_BIOAV)
+      _duration *= _bioav
     elseif duration != DEFAULT_DURATION
       _duration = _cmt_value(ev, u0, duration, DEFAULT_DURATION)
       _rate = ev.amt/_duration
-      _rate *= _cmt_value(ev, u0, bioav, DEFAULT_BIOAV)
+      _rate *= _bioav
     else
       throw(ArgumentError("either rate or duration should be set in the @pre block when the Event rate is -2"))
     end
   else # both are zero
     _rate = ev.rate
     _duration = ev.amt/ev.rate
-    _duration *= _cmt_value(ev, u0, bioav, DEFAULT_BIOAV)
+    _duration *= _bioav
   end
 
-  _amt = ev.amt * _cmt_value(ev, u0, bioav, DEFAULT_BIOAV)
+  _amt = ev.amt * _bioav
 
   if ev.rate_dir == -1
     time = ev.base_time + _duration
@@ -51,6 +52,9 @@ function _adjust_event(ev::Event,u0,lags,bioav,rate,duration)
   end
 
   time += _cmt_value(ev, u0, lags, DEFAULT_LAGS)
+
+  # Couple the duals of bioav to time to allow differentiation when rate+
+  time *= (_bioav/_bioav)
   Event(_amt, time, ev.evid, ev.cmt, _rate, _duration, ev.ss, ev.ii, ev.base_time, ev.rate_dir)
 end
 
