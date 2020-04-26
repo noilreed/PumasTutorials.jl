@@ -10,6 +10,10 @@ using Base.Threads # for bootstrap
 using AdvancedHMC: DiagEuclideanMetric, Hamiltonian, NUTS, Leapfrog, find_good_stepsize, StanHMCAdaptor, MassMatrixAdaptor, StepSizeAdaptor, MultinomialTS, GeneralisedNoUTurn
 using StatsFuns: logistic
 
+using DataStructures: OrderedDict, OrderedSet
+using MacroTools
+using ModelingToolkit
+
 import MCMCChains: Chains
 
 import DiffResults: DiffResult

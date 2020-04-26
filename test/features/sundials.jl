@@ -405,3 +405,6 @@ appx = TestSolution(lowtolsol)
 
 sol_cvode = solve(pbpk_iip, sub_p, p, alg=CVODE_BDF(), abstol=1e-12, reltol=1e-12)
 @test DiffEqDevTools.appxtrue(sol_cvode,appx).errors[:l2] < 1e-8
+
+dsl_switch = solve(model, sub_p, p, alg=Rodas5())
+@test dsl_switch.u[1] isa Pumas.LArray

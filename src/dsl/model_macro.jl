@@ -1,6 +1,4 @@
-using DataStructures: OrderedDict, OrderedSet
-using MacroTools
-using ModelingToolkit
+const IIP_SIZE = 13
 
 islinenum(x) = x isa LineNumberNode
 function nt_expr(set, prefix=nothing)
@@ -278,9 +276,15 @@ function init_obj(ode_init,odevars,prevars,isstatic)
     for p in odevars
       push!(vecexpr, ode_init[p])
     end
-    uType = SLArray{Tuple{length(odevars)},(odevars...,)}
-    typeexpr = :($uType())
-    append!(typeexpr.args,vecexpr)
+    if length(odevars) < IIP_SIZE
+      typeexpr = :(Pumas.LabelledArrays.SLArray{Tuple{$(length(odevars))},($(Meta.quot.(odevars)...),)}())
+      append!(typeexpr.args,vecexpr)
+    else
+
+      typeexpr = :(Pumas.LabelledArrays.LArray{($(Meta.quot.(odevars)...),)}([]))
+      append!(typeexpr.args[2].args,vecexpr)
+    end
+
     quote
       function (_pre,t)
         # since _pre is a function, we will unpack prevars (on the left hand side)
@@ -317,7 +321,16 @@ function dynamics_obj(odeexpr::Expr, pre, odevars, callvars, bvars, eqs, isstati
   Wname = gensym(:PumasWFactFunction)
   W_tname = gensym(:PumasW_tFactFunction)
   funcname = gensym(:PumasODEFunction)
-  diffeq = :(ODEProblem{false}($funcname,nothing,nothing,nothing))
+
+  if length(odevars) < IIP_SIZE
+    iip = false
+    funcindex = 1
+  else
+    iip = true
+    funcindex = 2
+  end
+
+  diffeq = :(ODEProblem{$iip}($funcname,nothing,nothing,nothing))
 
   # DVar - create array of dynamic variables
   # Combines symbols (v's), the Variable constructor and
@@ -344,12 +357,12 @@ function dynamics_obj(odeexpr::Expr, pre, odevars, callvars, bvars, eqs, isstati
     push!(mteqs,lhsvar ~ convert_rhs_to_Expression(rhseq,bvars,dvars,params,t))
   end
   sys = ODESystem(mteqs,t,dvars,params)
-  f_ex = ModelingToolkit.generate_function(sys)[1]
-  J_ex = ModelingToolkit.generate_jacobian(sys)[1]
+  f_ex = ModelingToolkit.generate_function(sys)[funcindex]
+  J_ex = ModelingToolkit.generate_jacobian(sys)[funcindex]
   if length(eqs.args) < 4
     W_exs = ModelingToolkit.generate_factorized_W(sys)
-    W_ex = W_exs[1][1]
-    W_t_ex = W_exs[2][1]
+    W_ex = W_exs[1][funcindex]
+    W_t_ex = W_exs[2][funcindex]
   else
     W_ex = :nothing
     W_t_ex = :nothing
