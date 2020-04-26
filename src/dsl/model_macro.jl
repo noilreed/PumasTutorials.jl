@@ -379,11 +379,10 @@ function dynamics_obj(odeexpr::Expr, pre, odevars, callvars, bvars, eqs, isstati
   quote
     let
       $fname = $f_ex
-      #$jname = $J_ex
-      #$Wname = $W_ex
-      #$W_tname = $W_t_ex
-      #$funcname = ODEFunction($fname,jac=$jname,Wfact=$Wname,Wfact_t=$W_tname)
-      $funcname = ODEFunction($fname)
+      $jname = $J_ex
+      $Wname = $W_ex
+      $W_tname = $W_t_ex
+      $funcname = ODEFunction($fname,jac=$jname,Wfact=$Wname,Wfact_t=$W_tname)
       $diffeq
     end
   end
