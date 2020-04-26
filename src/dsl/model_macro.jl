@@ -309,9 +309,9 @@ function dynamics_obj(odeexpr::Expr, pre, odevars, callvars, bvars, eqs, isstati
   odeexpr == :() && return nothing
 
   # dvars and params are Operations (does params still have to now that pre is "pre-evaluated" in the wrapper function?)
-  dvars = []
-  params = []
-  mteqs = []
+  dvars = Operation[]
+  params = Operation[]
+  mteqs = Equation[]
   fname = gensym(:PumasDiffEqFunction)
   jname = gensym(:PumasJacobianFunction)
   Wname = gensym(:PumasWFactFunction)
@@ -347,7 +347,7 @@ function dynamics_obj(odeexpr::Expr, pre, odevars, callvars, bvars, eqs, isstati
   f_ex = ModelingToolkit.generate_function(sys)[1]
   J_ex = ModelingToolkit.generate_jacobian(sys)[1]
   if length(eqs.args) < 4
-    W_exs = ModelingToolkit.generate_factorized_W(sys,false)
+    W_exs = ModelingToolkit.generate_factorized_W(sys)
     W_ex = W_exs[1][1]
     W_t_ex = W_exs[2][1]
   else
