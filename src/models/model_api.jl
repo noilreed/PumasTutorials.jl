@@ -129,8 +129,8 @@ function _problem(m::PumasModel, subject, col, args...;
     pksol = solve(_prob1,args...;kwargs...)
     function _col(t)
       col_t = col(t)
-      ___pk = pksol(t)
-      (col_t..., ___pk...)
+      ___pk = convert(NamedTuple,pksol(t))
+      merge(col_t, ___pk)
     end
     u0  = m.init(col, tspan[1])
 
