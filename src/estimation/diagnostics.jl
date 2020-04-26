@@ -434,6 +434,11 @@ function StatsBase.aic(m::PumasModel,
   2*(marginal_nll(m, data, param, approx, args...; kwargs...) + numparam)
 end
 
+"""
+    aic(fpm::FittedPumasModel)
+
+Calculate the Akaike information criterion (AIC) of the fitted Pumas model `fpm`.
+"""
 StatsBase.aic(fpm::FittedPumasModel) = aic(fpm.model, fpm.data, coef(fpm), fpm.approx; fpm.kwargs...)
 
 function StatsBase.bic(m::PumasModel,
@@ -446,6 +451,11 @@ function StatsBase.bic(m::PumasModel,
   2*marginal_nll(m, data, param, approx, args...; kwargs...) + numparam*log(sum(t -> length(t.time), data))
 end
 
+"""
+    bic(fpm::FittedPumasModel)
+
+Calculate the Bayesian information criterion (BIC) of the fitted Pumas model `fpm`.
+"""
 StatsBase.bic(fpm::FittedPumasModel) = bic(fpm.model, fpm.data, coef(fpm), fpm.approx, ; fpm.kwargs...)
 
 ### Predictions
