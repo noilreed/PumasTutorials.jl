@@ -18,13 +18,13 @@ In this tutorial, we will cover running global sensitivity analysis on the HCV m
 peg_inf_model = @model begin
 
   @param begin
-    logθKa   ∈  RealDomain()
-    logθKe   ∈  RealDomain()
-    logθVd   ∈  RealDomain()
-    logθn    ∈  RealDomain()
-    logθδ    ∈  RealDomain()
-    logθc    ∈  RealDomain()
-    logθEC50 ∈  RealDomain()
+    logKa   ∈  RealDomain()
+    logKe   ∈  RealDomain()
+    logVd   ∈  RealDomain()
+    logn    ∈  RealDomain()
+    logd    ∈  RealDomain()
+    logc    ∈  RealDomain()
+    logEC50 ∈  RealDomain()
     ω²Ka   ∈ RealDomain(lower=0.0)
     ω²Ke   ∈ RealDomain(lower=0.0)
     ω²Vd   ∈ RealDomain(lower=0.0)
@@ -52,26 +52,26 @@ peg_inf_model = @model begin
     d = 0.001
     e = 1e-7
     s = 20000.0
-    logKa   = logθKa   + ηKa
-    logKe   = logθKe   + ηKe
-    logVd   = logθVd   + ηVd
-    logn    = logθn    + ηn
-    logδ    = logθδ    + ηδ
-    logc    = logθc    + ηc
-    logEC50 = logθEC50 + ηEC50
+    logKa   = logKa   + ηKa
+    logKe   = logKe   + ηKe
+    logVd   = logVd   + ηVd
+    logn    = logn    + ηn
+    logd    = logd    + ηδ
+    logc    = logc    + ηc
+    logEC50 = logEC50 + ηEC50
   end
 
   @init begin
-    T = exp(logc + logδ)/(p*e)
-    I = (s*e*p - d*exp(logc + logδ))/(p*exp(logδ)*e)
-    W = (s*e*p - d*exp(logc + logδ))/(exp(logc + logδ)*e)
+    T = exp(logc + logd)/(p*e)
+    I = (s*e*p - d*exp(logc + logd))/(p*exp(logd)*e)
+    W = (s*e*p - d*exp(logc + logd))/(exp(logc + logd)*e)
   end
 
   @dynamics begin
     X' = -exp(logKa)*X
     A' = exp(logKa)*X - exp(logKe)*A
     T' = s - T*(e*W + d)
-    I' = e*W*T - exp(logδ)*I
+    I' = e*W*T - exp(logd)*I
     W' = p/((A/exp(logVd)/exp(logEC50) + 1e-100)^exp(logn) + 1)*I - exp(logc)*W
   end
 
@@ -92,7 +92,7 @@ end
 We generate a population to simulate with.
 
 ```julia
-peg_inf_dr = DosageRegimen(180.0, ii=7.0, addl=3, duration=1.0)
+peg_inf_dr = DosageRegimen(180.0)
 t = collect(0.0:1.0:28.0)
 _pop = map(i -> Subject(id=i, obs=(yPK=[], yPD=[]), evs=peg_inf_dr, time=t), 1:3)
 ```
@@ -100,17 +100,17 @@ _pop = map(i -> Subject(id=i, obs=(yPK=[], yPD=[]), evs=peg_inf_dr, time=t), 1:3
 ### GSA
 
 Let's define the parameters now, we'll fix the ω parameters to neutralize effect of random effects and run the GSA only on the population parameters
-`logθKa` ,`logθKe` ,`logθVd` ,`logθn` ,`logθδ` ,`logθc` and `logθEC50`.
+`logKa` ,`logKe` ,`logVd` ,`logn` ,`logd` ,`logc` and `logEC50`.
 
 ```julia
 param_PKPD = (
-  logθKa   = log(0.80),
-  logθKe   = log(0.15),
-  logθVd   = log(100.0),
-  logθn    = log(2.0),
-  logθδ    = log(0.20),
-  logθc    = log(7.0),
-  logθEC50 = log(0.12),
+  logKa   = log(0.80),
+  logKe   = log(0.15),
+  logVd   = log(100.0),
+  logn    = log(2.0),
+  logd    = log(0.20),
+  logc    = log(7.0),
+  logEC50 = log(0.12),
   # random effects variance parameters, set to 0 to neutralize effect of random effects
   ω²Ka   = 0.0,
   ω²Ke   = 0.0,
@@ -135,34 +135,65 @@ simdata = simobs(peg_inf_model, _pop, param_PKPD, ensemblealg = EnsembleSerial()
 To run the GSA we'll define the parameter ranges for our parameters of interest. Let's set the range between half and twice of the initial values.
 
 ```julia
-p_range_low =  (logθKa   = log(0.80)/2,
-                logθKe   = log(0.15)/2,
-                logθVd   = log(100.0)/2,
-                logθn    = log(2.0)/2,
-                logθδ    = log(0.20)/2,
-                logθc    = log(7.0)/2,
-                logθEC50 = log(0.12)/2, )
+p_range_low =  (logKa   = log(0.80)/2,
+                logKe   = log(0.15)/2,
+                logVd   = log(100.0)/2,
+                logn    = log(2.0)/2,
+                logd    = log(0.20)/2,
+                logc    = log(7.0)/2,
+                logEC50 = log(0.12)/2, )
 
-p_range_high = (logθKa   = log(0.80)*2,
-                logθKe   = log(0.15)*2,
-                logθVd   = log(100.0)*2,
-                logθn    = log(2.0)*2,
-                logθδ    = log(0.20)*2,
-                logθc    = log(7.0)*2,
-                logθEC50 = log(0.12)*2, )
+p_range_high = (logKa   = log(0.80)*2,
+                logKe   = log(0.15)*2,
+                logVd   = log(100.0)*2,
+                logn    = log(2.0)*2,
+                logd    = log(0.20)*2,
+                logc    = log(7.0)*2,
+                logEC50 = log(0.12)*2, )
 
 ```
 
 Now, we are ready to run GSA on our model.
 
-First, the Morris Method.
+
+#### The Morris Method.
 
 ```julia
 morris_ = Pumas.gsa(peg_inf_model,_pop,param_PKPD,DiffEqSensitivity.Morris(),[:cmax_pk,:cmax_pd],p_range_low,p_range_high)
 ```
+Let's create bar plots of the means of Morris Method output to visualize the output.
 
-The Sobol Method
+```julia
+keys_ = [keys(p_range_low)...]
+cmax_pk_meansstar = [morris_.means_star[1,:][key] for key in keys_]
+cmax_pd_meansstar = [morris_.means_star[2,:][key] for key in keys_]
+
+plot_pk = bar(string.(keys_), cmax_pk_meansstar, xaxis ="Parameters", title="Cmax PK Morris means", leg=false)
+plot_pd = bar(string.(keys_), cmax_pd_meansstar, xaxis ="Parameters", title="Cmax PD Morris means", leg=false)
+plot(plot_pk, plot_pd)
+```
+
+#### The Sobol Method
 
 ```julia
 sobol_ = Pumas.gsa(peg_inf_model,_pop,param_PKPD,DiffEqSensitivity.Sobol(),[:cmax_pk,:cmax_pd],p_range_low,p_range_high,N=1000)
+```
+We use heatmaps to visualize the Sobol output
+
+```julia
+cmax_pk_s1 = [sobol_.first_order[1,:][key] for key in keys_]
+cmax_pd_s1 = [sobol_.first_order[2,:][key] for key in keys_]
+cmax_s1 = hcat(cmax_pk_s1, cmax_pd_s1)
+plot_s1 = heatmap(["Cmax_PK","Cmax_PD"], string.(keys_), cmax_s1, title="First Order Indices",fillcolor=:balance)
+
+cmax_pk_st = [sobol_.total_order[1,:][key] for key in keys_]
+cmax_pd_st = [sobol_.total_order[2,:][key] for key in keys_]
+cmax_st = hcat(cmax_pk_st, cmax_pd_st)
+plot_st = heatmap(["Cmax_PK","Cmax_PD"], string.(keys_), cmax_st, title = "Total Order Indices",fillcolor=:balance)
+plot(plot_s1, plot_st)
+```
+
+```julia{echo=false,skip="notebook"}
+using PumasTutorials
+PumasTutorials.tutorial_footer(WEAVE_ARGS[:folder],WEAVE_ARGS[:file])
 ```
