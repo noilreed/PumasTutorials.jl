@@ -208,6 +208,11 @@ function NCASubject(conc, time;
              auc_proto, auc_proto, aumc_proto, :___, :Success)
 end
 
+"""
+    showunits(nca:NCASubject[, indent])
+
+Prints the units of concentration, time, auc, aumc, λz, and dose for `nca`. The optional argument `indent` adds `indent` number of spaces to the left of the list.
+"""
 showunits(nca::NCASubject, args...) = showunits(stdout, nca, args...)
 function showunits(io::IO, subj::NCASubject{C,TT,T,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,V,R,RT}, indent=0) where {C,TT,T,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,V,R,RT}
   pad   = " "^indent
