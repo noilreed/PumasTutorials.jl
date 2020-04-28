@@ -162,6 +162,25 @@ end
         end
     end
 
+    mlaga = @model begin
+        @param    θ ∈ VectorDomain(4, lower=zeros(4), init=ones(4))
+        @random   η ~ MvNormal(Matrix{Float64}(I, 2, 2))
+
+        @pre begin
+            Ka = θ[1]
+            CL = θ[2]*exp(η[1])
+            V  = θ[3]*exp(η[2])
+            lags = θ[4]
+        end
+
+        @dynamics Depots1Central1
+
+        @derived begin
+            cp = @. Central / V
+            cmax = maximum(cp)
+        end
+    end
+
     subject = Subject(evs=DosageRegimen(100))#read_pumas(example_data("event_data/data2"), dvs = [:cp])[1]
 
     θ₀ = [1.5, 1.0, 30.0, 5.0]
@@ -171,6 +190,20 @@ end
     test_fun = function(θ)
         _param = (θ = θ,)
         sim = simobs(mlag, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
+        sim[:cp][end]
+    end
+
+    grad_FD = FD_gradient(test_fun, θ₀)
+    grad_AD = AD_gradient(test_fun, θ₀)
+    @test grad_FD ≈ grad_AD
+
+    grad_FD = FD_hessian(test_fun, θ₀)
+    grad_AD = AD_hessian(test_fun, θ₀)
+    @test grad_FD ≈ grad_AD atol=1e-4
+
+    test_fun = function(θ)
+        _param = (θ = θ,)
+        sim = simobs(mlaga, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
         sim[:cp][end]
     end
 
@@ -202,6 +235,20 @@ end
     grad_AD = AD_hessian(test_fun, θ₀)
     @test grad_FD ≈ grad_AD atol=1e-4
 
+    test_fun = function(θ)
+        _param = (θ = θ,)
+        sim = simobs(mlaga, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
+        sim[:cp][end] # cmax doesn't actually change w.r.t. lag
+    end
+
+    grad_FD = FD_gradient(test_fun, θ₀)
+    grad_AD = AD_gradient(test_fun, θ₀)
+    @test grad_FD ≈ grad_AD
+
+    grad_FD = FD_hessian(test_fun, θ₀)
+    grad_AD = AD_hessian(test_fun, θ₀)
+    @test grad_FD ≈ grad_AD atol=1e-4
+
     subject = read_pumas(example_data("event_data/data5"), dvs = [:cp])[1]
 
     θ₀ = [1.5, 1.0, 30.0, 5.0]
@@ -211,6 +258,20 @@ end
     test_fun = function(θ)
         _param = (θ = θ,)
         sim = simobs(mlag, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
+        sim[:cp][end]
+    end
+
+    grad_FD = FD_gradient(test_fun, θ₀)
+    grad_AD = AD_gradient(test_fun, θ₀)
+    @test grad_FD ≈ grad_AD
+
+    grad_FD = FD_hessian(test_fun, θ₀)
+    grad_AD = AD_hessian(test_fun, θ₀)
+    @test grad_FD ≈ grad_AD atol=1e-3
+
+    test_fun = function(θ)
+        _param = (θ = θ,)
+        sim = simobs(mlaga, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
         sim[:cp][end]
     end
 
@@ -246,6 +307,25 @@ end
         end
     end
 
+    mratea = @model begin
+        @param    θ ∈ VectorDomain(4, lower=zeros(4), init=ones(4))
+        @random   η ~ MvNormal(Matrix{Float64}(I, 2, 2))
+
+        @pre begin
+            Ka = θ[1]
+            CL = θ[2]*exp(η[1])
+            V  = θ[3]*exp(η[2])
+            rate = θ[4]
+        end
+
+        @dynamics Depots1Central1
+
+        @derived begin
+            cp = @. Central / V
+            cmax = maximum(cp)
+        end
+    end
+
     subject = read_pumas(example_data("event_data/data2"), dvs = [:cp])[1]
 
     θ₀ = [1.5, 1.0, 30.0, 5.0]
@@ -266,6 +346,20 @@ end
     grad_AD = AD_hessian(test_fun, θ₀)
     @test grad_FD ≈ grad_AD atol=1e-4
 
+    test_fun = function(θ)
+        _param = (θ = θ,)
+        sim = simobs(mratea, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
+        sim[:cmax]
+    end
+
+    grad_FD = FD_gradient(test_fun, θ₀)
+    grad_AD = AD_gradient(test_fun, θ₀)
+    @test grad_FD ≈ grad_AD
+
+    grad_FD = FD_hessian(test_fun, θ₀)
+    grad_AD = AD_hessian(test_fun, θ₀)
+    @test grad_FD ≈ grad_AD atol=1e-4
+
     subject = read_pumas(example_data("event_data/data5"), dvs = [:cp])[1]
 
     θ₀ = [1.5, 1.0, 30.0, 5.0]
@@ -275,6 +369,20 @@ end
     test_fun = function(θ)
         _param = (θ = θ,)
         sim = simobs(mrate, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
+        sim[:cmax]
+    end
+
+    grad_FD = FD_gradient(test_fun, θ₀)
+    grad_AD = AD_gradient(test_fun, θ₀)
+    @test grad_FD ≈ grad_AD
+
+    grad_FD = FD_hessian(test_fun, θ₀)
+    grad_AD = AD_hessian(test_fun, θ₀)
+    @test grad_FD ≈ grad_AD atol=1e-4
+
+    test_fun = function(θ)
+        _param = (θ = θ,)
+        sim = simobs(mratea, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
         sim[:cmax]
     end
 
@@ -310,6 +418,25 @@ end
         end
     end
 
+    mdurationa = @model begin
+        @param    θ ∈ VectorDomain(4, lower=zeros(4), init=ones(4))
+        @random   η ~ MvNormal(Matrix{Float64}(I, 2, 2))
+
+        @pre begin
+            Ka = θ[1]
+            CL = θ[2]*exp(η[1])
+            V  = θ[3]*exp(η[2])
+            duration = θ[4]
+        end
+
+        @dynamics Depots1Central1
+
+        @derived begin
+            cp = @. Central / V
+            cmax = maximum(cp)
+        end
+    end
+
     data = CSV.read(example_data("event_data/data2"))
     data[!,:rate] .= -2
     subject = read_pumas(data, dvs = [:cp])[1]
@@ -332,6 +459,20 @@ end
     grad_AD = AD_hessian(test_fun, θ₀)
     @test grad_FD ≈ grad_AD atol=1e-3
 
+    test_fun = function(θ)
+        _param = (θ = θ,)
+        sim = simobs(mdurationa, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
+        sim[:cp][end]
+    end
+
+    grad_FD = FD_gradient(test_fun, θ₀)
+    grad_AD = AD_gradient(test_fun, θ₀)
+    @test grad_FD ≈ grad_AD
+
+    grad_FD = FD_hessian(test_fun, θ₀)
+    grad_AD = AD_hessian(test_fun, θ₀)
+    @test grad_FD ≈ grad_AD atol=1e-3
+
     subject = read_pumas(example_data("event_data/data5"), dvs = [:cp])[1]
 
     θ₀ = [1.5, 1.0, 30.0, 5.0]
@@ -341,6 +482,20 @@ end
     test_fun = function(θ)
         _param = (θ = θ,)
         sim = simobs(mduration, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
+        sim[:cp][end]
+    end
+
+    grad_FD = FD_gradient(test_fun, θ₀)
+    grad_AD = AD_gradient(test_fun, θ₀)
+    @test grad_FD ≈ grad_AD
+
+    grad_FD = FD_hessian(test_fun, θ₀)
+    grad_AD = AD_hessian(test_fun, θ₀)
+    @test grad_FD ≈ grad_AD atol=1e-3
+
+    test_fun = function(θ)
+        _param = (θ = θ,)
+        sim = simobs(mdurationa, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
         sim[:cp][end]
     end
 
@@ -376,6 +531,25 @@ end
         end
     end
 
+    mbioava = @model begin
+        @param    θ ∈ VectorDomain(4, lower=zeros(4), init=ones(4))
+        @random   η ~ MvNormal(Matrix{Float64}(I, 2, 2))
+
+        @pre begin
+            Ka = θ[1]
+            CL = θ[2]*exp(η[1])
+            V  = θ[3]*exp(η[2])
+            bioav = θ[4]
+        end
+
+        @dynamics Depots1Central1
+
+        @derived begin
+            cp = @. Central / V
+            cmax = maximum(cp)
+        end
+    end
+
     subject = Subject(evs=DosageRegimen(100))
 
     θ₀ = [1.5, 1.0, 30.0, 0.412]
@@ -385,6 +559,20 @@ end
     test_fun = function(θ)
         _param = (θ = θ,)
         sim = simobs(mbioav, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
+        sim[:cmax]
+    end
+
+    grad_FD = FD_gradient(test_fun, θ₀)
+    grad_AD = AD_gradient(test_fun, θ₀)
+    @test grad_FD ≈ grad_AD
+
+    grad_FD = FD_hessian(test_fun, θ₀)
+    grad_AD = AD_hessian(test_fun, θ₀)
+    @test grad_FD ≈ grad_AD atol=1e-4
+
+    test_fun = function(θ)
+        _param = (θ = θ,)
+        sim = simobs(mbioava, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
         sim[:cmax]
     end
 
@@ -416,6 +604,20 @@ end
     grad_AD = AD_hessian(test_fun, θ₀)
     @test grad_FD ≈ grad_AD atol=1e-4
 
+    test_fun = function(θ)
+        _param = (θ = θ,)
+        sim = simobs(mbioava, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
+        sim[:cmax]
+    end
+
+    grad_FD = FD_gradient(test_fun, θ₀)
+    grad_AD = AD_gradient(test_fun, θ₀)
+    @test grad_FD ≈ grad_AD
+
+    grad_FD = FD_hessian(test_fun, θ₀)
+    grad_AD = AD_hessian(test_fun, θ₀)
+    @test grad_FD ≈ grad_AD atol=1e-4
+
     subject = Subject(evs=DosageRegimen(100,ss=1,rate=10.0,ii=12,cmt=2))
     θ₀ = [1.5, 1.0, 30.0, 0.412]
     param = (θ = θ₀,)
@@ -424,6 +626,20 @@ end
     test_fun = function(θ)
         _param = (θ = θ,)
         sim = simobs(mbioav, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
+        sim[:cmax]
+    end
+
+    grad_FD = FD_gradient(test_fun, θ₀)
+    grad_AD = AD_gradient(test_fun, θ₀)
+    @test grad_FD ≈ grad_AD
+
+    grad_FD = FD_hessian(test_fun, θ₀)
+    grad_AD = AD_hessian(test_fun, θ₀)
+    @test grad_FD ≈ grad_AD atol=1e-4
+
+    test_fun = function(θ)
+        _param = (θ = θ,)
+        sim = simobs(mbioava, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
         sim[:cmax]
     end
 
@@ -444,6 +660,20 @@ end
     test_fun = function(θ)
         _param = (θ = θ,)
         sim = simobs(mbioav, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
+        sim[:cmax]
+    end
+
+    grad_FD = FD_gradient(test_fun, θ₀)
+    grad_AD = AD_gradient(test_fun, θ₀)
+    @test grad_FD ≈ grad_AD
+
+    grad_FD = FD_hessian(test_fun, θ₀)
+    grad_AD = AD_hessian(test_fun, θ₀)
+    @test grad_FD ≈ grad_AD atol=1e-4
+
+    test_fun = function(θ)
+        _param = (θ = θ,)
+        sim = simobs(mbioava, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
         sim[:cmax]
     end
 

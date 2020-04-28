@@ -65,10 +65,20 @@ function DiffEqBase.solve(prob::AnalyticalPKPDProblem,
   ss_dropoff_event = false
   start_val = 0
   retcode = :Success
-  local dose
+  local dose, t
   # Now loop through the rest
   while i <= length(times)
-    t = times[i]
+
+    if eltype(times) <: ForwardDiff.Dual && i > 1
+      # Used to introduce a coupling for AD, but can give some very small
+      # numerical issues. Thus we only do this when we need to.
+      dt = times[i] - times[i-1]
+      t += dt
+      times[i] = t
+    else
+      t = times[i]
+    end
+
     ss_dropoff_event = post_ss_counter < ss_rate_multiplier + start_val &&
                        t == ss_time + ss_overlap_duration + post_ss_counter*ss_ii
     if ss_dropoff_event
@@ -103,7 +113,7 @@ function DiffEqBase.solve(prob::AnalyticalPKPDProblem,
           ss_rate = _rate
           _duration = cur_ev.amt/cur_ev.rate
           ss_overlap_duration = mod(_duration,cur_ev.ii)
-          ss_rate_multiplier = 1 + (_duration>cur_ev.ii)*(_duration ÷ cur_ev.ii)
+          ss_rate_multiplier = 1 + (_duration>cur_ev.ii)*floor(_duration / cur_ev.ii)
           ss_cmt = cur_ev.cmt
           ss_ii = cur_ev.ii
           _rate *= ss_rate_multiplier
