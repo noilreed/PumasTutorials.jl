@@ -52,33 +52,33 @@ peg_inf_model = @model begin
     d = 0.001
     e = 1e-7
     s = 20000.0
-    logKa   = logKa   + ηKa
-    logKe   = logKe   + ηKe
-    logVd   = logVd   + ηVd
-    logn    = logn    + ηn
-    logd    = logd    + ηδ
-    logc    = logc    + ηc
-    logEC50 = logEC50 + ηEC50
+    log_Ka   = logKa   + ηKa
+    log_Ke   = logKe   + ηKe
+    log_Vd   = logVd   + ηVd
+    log_n    = logn    + ηn
+    log_d    = logd    + ηδ
+    log_c    = logc    + ηc
+    log_EC50 = logEC50 + ηEC50
   end
 
   @init begin
-    T = exp(logc + logd)/(p*e)
-    I = (s*e*p - d*exp(logc + logd))/(p*exp(logd)*e)
-    W = (s*e*p - d*exp(logc + logd))/(exp(logc + logd)*e)
+    T = exp(log_c + log_d)/(p*e)
+    I = (s*e*p - d*exp(log_c + log_d))/(p*exp(log_d)*e)
+    W = (s*e*p - d*exp(log_c + log_d))/(exp(log_c + log_d)*e)
   end
 
   @dynamics begin
-    X' = -exp(logKa)*X
-    A' = exp(logKa)*X - exp(logKe)*A
+    X' = -exp(log_Ka)*X
+    A' = exp(log_Ka)*X - exp(log_Ke)*A
     T' = s - T*(e*W + d)
-    I' = e*W*T - exp(logd)*I
-    W' = p/((A/exp(logVd)/exp(logEC50) + 1e-100)^exp(logn) + 1)*I - exp(logc)*W
+    I' = e*W*T - exp(log_d)*I
+    W' = p/((A/exp(log_Vd)/exp(log_EC50) + 1e-100)^exp(log_n) + 1)*I - exp(log_c)*W
   end
 
   @derived begin
-    conc   = @. A/exp(logVd)
+    conc   = @. A/exp(log_Vd)
     log10W = @. log10(max.(W, 1e-5))
-    yPK ~ @. Normal(A/exp(logVd), sqrt(σ²PK))
+    yPK ~ @. Normal(A/exp(log_Vd), sqrt(σ²PK))
     yPD ~ @. Normal(log10W, sqrt(σ²PD))
     nca1 := @nca conc
     cmax_pk = NCA.cmax(nca1)
