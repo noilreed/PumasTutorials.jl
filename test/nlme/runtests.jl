@@ -92,6 +92,9 @@ if group == "All" || group == "NLME_ML4"
     @time @safetestset "Wang" begin
       include("wang.jl")
     end
+    @time @safetestset "Dose control parameters" begin
+      include("dosecontrolparameters.jl")
+    end
   end
 end
 
