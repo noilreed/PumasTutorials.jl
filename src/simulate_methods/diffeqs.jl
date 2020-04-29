@@ -155,11 +155,10 @@ function ith_subject_cb(pre,datai::Subject,u0,t0,ProbType,saveat,save_discont,co
 
   function affect!(integrator)
 
-    if ProbType <: DiffEqBase.DDEProblem
-      f = integrator.f
-    else
-      f = integrator.f
-    end
+    # Note: integrator.f cannot be used because not all wrapped algorithms
+    # respect integrator.f is the DiffEqWrapper. For example, Sundials puts
+    # a closure over it. However, the prob version is always wrapped over.
+    f = integrator.sol.prob.f
 
     while counter <= length(events) && events[counter].time <= integrator.t+sqrt(eps(integrator.t))
       cur_ev = events[counter]

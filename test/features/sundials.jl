@@ -390,7 +390,7 @@ end
 
 pbpk_iip = PumasModel(pset,rfx_f,col_f,init_f_iip,prob,derived_f)
 
-regimen_s = DosageRegimen(200, time = 0, addl=12, ii=6, cmt=1, ss = 1)
+regimen_s = DosageRegimen(200, time = 0, rate=2, addl=12, ii=6, cmt=1, ss = 1)
 
 sub_s = Subject(id=1,evs=regimen_s)
 
