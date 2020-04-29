@@ -4,7 +4,12 @@ struct Bootstraps
   fits
   stratify_by
 end
-function bootstrap(fpm::FittedPumasModel; samples=200, stratify_by=nothing, kwargs...)
+"""
+  bootstrap(fpm::FittedPumasModel; samples=200, stratify_by=nothing)
+
+Perform bootstrapping by resampling the `Subject`s from the `Population` stored in `fpm`. The keyword `samples` is used to control the number of resampled datasets, and by specifying keyword `stratify_by` to be a `Symbol` with the name of a covariate it is possible to stratify by a covariate with a finite number of possible values. The rest of the keyword arguments are passed onto the `fit` function internally.
+"""
+function bootstrap(fpm::FittedPumasModel; samples=200, stratify_by=nothing)
   bootstrap(fpm.model, fpm.data, coef(fpm), fpm.approx; samples=samples, stratify_by=stratify_by, fpm.kwargs...)
 end
 
