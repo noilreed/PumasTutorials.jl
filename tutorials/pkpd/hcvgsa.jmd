@@ -170,13 +170,15 @@ cmax_pd_meansstar = [morris_.means_star[2,:][key] for key in keys_]
 
 plot_pk = bar(string.(keys_), cmax_pk_meansstar, xaxis ="Parameters", title="Cmax PK Morris means", leg=false)
 plot_pd = bar(string.(keys_), cmax_pd_meansstar, xaxis ="Parameters", title="Cmax PD Morris means", leg=false)
-plot(plot_pk, plot_pd)
+plot(plot_pk, plot_pd, size = (1200,400))
 ```
+
+We observe that PK Cmax is most sensitive to `logVd`, `logKa` and `logKe` parameters where as PD Cmax is most sensitive to `logc`, `logd` and `logKe`. 
 
 #### The Sobol Method
 
 ```julia
-sobol_ = Pumas.gsa(peg_inf_model,_pop,param_PKPD,DiffEqSensitivity.Sobol(),[:cmax_pk,:cmax_pd],p_range_low,p_range_high,N=1000)
+sobol_ = Pumas.gsa(peg_inf_model,_pop,param_PKPD,DiffEqSensitivity.Sobol(),[:cmax_pk,:cmax_pd],p_range_low,p_range_high,N=4000)
 ```
 We use heatmaps to visualize the Sobol output
 
@@ -192,6 +194,10 @@ cmax_st = hcat(cmax_pk_st, cmax_pd_st)
 plot_st = heatmap(["Cmax_PK","Cmax_PD"], string.(keys_), cmax_st, title = "Total Order Indices",fillcolor=:balance)
 plot(plot_s1, plot_st)
 ```
+
+For PK Cmax `logVd` comes out to be the most dominant parameter by a large margin as evident by both First and Total Order indices of Sobol.
+PD Cmax is most sensitive to `logc` and `logd` and the Total Order indices show `logKe` is also important, hence we can deduce that `logKe`
+has a greater influence due to its interactions as compared to its contribution individually.
 
 ```julia{echo=false,skip="notebook"}
 using PumasTutorials
