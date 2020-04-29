@@ -181,7 +181,7 @@ end
         end
     end
 
-    subject = Subject(evs=DosageRegimen(100))#read_pumas(example_data("event_data/data2"), dvs = [:cp])[1]
+    subject = Subject(evs=DosageRegimen(100))#read_pumas(example_data("event_data/data14"), dvs = [:cp])[1]
 
     θ₀ = [1.5, 1.0, 30.0, 5.0]
     param = (θ = θ₀,)
@@ -249,7 +249,7 @@ end
     grad_AD = AD_hessian(test_fun, θ₀)
     @test grad_FD ≈ grad_AD atol=1e-4
 
-    subject = read_pumas(example_data("event_data/data5"), dvs = [:cp])[1]
+    subject = Subject(evs=DosageRegimen(100,rate=2,ss=1,ii=12,cmt=2))
 
     θ₀ = [1.5, 1.0, 30.0, 5.0]
     param = (θ = θ₀,)
@@ -326,7 +326,7 @@ end
         end
     end
 
-    subject = read_pumas(example_data("event_data/data2"), dvs = [:cp])[1]
+    subject = read_pumas(example_data("event_data/data14"), dvs = [:cp])[1]
 
     θ₀ = [1.5, 1.0, 30.0, 5.0]
     param = (θ = θ₀,)
@@ -335,7 +335,7 @@ end
     test_fun = function(θ)
         _param = (θ = θ,)
         sim = simobs(mrate, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
-        sim[:cmax]
+        sim[:cp][end]
     end
 
     grad_FD = FD_gradient(test_fun, θ₀)
@@ -349,7 +349,7 @@ end
     test_fun = function(θ)
         _param = (θ = θ,)
         sim = simobs(mratea, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
-        sim[:cmax]
+        sim[:cp][end]
     end
 
     grad_FD = FD_gradient(test_fun, θ₀)
@@ -360,7 +360,7 @@ end
     grad_AD = AD_hessian(test_fun, θ₀)
     @test grad_FD ≈ grad_AD atol=1e-4
 
-    subject = read_pumas(example_data("event_data/data5"), dvs = [:cp])[1]
+    subject = Subject(evs=DosageRegimen(100,rate=-2,ss=1,ii=12,cmt=2))
 
     θ₀ = [1.5, 1.0, 30.0, 5.0]
     param = (θ = θ₀,)
@@ -369,7 +369,7 @@ end
     test_fun = function(θ)
         _param = (θ = θ,)
         sim = simobs(mrate, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
-        sim[:cmax]
+        sim[:cp][end]
     end
 
     grad_FD = FD_gradient(test_fun, θ₀)
@@ -383,7 +383,7 @@ end
     test_fun = function(θ)
         _param = (θ = θ,)
         sim = simobs(mratea, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
-        sim[:cmax]
+        sim[:cp][end]
     end
 
     grad_FD = FD_gradient(test_fun, θ₀)
@@ -437,7 +437,7 @@ end
         end
     end
 
-    data = CSV.read(example_data("event_data/data2"))
+    data = CSV.read(example_data("event_data/data14"))
     data[!,:rate] .= -2
     subject = read_pumas(data, dvs = [:cp])[1]
 
@@ -473,7 +473,7 @@ end
     grad_AD = AD_hessian(test_fun, θ₀)
     @test grad_FD ≈ grad_AD atol=1e-3
 
-    subject = read_pumas(example_data("event_data/data5"), dvs = [:cp])[1]
+    subject = Subject(evs=DosageRegimen(100,rate=-2,ss=1,ii=12,cmt=2))
 
     θ₀ = [1.5, 1.0, 30.0, 5.0]
     param = (θ = θ₀,)
@@ -559,7 +559,7 @@ end
     test_fun = function(θ)
         _param = (θ = θ,)
         sim = simobs(mbioav, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
-        sim[:cmax]
+        sim[:cp][end]
     end
 
     grad_FD = FD_gradient(test_fun, θ₀)
@@ -573,7 +573,7 @@ end
     test_fun = function(θ)
         _param = (θ = θ,)
         sim = simobs(mbioava, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
-        sim[:cmax]
+        sim[:cp][end]
     end
 
     grad_FD = FD_gradient(test_fun, θ₀)
@@ -593,7 +593,7 @@ end
     test_fun = function(θ)
         _param = (θ = θ,)
         sim = simobs(mbioav, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
-        sim[:cmax]
+        sim[:cp][end]
     end
 
     grad_FD = FD_gradient(test_fun, θ₀)
@@ -607,7 +607,7 @@ end
     test_fun = function(θ)
         _param = (θ = θ,)
         sim = simobs(mbioava, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
-        sim[:cmax]
+        sim[:cp][end]
     end
 
     grad_FD = FD_gradient(test_fun, θ₀)
@@ -626,7 +626,7 @@ end
     test_fun = function(θ)
         _param = (θ = θ,)
         sim = simobs(mbioav, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
-        sim[:cmax]
+        sim[:cp][end]
     end
 
     grad_FD = FD_gradient(test_fun, θ₀)
@@ -640,7 +640,7 @@ end
     test_fun = function(θ)
         _param = (θ = θ,)
         sim = simobs(mbioava, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
-        sim[:cmax]
+        sim[:cp][end]
     end
 
     grad_FD = FD_gradient(test_fun, θ₀)
@@ -651,8 +651,7 @@ end
     grad_AD = AD_hessian(test_fun, θ₀)
     @test grad_FD ≈ grad_AD atol=1e-4
 
-    # Test 5 of template_model_ev_system.jl
-    subject = read_pumas(example_data("event_data/data5"), dvs = [:cp])[1]
+    subject = Subject(evs=DosageRegimen(100,rate=2,ss=1,ii=12,cmt=2))
     θ₀ = [1.5, 1.0, 30.0, 0.412]
     param = (θ = θ₀,)
     randeffs = (η = [0.0,0.0],)
@@ -660,7 +659,7 @@ end
     test_fun = function(θ)
         _param = (θ = θ,)
         sim = simobs(mbioav, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
-        sim[:cmax]
+        sim[:cp][end]
     end
 
     grad_FD = FD_gradient(test_fun, θ₀)
@@ -669,12 +668,12 @@ end
 
     grad_FD = FD_hessian(test_fun, θ₀)
     grad_AD = AD_hessian(test_fun, θ₀)
-    @test grad_FD ≈ grad_AD atol=1e-4
+    @test grad_FD ≈ grad_AD atol=1e-3
 
     test_fun = function(θ)
         _param = (θ = θ,)
         sim = simobs(mbioava, subject, _param, randeffs; abstol=1e-14, reltol=1e-14)
-        sim[:cmax]
+        sim[:cp][end]
     end
 
     grad_FD = FD_gradient(test_fun, θ₀)

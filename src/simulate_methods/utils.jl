@@ -48,13 +48,13 @@ function _adjust_event(ev::Event,u0,lags,bioav,rate,duration)
   if ev.rate_dir == -1
     time = ev.base_time + _duration
   else
-    time = ev.base_time
+    time = ev.base_time * (one(_duration)/one(_duration))
   end
 
   time += _cmt_value(ev, u0, lags, DEFAULT_LAGS)
 
   # Couple the duals of bioav to time to allow differentiation when rate+
-  time *= (_bioav/_bioav)
+  time *= one(_bioav)/one(_bioav)
   Event(_amt, time, ev.evid, ev.cmt, _rate, _duration, ev.ss, ev.ii, ev.base_time, ev.rate_dir)
 end
 
