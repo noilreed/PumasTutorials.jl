@@ -1,10 +1,10 @@
 using StructArrays
-struct ZeroSplineStructArray{T, U, D}
+struct ConstantInterpolationStructArray{T, U, D}
   t::T
   u::U
   dir::D
 end
-function (A::ZeroSplineStructArray{<:Any,<:StructArray})(t::Number)
+function (A::ConstantInterpolationStructArray{<:Any,<:StructArray})(t::Number)
   if A.dir === :left
     # :left means that value to the left is used for interpolation
     i = searchsortedlast(A.t, t)
@@ -30,13 +30,13 @@ the interpolation scheme interp from DataInterpolations.jl. Returns a function
 `(t)` that does the interpolation as well as the common time grid for the covariate
 observations. This is safe for values which are not time-varying as well, allowing
 one to mix subjects with multiple measurements and subjects with a single measurement.
-Defaults to do a left-sided ZeroSpline.
+Defaults to do a left-sided ConstantInterpolation.
 """
 function build_tvcov(cvs_keys,
                      data,
                      time::Union{Nothing,Symbol},
                      id;
-                     interp=ZeroSplineStructArray)
+                     interp=ConstantInterpolationStructArray)
 
   # Create helper named tuple. It has keys == values so you can easily map
   # over it, use the name and get a namedtuple back.
@@ -75,7 +75,7 @@ function build_tvcov(cvs_keys,
       if length(unique(_covar)) == 1
         interped = fill(first(_covar), length(tvcov_times))
       else
-        interpi = DataInterpolations.ZeroSpline(_covar, _time, dir=:right)
+        interpi = DataInterpolations.ConstantInterpolation(_covar, _time, dir=:right)
         interped = interpi.(tvcov_times)
       end
       return interped
