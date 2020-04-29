@@ -119,6 +119,6 @@ using Pumas, Random
     Pumas.FOCE(),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=true, x_reltol=1e-3))
 
-  @test deviance(ft) ≈ -100.78347276087511 rtol=1e-5
+  @test deviance(ft) ≈ -100.78347276087511 rtol=1e-4
 
 end
