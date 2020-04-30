@@ -81,7 +81,13 @@ using Pumas, Test, Random
       # Fit currently only works for analytical model. For DiffEq based model, NaNs are
       # created during the optimization. We avoid running the test in that case since it
       # takes a long time before it fails.
-      @test coef(fit(m, pop_est, params, Pumas.FOCEI())).θlag ≈ params₀.θlag rtol=1e-1
+      @test coef(fit(m, pop_est, params, Pumas.FOCEI(),
+        # The the Pumas default Backtracking linesearch can currently cause an indefinite
+        # Hessian approximation so we force the Optim default Hager-Zhang linesearch until
+        # Optim has been updated
+        optimize_fn=Pumas.DefaultOptimizeFN(
+          Pumas.BFGS(initial_invH=t -> Matrix(I*1e-6, 5, 5)),
+          g_tol=1e-3))).θlag ≈ params₀.θlag rtol=1e-1
     end
   end
 end
