@@ -11,7 +11,7 @@ using Pumas, LinearAlgebra
       θ₂ ∈ RealDomain(lower=0.0, init=8.0)
       θ₃ ∈ RealDomain(lower=0.0, init=1.0)
       Ω  ∈ PDiagDomain(3)
-      σ  ∈ RealDomain(lower=0.0001, init=0.01)
+      σ  ∈ RealDomain(lower=0.0001, init=sqrt(0.01))
     end
 
     @random begin
@@ -34,7 +34,7 @@ using Pumas, LinearAlgebra
     end
 
     @derived begin
-      dv ~ @. Normal(log(conc), sqrt(σ))
+      dv ~ @. Normal(log(conc), σ)
     end
   end
 
@@ -42,7 +42,7 @@ using Pumas, LinearAlgebra
            θ₂ = 8.0,
            θ₃ = 1.0,
            Ω  = Diagonal([0.07, 0.02, 0.6]),
-           σ  = 0.01)
+           σ  = sqrt(0.01))
 
   @test logdet(
     sum(
@@ -52,7 +52,7 @@ using Pumas, LinearAlgebra
         param,
         Pumas._orth_empirical_bayes(model, d, param, Pumas.FO()),
         Pumas.FO()
-      ) for d in data)) ≈ 53.8955 rtol=1e-6
+      ) for d in data)) ≈ 50.6766056254067 rtol=1e-6
 
   ft = fit(model, data, param, Pumas.FO())
 

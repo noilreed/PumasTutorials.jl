@@ -1,24 +1,24 @@
 using Pumas
 mdl = @model begin
-    @param begin
-        θ ∈ VectorDomain(11, init=fill(0.5, 100))
-        Ω ∈ PSDDomain(11)
-        σ ∈ RealDomain(lower=0.0, init=1.0)
-    end
+  @param begin
+    θ ∈ VectorDomain(11, init=fill(0.5, 100))
+    Ω ∈ PSDDomain(11)
+    σ ∈ RealDomain(lower=0.0, init=1.0)
+  end
 
-    @random begin
-        η ~ MvNormal(Ω)
-    end
+  @random begin
+    η ~ MvNormal(Ω)
+  end
 
-    @covariates x1 x2 x3 x4 x5 x6 x7 x8 x9
+  @covariates x1 x2 x3 x4 x5 x6 x7 x8 x9
 
-    @pre begin
-        m = x1*θ[1] + x2*θ[2] + x3*θ[3] + x4*θ[4] + x5*θ[5] + x6*θ[6] + x7*θ[7] + x8*θ[8] + x9*θ[9] + θ[10] + sum(η)
-    end
+  @pre begin
+    m = x1*θ[1] + x2*θ[2] + x3*θ[3] + x4*θ[4] + x5*θ[5] + x6*θ[6] + x7*θ[7] + x8*θ[8] + x9*θ[9] + θ[10] + sum(η)
+  end
 
-    @derived begin
-        dv ~ [Normal(m, σ)]
-    end
+  @derived begin
+    dv ~ [Normal(m, σ)]
+  end
 end
 
 param = init_param(mdl)

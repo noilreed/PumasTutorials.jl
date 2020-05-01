@@ -24,8 +24,8 @@ using Pumas, Random
       ω²c    ∈ RealDomain(lower=0.0)
       ω²EC50 ∈ RealDomain(lower=0.0)
       # variance parameter in proportional error model
-      σ²PK ∈ RealDomain(lower=0.0)
-      σ²PD ∈ RealDomain(lower=0.0)
+      σPK ∈ RealDomain(lower=0.0)
+      σPD ∈ RealDomain(lower=0.0)
     end
 
     # The random block allows us to specify variances for, and covariances
@@ -77,8 +77,8 @@ using Pumas, Random
     @derived begin
       conc   = @. A/exp(logVd)
       log10W = @. log10(W)
-      yPK ~ @. Normal(A/exp(logVd), sqrt(σ²PK))
-      yPD ~ @. Normal(log10W, sqrt(σ²PD))
+      yPK ~ @. Normal(A/exp(logVd), σPK)
+      yPD ~ @. Normal(log10W, σPD)
     end
   end
 
@@ -101,8 +101,8 @@ using Pumas, Random
     ω²c    = 0.25,
     ω²EC50 = 0.25,
     # variance parameter in proportional error model
-    σ²PK = 0.04,
-    σ²PD = 0.04)
+    σPK = 0.2,
+    σPD = 0.2)
 
   _pop = map(i -> Subject(id=i, obs=(yPK=[], yPD=[]), evs=peg_inf_dr, time=t), 1:3)
 

@@ -15,7 +15,6 @@ m_diffeq = @model begin
   @param   begin
     θ ∈ VectorDomain(5, lower=zeros(5), init=ones(5))
     Ω ∈ PSDDomain(2)
-    σ_prop ∈ RealDomain(init=0.1)
   end
 
   @random begin
@@ -46,15 +45,15 @@ m_diffeq = @model begin
   end
 end
 
-p = (  θ = [1.5,  #Ka
-            1.1,  #CL
-            20.0,  #V
-            0, # lags2
-            1 #Bioav
-           ],
-     Ω = diagm(0 => [0.04,0.04]),
-     σ_prop = 0.00
-    )
+p = (
+  θ = [1.5,  #Ka
+       1.1,  #CL
+      20.0,  #V
+       0.0, # lags2
+       1.0 #Bioav
+      ],
+  Ω = diagm(0 => [0.04, 0.04]),
+  )
 
 
 sim = @test_nowarn simobs(m_diffeq, ev2, p; abstol=1e-14, reltol=1e-14)
@@ -121,14 +120,15 @@ parmet = @model begin
     end
 end
 
-p = (  θ = [11.5,  #CL
-           50.0,  #V
-           10, #CLM
-           8, #VM
-           0.7
-           ],
-      Ω = diagm(0 => [0.04,0.04,0.04,0.04])
-      )
+p = (
+  θ = [11.5,  #CL
+       50.0,  #V
+       10.0, #CLM
+        8.0, #VM
+        0.7
+      ],
+  Ω = diagm(0 => [0.04,0.04,0.04,0.04])
+  )
 sim = @test_nowarn simobs(parmet, ev1, p)
 @test_nowarn DataFrame(sim)
 dose = NCADose.(sim[1].subject.events)

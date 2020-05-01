@@ -36,8 +36,7 @@ m_diffeq = @model begin
 end
 
 param = (
-    θ = [0.4,20,1.1,2],
-    σ_prop = 0.04
+    θ = [0.4, 20, 1.1, 2],
     )
 
 randeffs = (η=randn(3),)

@@ -35,8 +35,7 @@ end
       θ₃ ∈ RealDomain(lower=0.004,  upper=0.9, init=0.0363)
       θ₄ ∈ RealDomain(lower=0.1,    upper=5.0, init=1.5)
       Ω ∈ PSDDomain(3)
-      σ_add ∈ RealDomain(lower=0.001, init=0.388)
-      #σ_prop ∈ RealDomain(init=0.3)
+      σ²_add ∈ RealDomain(lower=0.001, init=sqrt(0.388))
     end
 
     @random begin
@@ -45,7 +44,7 @@ end
 
     @pre begin
       Ka = SEX == 0 ? θ₁ + η[1] : θ₄ + η[1]
-      K  = θ₂+ η[2]
+      K  = θ₂ + η[2]
       CL = θ₃*WT + η[3]
       V  = CL/K
       SC = CL/K/WT
@@ -60,7 +59,7 @@ end
     @dynamics Depots1Central1
 
     @derived begin
-      dv ~ @. Normal(conc,sqrt(σ_add))
+      dv ~ @. Normal(conc, sqrt(σ²_add))
     end
   end
 
@@ -70,9 +69,8 @@ end
     θ₃ = 0.0363, #SLP  SLOPE OF CLEARANCE VS WEIGHT RELATIONSHIP (LITERS/HR/KG)
     θ₄ = 1.5,    #Ka MEAN ABSORPTION RATE CONSTANT for SEX=0 (1/HR)
     Ω  = diagm(0 => [5.55, 0.0024, 0.515]), # update to block diagonal
-    σ_add = 0.388
-    # σ_prop = 0.3
-       )
+    σ²_add = 0.388
+    )
 
   @test deviance(theopmodel_analytical_fo, theopp, param, Pumas.FO()) ≈ 137.16573310096661
 
@@ -84,7 +82,7 @@ end
                          Ω = [1.81195E+01 -1.12474E-02 -3.05266E-02
                              -1.12474E-02  2.25098E-04  1.04586E-02
                              -3.05266E-02  1.04586E-02  5.99850E-01],
-                         σ_add = 2.66533E-01)
+                         σ²_add = 2.66533E-01)
 
   fo_stderr           = (θ₁ = 4.47E-01,
                          θ₂ = 6.81E-03,
@@ -93,17 +91,17 @@ end
                          Ω = [9.04E+00 1.92E-02 1.25E+00
                               1.92E-02 7.86E-05 4.57E-03
                               1.25E+00 4.57E-03 3.16E-01],
-                         σ_add = 5.81E-02)
+                         σ²_add = 5.81E-02)
                          # Elapsed estimation time in seconds:     0.04
                          # Elapsed covariance time in seconds:     0.02
 
   o = fit(theopmodel_analytical_fo, theopp, param, Pumas.FO())
 
   ofix1 = fit(theopmodel_analytical_fo, theopp, param, Pumas.FO(); constantcoef=(θ₁=0.4,))
-  ofix2 = fit(theopmodel_analytical_fo, theopp, param, Pumas.FO(); constantcoef=(σ_add=0.1,))
+  ofix2 = fit(theopmodel_analytical_fo, theopp, param, Pumas.FO(); constantcoef=(σ²_add=0.1,))
 
   @test coef(ofix1).θ₁ == 0.4
-  @test coef(ofix2).σ_add == 0.1
+  @test coef(ofix2).σ²_add == 0.1
 
   o_estimates = coef(o)
   o_stderror  = stderror(o)
@@ -278,9 +276,8 @@ end
       θ₂ ∈ RealDomain(lower=0.0008, upper=0.5, init=0.0781)
       θ₃ ∈ RealDomain(lower=0.004,  upper=0.9, init=0.0363)
       θ₄ ∈ RealDomain(lower=0.1,    upper=5.0, init=1.5)
-      Ω ∈ PSDDomain(3)
-      σ_add ∈ RealDomain(lower=0.001, init=0.388)
-      #σ_prop ∈ RealDomain(init=0.3)
+      Ω  ∈ PSDDomain(3)
+      σ²_add ∈ RealDomain(lower=0.001, init=0.388)
     end
 
     @random begin
@@ -308,7 +305,7 @@ end
     end
 
     @derived begin
-      dv ~ @. Normal(conc,sqrt(σ_add))
+      dv ~ @. Normal(conc, sqrt(σ²_add))
     end
   end
 
@@ -318,9 +315,8 @@ end
     θ₃ = 0.0363, #SLP  SLOPE OF CLEARANCE VS WEIGHT RELATIONSHIP (LITERS/HR/KG)
     θ₄ = 1.5,    #Ka MEAN ABSORPTION RATE CONSTANT for SEX=0 (1/HR)
     Ω  = diagm(0 => [5.55, 0.0024, 0.515]), # update to block diagonal
-    σ_add = 0.388
-    # σ_prop = 0.3
-       )
+    σ²_add = 0.388
+    )
 
   @test deviance(theopmodel_solver_fo, theopp, param, Pumas.FO(),reltol=1e-6,abstol=1e-8) ≈ 137.16573310096661
 
@@ -332,7 +328,7 @@ end
                          Ω = [1.81195E+01 -1.12474E-02 -3.05266E-02
                              -1.12474E-02  2.25098E-04  1.04586E-02
                              -3.05266E-02  1.04586E-02  5.99850E-01],
-                         σ_add = 2.66533E-01)
+                         σ²_add = 2.66533E-01)
 
   fo_stderr           = (θ₁ = 4.47E-01,
                          θ₂ = 6.81E-03,
@@ -341,7 +337,7 @@ end
                          Ω = [9.04E+00 1.92E-02 1.25E+00
                               1.92E-02 7.86E-05 4.57E-03
                               1.25E+00 4.57E-03 3.16E-01],
-                         σ_add = 5.81E-02)
+                         σ²_add = 5.81E-02)
                          # Elapsed estimation time in seconds:     0.45
                          # Elapsed covariance time in seconds:     0.18
 
@@ -414,8 +410,7 @@ end
       θ₃ ∈ RealDomain(lower=0.004,  upper=0.9, init=0.0363)
       θ₄ ∈ RealDomain(lower=0.1,    upper=5.0, init=1.5)
       Ω ∈ PDiagDomain(2)
-      σ_add ∈ RealDomain(lower=0.001, init=0.388)
-      #σ_prop ∈ RealDomain(init=0.3)
+      σ²_add ∈ RealDomain(lower=0.001, init=0.388)
     end
 
     @random begin
@@ -439,7 +434,7 @@ end
     @dynamics Depots1Central1
 
     @derived begin
-      dv ~ @. Normal(conc,sqrt(σ_add))
+      dv ~ @. Normal(conc, sqrt(σ²_add))
     end
   end
 
@@ -449,8 +444,7 @@ end
         θ₄ = 1.5, #Ka MEAN ABSORPTION RATE CONSTANT for SEX=0 (1/HR)
 
         Ω = Diagonal([5.55, 0.515]),
-        σ_add = 0.388
-        #σ_prop = 0.3
+        σ²_add = 0.388
        )
 
   @test deviance(theopmodel_foce, theopp, param, Pumas.FOCE()) ≈ 138.90111320972699 rtol=1e-6
@@ -462,7 +456,7 @@ end
     θ₄ = 2.10668E+00,  #Ka MEAN ABSORPTION RATE CONSTANT for SEX=0 (1/HR)
 
     Ω  = Diagonal([1.62087E+00, 2.26449E-01]),
-    σ_add = 5.14069E-01)
+    σ²_add = 5.14069E-01)
 
   foce_stderr = (
     θ₁ = 1.84E-01,
@@ -471,7 +465,7 @@ end
     θ₄ = 9.56E-01,
 
     Ω  = Diagonal([1.61E+00, 7.70E-02]),
-    σ_add = 1.34E-01)
+    σ²_add = 1.34E-01)
 
   foce_ebes = [-2.66223E-01 -9.45749E-01
                 4.53194E-01  3.03170E-02
@@ -703,8 +697,7 @@ end
       θ₄ ∈ RealDomain(lower=0.1,    upper=5.0, init=1.5)
       Ω₁ ∈ RealDomain(lower=0.0001, init=5.55)
       Ω₂ ∈ RealDomain(lower=0.0001, init=0.515)
-      σ_add ∈ RealDomain(lower=0.001, init=0.388)
-      #σ_prop ∈ RealDomain(init=0.3)
+      σ²_add ∈ RealDomain(lower=0.001, init=0.388)
     end
 
     @random begin
@@ -729,7 +722,7 @@ end
     @dynamics Depots1Central1
 
     @derived begin
-      dv ~ @. Normal(conc,sqrt(σ_add))
+      dv ~ @. Normal(conc, sqrt(σ²_add))
     end
   end
 
@@ -740,8 +733,7 @@ end
 
         Ω₁ = 5.55,
         Ω₂ = 0.515,
-        σ_add = 0.388
-        #σ_prop = 0.3
+        σ²_add = 0.388
        )
 
   @test deviance(theopmodel_foce, theopp, param, Pumas.FOCE()) ≈ 138.90111320972699 rtol=1e-6
@@ -754,7 +746,7 @@ end
 
     Ω₁  = 1.62087E+00,
     Ω₂  = 2.26449E-01,
-    σ_add = 5.14069E-01)
+    σ²_add = 5.14069E-01)
 
   foce_stderr = (
     θ₁ = 1.84E-01,
@@ -764,7 +756,7 @@ end
 
     Ω₁  = 1.61E+00,
     Ω₂  = 7.70E-02,
-    σ_add = 1.34E-01)
+    σ²_add = 1.34E-01)
 
   foce_ebes = [-2.66223E-01 -9.45749E-01
                 4.53194E-01  3.03170E-02
@@ -993,8 +985,8 @@ end
       θ₃ ∈ RealDomain(lower=0.004,  upper=0.9, init=0.0363)
       θ₄ ∈ RealDomain(lower=0.1,    upper=5.0, init=1.5)
       Ω ∈ PDiagDomain(2)
-      σ_add ∈ RealDomain(lower=0.0001, init=0.388)
-      σ_prop ∈ RealDomain(lower=0.0001, init=0.3)
+      σ²_add ∈ RealDomain(lower=0.0001, init=0.388)
+      σ²_prop ∈ RealDomain(lower=0.0001, init=0.3)
     end
 
     @random begin
@@ -1018,7 +1010,7 @@ end
     @dynamics Depots1Central1
 
     @derived begin
-      dv ~ @. Normal(conc, sqrt(conc^2*σ_prop+σ_add))
+      dv ~ @. Normal(conc, sqrt(conc^2*σ²_prop + σ²_add))
     end
   end
 
@@ -1028,8 +1020,8 @@ end
         θ₄ = 1.5,    #Ka MEAN ABSORPTION RATE CONSTANT for SEX=0 (1/HR)
 
         Ω = Diagonal([5.55, 0.515]),
-        σ_add = 0.388,
-        σ_prop = 0.3
+        σ²_add = 0.388,
+        σ²_prop = 0.3
        )
 
   @test deviance(theopmodel_focei, theopp, param, Pumas.FOCEI()) ≈ 287.08854688950419 rtol=1e-6
@@ -1041,8 +1033,8 @@ end
     θ₄ = 2.03889E+00, #Ka MEAN ABSORPTION RATE CONSTANT for SEX=0 (1/HR)
 
     Ω = Diagonal([1.49637E+00, 2.62862E-01]),
-    σ_add = 2.09834E-01,
-    σ_prop = 1.13479E-02
+    σ²_add = 2.09834E-01,
+    σ²_prop = 1.13479E-02
   )
 
   focei_stderr = (
@@ -1052,8 +1044,8 @@ end
     θ₄ = 8.81E-01,
 
     Ω = Diagonal([1.35E+00, 8.06E-02]),
-    σ_add = 2.64E-01,
-    σ_prop = 1.35E-02)
+    σ²_add = 2.64E-01,
+    σ²_prop = 1.35E-02)
 
   focei_ebes = [-3.85812E-01 -1.06806E+00
                  5.27060E-01  5.92269E-02
@@ -1229,8 +1221,8 @@ end
       θ₃ ∈ RealDomain(lower=0.004,  upper=0.9, init=0.0363)
       θ₄ ∈ RealDomain(lower=0.1,    upper=5.0, init=1.5)
       Ω ∈ PDiagDomain(2)
-      σ_add ∈ RealDomain(lower=0.0001, init=0.388)
-      σ_prop ∈ RealDomain(lower=0.0001, init=0.3)
+      σ²_add ∈ RealDomain(lower=0.0001, init=0.388)
+      σ²_prop ∈ RealDomain(lower=0.0001, init=0.3)
     end
 
     @random begin
@@ -1254,7 +1246,7 @@ end
     @dynamics Depots1Central1
 
     @derived begin
-      dv ~ @. Normal(conc, sqrt(conc^2*σ_prop+σ_add))
+      dv ~ @. Normal(conc, sqrt(conc^2*σ²_prop + σ²_add))
     end
   end
 
@@ -1264,8 +1256,8 @@ end
              θ₄ = 1.5,    #Ka MEAN ABSORPTION RATE CONSTANT for SEX=0 (1/HR)
 
              Ω = Diagonal([5.55, 0.515]),
-             σ_add = 0.388,
-             σ_prop = 0.3
+             σ²_add = 0.388,
+             σ²_prop = 0.3
             )
 
   # FOCE is not allowed for models where dispersion parameter depends on the random effects
@@ -1281,7 +1273,7 @@ end
       θ₃ ∈ RealDomain(lower=0.004,  upper=0.9, init=0.0363)
       θ₄ ∈ RealDomain(lower=0.1,    upper=5.0, init=1.5)
       Ω ∈ PDiagDomain(2)
-      σ_add ∈ RealDomain(lower=0.0001, init=0.388)
+      σ²_add ∈ RealDomain(lower=0.0001, init=0.388)
       #σ_prop ∈ RealDomain(init=0.3)
     end
 
@@ -1306,7 +1298,7 @@ end
     @dynamics Depots1Central1
 
     @derived begin
-        dv ~ @. Normal(conc, sqrt(σ_add))
+        dv ~ @. Normal(conc, sqrt(σ²_add))
     end
   end
 
@@ -1316,7 +1308,7 @@ end
         θ₄ = 1.5,    #Ka MEAN ABSORPTION RATE CONSTANT for SEX=0 (1/HR)
 
         Ω = Diagonal([5.55, 0.515 ]),
-        σ_add = 0.388
+        σ²_add = 0.388
         #σ_prop = 0.3
        )
 
@@ -1348,7 +1340,7 @@ end
     θ₄ = 2.11952E+00, #Ka MEAN ABSORPTION RATE CONSTANT for SEX=0 (1/HR)
 
     Ω = Diagonal([1.596, 2.27638e-01]),
-    σ_add = 5.14457E-01
+    σ²_add = 5.14457E-01
   )
 
   laplace_stderr = (
@@ -1358,7 +1350,7 @@ end
     θ₄ = 9.69E-01,
 
     Ω = Diagonal([1.60E+00, 7.76E-02]),
-    σ_add = 1.35E-01)
+    σ²_add = 1.35E-01)
 
   laplace_ebes =[-2.81817E-01 -9.51075E-01
                   4.36123E-01  2.95020E-02
@@ -1439,8 +1431,8 @@ end
                           upper=[5.0 , 0.5   , 0.9   , 5.0])
       ω²Ka ∈ RealDomain(lower=0.0)
       ω²CL ∈ RealDomain(lower=0.0)
-      σ_add ∈ RealDomain(lower=0.0001, init=0.388)
-      σ_prop ∈ RealDomain(lower=0.0001, init=0.3)
+      σ²_add ∈ RealDomain(lower=0.0001, init=0.388)
+      σ²_prop ∈ RealDomain(lower=0.0001, init=0.3)
     end
 
     @random begin
@@ -1465,7 +1457,7 @@ end
     @dynamics Depots1Central1
 
     @derived begin
-      dv ~ @. Normal(conc, sqrt(conc^2*σ_prop+σ_add))
+      dv ~ @. Normal(conc, sqrt(conc^2*σ²_prop + σ²_add))
     end
   end
 
@@ -1476,8 +1468,8 @@ end
 
         ω²Ka = 5.55,
         ω²CL = 0.515,
-        σ_add = 0.388,
-        σ_prop = 0.3
+        σ²_add = 0.388,
+        σ²_prop = 0.3
        )
 
   @test deviance(theopmodel_laplacei, theopp, param, Pumas.LaplaceI()) ≈ 288.30901928585990 rtol=1e-6
@@ -1490,8 +1482,8 @@ end
 
     ω²Ka = 1.48117E+00,
     ω²CL = 2.67215E-01,
-    σ_add = 1.88050E-01,
-    σ_prop = 1.25319E-02
+    σ²_add = 1.88050E-01,
+    σ²_prop = 1.25319E-02
   )
 
   laplacei_stderr = (
@@ -1502,8 +1494,8 @@ end
 
     ω²Ka = 1.35E+00,
     ω²CL = 8.95E-02,
-    σ_add = 3.01E-01,
-    σ_prop = 1.70E-02)
+    σ²_add = 3.01E-01,
+    σ²_prop = 1.70E-02)
 
   laplacei_ebes = [-4.28671E-01 -1.07834E+00
                     5.07444E-01  6.93096E-02

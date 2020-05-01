@@ -8,30 +8,30 @@ data = read_pumas(example_data("sim_data_model1"))
 #likelihood tests from NLME.jl
 #-----------------------------------------------------------------------# Test 1
 tdist = @model begin
-    @param begin
-        θ  ∈ RealDomain(init=0.5)
-        Ω  ∈ PSDDomain(Matrix{Float64}(fill(0.04, 1, 1)))
-        σ² ∈ ConstDomain(0.1)
-    end
+  @param begin
+    θ ∈ RealDomain(init=0.5)
+    Ω ∈ PSDDomain(Matrix{Float64}(fill(0.04, 1, 1)))
+    σ ∈ ConstDomain(sqrt(0.1))
+  end
 
-    @random begin
-        η ~ MvNormal(Ω)
-    end
+  @random begin
+    η ~ MvNormal(Ω)
+  end
 
-    @pre begin
-        CL = θ * exp(η[1])
-        V  = 1.0
-    end
+  @pre begin
+    CL = θ * exp(η[1])
+    V  = 1.0
+  end
 
-    @vars begin
-        conc = Central / V
-    end
+  @vars begin
+    conc = Central / V
+  end
 
-    @dynamics Central1
+  @dynamics Central1
 
-    @derived begin
-        dv ~ @. LocationScale(conc, conc*sqrt(σ²), TDist(30))
-    end
+  @derived begin
+    dv ~ @. LocationScale(conc, conc*σ, TDist(30))
+  end
 end
 
 

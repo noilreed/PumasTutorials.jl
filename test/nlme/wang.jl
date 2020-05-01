@@ -14,9 +14,9 @@ using Pumas, CSV
 
     wang_additive = @model begin
       @param begin
-        θ  ∈ RealDomain(init=0.5)
-        Ω  ∈ PSDDomain(Matrix{Float64}(fill(0.04, 1, 1)))
-        σ² ∈ RealDomain(init=0.1)
+        θ ∈ RealDomain(init=0.5)
+        Ω ∈ PSDDomain(Matrix{Float64}(fill(0.04, 1, 1)))
+        σ ∈ RealDomain(init=sqrt(0.1))
       end
 
       @random begin
@@ -35,7 +35,7 @@ using Pumas, CSV
       @dynamics Central1
 
       @derived begin
-        dv ~ @. Normal(conc, sqrt(σ²))
+        dv ~ @. Normal(conc, σ)
       end
     end
 
@@ -49,9 +49,9 @@ using Pumas, CSV
 
     wang_proportional = @model begin
       @param begin
-        θ  ∈ RealDomain(init=0.5)
-        Ω  ∈ PSDDomain(Matrix{Float64}(fill(0.04, 1, 1)))
-        σ² ∈ ConstDomain(0.1)
+        θ ∈ RealDomain(init=0.5)
+        Ω ∈ PSDDomain(Matrix{Float64}(fill(0.04, 1, 1)))
+        σ ∈ ConstDomain(sqrt(0.1))
       end
 
       @random begin
@@ -70,7 +70,7 @@ using Pumas, CSV
       @dynamics Central1
 
       @derived begin
-        dv ~ @. Normal(conc, conc*sqrt(σ²))
+        dv ~ @. Normal(conc, conc*σ)
       end
     end
 
@@ -84,9 +84,9 @@ using Pumas, CSV
   @testset "Exponential error model" begin
     wang_exponential = @model begin
       @param begin
-        θ  ∈ RealDomain(init=0.5)
-        Ω  ∈ PSDDomain(Matrix{Float64}(fill(0.04, 1, 1)))
-        σ² ∈ ConstDomain(0.1)
+        θ ∈ RealDomain(init=0.5)
+        Ω ∈ PSDDomain(Matrix{Float64}(fill(0.04, 1, 1)))
+        σ ∈ ConstDomain(sqrt(0.1))
       end
 
       @random begin
@@ -105,7 +105,7 @@ using Pumas, CSV
       @dynamics Central1
 
       @derived begin
-        dv ~ @. LogNormal(log(conc), sqrt(σ²))
+        dv ~ @. LogNormal(log(conc), σ)
       end
     end
 
@@ -128,9 +128,9 @@ using Pumas, CSV
     # dv has been log transformed
     wang_exponential_log = @model begin
       @param begin
-        θ  ∈ RealDomain(init=0.5)
-        Ω  ∈ PSDDomain(Matrix{Float64}(fill(0.04, 1, 1)))
-        σ² ∈ ConstDomain(0.1)
+        θ ∈ RealDomain(init=0.5)
+        Ω ∈ PSDDomain(Matrix{Float64}(fill(0.04, 1, 1)))
+        σ ∈ ConstDomain(0.1)
       end
 
       @random begin
@@ -149,7 +149,7 @@ using Pumas, CSV
       @dynamics Central1
 
       @derived begin
-        dv ~ @. Normal(log(conc), sqrt(σ²))
+        dv ~ @. Normal(log(conc), σ)
       end
     end
 

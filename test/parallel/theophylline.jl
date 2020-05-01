@@ -10,7 +10,7 @@ theopmodel_fo_a = @model begin
       θ₃ ∈ RealDomain(lower=0.004,  upper=0.9, init=0.0363)
       θ₄ ∈ RealDomain(lower=0.1,    upper=5.0, init=1.5)
       Ω ∈ PSDDomain(3)
-      σ_add ∈ RealDomain(lower=0.001, init=0.388)
+      σ²_add ∈ RealDomain(lower=0.001, init=0.388)
     end
 
     @random begin
@@ -34,7 +34,7 @@ theopmodel_fo_a = @model begin
     @dynamics Depots1Central1
 
     @derived begin
-      dv ~ @. Normal(conc,sqrt(σ_add))
+      dv ~ @. Normal(conc, sqrt(σ²_add))
     end
 end
 
@@ -45,7 +45,7 @@ theopmodel_fo_s = @model begin
       θ₃ ∈ RealDomain(lower=0.004,  upper=0.9, init=0.0363)
       θ₄ ∈ RealDomain(lower=0.1,    upper=5.0, init=1.5)
       Ω ∈ PSDDomain(3)
-      σ_add ∈ RealDomain(lower=0.001, init=0.388)
+      σ²_add ∈ RealDomain(lower=0.001, init=0.388)
       #σ_prop ∈ RealDomain(init=0.3)
     end
 
@@ -74,7 +74,7 @@ theopmodel_fo_s = @model begin
     end
 
     @derived begin
-      dv ~ @. Normal(conc,sqrt(σ_add))
+      dv ~ @. Normal(conc, sqrt(σ²_add))
     end
 end
 
@@ -84,7 +84,7 @@ param = (
     θ₃ = 0.0363, #SLP  SLOPE OF CLEARANCE VS WEIGHT RELATIONSHIP (LITERS/HR/KG)
     θ₄ = 1.5,    #Ka MEAN ABSORPTION RATE CONSTANT for SEX=0 (1/HR)
     Ω  = diagm(0 => [5.55, 0.0024, 0.515]), # update to block diagonal
-    σ_add = 0.388
+    σ²_add = 0.388
      )
 simobs(theopmodel_fo_a, theopp, param, ensemblealg = EnsembleSerial())
 simobs(theopmodel_fo_s, theopp, param, ensemblealg = EnsembleSerial())

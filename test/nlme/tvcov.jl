@@ -63,7 +63,7 @@ df = identity.(df)
 
     @derived begin
       cp = @. (Central / v)
-      dv ~ @. Normal(cp, sqrt(cp^2*σ_prop))
+      dv ~ @. Normal(cp, cp*σ_prop)
     end
   end
 
@@ -74,7 +74,7 @@ df = identity.(df)
     ec50 = 15,
     gaeffect = 11,
     Ω = Diagonal([0.09,0.09]),
-    σ_prop = 0.04
+    σ_prop = 0.2
   )
 
 
@@ -137,7 +137,6 @@ df = identity.(df)
         Pumas.FOCEI();
         optimize_fn = Pumas.DefaultOptimizeFN(
           show_trace=true,
-          x_reltol=1e-3,
         ),
         # We use a slightly lower tolerance in the ODE solves to avoid a very slow
         # last iteration.
@@ -145,30 +144,13 @@ df = identity.(df)
       )
 
     @test deviance(ft_normal) ≈ 8784.101866341049 rtol=1e-5
-    @test sprint((io, t) -> show(io, MIME"text/plain"(), t), ft_normal) == """
-FittedPumasModel
-
-Successful minimization:                true
-
-Likelihood approximation:        Pumas.FOCEI
-Deviance:                          8784.1019
-Total number of observation records:    4669
-Number of active observation records:   4669
-Number of subjects:                        7
-
------------------------
-             Estimate
------------------------
-tvcl          0.15973
-tvv           3.7072
-tvka          0.88405
-ec50         15.004
-gaeffect     10.968
-Ω₁,₁          0.071242
-Ω₂,₂          0.085379
-σ_prop        0.040622
------------------------
-"""
+    @test coef(ft_normal).tvcl     ≈ 0.15973                rtol=1e-3
+    @test coef(ft_normal).tvv      ≈ 3.7072                 rtol=1e-3
+    @test coef(ft_normal).tvka     ≈ 0.88403                rtol=1e-3
+    @test coef(ft_normal).ec50     ≈ 15.004                 rtol=1e-3
+    @test coef(ft_normal).gaeffect ≈ 10.969                 rtol=1e-3
+    @test coef(ft_normal).Ω.diag   ≈ [0.0712376, 0.0856173] rtol=1e-3
+    @test coef(ft_normal).σ_prop   ≈ 0.20155                rtol=1e-3
   end
 
     # Currently disable since it's too slow. Enable once evaluation of time-varying covariates is faster

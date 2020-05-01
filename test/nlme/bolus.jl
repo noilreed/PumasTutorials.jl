@@ -36,7 +36,7 @@ using Pumas, Test, CSV
       @dynamics Central1
 
       @derived begin
-        dv ~ @. Normal(conc, abs(conc)*sqrt(σ_prop))
+        dv ~ @. Normal(conc, abs(conc)*σ_prop)
       end
     end
 
@@ -65,14 +65,14 @@ using Pumas, Test, CSV
       end
 
       @derived begin
-        dv ~ @. Normal(conc, abs(conc)*sqrt(σ_prop))
+        dv ~ @. Normal(conc, abs(conc)*σ_prop)
       end
     end
 
     param_proportional = (
       θ = [0.6, 10.0],
       Ω = Diagonal([0.04, 0.01]),
-      σ_prop = 0.1
+      σ_prop = sqrt(0.1)
     )
 
     @testset "FO estimation of $dyntype model" for dyntype in ("analytical", "solver")
@@ -81,7 +81,7 @@ using Pumas, Test, CSV
 
       @test param.θ      ≈ [3.5592e-01, 8.5888e+00] rtol=1e-3
       @test param.Ω.diag ≈ [3.0186e-01, 4.2789e-01] rtol=1e-3
-      @test param.σ_prop ≈ 9.9585e-02               rtol=1e-3
+      @test param.σ_prop ≈ sqrt(9.9585e-02)         rtol=1e-3
     end
 
     @testset "FOCE estimation of $dyntype model" for dyntype in ("analytical", "solver")
@@ -94,7 +94,7 @@ using Pumas, Test, CSV
 
       @test param.θ      ≈ [3.91e-01, 7.56e+00] rtol=1e-3
       @test param.Ω.diag ≈ [1.60e-01, 1.68e-01] rtol=3e-3
-      @test param.σ_prop ≈ 1.01e-1 rtol=1e-3
+      @test param.σ_prop ≈ sqrt(1.01e-1)        rtol=1e-3
     end
 
     @testset "LaplaceI estimation of $dyntype model" for dyntype in ("analytical", "solver")
@@ -103,7 +103,7 @@ using Pumas, Test, CSV
 
       @test param.θ      ≈ [3.7400e-01, 7.5009e+00] rtol=1e-3
       @test param.Ω.diag ≈ [1.5123e-01, 1.6798e-01] rtol=3e-3
-      @test param.σ_prop ≈ 1.0025e-01               rtol=1e-3
+      @test param.σ_prop ≈ sqrt(1.0025e-01)         rtol=1e-3
     end
   end
 
@@ -133,7 +133,7 @@ using Pumas, Test, CSV
       @dynamics Central1
 
       @derived begin
-       dv ~ @. Normal(conc, sqrt(conc^2*σ_prop + σ_add))
+       dv ~ @. Normal(conc, sqrt((conc*σ_prop)^2 + σ_add^2))
       end
     end
 
@@ -163,15 +163,15 @@ using Pumas, Test, CSV
       end
 
       @derived begin
-       dv ~ @. Normal(conc, sqrt(conc^2*σ_prop + σ_add))
+       dv ~ @. Normal(conc, sqrt((conc*σ_prop)^2 + σ_add^2))
       end
     end
 
     param_proportional_additive = (
       θ = [0.6, 10.0],
       Ω = Diagonal([0.04, 0.01]),
-      σ_add = 2.0,
-      σ_prop = 0.1
+      σ_add = sqrt(2.0),
+      σ_prop = sqrt(0.1)
     )
 
     @testset "FO estimation of $dyntype model" for dyntype in ("analytical", "solver")
@@ -180,8 +180,8 @@ using Pumas, Test, CSV
 
       @test param.θ      ≈ [4.2224e-01, 6.5691e+00] rtol=1e-3
       @test param.Ω.diag ≈ [2.1552e-01, 2.2674e-01] rtol=5e-3
-      @test param.σ_add  ≈ 7.9840e+00               rtol=1e-3
-      @test param.σ_prop ≈ 2.0831e-02               rtol=1e-3
+      @test param.σ_add  ≈ sqrt(7.9840e+00)         rtol=1e-3
+      @test param.σ_prop ≈ sqrt(2.0831e-02)         rtol=1e-3
     end
 
     @testset "FOCE estimation of $dyntype model" for dyntype in ("analytical", "solver")
@@ -194,8 +194,8 @@ using Pumas, Test, CSV
 
       @test param.θ      ≈ [4.17e-01, 7.16e+00] rtol=1e-3
       @test param.Ω.diag ≈ [1.71e-01, 1.98e-01] rtol=5e-3
-      @test param.σ_add  ≈ 8.57e+00             rtol=1e-3
-      @test param.σ_prop ≈ 1.47e-02             rtol=3e-3
+      @test param.σ_add  ≈ sqrt(8.57e+00)       rtol=1e-3
+      @test param.σ_prop ≈ sqrt(1.47e-02)       rtol=3e-3
     end
 
     @testset "LaplaceI estimation of $dyntype model" for dyntype in ("analytical", "solver")
@@ -204,8 +204,8 @@ using Pumas, Test, CSV
 
       @test param.θ      ≈ [4.1156e-01, 7.1442e+00] rtol=1e-3
       @test param.Ω.diag ≈ [1.7226e-01, 1.9856e-01] rtol=5e-3
-      @test param.σ_add  ≈ 8.5531e+00               rtol=1e-3
-      @test param.σ_prop ≈ 1.4630e-02               rtol=3e-3
+      @test param.σ_add  ≈ sqrt(8.5531e+00)         rtol=1e-3
+      @test param.σ_prop ≈ sqrt(1.4630e-02)         rtol=3e-3
     end
   end
 end

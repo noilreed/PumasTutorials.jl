@@ -8,7 +8,7 @@ using Random
   mdsl1 = @model begin
     @param begin
       θ ∈ VectorDomain(1, init=[0.5])
-      Σ ∈ ConstDomain(0.1)
+      σ ∈ ConstDomain(sqrt(0.1))
     end
 
     @pre begin
@@ -23,7 +23,7 @@ using Random
     @dynamics Central1
 
     @derived begin
-      dv ~ @. Normal(conc,conc*sqrt(Σ)+eps())
+      dv ~ @. Normal(conc, conc*σ + eps())
     end
   end
 
@@ -59,7 +59,7 @@ end
 
     @derived begin
       cp = @. 1000*(Central / V)
-      dv ~ @. Normal(cp, sqrt(cp^2*σ_prop))
+      dv ~ @. Normal(cp, cp*σ_prop)
     end
   end
 
@@ -69,7 +69,7 @@ end
     tvcl = 4.0,
     tvv  = 70,
     pmoncl = -0.7,
-    σ_prop = 0.04
+    σ_prop = 0.2
   )
 
   choose_covariates() = (isPM = rand([1, 0]), wt = rand(55:80))
@@ -99,14 +99,14 @@ Total number of observation records:     121
 Number of active observation records:    121
 Number of subjects:                        1
 
----------------------
+--------------------
            Estimate
----------------------
-tvcl        3.9888
+--------------------
+tvcl        3.9886
 tvv        71.687
-pmoncl     -0.7008
-σ_prop      0.052676
----------------------
+pmoncl     -0.70079
+σ_prop      0.22951
+--------------------
 """
 
   fitnp = fit(model, data, param, Pumas.NaivePooled())
@@ -122,14 +122,14 @@ Total number of observation records:  121000
 Number of active observation records: 121000
 Number of subjects:                     1000
 
---------------------------------------------------------------------
+-------------------------------------------------------------------
           Estimate           SE                      95.0% C.I.
---------------------------------------------------------------------
-tvcl       3.9995          0.0031928         [ 3.9933  ;  4.0058  ]
-tvv       69.907           0.093962          [69.723   ; 70.092   ]
-pmoncl    -0.69962         0.00059607        [-0.70079 ; -0.69845 ]
-σ_prop     0.040164        0.00017112        [ 0.039828;  0.040499]
---------------------------------------------------------------------
+-------------------------------------------------------------------
+tvcl       3.9995          0.0031928          [ 3.9933 ;  4.0058 ]
+tvv       69.907           0.093962           [69.723  ; 70.092  ]
+pmoncl    -0.69962         0.00059607         [-0.70079; -0.69845]
+σ_prop     0.20041         0.00042691         [ 0.19957;  0.20125]
+-------------------------------------------------------------------
 """
 
   inspect_np = DataFrame(inspect(fitnp))
@@ -144,10 +144,10 @@ Parameter statistics
 -------------------------------------
           Mean               Std
 -------------------------------------
-tvcl       3.9988          0.083047
+tvcl       3.9988          0.083016
 tvv       70.001           2.9683
-pmoncl    -0.70006         0.0045627
-σ_prop     0.039554        0.0053568
+pmoncl    -0.70006         0.0045657
+σ_prop     0.19843         0.013411
 -------------------------------------
 """
 
@@ -158,77 +158,79 @@ end
   data = read_pumas(example_data("sim_data_model1"))
 
   mdsl1 = @model begin
-      @param begin
-          θ ∈ VectorDomain(1, init=[0.5], lower = [0.0], upper=[20.0])
-          Ω ∈ PDiagDomain(init=[0.04])
-          Σ ∈ ConstDomain(0.1)
-      end
+    @param begin
+      θ ∈ VectorDomain(1, init=[0.5], lower = [0.0], upper=[20.0])
+      Ω ∈ PDiagDomain(init=[0.04])
+      σ ∈ ConstDomain(sqrt(0.1))
+    end
 
-      @random begin
-          η ~ MvNormal(Ω)
-      end
+    @random begin
+      η ~ MvNormal(Ω)
+    end
 
-      @pre begin
-          CL = θ[1] * exp(η[1])
-          V  = 1.0
-      end
+    @pre begin
+      CL = θ[1] * exp(η[1])
+      V  = 1.0
+    end
 
-      @vars begin
-          conc = Central / V
-      end
+    @vars begin
+      conc = Central / V
+    end
 
-      @dynamics Central1
+    @dynamics Central1
 
-      @derived begin
-          dv ~ @. Normal(conc,conc*sqrt(Σ)+eps())
-      end
+    @derived begin
+      dv ~ @. Normal(conc, conc*σ + eps())
+    end
   end
+
   mdsl1full = @model begin
-      @param begin
-          θ ∈ VectorDomain(1, init=[0.5], lower = [0.0], upper=[20.0])
-          Ω ∈ PSDDomain(init=[0.04])
-          Σ ∈ ConstDomain(0.1)
-      end
+    @param begin
+      θ ∈ VectorDomain(1, init=[0.5], lower = [0.0], upper=[20.0])
+      Ω ∈ PSDDomain(init=[0.04])
+      σ ∈ ConstDomain(sqrt(0.1))
+    end
 
-      @random begin
-          η ~ MvNormal(Ω)
-      end
+    @random begin
+      η ~ MvNormal(Ω)
+    end
 
-      @pre begin
-          CL = θ[1] * exp(η[1])
-          V  = 1.0
-      end
+    @pre begin
+      CL = θ[1] * exp(η[1])
+      V  = 1.0
+    end
 
-      @vars begin
-          conc = Central / V
-      end
+    @vars begin
+      conc = Central / V
+    end
 
-      @dynamics Central1
+    @dynamics Central1
 
-      @derived begin
-          dv ~ @. Normal(conc,conc*sqrt(Σ)+eps())
-      end
+    @derived begin
+      dv ~ @. Normal(conc, conc*σ + eps())
+    end
   end
+
   mdsl1_noeta = @model begin
-      @param begin
-          θ ∈ VectorDomain(1, init=[0.5])
-          Σ ∈ ConstDomain(0.1)
-      end
+    @param begin
+      θ ∈ VectorDomain(1, init=[0.5])
+      σ ∈ ConstDomain(sqrt(0.1))
+    end
 
-      @pre begin
-          CL = θ[1]
-          V  = 1.0
-      end
+    @pre begin
+      CL = θ[1]
+      V  = 1.0
+    end
 
-      @vars begin
-          conc = Central / V
-      end
+    @vars begin
+      conc = Central / V
+    end
 
-      @dynamics Central1
+    @dynamics Central1
 
-      @derived begin
-          dv ~ @. Normal(conc,conc*sqrt(Σ)+eps())
-      end
+    @derived begin
+      dv ~ @. Normal(conc, conc*σ + eps())
+    end
   end
 
 
@@ -250,9 +252,10 @@ Number of subjects:                        1
        Estimate
 ----------------
 θ₁      0.13038
-Σ       0.1
+σ       0.31623
 ----------------
 """
+
   infer_noeta = infer(fitone_noeta)
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_noeta) ==
 """FittedPumasModelInference
@@ -269,13 +272,13 @@ Number of subjects:                        1
       Estimate           SE                  95.0% C.I.
 ---------------------------------------------------------
 θ₁     0.13038         1.0297e-5       [0.13036; 0.1304]
-Σ      0.1             NaN             [ NaN   ;  NaN    ]
+σ      0.31623         NaN             [ NaN   ;  NaN    ]
 ---------------------------------------------------------
 """
 
   param = init_param(mdsl1)
   fitone_constantcoef = fit(mdsl1, first(data), param; constantcoef=(Ω=[0.0],))
-    @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_constantcoef) ==
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_constantcoef) ==
 """FittedPumasModel
 
 Successful minimization:                true
@@ -291,7 +294,7 @@ Number of subjects:                        1
 ----------------
 θ₁      0.1305
 Ω₁      0.0
-Σ       0.1
+σ       0.31623
 ----------------
 """
 
@@ -312,7 +315,7 @@ Number of subjects:                        1
 ----------------------------------------------------------
 θ₁     0.1305          0.00010387       [0.13029; 0.1307]
 Ω₁     0.0             NaN              [ NaN   ;  NaN    ]
-Σ      0.1             NaN              [ NaN   ;  NaN    ]
+σ      0.31623         NaN              [ NaN   ;  NaN    ]
 ----------------------------------------------------------
 """
 
@@ -333,9 +336,10 @@ Number of subjects:                        1
 ------------------
 θ₁        0.1305
 Ω₁,₁      0.0
-Σ         0.1
+σ         0.31623
 ------------------
 """
+
   infer_omegas = infer(fitone_omegas)
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_omegas) ==
 """FittedPumasModelInference
@@ -353,7 +357,7 @@ Number of subjects:                        1
 ------------------------------------------------------------
 θ₁       0.1305          0.00010387       [0.13029; 0.1307]
 Ω₁,₁     0.0             NaN              [ NaN   ;  NaN    ]
-Σ        0.1             NaN              [ NaN   ;  NaN    ]
+σ        0.31623         NaN              [ NaN   ;  NaN    ]
 ------------------------------------------------------------
 """
 
@@ -375,9 +379,10 @@ Number of subjects:                        1
 ----------------
 θ₁      0.1305
 Ω₁      0.0
-Σ       0.1
+σ       0.31623
 ----------------
 """
+
   infer_constantcoef = infer(fitone_constantcoef)
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_constantcoef) ==
 """FittedPumasModelInference
@@ -395,7 +400,7 @@ Number of subjects:                        1
 ----------------------------------------------------------
 θ₁     0.1305          0.00010387       [0.13029; 0.1307]
 Ω₁     0.0             NaN              [ NaN   ;  NaN    ]
-Σ      0.1             NaN              [ NaN   ;  NaN    ]
+σ      0.31623         NaN              [ NaN   ;  NaN    ]
 ----------------------------------------------------------
 """
 
@@ -416,9 +421,10 @@ Number of subjects:                        1
 ----------------
 θ₁      0.1305
 Ω₁      0.0
-Σ       0.1
+σ       0.31623
 ----------------
 """
+
   infer_omegas = infer(fitone_omegas)
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_omegas) ==
 """FittedPumasModelInference
@@ -436,7 +442,7 @@ Number of subjects:                        1
 ----------------------------------------------------------
 θ₁     0.1305          0.00010387       [0.13029; 0.1307]
 Ω₁     0.0             NaN              [ NaN   ;  NaN    ]
-Σ      0.1             NaN              [ NaN   ;  NaN    ]
+σ      0.31623         NaN              [ NaN   ;  NaN    ]
 ----------------------------------------------------------
 """
 end

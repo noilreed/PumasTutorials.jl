@@ -13,82 +13,82 @@ using Pumas, Test
 
   model["additive"] = @model begin
     @param begin
-        θ ∈ RealDomain()
-        Ω ∈ PDiagDomain(1)
-        σ ∈ RealDomain(lower=0.0001)
+      θ ∈ RealDomain()
+      Ω ∈ PDiagDomain(1)
+      σ ∈ RealDomain(lower=0.0001)
     end
 
     @random begin
-        η ~ MvNormal(Ω)
+      η ~ MvNormal(Ω)
     end
 
     @pre begin
-        CL = θ * exp(η[1])
-        V  = 1.0
+      CL = θ * exp(η[1])
+      V  = 1.0
     end
 
     @vars begin
-        conc = Central / V
+      conc = Central / V
     end
 
     @dynamics Central1
 
     @derived begin
-        dv ~ @. Normal(conc, σ)
+      dv ~ @. Normal(conc, σ)
     end
   end
 
   model["proportional"] = @model begin
     @param begin
-        θ ∈ RealDomain()
-        Ω ∈ PDiagDomain(1)
-        σ ∈ RealDomain(lower=0.0001)
+      θ ∈ RealDomain()
+      Ω ∈ PDiagDomain(1)
+      σ ∈ RealDomain(lower=0.0001)
     end
 
     @random begin
-        η ~ MvNormal(Ω)
+      η ~ MvNormal(Ω)
     end
 
     @pre begin
-        CL = θ * exp(η[1])
-        V  = 1.0
+      CL = θ * exp(η[1])
+      V  = 1.0
     end
 
     @vars begin
-        conc = Central / V
+      conc = Central / V
     end
 
     @dynamics Central1
 
     @derived begin
-        dv ~ @. Normal(conc, conc*σ)
+      dv ~ @. Normal(conc, conc*σ)
     end
   end
 
   model["exponential"] = @model begin
     @param begin
-        θ ∈ RealDomain()
-        Ω ∈ PDiagDomain(1)
-        σ ∈ RealDomain(lower=0.0001)
+      θ ∈ RealDomain()
+      Ω ∈ PDiagDomain(1)
+      σ ∈ RealDomain(lower=0.0001)
     end
 
     @random begin
-        η ~ MvNormal(Ω)
+      η ~ MvNormal(Ω)
     end
 
     @pre begin
-        CL = θ * exp(η[1])
-        V  = 1.0
+      CL = θ * exp(η[1])
+      V  = 1.0
     end
 
     @vars begin
-        conc = Central / V
+      conc = Central / V
     end
 
     @dynamics Central1
 
     @derived begin
-        dv ~ @. LogNormal(log(conc), σ)
+      dv ~ @. LogNormal(log(conc), σ)
     end
   end
 
