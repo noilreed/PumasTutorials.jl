@@ -609,7 +609,10 @@ function add_vars(ex::Expr, vars)
   return Expr(:block, [vars.args; args]...)
 end
 
-to_ncasubj(name, t, events) = NCASubject(name, t, dose=map(ev->convert(NCADose, ev), events), clean=false, check=false)
+to_ncasubj(name, t, events) = NCASubject(name, t, dose=map(
+                                         ev->convert(NCADose, ev),
+                                         Iterators.filter(x->x.rate_dir==1,events)),
+                                         clean=false, check=false)
 
 macro nca(name)
   esc(:(Pumas.to_ncasubj($name, t, events)))
