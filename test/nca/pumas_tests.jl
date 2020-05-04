@@ -131,7 +131,7 @@ p = (
   )
 sim = @test_nowarn simobs(parmet, ev1, p)
 @test_nowarn DataFrame(sim)
-dose = NCADose.(filter(ev -> evrate_dir==1, sim[1].subject.events))
+dose = NCADose.(filter(ev -> ev.rate_dir==1, sim[1].subject.events))
 for i in eachindex(sim)
   subjcp = NCASubject(sim[i].observed.cp, sim[i].times, dose=dose, clean=false)
   subjcm = NCASubject(sim[i].observed.cm, sim[i].times, dose=dose, clean=false)
