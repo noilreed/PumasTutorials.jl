@@ -469,10 +469,10 @@ end
     push!(names,n)
     push!(plot_vars,v)
   end
-  xlabel --> "time"
+  xguide --> "time"
   legend --> false
-  lw --> 3
-  ylabel --> reshape(names,1,length(names))
+  linewidth --> 3
+  yguide --> reshape(names,1,length(names))
   layout --> good_layout(length(names))
   title --> "Subject ID: $(obs.id)"
   t,plot_vars
@@ -513,7 +513,7 @@ TreeViews.nodelabel(io::IO, population::Population, i::Integer, mime::MIME"text/
 @recipe function f(pop::Population)
   for p in pop
     @series begin
-      lw --> 1.5
+      linewidth --> 1.5
       title --> "Population Simulation"
       p
     end
