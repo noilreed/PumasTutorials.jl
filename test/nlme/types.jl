@@ -17,11 +17,11 @@ mdsl1 = @model begin
 
   @pre begin
     CL = θ[1] * exp(η[1])
-    V  = 1.0
+    Vc = 1.0
   end
 
   @vars begin
-    conc = Central / V
+    conc = Central / Vc
   end
 
   @dynamics Central1
@@ -71,11 +71,11 @@ end
 
     @pre begin
       CL = θ * exp(η[1])
-      V  = 1.0
+      Vc = 1.0
     end
 
     @vars begin
-      conc = Central / V
+      conc = Central / Vc
     end
 
     @dynamics Central1
@@ -98,11 +98,11 @@ end
 
     @pre begin
       CL = θ * exp(η[1])
-      V  = 1.0
+      Vc = 1.0
     end
 
     @vars begin
-      conc = Central / V
+      conc = Central / Vc
     end
 
     @dynamics Central1
@@ -125,11 +125,11 @@ end
 
     @pre begin
       CL = θ * exp(η[1])
-      V  = 1.0
+      Vc = 1.0
     end
 
     @vars begin
-      conc = Central / V
+      conc = Central / Vc
     end
 
     @dynamics Central1
@@ -182,7 +182,7 @@ end # begin
       Ka = SEX == 0 ? θ₁ + η[1] : θ₄ + η[1]
       K  = θ₂+ η[2]
       CL = θ₃*WT + η[3]
-      V  = CL/K
+      Vc = CL/K
       SC = CL/K/WT
     end
 
@@ -190,12 +190,12 @@ end # begin
 
     @vars begin
       conc = Central / SC
-      cp   = Central/V
+      cp   = Central/Vc
     end
 
     @dynamics begin
       Depot'   = -Ka*Depot
-      Central' =  Ka*Depot - (CL/V)*Central
+      Central' =  Ka*Depot - (CL/Vc)*Central
     end
 
     @derived begin

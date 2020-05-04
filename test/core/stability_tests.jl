@@ -13,11 +13,11 @@ m_diffeq = @model begin
     @pre begin
         Ka = ka
         CL = cl
-        V  = v
+        Vc  = v
     end
 
     @vars begin
-        cp = Central/V
+        cp = Central / Vc
     end
 
     @dynamics begin
@@ -26,7 +26,7 @@ m_diffeq = @model begin
     end
 
     @derived begin
-        conc = @. Central / V
+        conc = @. Central / Vc
         dv ~ @. Normal(conc, 1e-100)
     end
 end
@@ -38,12 +38,12 @@ m_analytic = @model begin
     @pre begin
         Ka = ka
         CL = cl
-        V  = v
+        Vc  = v
     end
     @dynamics Depots1Central1 
 
     @derived begin
-        conc = @. Central / V
+        conc = @. Central / Vc
         dv ~ @. Normal(conc, 1e-100)
     end
 end

@@ -17,14 +17,14 @@ using Pumas, Test, Random
     @pre begin
       Ka   = θKa
       CL   = θCL*exp(η[1])
-      V    = θV*exp(η[2])
+      Vc   = θV*exp(η[2])
       lags = (Depot=θlag,)
     end
 
     @dynamics Depots1Central1
 
     @derived begin
-      cp = @. Central / V
+      cp = @. Central / Vc
       dv = @. Normal(cp, cp*σ)
     end
   end
@@ -43,17 +43,17 @@ using Pumas, Test, Random
     @pre begin
       Ka   = θKa
       CL   = θCL*exp(η[1])
-      V    = θV*exp(η[2])
+      Vc   = θV*exp(η[2])
       lags = (Depot=θlag,)
     end
 
     @dynamics begin
       Depot'   = -Ka*Depot
-      Central' =  Ka*Depot - (CL/V)*Central
+      Central' =  Ka*Depot - (CL/Vc)*Central
     end
 
     @derived begin
-      cp = @. Central / V
+      cp = @. Central / Vc
       dv = @. Normal(cp, cp*σ)
     end
   end
@@ -107,14 +107,14 @@ end
 
     @pre begin
       CL       = θCL*exp(η[1])
-      V        = θV*exp(η[2])
+      Vc       = θV*exp(η[2])
       duration = (Central=θduration,)
     end
 
     @dynamics Central1
 
     @derived begin
-      cp = @. Central / V
+      cp = @. Central / Vc
       dv = @. Normal(cp, cp*σ)
     end
   end
@@ -131,16 +131,16 @@ end
 
     @pre begin
       CL       = θCL*exp(η[1])
-      V        = θV*exp(η[2])
+      Vc       = θV*exp(η[2])
       duration = (Central=θduration,)
     end
 
     @dynamics begin
-      Central' = -(CL/V)*Central
+      Central' = -(CL/Vc)*Central
     end
 
     @derived begin
-      cp = @. Central / V
+      cp = @. Central / Vc
       dv = @. Normal(cp, cp*σ)
     end
   end
@@ -183,14 +183,14 @@ end
 
     @pre begin
       CL   = θCL*exp(η[1])
-      V    = θV*exp(η[2])
+      Vc   = θV*exp(η[2])
       rate = (Central=θrate,)
     end
 
     @dynamics Central1
 
     @derived begin
-      cp = @. Central / V
+      cp = @. Central / Vc
       dv = @. Normal(cp, cp*σ)
     end
   end
@@ -207,16 +207,16 @@ end
 
     @pre begin
       CL   = θCL*exp(η[1])
-      V    = θV*exp(η[2])
+      Vc   = θV*exp(η[2])
       rate = (Central=θrate,)
     end
 
     @dynamics begin
-      Central' = -(CL/V)*Central
+      Central' = -(CL/Vc)*Central
     end
 
     @derived begin
-      cp = @. Central / V
+      cp = @. Central / Vc
       dv = @. Normal(cp, cp*σ)
     end
   end
@@ -260,14 +260,14 @@ end
     @pre begin
       Ka    = θKa
       CL    = θCL*exp(η[1])
-      V     = θV*exp(η[2])
+      Vc    = θV*exp(η[2])
       bioav = (Depot=θbioav,)
     end
 
     @dynamics Depots1Central1
 
     @derived begin
-      cp = @. Central / V
+      cp = @. Central / Vc
       dv = @. Normal(cp, cp*σ)
     end
   end
@@ -286,17 +286,17 @@ end
     @pre begin
       Ka   = θKa
       CL   = θCL*exp(η[1])
-      V    = θV*exp(η[2])
+      Vc   = θV*exp(η[2])
       bioav = (Depot=θbioav,)
     end
 
     @dynamics begin
       Depot'   = -Ka*Depot
-      Central' =  Ka*Depot - (CL/V)*Central
+      Central' =  Ka*Depot - (CL/Vc)*Central
     end
 
     @derived begin
-      cp = @. Central / V
+      cp = @. Central / Vc
       dv = @. Normal(cp, cp*σ)
     end
   end

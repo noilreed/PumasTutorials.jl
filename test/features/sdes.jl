@@ -17,14 +17,14 @@ function pre_f(params, randoms, subject)
         η = randoms.η
         (Ka = θ[1],
          CL = θ[2]*exp(η[1]),
-         V  = θ[3]*exp(η[2]))
+         Vc = θ[3]*exp(η[2]))
     end
 end
 
 function f(du,u,p,t)
  Depot,Central = u
  du[1] = -p.Ka*Depot
- du[2] =  p.Ka*Depot - (p.CL/p.V)*Central
+ du[2] =  p.Ka*Depot - (p.CL/p.Vc)*Central
 end
 
 function g(du,u,p,t)
@@ -37,10 +37,10 @@ prob = SDEProblem(f,g,nothing,nothing)
 init_f(col,t) = [0.0,0.0]
 
 function derived_f(col,sol,obstimes,subject, param, randeffs)
-    V = col.V
+    Vc = col.Vc
     Σ = col.Σ
     central = sol(obstimes;idxs=2)
-    conc = @. central / V
+    conc = @. central / Vc
     dv = @. Normal(conc, conc*Σ)
     (dv=dv,)
 end

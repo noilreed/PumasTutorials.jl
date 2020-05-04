@@ -25,11 +25,11 @@ using Pumas, CSV
 
       @pre begin
         CL = θ * exp(η[1])
-        V  = 1.0
+        Vc = 1.0
       end
 
       @vars begin
-        conc = Central / V
+        conc = Central / Vc
       end
 
       @dynamics Central1
@@ -60,11 +60,11 @@ using Pumas, CSV
 
       @pre begin
         CL = θ * exp(η[1])
-        V  = 1.0
+        Vc = 1.0
       end
 
       @vars begin
-        conc = Central / V
+        conc = Central / Vc
       end
 
       @dynamics Central1
@@ -95,11 +95,11 @@ using Pumas, CSV
 
       @pre begin
         CL = θ[1] * exp(η[1])
-        V  = 1.0
+        Vc = 1.0
       end
 
       @vars begin
-        conc = Central / V
+        conc = Central / Vc
       end
 
       @dynamics Central1
@@ -139,11 +139,11 @@ using Pumas, CSV
 
       @pre begin
         CL = θ[1] * exp(η[1])
-        V  = 1.0
+        Vc = 1.0
       end
 
       @vars begin
-        conc = Central / V
+        conc = Central / Vc
       end
 
       @dynamics Central1

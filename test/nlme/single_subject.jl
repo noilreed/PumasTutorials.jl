@@ -13,11 +13,11 @@ using Random
 
     @pre begin
       CL = θ[1]
-      V  = 1.0
+      Vc = 1.0
     end
 
     @vars begin
-      conc = Central / V
+      conc = Central / Vc
     end
 
     @dynamics Central1
@@ -49,7 +49,7 @@ end
 
     @pre begin
       CL = tvcl * (1 + pmoncl*isPM) * (wt/70)^0.75
-      V  = tvv * (wt/70)
+      Vc = tvv * (wt/70)
     end
 
     @dynamics Central1
@@ -58,7 +58,7 @@ end
     #end
 
     @derived begin
-      cp = @. 1000*(Central / V)
+      cp = @. 1000*(Central / Vc)
       dv ~ @. Normal(cp, cp*σ_prop)
     end
   end
@@ -170,11 +170,11 @@ end
 
     @pre begin
       CL = θ[1] * exp(η[1])
-      V  = 1.0
+      Vc = 1.0
     end
 
     @vars begin
-      conc = Central / V
+      conc = Central / Vc
     end
 
     @dynamics Central1
@@ -197,11 +197,11 @@ end
 
     @pre begin
       CL = θ[1] * exp(η[1])
-      V  = 1.0
+      Vc = 1.0
     end
 
     @vars begin
-      conc = Central / V
+      conc = Central / Vc
     end
 
     @dynamics Central1
@@ -219,11 +219,11 @@ end
 
     @pre begin
       CL = θ[1]
-      V  = 1.0
+      Vc = 1.0
     end
 
     @vars begin
-      conc = Central / V
+      conc = Central / Vc
     end
 
     @dynamics Central1

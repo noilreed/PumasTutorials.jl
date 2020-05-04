@@ -24,18 +24,18 @@ m_diffeq = @model begin
   @pre begin
     Ka = θ1
     CL = θ2
-    V  = θ3
+    Vc = θ3
   end
 
   @covariates isPM Wt
 
   @dynamics begin
     Depot'   = -Ka*Depot
-    Central' =  Ka*Depot - (CL/V)*Central
+    Central' =  Ka*Depot - (CL/Vc)*Central
   end
 
   @derived begin
-    cp = @. 1000*(Central / V)
+    cp = @. 1000*(Central / Vc)
     nca := @nca cp
     auc =  NCA.auc(nca)
     thalf =  NCA.thalf(nca)
@@ -45,7 +45,7 @@ end
 
 p = (  θ1 = 1.5,  #Ka
        θ2  =  1.1,  #CL
-       θ3  =   20.0  #V
+       θ3  =   20.0  #Vc
            ,
     )
 

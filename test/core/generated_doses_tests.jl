@@ -16,12 +16,12 @@ m_diffeq = @model begin
     @pre begin
         TVCL = isPM == "yes" ? θ[1] : θ[4]
         CL = θ[1]*(Wt/70)^0.75*exp(η[1])
-        V = θ[2]*(Wt/70)^0.75*exp(η[2])
+        Vc = θ[2]*(Wt/70)^0.75*exp(η[2])
         Ka = θ[3]*exp(η[3])
     end
 
     @vars begin
-        cp = Central/V
+        cp = Central/Vc
     end
 
     @dynamics begin
@@ -30,7 +30,7 @@ m_diffeq = @model begin
     end
 
     @derived begin
-        conc = @. Central / V
+        conc = @. Central / Vc
         dv ~ @. Normal(conc, 0.2)
     end
 end

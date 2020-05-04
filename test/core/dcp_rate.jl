@@ -24,7 +24,7 @@ m_diffeq = @model begin
     Ka = θ[1]
     TVCL = isPM == "yes" ? θ[2] : θ[2]*θ[6]
     CL = TVCL*exp(η[1])
-    V  = θ[3]*exp(η[2])
+    Vc = θ[3]*exp(η[2])
     lags = [0,θ[4]]
     bioav = [1,θ[5]]
     duration = [0,θ[7]]
@@ -34,11 +34,11 @@ m_diffeq = @model begin
 
   @dynamics begin
     Depot'   = -Ka*Depot
-    Central' =  Ka*Depot - (CL/V)*Central
+    Central' =  Ka*Depot - (CL/Vc)*Central
   end
 
   @derived begin
-    cp = @. 1000*(Central / V)
+    cp = @. 1000*(Central / Vc)
   end
 end
 
@@ -81,7 +81,7 @@ m_error = @model begin
     Ka = θ[1]
     TVCL = isPM == "yes" ? θ[2] : θ[2]*θ[6]
     CL = TVCL*exp(η[1])
-    V  = θ[3]*exp(η[2])
+    Vc = θ[3]*exp(η[2])
     lags = [0,θ[4]]
     bioav = [1,θ[5]]
   end
@@ -90,11 +90,11 @@ m_error = @model begin
 
   @dynamics begin
     Depot'   = -Ka*Depot
-    Central' =  Ka*Depot - (CL/V)*Central
+    Central' =  Ka*Depot - (CL/Vc)*Central
   end
 
   @derived begin
-    cp = @. 1000*(Central / V)
+    cp = @. 1000*(Central / Vc)
   end
 end
 
@@ -132,7 +132,7 @@ model = @model begin
 
   @pre begin
     CL = tvcl *  exp(η[1])
-    V  = tvv
+    Vc = tvv
     Ka = tvka
     lags  = (Depot = tvlag,)
     flgt = tvbio + η[2]
@@ -143,7 +143,7 @@ model = @model begin
   @dynamics Depots1Central1
 
   @derived begin
-    cp = Central/V
+    cp = Central/Vc
     dv ~ @. Normal(cp, abs(cp)*σ)
   end
 end

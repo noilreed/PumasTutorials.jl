@@ -19,20 +19,20 @@ model = @model begin
     η ~ MvNormal(Ω)
   end
   @pre begin
-    CL1 = tvcl *  exp(η[1])
-    V1  = tvv
-    Vp1  = tvvp
-    Q1 = tvq
-    T  = tvt
-    V2 = tvvmeta
-    CL2 = tvmetacl *  exp(η[2])
+    CL = tvcl *  exp(η[1])
+    Vc  = tvv
+    Vp  = tvvp
+    Q = tvq
+    CLfm = tvt
+    Vm = tvvmeta
+    CLm = tvmetacl *  exp(η[2])
   end
   @dynamics Central1Periph1Meta1
 
   @derived begin
-    cp1 := @. Central/V1
+    cp1 := @. Central/Vc
     dv1 ~ @. Normal(cp1, abs(cp1)*σ)
-    cp2 := @. Metabolite/V2
+    cp2 := @. Metabolite/Vm
     dv2 ~ @. Normal(cp2, abs(cp1)*σ)
   end
 end

@@ -21,11 +21,11 @@ subject = data[1]
     @pre begin
       Ka = θ[1]
       CL = θ[2] * ((wt/70)^0.75) * (θ[4]^sex) * exp(η[1])
-      V  = θ[3] * exp(η[2])
+      Vc = θ[3] * exp(η[2])
     end
 
     @vars begin
-      cp = Central/V
+      cp = Central/Vc
     end
 
     @dynamics begin
@@ -34,7 +34,7 @@ subject = data[1]
     end
 
     @derived begin
-      conc = @. Central / V
+      conc = @. Central / Vc
       cmax = maximum(conc)
     end
   end
@@ -85,7 +85,7 @@ end
       (
         Ka = param.θ[1],
         CL = param.θ[2] * ((cov.wt/70)^0.75) * (param.θ[4]^cov.sex) * exp(randeffs.η[1]),
-        V  = param.θ[3] * exp(randeffs.η[2]),
+        Vc = param.θ[3] * exp(randeffs.η[2]),
       )
     end
   end
@@ -93,7 +93,7 @@ end
   init_f(col,t0) = @LArray [0.0, 0.0] (:Depot, :Central)
 
   function onecompartment_f(du, u, p, t)
-    cp = u.Central/p.V
+    cp = u.Central/p.Vc
     du.Depot = -p.Ka*u.Depot
     du.Central = p.Ka*u.Depot - p.CL*cp
   end
@@ -102,9 +102,9 @@ end
 
   function derived_f(col, sol, obstimes, subject, param, randeffs)
     col_t = col() # pre is time-constant
-    V = col_t.V
+    Vc = col_t.Vc
     central = sol(obstimes; idxs=2)
-    _conc = @. central / V
+    _conc = @. central / Vc
     _cmax = maximum(_conc)
     (conc = _conc, cmax = _cmax)
   end
@@ -161,12 +161,12 @@ end
     @pre begin
       Ka = θ[1]
       CL = θ[2] * ((wt/70)^0.75) * (θ[4]^sex) * exp(η[1])
-      V  = θ[3] * exp(η[2])
+      Vc = θ[3] * exp(η[2])
       bioav = θ[5]
     end
 
     @vars begin
-      cp = Central/V
+      cp = Central/Vc
     end
 
     @dynamics begin
@@ -175,7 +175,7 @@ end
     end
 
     @derived begin
-      conc = @. Central / V
+      conc = @. Central / Vc
       cmax = maximum(conc)
     end
   end
@@ -221,13 +221,13 @@ end
     @pre begin
       Ka = θ[1]
       CL = θ[2]*exp(η[1])
-      V  = θ[3]*exp(η[2])
+      Vc = θ[3]*exp(η[2])
     end
 
     @dynamics Depots1Central1
 
     @derived begin
-      cp = @. Central / V
+      cp = @. Central / Vc
       cmax = maximum(cp)
     end
   end

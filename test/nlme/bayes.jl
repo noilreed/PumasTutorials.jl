@@ -22,8 +22,8 @@ theopp = read_pumas(example_data("event_data/THEOPP"),cvs = [:WT,:SEX])
       Ka = (SEX == 1 ? θ[1] : θ[4]) + η[1]
       K  = θ[2]
       CL = θ[3]*(WT/70)^θ[5]
-      V  = CL/K
-      SC = V/(WT/70)
+      Vc = CL/K
+      SC = Vc/(WT/70)
     end
 
     @covariates SEX WT
@@ -146,8 +146,8 @@ end
       Ka = (SEX == 1 ? θ[1] : θ[4]) + η[1]
       K  = θ[2]
       CL = θ[3]*(WT/70)^θ[5]
-      V  = CL/K
-      SC = V/(WT/70)
+      Vc = CL/K
+      SC = Vc/(WT/70)
     end
 
     @covariates SEX WT
@@ -266,8 +266,8 @@ end
       Ka = (SEX == 1 ? θ[1] : θ[4]) + η[1]
       K  = θ[2]
       CL = θ[3]*(WT/70)^θ[5]
-      V  = CL/K
-      SC = V/(WT/70)
+      Vc  = CL/K
+      SC = Vc/(WT/70)
     end
 
     @covariates SEX WT

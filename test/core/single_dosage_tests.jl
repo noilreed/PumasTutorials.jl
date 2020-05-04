@@ -30,11 +30,11 @@ m_diffeq = @model begin
   @pre begin
     Ka = θ[1]
     CL = θ[2] * ((wt/70)^0.75) * (θ[4]^sex) * exp(η[1])
-    V  = θ[3] * exp(η[2])
+    Vc = θ[3] * exp(η[2])
   end
 
   @vars begin
-    cp = Central/V
+    cp = Central/Vc
   end
 
   @dynamics begin
@@ -43,7 +43,7 @@ m_diffeq = @model begin
   end
 
   @derived begin
-    conc = @. Central / V
+    conc = @. Central / Vc
     dv ~ @. Normal(conc, conc*σ)
   end
 end
@@ -65,13 +65,13 @@ m_analytic = @model begin
   @pre begin
     Ka = θ[1]
     CL = θ[2] * ((wt/70)^0.75) * (θ[4]^sex) * exp(η[1])
-    V  = θ[3] * exp(η[2])
+    Vc = θ[3] * exp(η[2])
   end
 
   @dynamics Depots1Central1
 
   @derived begin
-    conc = @. Central / V
+    conc = @. Central / Vc
     dv ~ @. Normal(conc, conc*σ)
   end
 end

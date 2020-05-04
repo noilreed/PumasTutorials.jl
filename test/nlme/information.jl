@@ -23,14 +23,14 @@ using Pumas, LinearAlgebra
       Tvv  = θ₂
       Tvka = θ₃
       CL   = Tvcl*exp(η[1])
-      V    = Tvv*exp(η[2])
+      Vc   = Tvv*exp(η[2])
       Ka   = Tvka*exp(η[3])
     end
 
     @dynamics Depots1Central1
 
     @vars begin
-      conc = Central/V
+      conc = Central / Vc
     end
 
     @derived begin

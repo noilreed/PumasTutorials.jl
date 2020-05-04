@@ -1,6 +1,6 @@
 export Central1, Depots1Central1, Depots2Central1,
        Central1Periph1, Depots1Central1Periph1 ,
-       Central1Periph1Meta1, Central1Periph1MetaPeriph1
+       Central1Periph1Meta1, Central1Periph1Meta1Periph1
 
 abstract type ExplicitModel end
 
@@ -28,11 +28,19 @@ function _analytical_solve(m::M, t, t₀, amounts, doses, pre, rates) where M<:E
 end
 DiffEqBase.has_syms(x::ExplicitModel) = true
 Base.getproperty(x::ExplicitModel, symbol::Symbol) = symbol == :syms ? Pumas.varnames(typeof(x)) : getfield(x, symbol)
+"""
+    Central1()
 
+An analytical model for a one compartment model with dosing into `Central`. Equivalent to
+
+  Central' = -CL/Vc*Central
+
+where clearance, `CL`, and volume, `Vc`, are required to be defined in the `@pre` block.
+"""
 struct Central1 <: ExplicitModel end
 (m::Central1)(args...) = _analytical_solve(m, args...)
 @inline function LinearAlgebra.eigen(::Central1, p)
-  Ke = p.CL/p.V
+  Ke = p.CL/p.Vc
   T = typeof(Ke)
 
   Λ = @SVector([-Ke])
@@ -43,11 +51,21 @@ end
 varnames(::Type{Central1}) = (:Central,)
 pk_init(::Central1) = SLVector(Central=0.0)
 
+"""
+    Depots1Central1()
+
+An analytical model for a one compartment model with a central compartment, `Central`, and a depot, `Depot`. Equivalent to
+
+  Depot'   = -Ka*Depot   
+  Central' = -CL/Vc*Central  
+
+where absoption rate, `Ka`, clearance, `CL`, and volume, `Vc`, are required to be defined in the `@pre` block.
+"""
 struct Depots1Central1 <: ExplicitModel end
 (m::Depots1Central1)(args...) = _analytical_solve(m, args...)
 @inline function LinearAlgebra.eigen(::Depots1Central1, p)
     a = p.Ka
-    e = p.CL/p.V
+    e = p.CL/p.Vc
 
     Λ = @SVector([-a, -e])
     v = e/a - 1
@@ -58,12 +76,28 @@ end
 varnames(::Type{Depots1Central1}) = (:Depot, :Central)
 pk_init(::Depots1Central1) = SLVector(Depot=0.0,Central=0.0)
 
+"""
+    Depots2Central1()
+
+An analytical model for a one compartment model with a central compartment, `Central`, and two depots, `Depot1` and `Depot2`. Equivalent to
+
+  Depot1'   = -Ka1*Depot1  
+  Depot2'   = -Ka2*Depot2  
+  Central' = -CL/Vc*Central  
+
+where absorption rates, `Ka1` and `Ka2`, clearance, `CL`, and volume, `Vc`, are required to be defined in the `@pre` block. 
+
+When using this model during simulation or estimation, it is preferred to have 2 dosing rows for each subject in the dataset, where the first dose goes into `cmt =1` (or `cmt = Depot1`) and the second dose goes into `cmt=2` (or `cmt=Depot2`). Central compartment gets `cmt=3` or (`cmt = Central`). e.g.
+
+ev = DosageRegimen([100,100],cmt=[1,2])
+s1 = Subject(id=1, evs=ev)
+"""
 struct Depots2Central1 <: ExplicitModel end
 (m::Depots2Central1)(args...) = _analytical_solve(m, args...)
 @inline function LinearAlgebra.eigen(::Depots2Central1, p)
     a = p.Ka1
     b = p.Ka2
-    e = p.CL/p.V
+    e = p.CL/p.Vc
 
     frac1 = (e-a)/a
     invfrac1 = inv(frac1)
@@ -84,10 +118,20 @@ end
 varnames(::Type{Depots2Central1}) = (:Depot1, :Depot2, :Central)
 pk_init(::Depots2Central1) = SLVector(Depot1=0.0,Depot2=0.0,Central=0.0)
 
-# b is from actual cmt to peri, c is back
+"""
+    Central1Periph1()
+
+An analytical model for a two-compartment model with a central compartment, `Central` and a peripheral compartment, `Peripheral`. Equivalent to
+
+  Central'    = -(CL+Q)/Vc*Central + Q/Vp*Peripheral  
+  Peripheral' =        Q/Vc*Central - Q/Vp*Peripheral  
+
+where clearance, `CL`, and volumes, `Vc` and `Vp`, and distribution clearance, `Q`, are required to be defined in the `@pre` block.
+"""
 struct Central1Periph1 <: ExplicitModel end
 _V(::Central1Periph1, Λ, b, c) = @SMatrix([(Λ[1]+c)/b (Λ[2]+c)/b])
 function _Λ(::Central1Periph1, a, b, c)
+  # b is from actual cmt to peri, c is back
   A = a + b + c
   S = sqrt(A^2-4*a*c)
   Λ = @SVector([-(A+S)/2, -(A-S)/2])
@@ -106,6 +150,17 @@ end
 varnames(::Type{Central1Periph1}) = (:Central, :Peripheral)
 pk_init(::Central1Periph1) = SLVector(Central=0.0, Peripheral=0.0)
 
+"""
+    Depots1Central1Periph1()
+
+An analytical model for a two-compartment model with a central compartment, `Central`, a peripheral compartment, `Peripheral`, and a depot `Depot`. Equivalent to
+  
+  Depot'      = -Ka*Depot  
+  Central'    =  Ka*Depot -(CL+Q)/Vc*Central + Q/Vp*Peripheral  
+  Peripheral' =                  Q/Vc*Central - Q/Vp*Peripheral  
+
+where absorption rate, `Ka`, clearance, `CL`, and volumes, `Vc` and `Vp`, and distribution clearance, `Q`, are required to be defined in the `@pre` block.
+"""
 struct Depots1Central1Periph1  <: ExplicitModel end
 (m::Depots1Central1Periph1 )(args...) = _analytical_solve(m, args...)
 @inline function LinearAlgebra.eigen(::Depots1Central1Periph1 , p)
@@ -129,17 +184,28 @@ varnames(::Type{Depots1Central1Periph1 }) = (:Depot, :Central, :Peripheral)
 pk_init(::Depots1Central1Periph1 ) = SLVector(Depot=0.0, Central=0.0, Peripheral=0.0)
 
 
-# use Vc and Vm
-struct Central1Periph1MetaPeriph1 <: ExplicitModel end # 011?
-(m::Central1Periph1MetaPeriph1)(args...) = _analytical_solve(m, args...)
-@inline function LinearAlgebra.eigen(::Central1Periph1MetaPeriph1, p)
-  a = p.CL1/p.V1
-  b = p.Q1/p.V1
-  c = p.Q1/p.Vp1
-  d = p.T/p.V1
-  e = p.CL2/p.V2
-  f = p.Q2/p.V2
-  h = p.Q2/p.Vp2
+"""
+    Central1Periph1Meta1Periph1()
+
+An analytical model for a two compartment model with a central compartment, `Central`, with a peripheral compartment, `Peripheral`, and a metabolite compartment, `Metabolite`, with a peripheral compartment, `MPeripheral`. Equivalent to
+  
+  Central'     = -(CL+Q+CLfm)/Vc*Central + Q/Vp*CPeripheral  
+  CPeripheral' =          Q/Vc*Central - Q/Vp*CPeripheral  
+  Metabolite'  = -(CLm+Qm)/Vm*Metabolite + Qm/Vmp*MPeripheral + CLfm/Vc*Central  
+  MPeripheral' =        Qm/Vm*Metabolite - Qm/Vmp*MPeripheral  
+
+where clearances (`CL` and `CLm`) and volumes (`Vc`, `Vp`, `Vm` and `Vmp`), distribution clearances (`Q` and `Qm`) and formation clearance of metabolite `CLfm` are required to be defined in the `@pre` block.
+"""
+struct Central1Periph1Meta1Periph1 <: ExplicitModel end # 011?
+(m::Central1Periph1Meta1Periph1)(args...) = _analytical_solve(m, args...)
+@inline function LinearAlgebra.eigen(::Central1Periph1Meta1Periph1, p)
+  a = p.CL/p.Vc
+  b = p.Q/p.Vc
+  c = p.Q/p.Vp
+  d = p.CLfm/p.Vc
+  e = p.CLm/p.Vm
+  f = p.Qm/p.Vm
+  h = p.Qm/p.Vmp
 
   β = a + b
   ϕ = e + f
@@ -166,19 +232,29 @@ struct Central1Periph1MetaPeriph1 <: ExplicitModel end # 011?
 
   return Λ, 𝕍
 end
-varnames(::Type{Central1Periph1MetaPeriph1}) = (:Central, :CPeripheral, :Metabolite, :MPeripheral)
-pk_init(::Central1Periph1MetaPeriph1) = SLVector(Central=0.0, CPeripheral=0.0, Metabolite=0.0, MPeripheral=0.0
+varnames(::Type{Central1Periph1Meta1Periph1}) = (:Central, :CPeripheral, :Metabolite, :MPeripheral)
+pk_init(::Central1Periph1Meta1Periph1) = SLVector(Central=0.0, CPeripheral=0.0, Metabolite=0.0, MPeripheral=0.0
 )
 
-# use Vc and Vm
-struct Central1Periph1Meta1 <: ExplicitModel end # 011?
+"""
+    Central1Periph1Meta1()
+
+An analytical model for a two compartment model with a central compartment, `Central`, with a peripheral compartment, `Peripheral`, and a metabolite compartment, `Metabolite`. Equivalent to
+  
+  Central'     = -(CL+Q+CLfm)/Vc*Central + Q/Vp*CPeripheral  
+  CPeripheral' =          Q/Vc*Central - Q/Vp*CPeripheral  
+  Metabolite'  = -CLm/Vm*Metabolite + CLfm/Vc*Central  
+
+where clearances (`CL` and `CLm`) and volumes (`Vc`, `Vp` and `Vm`), distribution clearance (`Q`), and formation clearance of metabolite `CLfm` are required to be defined in the `@pre` block.
+"""
+struct Central1Periph1Meta1 <: ExplicitModel end
 (m::Central1Periph1Meta1)(args...) = _analytical_solve(m, args...)
 @inline function LinearAlgebra.eigen(m::Central1Periph1Meta1, p)
-  a = p.CL1/p.V1
-  b = p.Q1/p.V1
-  c = p.Q1/p.Vp1
-  d = p.T/p.V1
-  e = p.CL2/p.V2
+  a = p.CL/p.Vc
+  b = p.Q/p.Vc
+  c = p.Q/p.Vp
+  d = p.CLfm/p.Vc
+  e = p.CLm/p.Vm
 
   β = a + b
   Λ = vcat(_Λ(Central1Periph1(), a, b, c), @SVector([-e]))

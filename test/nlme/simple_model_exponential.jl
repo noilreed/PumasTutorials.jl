@@ -19,12 +19,12 @@ mdsl = @model begin
 
     @pre begin
         CL = θ * exp(η[1])
-        V  = 1.0
+        Vc = 1.0
     end
 
     @vars begin
         # Currently, Exponential is a bit picky about zeros in the parameters
-        conc = Central / V + 1e-10
+        conc = Central / Vc + 1e-10
     end
 
     @dynamics Central1

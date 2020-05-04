@@ -24,7 +24,7 @@ m_diffeq = @model begin
   @pre begin
     Ka = θ[1]
     CL = θ[2]*exp(η[1])
-    V  = θ[3]*exp(η[2])
+    Vc  = θ[3]*exp(η[2])
     lags = [0,θ[4]]
     bioav = [1,θ[5]]
   end
@@ -33,11 +33,11 @@ m_diffeq = @model begin
 
   @dynamics begin
     Depot'   = -Ka*Depot
-    Central' =  Ka*Depot - (CL/V)*Central
+    Central' =  Ka*Depot - (CL/Vc)*Central
   end
 
   @derived begin
-    cp = @. 1000*(Central / V)
+    cp = @. 1000*(Central / Vc)
     nca := @nca cp
     auc =  NCA.auc(nca)
     thalf =  NCA.thalf(nca)
@@ -92,12 +92,12 @@ parmet = @model begin
 
     @pre begin
         CL = θ[1]*exp(η[1])
-        V = θ[2]*exp(η[2])
+        Vc = θ[2]*exp(η[2])
         CLM = θ[3]*exp(η[3])
         VM = θ[4]*exp(η[4])
         fm = θ[5]
-        K = (fm*(CL/V))
-        KPM =  ((1-fm)*(CL/V))
+        K = (fm*(CL/Vc))
+        KPM =  ((1-fm)*(CL/Vc))
         KM = (CLM/VM)
     end
 
@@ -107,7 +107,7 @@ parmet = @model begin
     end
 
     @derived begin
-        cp = @. CENT/V
+        cp = @. CENT/Vc
         cm = @. METAB/VM
     end
 

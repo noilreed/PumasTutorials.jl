@@ -29,11 +29,11 @@ mdsl = @model begin
     @pre begin
         Ka = θ[1]
         CL = θ[2] * ((wt/70)^0.75) * (θ[4]^sex) * exp(η[1])
-        V  = θ[3] * exp(η[2])
+        Vc = θ[3] * exp(η[2])
     end
 
     @vars begin
-        cp = Central/V
+        cp = Central / Vc
     end
 
     @dynamics begin
@@ -42,7 +42,7 @@ mdsl = @model begin
     end
 
     @derived begin
-        conc = @. Central / V
+        conc = @. Central / Vc
         dv ~ @. Normal(conc, conc*Σ)
     end
 end
@@ -63,7 +63,7 @@ function col_f(param,randeffs,subject)
       Ka = param.θ[1],  # pre
       CL = param.θ[2] * ((cov.wt/70)^0.75) *
            (param.θ[4]^cov.sex) * exp(randeffs.η[1]),
-      V  = param.θ[3] * exp(randeffs.η[2]))
+      Vc = param.θ[3] * exp(randeffs.η[2]))
     end
 end
 
@@ -73,14 +73,14 @@ function init_f(col,t0)
 end
 
 function static_onecompartment_f(u,p,t)
-    OneCompartmentVector(-p.Ka*u[1], p.Ka*u[1] - (p.CL/p.V)*u[2])
+    OneCompartmentVector(-p.Ka*u[1], p.Ka*u[1] - (p.CL/p.Vc)*u[2])
 end
 prob = ODEProblem(static_onecompartment_f,nothing,nothing,nothing)
 
 function derived_f(col,sol,obstimes,subject,param,random)
     _col = col(0.0)
     central = sol(obstimes;idxs=2)
-    conc = @. central / _col.V
+    conc = @. central / _col.Vc
     dv = @. Normal(conc, conc*param.Σ)
     (dv = dv,)
 end
@@ -107,19 +107,19 @@ function col_f2(param,randeffs,subject)
   function pre(t)
     (Ka = param.θ[1],
      CL = param.θ[2] * exp(randeffs.η[1]),
-     V  = param.θ[3] * exp(randeffs.η[2]))
+     Vc = param.θ[3] * exp(randeffs.η[2]))
   end
 end
 
 function post_f(col,u,t)
    col_t = col(0.0) # no t needed as covariates are constant
-    (conc = u[2] / col_t.V,)
+    (conc = u[2] / col_t.Vc,)
 end
 function derived_f(col, sol, obstimes, subject, param, randeffs)
   col_t = col(0.0)
-  V = col_t.V
+  Vc = col_t.Vc
   central = sol(obstimes;idxs=2)
-  conc = @. central / V
+  conc = @. central / Vc
   (conc = conc,)
 end
 

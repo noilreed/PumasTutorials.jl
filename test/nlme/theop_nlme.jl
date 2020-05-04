@@ -18,14 +18,14 @@ using Test, Pumas, Random
     end
 
     @pre begin
-      V  = θ[1] * exp(η[1])
+      Vc = θ[1] * exp(η[1])
       Ke = θ[2] * exp(η[2])
       Ka = θ[3] * exp(η[3])
-      CL = Ke * V
+      CL = Ke * Vc
     end
 
     @vars begin
-      conc = Central / V
+      conc = Central / Vc
     end
 
     @dynamics Depots1Central1

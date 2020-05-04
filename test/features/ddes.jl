@@ -3,7 +3,7 @@ using Pumas, Test, DelayDiffEq
 θ = [
      1.5,  #Ka
      1.0,  #CL
-     30.0 #V
+     30.0  #Vc
      ]
 
 p = ParamSet((θ=VectorDomain(3, lower=zeros(4),init=θ), Ω=PSDDomain(2)))
@@ -17,7 +17,7 @@ function pre_f(params, randoms, subject)
     η = randoms.η
     (Ka = θ[1],
     CL = θ[2]*exp(η[1]),
-    V  = θ[3]*exp(η[2]))
+    Vc = θ[3]*exp(η[2]))
   end
 end
 
@@ -25,7 +25,7 @@ function f(du,u,h,p,t)
  Depot,Central = u
  Central_Delay = h(p,t-10)[2]
  du[1] = -p.Ka*Depot
- du[2] =  p.Ka*Depot - (p.CL/p.V)*Central_Delay
+ du[2] =  p.Ka*Depot - (p.CL/p.Vc)*Central_Delay
 end
 
 init_f = (col,t) -> [0.0,0.0]
@@ -35,11 +35,11 @@ prob = DDEProblem(f,nothing,h,nothing,nothing)
 
 function derived_f(col,sol,obstimes,subject,param,randeffs)
     col_t = col() # no time-varying covariates, so pre is constant
-    V = col_t.V
+    Vc = col_t.Vc
     Σ = col_t.Σ
 
     central = sol(obstimes;idxs=2)
-    conc = @. central / V
+    conc = @. central / Vc
     
     dv = @. Normal(conc, conc*Σ)
     (dv=dv,)

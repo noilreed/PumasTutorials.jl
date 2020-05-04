@@ -68,11 +68,11 @@ end
 
     @pre begin
       CL = θCL
-      V  = θV
+      Vc  = θV
     end
 
     @vars begin
-      μ = Central/V
+      μ = Central / Vc
       p = logistic(μ/10 + η)
     end
 

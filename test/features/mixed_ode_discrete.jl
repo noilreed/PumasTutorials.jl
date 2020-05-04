@@ -16,13 +16,13 @@ function pre_f(params, randoms, covars)
     η = randoms.η
     (Ka = θ[1],
      CL = θ[2]*exp(η[1]),
-     V  = θ[3]*exp(η[2]))
+     Vc = θ[3]*exp(η[2]))
 end
 
 function ode_f(du,u,p,t)
  Depot,Central = u
  du[1] = -p.Ka*Depot
- du[2] =  p.Ka*Depot - (p.CL/p.V)*Central
+ du[2] =  p.Ka*Depot - (p.CL/p.Vc)*Central
 end
 
 prob = ODEProblem(ode_f,nothing,nothing)
@@ -39,7 +39,7 @@ init_f = (col,t) -> [0.0,0.0]
 
 function derived_f(col,sol,obstimes,subject, param, randeffs)
     central = sol(obstimes;idxs=2)
-    conc = @. central / col.V
+    conc = @. central / col.Vc
 
     dv = @. Normal(conc, conc*param.Σ)
     (dv=dv,)

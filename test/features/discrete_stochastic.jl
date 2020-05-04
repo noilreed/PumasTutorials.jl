@@ -3,7 +3,7 @@ using Pumas, Test, DiffEqJump
 θ = [
      1.5,  #Ka
      1.0,  #CL
-     30.0 #V
+     30.0  #Vc
      ]
 
 p = ParamSet((θ=VectorDomain(3, lower=zeros(4),init=θ), Ω=PSDDomain(2)))
@@ -17,7 +17,7 @@ function pre_f(params, randoms, subject)
     η = randoms.η
     (Ka = θ[1],
      CL = θ[2]*exp(η[1]),
-     V  = θ[3]*exp(η[2]))
+     Vc  = θ[3]*exp(η[2]))
   end
 end
 
@@ -30,7 +30,7 @@ function affect1!(integrator)
 end
 jump1 = ConstantRateJump(rate1,affect1!)
 
-rate2(u,p,t) = (p.CL/p.V)*u[2]
+rate2(u,p,t) = (p.CL/p.Vc)*u[2]
 function affect2!(integrator)
   integrator.u[2] -= 1
 end
@@ -41,10 +41,10 @@ init_f = (col,t) -> [0.0,0.0]
 
 function derived_f(col, sol, obstimes, subject, param, randeffs)
   col_t = col() # pre is not time-varying
-  V = col_t.V
+  Vc = col_t.Vc
   Σ = param.Σ
   central = sol(obstimes;idxs=2)
-  conc = @. central / V
+  conc = @. central / Vc
   dv = @. Normal(conc, conc*Σ)
   (dv=dv,)
 end

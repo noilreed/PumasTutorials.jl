@@ -27,15 +27,15 @@ m_diffeq = @model begin
     @pre begin
         Ka = θ[1]
         CL = θ[2]*exp(η[1])
-        V  = θ[3]*exp(η[2])
+        Vc = θ[3]*exp(η[2])
     end
 
     @dynamics begin
         Depot'   = -Ka*Depot
-        Central' =  Ka*Depot - (CL/V)*Central
+        Central' =  Ka*Depot - (CL/Vc)*Central
     end
 
-    @derived cp = @. Central / V
+    @derived cp = @. Central / Vc
 end
 
 m_analytic = @model begin
@@ -45,12 +45,12 @@ m_analytic = @model begin
     @pre begin
         Ka = θ[1]
         CL = θ[2]*exp(η[1])
-        V  = θ[3]*exp(η[2])
+        Vc  = θ[3]*exp(η[2])
     end
 
     @dynamics Depots1Central1
 
-    @derived cp = @. Central / V
+    @derived cp = @. Central / Vc
 end
 
 subject = read_pumas(example_data("event_data/data2"), dvs = [:cp])[1]
@@ -102,16 +102,16 @@ mlag_diffeq = @model begin
     @pre begin
         Ka = θ[1]
         CL = θ[2]*exp(η[1])
-        V  = θ[3]*exp(η[2])
+        Vc  = θ[3]*exp(η[2])
         lags = θ[4]
     end
 
     @dynamics begin
         Depot'   = -Ka*Depot
-        Central' =  Ka*Depot - (CL/V)*Central
+        Central' =  Ka*Depot - (CL / Vc)*Central
     end
 
-    @derived cp = @. Central / V
+    @derived cp = @. Central / Vc
 end
 
 mlag_analytic = @model begin
@@ -121,13 +121,13 @@ mlag_analytic = @model begin
     @pre begin
         Ka = θ[1]
         CL = θ[2]*exp(η[1])
-        V  = θ[3]*exp(η[2])
+        Vc  = θ[3]*exp(η[2])
         lags = θ[4]
     end
 
     @dynamics Depots1Central1
 
-    @derived cp = @. Central / V
+    @derived cp = @. Central / Vc
 end
 
 subject = read_pumas(example_data("event_data/data3"), dvs = [:cp])[1]
@@ -184,17 +184,17 @@ mlagbioav_diffeq = @model begin
     @pre begin
         Ka = θ[1]
         CL = θ[2]*exp(η[1])
-        V  = θ[3]*exp(η[2])
+        Vc  = θ[3]*exp(η[2])
         lags = θ[4]
         bioav = θ[5]
     end
 
     @dynamics begin
         Depot'   = -Ka*Depot
-        Central' =  Ka*Depot - (CL/V)*Central
+        Central' =  Ka*Depot - (CL / Vc)*Central
     end
 
-    @derived cp = @. Central / V
+    @derived cp = @. Central / Vc
 end
 
 mlagbioav_analytic = @model begin
@@ -204,14 +204,14 @@ mlagbioav_analytic = @model begin
     @pre begin
         Ka = θ[1]
         CL = θ[2]*exp(η[1])
-        V  = θ[3]*exp(η[2])
+        Vc  = θ[3]*exp(η[2])
         lags = θ[4]
         bioav = θ[5]
     end
 
     @dynamics Depots1Central1
 
-    @derived cp = @. Central / V
+    @derived cp = @. Central / Vc
 end
 
 subject = read_pumas(example_data("event_data/data4"), dvs = [:cp])[1]
@@ -271,16 +271,16 @@ mbioav_diffeq = @model begin
     @pre begin
         Ka = θ[1]
         CL = θ[2]*exp(η[1])
-        V  = θ[3]*exp(η[2])
+        Vc  = θ[3]*exp(η[2])
         bioav = θ[4]
     end
 
     @dynamics begin
         Depot'   = -Ka*Depot
-        Central' =  Ka*Depot - (CL/V)*Central
+        Central' =  Ka*Depot - (CL/Vc)*Central
     end
 
-    @derived cp = @. Central / V
+    @derived cp = @. Central / Vc
 end
 
 mbioav_analytic = @model begin
@@ -290,13 +290,13 @@ mbioav_analytic = @model begin
     @pre begin
         Ka = θ[1]
         CL = θ[2]*exp(η[1])
-        V  = θ[3]*exp(η[2])
+        Vc  = θ[3]*exp(η[2])
         bioav = θ[4]
     end
 
     @dynamics Depots1Central1
 
-    @derived cp = @. Central / V
+    @derived cp = @. Central / Vc
 end
 
 subject = read_pumas(example_data("event_data/data5"), dvs = [:cp])[1]
@@ -810,7 +810,7 @@ mbld_diffeq = @model begin
     @pre begin
         Ka = θ[1]
         CL = θ[2]*exp(η[1])
-        V  = θ[3]*exp(η[2])
+        Vc  = θ[3]*exp(η[2])
         bioav = θ[4]
         lags = θ[5]
         duration = θ[6]
@@ -818,10 +818,10 @@ mbld_diffeq = @model begin
 
     @dynamics begin
         Depot'   = -Ka*Depot
-        Central' =  Ka*Depot - (CL/V)*Central
+        Central' =  Ka*Depot - (CL/Vc)*Central
     end
 
-    @derived cp = @. Central / V
+    @derived cp = @. Central / Vc
 end
 
 mbld_analytic = @model begin
@@ -831,7 +831,7 @@ mbld_analytic = @model begin
     @pre begin
         Ka = θ[1]
         CL = θ[2]*exp(η[1])
-        V  = θ[3]*exp(η[2])
+        Vc  = θ[3]*exp(η[2])
         bioav = θ[4]
         lags = θ[5]
         duration = θ[6]
@@ -839,7 +839,7 @@ mbld_analytic = @model begin
 
     @dynamics Depots1Central1
 
-    @derived cp = @. Central / V
+    @derived cp = @. Central / Vc
 end
 
 subject = read_pumas(example_data("event_data/data14"), dvs = [:cp])[1]
@@ -1040,7 +1040,7 @@ mparbl_diffeq = @model begin
         Ka1 = θ[1]
         Ka2 = θ[2]
         CL = θ[4]*exp(η[1])
-        V  = θ[3]*exp(η[2])
+        Vc  = θ[3]*exp(η[2])
         bioav = (θ[5],1 - θ[5],1)
         lags = (0,θ[6],0)
     end
@@ -1048,10 +1048,10 @@ mparbl_diffeq = @model begin
     @dynamics begin
         Depot1'  = -Ka1*Depot1
         Depot2'  = -Ka2*Depot2
-        Central' =  Ka1*Depot1 + Ka2*Depot2 - (CL/V)*Central
+        Central' =  Ka1*Depot1 + Ka2*Depot2 - (CL/Vc)*Central
     end
 
-    @derived cp = @. Central / V
+    @derived cp = @. Central / Vc
 end
 
 mparbl_analytic = @model begin
@@ -1062,14 +1062,14 @@ mparbl_analytic = @model begin
         Ka1 = θ[1]
         Ka2 = θ[2]
         CL = θ[4]*exp(η[1])
-        V  = θ[3]*exp(η[2])
+        Vc  = θ[3]*exp(η[2])
         bioav = (θ[5],1 - θ[5],1)
         lags = (0,θ[6],0)
     end
 
     @dynamics Depots2Central1
 
-    @derived cp = @. Central / V
+    @derived cp = @. Central / Vc
 end
 
 subject = read_pumas(example_data("event_data/data19"), dvs = [:cp])[1]
@@ -1110,7 +1110,7 @@ mbl2_diffeq = @model begin
     @pre begin
         Ka = θ[1]
         CL = θ[2]*exp(η[1])
-        V  = θ[3]*exp(η[2])
+        Vc  = θ[3]*exp(η[2])
         bioav = (Depot = θ[5], Central = 1 - θ[5])
         duration = (0.0,4.0)
         lags = (Central = θ[4],)
@@ -1118,10 +1118,10 @@ mbl2_diffeq = @model begin
 
     @dynamics begin
         Depot'   = -Ka*Depot
-        Central' =  Ka*Depot - (CL/V)*Central
+        Central' =  Ka*Depot - (CL/Vc)*Central
     end
 
-    @derived cp = @. Central / V
+    @derived cp = @. Central / Vc
 end
 
 mbl2_analytic = @model begin
@@ -1131,7 +1131,7 @@ mbl2_analytic = @model begin
     @pre begin
         Ka = θ[1]
         CL = θ[2]*exp(η[1])
-        V  = θ[3]*exp(η[2])
+        Vc  = θ[3]*exp(η[2])
         bioav = (θ[5],1 - θ[5])
         duration = (0.0,4.0)
         lags = SLVector(Central=θ[4])
@@ -1139,7 +1139,7 @@ mbl2_analytic = @model begin
 
     @dynamics Depots1Central1
 
-    @derived cp = @. Central / V
+    @derived cp = @. Central / Vc
 end
 
 subject = read_pumas(example_data("event_data/data20"), dvs = [:cp])[1]

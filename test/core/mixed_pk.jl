@@ -26,7 +26,7 @@ function col_f(param,randeffs,subject)
     (Ka = param.θ[1],  # pre
     CL = param.θ[2] * ((subject.covariates.wt/70)^0.75) *
          (param.θ[4]^subject.covariates.sex) * exp(randeffs.η[1]),
-    V  = param.θ[3] * exp(randeffs.η[2]))
+    Vc  = param.θ[3] * exp(randeffs.η[2]))
   end
 end
 
@@ -46,7 +46,7 @@ prob = AnalyticalPKProblem(pkprob,prob2)
 # values, the second is a named tuple of distributions
 function derived_f(col,sol,obstimes,subject)
     central2 = sol(obstimes;idxs=1)
-    conc = @. central / col.V
+    conc = @. central / col.Vc
     dv = @. Normal(conc, conc*col.Σ)
     (dv=dv,)
 end
@@ -83,12 +83,12 @@ mdsl = @model begin
         θ1 := θ[1]
         Ka = θ1
         CL = θ[2] * ((wt/70)^0.75) * (θ[4]^sex) * exp(η[1])
-        V  = θ[3] * exp(η[2])
+        Vc = θ[3] * exp(η[2])
     end
 
     @dynamics begin
         Depot'   = -Ka*Depot
-        Central' =  Ka*Depot - (CL/V)*Central
+        Central' =  Ka*Depot - (CL/Vc)*Central
         Res' = Depot - Central
     end
 
@@ -121,7 +121,7 @@ mdsl2 = @model begin
         θ1 := θ[1]
         Ka = θ1
         CL = θ[2] * ((wt/70)^0.75) * (θ[4]^sex) * exp(η[1])
-        V  = θ[3] * exp(η[2])
+        Vc  = θ[3] * exp(η[2])
     end
 
     @dynamics Depots1Central1 begin

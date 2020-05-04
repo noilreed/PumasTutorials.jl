@@ -15,11 +15,11 @@ m_diffeq = @model begin
     @pre begin
         Ka = θ[1]
         CL = θ[2] * ((wt/70)^0.75) * (θ[4]^sex)
-        V  = θ[3]
+        Vc = θ[3]
     end
 
     @vars begin
-        cp = Central/V
+        cp = Central / Vc
     end
 
     @dynamics begin
@@ -28,7 +28,7 @@ m_diffeq = @model begin
     end
 
     @derived begin
-        cp = @. Central / V
+        cp = @. Central / Vc
         nca := @nca cp
         auc =  NCA.auc(nca)
         thalf =  NCA.thalf(nca)

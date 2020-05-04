@@ -13,11 +13,11 @@ m_diffeq = @model begin
     @pre begin
         Ka = ka
         CL = cl
-        V = v
+        Vc = v
     end
 
     @vars begin
-        cp = CL/V
+        cp = CL/Vc
     end
 
     @dynamics begin
@@ -27,7 +27,7 @@ m_diffeq = @model begin
 
     # we approximate the error by computing the conditional_nll
     @derived begin
-        conc = @. Central / V
+        conc = @. Central / Vc
         dv ~ @. Normal(conc, 1e-100)
     end
 end
@@ -39,13 +39,13 @@ m_analytic = @model begin
     @pre begin
         Ka = ka
         CL = cl
-        V  = v
+        Vc  = v
     end
     @dynamics Depots1Central1 
 
     # we approximate the error by computing the conditional_nll
     @derived begin
-        conc = @. Central / V
+        conc = @. Central / Vc
         dv ~ @. Normal(conc, 1e-100)
     end
 end

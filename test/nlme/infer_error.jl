@@ -7,13 +7,13 @@ end
 
 @pre begin
     CL = par
-    V = 5.0
+    Vc = 5.0
 end
 
 @dynamics Central1
 
 @derived begin
-    conc ~ @. Normal(CL/V, 0.001)
+    conc ~ @. Normal(CL/Vc, 0.001)
 end
 end
 model = @model begin
@@ -28,13 +28,13 @@ end
 
 @pre begin
     CL = par+sum(η)
-    V = 5.0
+    Vc = 5.0
 end
 
 @dynamics Central1
 
 @derived begin
-    conc ~ @. Normal(CL/V, 0.001)
+    conc ~ @. Normal(CL/Vc, 0.001)
 end
 end
 

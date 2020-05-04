@@ -39,11 +39,11 @@ end
     @pre begin
       Ka = θ[1]
       CL = θ[2] * ((wt/70)^0.75) * (θ[4]^sex) * exp(η[1])
-      V  = θ[3] * exp(η[2])
+      Vc = θ[3] * exp(η[2])
     end
 
     @vars begin
-      cp = Central/V
+      cp = Central/Vc
     end
 
     @dynamics begin
@@ -52,7 +52,7 @@ end
     end
 
     @derived begin
-      conc = @. Central / V
+      conc = @. Central / Vc
       cmax = maximum(conc)
       dv ~ @. Normal(conc, conc*σ)
     end
@@ -72,7 +72,7 @@ end
       (
         Ka = param.θ[1],
         CL = param.θ[2] * ((cov.wt/70)^0.75) * (param.θ[4]^cov.sex) * exp(randeffs.η[1]),
-        V  = param.θ[3] * exp(randeffs.η[2]),
+        Vc = param.θ[3] * exp(randeffs.η[2]),
         σ = param.σ
       )
     end
@@ -81,7 +81,7 @@ end
   init_f(col,t0) = @LArray [0.0, 0.0] (:Depot, :Central)
 
   function onecompartment_f(du,u,p,t)
-    cp = u.Central/p.V
+    cp = u.Central/p.Vc
     du.Depot = -p.Ka*u.Depot
     du.Central = p.Ka*u.Depot - p.CL*cp
   end
@@ -90,9 +90,9 @@ end
 
   function derived_f(col,sol,obstimes,subject, param, randeffs)
     col_t = col() # no time covar
-    V = col_t.V
+    Vc = col_t.Vc
     central = sol(obstimes;idxs=2)
-    conc = @. central / V
+    conc = @. central / Vc
     cmax = maximum(conc)
     (conc = conc, cmax = cmax, dv = @. Normal(conc, conc*param.σ))
   end
@@ -159,17 +159,17 @@ end
     @pre begin
       Ka = θ[1]
       CL = θ[2]*exp(η[1])
-      V  = θ[3]*exp(η[2])
+      Vc = θ[3]*exp(η[2])
       lags = θ[4]
     end
 
     @dynamics begin
       Depot'   = -Ka*Depot
-      Central' =  Ka*Depot - (CL/V)*Central
+      Central' =  Ka*Depot - (CL/Vc)*Central
     end
 
     @derived begin
-      cp = @. Central / V
+      cp = @. Central / Vc
       cmax = maximum(cp)
     end
   end
@@ -181,14 +181,14 @@ end
     @pre begin
       Ka = θ[1]
       CL = θ[2]*exp(η[1])
-      V  = θ[3]*exp(η[2])
+      Vc = θ[3]*exp(η[2])
       lags = θ[4]
     end
 
     @dynamics Depots1Central1
 
     @derived begin
-      cp = @. Central / V
+      cp = @. Central / Vc
       cmax = maximum(cp)
     end
   end
@@ -304,17 +304,17 @@ end
     @pre begin
       Ka = θ[1]
       CL = θ[2]*exp(η[1])
-      V  = θ[3]*exp(η[2])
+      Vc = θ[3]*exp(η[2])
       rate = θ[4]
     end
 
     @dynamics begin
       Depot'   = -Ka*Depot
-      Central' =  Ka*Depot - (CL/V)*Central
+      Central' =  Ka*Depot - (CL/Vc)*Central
     end
 
     @derived begin
-      cp = @. Central / V
+      cp = @. Central / Vc
       cmax = maximum(cp)
     end
   end
@@ -326,14 +326,14 @@ end
     @pre begin
       Ka = θ[1]
       CL = θ[2]*exp(η[1])
-      V  = θ[3]*exp(η[2])
+      Vc = θ[3]*exp(η[2])
       rate = θ[4]
     end
 
     @dynamics Depots1Central1
 
     @derived begin
-      cp = @. Central / V
+      cp = @. Central / Vc
       cmax = maximum(cp)
     end
   end
@@ -415,17 +415,17 @@ end
     @pre begin
       Ka = θ[1]
       CL = θ[2]*exp(η[1])
-      V  = θ[3]*exp(η[2])
+      Vc = θ[3]*exp(η[2])
       duration = θ[4]
     end
 
     @dynamics begin
       Depot'   = -Ka*Depot
-      Central' =  Ka*Depot - (CL/V)*Central
+      Central' =  Ka*Depot - (CL/Vc)*Central
     end
 
     @derived begin
-      cp = @. Central / V
+      cp = @. Central / Vc
       cmax = maximum(cp)
     end
   end
@@ -437,14 +437,14 @@ end
     @pre begin
       Ka = θ[1]
       CL = θ[2]*exp(η[1])
-      V  = θ[3]*exp(η[2])
+      Vc = θ[3]*exp(η[2])
       duration = θ[4]
     end
 
     @dynamics Depots1Central1
 
     @derived begin
-      cp = @. Central / V
+      cp = @. Central / Vc
       cmax = maximum(cp)
     end
   end
@@ -528,17 +528,17 @@ end
     @pre begin
       Ka = θ[1]
       CL = θ[2]*exp(η[1])
-      V  = θ[3]*exp(η[2])
+      Vc = θ[3]*exp(η[2])
       bioav = θ[4]
     end
 
     @dynamics begin
       Depot'   = -Ka*Depot
-      Central' =  Ka*Depot - (CL/V)*Central
+      Central' =  Ka*Depot - (CL/Vc)*Central
     end
 
     @derived begin
-      cp = @. Central / V
+      cp = @. Central / Vc
       cmax = maximum(cp)
     end
   end
@@ -550,14 +550,14 @@ end
     @pre begin
       Ka = θ[1]
       CL = θ[2]*exp(η[1])
-      V  = θ[3]*exp(η[2])
+      Vc = θ[3]*exp(η[2])
       bioav = θ[4]
     end
 
     @dynamics Depots1Central1
 
     @derived begin
-      cp = @. Central / V
+      cp = @. Central / Vc
       cmax = maximum(cp)
     end
   end

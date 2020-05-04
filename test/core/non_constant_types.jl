@@ -28,11 +28,11 @@ mdsl = @model begin
     @pre begin
         Ka = θ[1]
         CL = θ[2] * ((wt/70)^0.75) * (θ[4]^sex) * exp(η[1])
-        V  = θ[3] * exp(η[2])
+        Vc = θ[3] * exp(η[2])
     end
 
     @vars begin
-      conc = Central / V
+      conc = Central / Vc
       conc2 = Central^2
     end
 

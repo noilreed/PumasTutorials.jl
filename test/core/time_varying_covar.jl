@@ -29,9 +29,9 @@ function col_f(param,randeffs,subject)
     cov = subject.tvcov(t)
     Ka = t*cov.ka  # pre
     CL = cov.cl
-    V  = cov.v
+    Vc  = cov.v
 
-    return (CL=CL, V=V, Ka=Ka)
+    return (CL=CL, Vc=Vc, Ka=Ka)
   end
 end
 
@@ -43,15 +43,15 @@ end
 
 function onecompartment_f(u,p,t)
     @SVector [-p.Ka*u[1],
-               p.Ka*u[1] - (p.CL/p.V)*u[2]]
+               p.Ka*u[1] - (p.CL/p.Vc)*u[2]]
 end
 prob = ODEProblem(onecompartment_f,nothing,nothing,nothing)
 
 function derived_f(col,sol,obstimes,obs, param, randeffs)
     colt = col.(obstimes)
-    V = getproperty.(colt, :V)
+    Vc = getproperty.(colt, :Vc)
     central = sol(obstimes;idxs=2)
-    conc = @. central / V
+    conc = @. central / Vc
     (conc = conc,)
 end
 
@@ -85,11 +85,11 @@ m_diffeq = @model begin
   @pre begin
       Ka = ka * t
       CL = cl
-      V  = v
+      Vc  = v
   end
 
   @vars begin
-      cp = Central/V
+      cp = Central/Vc
   end
 
   @dynamics begin
@@ -98,7 +98,7 @@ m_diffeq = @model begin
   end
 
   @derived begin
-      conc = @. Central / V
+      conc = @. Central / Vc
       dv ~ @. Normal(conc, conc*σ)
   end
 end
@@ -126,12 +126,12 @@ m_diffeq2 = @model begin
   @pre begin
       Ka = ka * t
       CL = cl
-      V  = v
+      Vc = v
       bioav = 1+t
   end
 
   @vars begin
-      cp = Central/V
+      cp = Central/Vc
   end
 
   @dynamics begin
@@ -140,7 +140,7 @@ m_diffeq2 = @model begin
   end
 
   @derived begin
-      conc = @. Central / V
+      conc = @. Central / Vc
       dv ~ @. Normal(conc, conc*σ)
   end
 end
@@ -181,11 +181,11 @@ m_tv = @model begin
     @pre begin
         Ka = θ[1]
         CL = θ[2] * ((wt/70)^0.75) * θ[4] * exp(η[1])
-        V  = θ[3] * exp(η[2])
+        Vc = θ[3] * exp(η[2])
     end
 
     @vars begin
-        cp = Central/V
+        cp = Central/Vc
     end
 
     @dynamics begin
@@ -194,7 +194,7 @@ m_tv = @model begin
     end
 
     @derived begin
-        conc = @. Central / V
+        conc = @. Central / Vc
         dv ~ @. Normal(conc, conc*σ)
     end
 end

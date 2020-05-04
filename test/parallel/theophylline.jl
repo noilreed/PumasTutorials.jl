@@ -21,7 +21,7 @@ theopmodel_fo_a = @model begin
       Ka = SEX == 0 ? θ₁ + η[1] : θ₄ + η[1]
       K  = θ₂+ η[2]
       CL = θ₃*WT + η[3]
-      V  = CL/K
+      Vc = CL/K
       SC = CL/K/WT
     end
 
@@ -57,7 +57,7 @@ theopmodel_fo_s = @model begin
       Ka = SEX == 0 ? θ₁ + η[1] : θ₄ + η[1]
       K  = θ₂+ η[2]
       CL = θ₃*WT + η[3]
-      V  = CL/K + t
+      Vc = CL/K + t
       SC = CL/K/WT
     end
 
@@ -65,12 +65,12 @@ theopmodel_fo_s = @model begin
 
     @vars begin
       conc = Central / SC
-      cp   = Central/V
+      cp   = Central / Vc
     end
 
     @dynamics begin
         Depot'   = -Ka*Depot
-        Central' =  Ka*Depot - (CL/V)*Central
+        Central' =  Ka*Depot - (CL / Vc)*Central
     end
 
     @derived begin

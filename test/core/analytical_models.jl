@@ -11,23 +11,23 @@ using Pumas, Test
 #==
   Central1
 
-  Eigen values and vectors are very simple: they're just -CL/V and [1] respectively.
+  Eigen values and vectors are very simple: they're just -CL/Vc and [1] respectively.
 ==#
-p = (CL=rand(), V=rand())
+p = (CL=rand(), Vc=rand())
 ocm = Pumas.LinearAlgebra.eigen(Central1(), p)
-@test all(ocm[1] .== -p.CL/p.V)
+@test all(ocm[1] .== -p.CL/p.Vc)
 @test all(ocm[2] .== [1.0])
 
 #==
   Depots1Central1
 
-  Eigen values are just: Λ = [-Ka, -CL/V]
+  Eigen values are just: Λ = [-Ka, -CL/Vc]
   Eigen vectors are [Λ[1]/Λ[2] - 1, 0] and [0,1]
 ==#
 
-p = (Ka=rand(), CL=rand(), V=rand())
+p = (Ka=rand(), CL=rand(), Vc=rand())
 ocm = Pumas.LinearAlgebra.eigen(Depots1Central1(), p)
-@test all(ocm[1] .== [-p.Ka, -p.CL/p.V])
+@test all(ocm[1] .== [-p.Ka, -p.CL/p.Vc])
 @test all(ocm[2] .== [ocm[1][2]/ocm[1][1]-1  0.0; 1.0 1.0])
 
 #==
@@ -41,7 +41,7 @@ ocm = Pumas.LinearAlgebra.eigen(Central1Periph1(), p)
 λ2 = -(17-sqrt(249))/40
 @test all(ocm[1] .≈ [λ1, λ2])
 @test all(ocm[2] .≈ [2*λ1+1/2 2*λ2+1/2; 1 1])
-ocm[2]
+
 p = (CL=0.1, Vc=5.0, Vp=2.0, Q=0.5)
 ocm = Pumas.LinearAlgebra.eigen(Central1Periph1(), p)
 λ1 = -(37+sqrt(1169))/200
@@ -72,10 +72,10 @@ v2 = -(-13-sqrt(1169))/20
 @test all(ocm[2] .≈ [-2.2 0 0; 2.0 v1 v2; 1 1 1])
 
 #==
-  Central1Periph1MetaPeriph1
+  Central1Periph1Meta1Periph1
 ==#
-p = (CL1=0.01, CL2=0.1, V1=5.0, Vp1=2.0, V2=6.0, Vp2=3.0, Q1=0.5, Q2=1.2, T=0.005)
-ocm = Pumas.LinearAlgebra.eigen(Central1Periph1MetaPeriph1(), p)
+p = (CL=0.01, CLm=0.1, Vc=5.0, Vp=2.0, Vm=6.0, Vmp=3.0, Q=0.5, Qm=1.2, CLfm=0.005)
+ocm = Pumas.LinearAlgebra.eigen(Central1Periph1Meta1Periph1(), p)
 λ1 = -(88+sqrt(7619))/500
 λ2 = -(88-sqrt(7619))/500
 λ3 = -(37+sqrt(1273))/120
@@ -85,8 +85,6 @@ V = [-(30311+397*sqrt(7619))/150 (-30311+397*sqrt(7619))/150 0 0;
     (112-sqrt(7619))/100    (112+sqrt(7619))/100     (11-sqrt(1273))/24 (11+sqrt(1273))/24;
     1 1 1 1]
 @test all(ocm[1] .≈ [λ1, λ2, λ3, λ4])
-V
-ocm[2]
 @test all(ocm[2] .≈ V)
 
 
@@ -98,11 +96,11 @@ model732 = @model begin
   @pre begin
     Ka = 0.01
     CL = 1.0
-    V = 3.0
+    Vc = 3.0
   end
   @dynamics Central1
   @derived begin
-    dv ~ @. Normal(Central/V)
+    dv ~ @. Normal(Central/Vc)
   end
 end
 

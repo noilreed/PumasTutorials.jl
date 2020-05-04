@@ -32,11 +32,11 @@ mdsl = @model begin
         θ1 := θ[1]
         Ka = θ1
         CL = θ[2] * ((wt/70)^0.75) * (θ[4]^sex) * exp(η[1])
-        V  = θ[3] * exp(η[2])
+        Vc = θ[3] * exp(η[2])
     end
 
     @vars begin
-      conc = Central / V
+      conc = Central / Vc
       conc2 = Central^2
     end
 
@@ -71,7 +71,7 @@ function col_f(param,randeffs,subject)
         (Ka = param.θ[1],  # pre
         CL = param.θ[2] * ((subject.covariates.wt/70)^0.75) *
              (param.θ[4]^subject.covariates.sex) * exp(randeffs.η[1]),
-        V  = param.θ[3] * exp(randeffs.η[2]))
+        Vc = param.θ[3] * exp(randeffs.η[2]))
     end
 end
 
@@ -79,13 +79,13 @@ OneCompartmentVector = @SLVector (:Depot,:Central)
 
 function init_f(col,t0)
     c = col(t0)
-    T = typeof(c.CL/c.V)
+    T = typeof(c.CL/c.Vc)
     OneCompartmentVector(0.0,0.0)
 end
 
 function onecompartment_f(u,p,t)
     OneCompartmentVector(-p.Ka*u[1],
-                          p.Ka*u[1] - (p.CL/p.V)*u[2])
+                          p.Ka*u[1] - (p.CL/p.Vc)*u[2])
 end
 prob = ODEProblem(onecompartment_f,nothing,nothing,nothing)
 
@@ -93,9 +93,9 @@ prob = ODEProblem(onecompartment_f,nothing,nothing,nothing)
 # values, the second is a named tuple of distributions
 function derived_f(col,sol,obstimes,subject,  param, randeffs)
     Σ = param.Σ
-    V = col().V
+    Vc = col().Vc
     central = sol(obstimes;idxs=2)
-    conc = @. central / V
+    conc = @. central / Vc
     dv = @. Normal(conc, conc*Σ) # we should move params to a separate output
     (dv=dv,)
 end
@@ -149,7 +149,7 @@ end
 
 function onecompartment_f_iip(du,u,p,t)
     du[1] = -p.Ka*u[1]
-    du[2] =  p.Ka*u[1] - (p.CL/p.V)*u[2]
+    du[2] =  p.Ka*u[1] - (p.CL/p.Vc)*u[2]
 end
 prob = ODEProblem(onecompartment_f_iip,nothing,nothing,nothing)
 
@@ -183,7 +183,7 @@ mdsl = @model begin
         θ1 := θ[1]
         Ka = θ1
         CL = θ[2] * ((wt/70)^0.75) * (θ[4]^sex) * exp(η[1])
-        V  = θ[3] * exp(η[2])
+        Vc = θ[3] * exp(η[2])
     end
 
     @derived begin
