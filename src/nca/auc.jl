@@ -361,13 +361,13 @@ function fitlog(x, y)::Tuple{<:Any, Int}
 end
 
 """
-    lambdaz(nca::NCASubject; concthreshold=0.01, threshold=10, idxs=nothing) -> lambdaz
+    lambdaz(nca::NCASubject; concthreshold=1e-10, threshold=10, idxs=nothing) -> lambdaz
 
-    Calculate terminal elimination rate constant ``λz`` with the end point >= `concthreshold`.
+    Calculate terminal elimination rate constant ``λz`` with the end point > `concthreshold`.
 """
 function lambdaz(nca::NCASubject{C,TT,T,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,V,R,RT};
                  adjr2factor=0.0001, threshold=10, idxs=nothing, slopetimes=nothing, recompute=true, verbose=true,
-                 concthreshold=0.01, # in long simulation, the concentration could go ~eps(1.0), so we need to pick the end at `concthreshold`
+                 concthreshold=1e-10, # in long simulation, the concentration could go ~eps(1.0), so we need to pick the end at `concthreshold`
                  kwargs...
                 )::Union{Missing,eltype(Z)} where {C,TT,T,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,V,R,RT}
   if iscached(nca, :lambdaz) && !recompute
@@ -383,7 +383,7 @@ function lambdaz(nca::NCASubject{C,TT,T,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,V,R,RT
   time′ = reinterpret(typeof(one(eltype(time))), time)
   conc′ = reinterpret(typeof(one(eltype(conc))), conc)
   _, cmaxidx = conc_extreme(conc, eachindex(conc), <)
-  idx2 = findlast(x->x>=oneunit(x) * concthreshold, nca.conc)
+  idx2 = findlast(x->x > oneunit(x) * concthreshold, nca.conc)
   valid = false # check if lambdaz is calculated at all
   if slopetimes === nothing && idxs === nothing
     # we can include Cmax after infusion
