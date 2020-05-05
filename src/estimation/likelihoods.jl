@@ -92,8 +92,9 @@ the derived produces distributions.
                                  param::NamedTuple,
                                  randeffs::NamedTuple,
                                  args...;
+                                 obstimes=nothing, # you are not allowed to set this, so we catch it
                                  kwargs...)
-    dist = _derived(m, subject, param, randeffs, args...; kwargs...)
+    dist = _derived(m, subject, param, randeffs, args...; obstimes=subject.time, kwargs...)
     conditional_nll(m, subject, param, randeffs, dist)
 end
 
@@ -712,13 +713,15 @@ function _derived_vηorth_gradient(
   subject::Subject,
   param::NamedTuple,
   vrandeffsorth::AbstractVector,
-  args...; kwargs...)
+  args...;
+  obstimes=nothing, # you're not allowed to change this, so we catch it
+  kwargs...)
   # Costruct closure for calling conditional_nll_ext as a function
   # of a random effects vector. This makes it possible for ForwardDiff's
   # tagging system to work properly
   _transform_derived =  vηorth -> begin
     randeffs = TransformVariables.transform(totransform(m.random(param)), vηorth)
-    return _derived(m, subject, param, randeffs, args...; kwargs...)
+    return _derived(m, subject, param, randeffs, args...; obstimes=subject.time, kwargs...)
   end
   # Construct vector of dual numbers for the random effects to track the partial derivatives
   cfg = ForwardDiff.JacobianConfig(_transform_derived, vrandeffsorth, ForwardDiff.Chunk{length(vrandeffsorth)}())

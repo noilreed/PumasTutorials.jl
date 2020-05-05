@@ -187,9 +187,11 @@ to be repeated in the other API functions
                           alg = AutoVern7(Rodas5(autodiff=false)),
                           # Estimation only uses subject.time for the
                           # observation time series
-                          obstimes = subject.time,
+                          obstimes = nothing,
                           callback = nothing,
                           kwargs...)
+  
+  obstimes = obstimes === nothing ? subject.time : obstimes
   # collate that arguments
   collated = m.pre(param, randeffs, subject)
   # create solution object. By passing saveat=obstimes, we compute the solution only

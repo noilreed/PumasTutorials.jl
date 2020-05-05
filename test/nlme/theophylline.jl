@@ -120,6 +120,13 @@ end
   @test predict(o_inspect, theopp[3]).ipred.dv ≈ predict(o_inspect)[3].ipred.dv
   @test predict(o_inspect, theopp)[3].pred.dv ≈ predict(o_inspect)[3].pred.dv
   @test predict(o_inspect, theopp)[3].ipred.dv ≈ predict(o_inspect)[3].ipred.dv
+
+  # test predictions work at specific times using obstimes
+  theopp3 = theopp[3]
+  predict_at_third = predict(o, theopp3).pred.dv[3]
+  predict_at_fourth = predict(o, theopp3).pred.dv[4]
+  predict_obstimes = predict(o, theopp[3]; obstimes=[theopp3.time[3], theopp3.time[4], theopp3.time[3]])
+  @test predict_obstimes.pred.dv ≈ [predict_at_third, predict_at_fourth, predict_at_third]
   o_predict_df = DataFrame(o_predict)
   @test in(:dv, names(o_predict_df))
 

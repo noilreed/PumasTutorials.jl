@@ -322,7 +322,6 @@ function iwresiduals(
   return map(name -> _res[name] ./ std.(dist[name]), NamedTuple{_dv_keys}(_dv_keys))
 end
 
-
 """
   eiwres(model, subject, param, simulations_count)
 
@@ -490,13 +489,10 @@ function StatsBase.predict(
   fpm::FittedPumasModel,
   subjects::Population=fpm.data,
   approx::LikelihoodApproximation=fpm.approx;
-  nsim=nothing, timegrid=false, useEBEs=true)
+  nsim=nothing, useEBEs=true, obstimes=nothing)
 
   if !useEBEs
     error("Sampling from the omega distribution is not yet implemented.")
-  end
-  if !(timegrid==false)
-    error("Using custom time grids is not yet implemented.")
   end
   if !(nsim isa Nothing)
     error("Using simulated subjects is not yet implemented.")
@@ -506,9 +502,9 @@ function StatsBase.predict(
 
   if _estimate_bayes
     # re-estimate under approx
-    return map(subject -> predict(fpm, subject, approx; timegrid=timegrid), subjects)
+    return map(subject -> predict(fpm, subject, approx; obstimes=obstimes), subjects)
   else
-    return map(i -> predict(fpm.model, subjects[i], coef(fpm), approx, fpm.vvrandeffsorth[i], fpm.args...; fpm.kwargs...), 1:length(subjects))
+    return map(i -> predict(fpm.model, subjects[i], coef(fpm), approx, fpm.vvrandeffsorth[i], fpm.args...; obstimes=obstimes, fpm.kwargs...), 1:length(subjects))
   end
 end
 
@@ -521,12 +517,9 @@ function StatsBase.predict(
     subject,
     coef(fpm),
     approx,
-    fpm.args...; fpm.kwargs...);
-  timegrid=false)
-  # We have not yet implemented custom time grids
-  !(timegrid==false) && error("Using custom time grids is not yet implemented.")
+    fpm.args...; fpm.kwargs...); obstimes=nothing)
 
-  predict(fpm.model, subject, coef(fpm), approx, vrandeffsorth, fpm.args...; fpm.kwargs...)
+  predict(fpm.model, subject, coef(fpm), approx, vrandeffsorth, fpm.args...; obstimes=obstimes, fpm.kwargs...)
 end
 
 function DataFrames.DataFrame(vpred::Vector{<:SubjectPrediction}; include_covariates=true, include_dvs=true)
