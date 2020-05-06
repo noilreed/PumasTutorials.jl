@@ -1617,20 +1617,33 @@ function StatsBase.informationmatrix(f::FittedPumasModel; expected::Bool=true)
   end
 end
 
+struct PumasFailedCovariance <: Exception
+  err
+end
 """
     vcov(f::FittedPumasModel) -> Matrix
 
 Compute the covariance matrix of the population parameters
 """
-function StatsBase.vcov(f::FittedPumasModel)
+function StatsBase.vcov(f::FittedPumasModel; rethrow_error=false)
+  try
+    # Compute the observed information based on the Hessian (H) and the product of the outer scores (S)
+    H, S = _observed_information(f, Val(true), f.args...; f.kwargs...)
 
-  # Compute the observed information based on the Hessian (H) and the product of the outer scores (S)
-  H, S = _observed_information(f, Val(true), f.args...; f.kwargs...)
-
-  # Use generialized eigenvalue decomposition to compute inv(H)*S*inv(H)
-  F = eigen(Symmetric(H), Symmetric(S))
-  any(t -> t <= 0, F.values) && @warn("Hessian is not positive definite")
-  return F.vectors*Diagonal(inv.(abs2.(F.values)))*F.vectors'
+    # Use generialized eigenvalue decomposition to compute inv(H)*S*inv(H)
+    F = eigen(Symmetric(H), Symmetric(S))
+    first_nonpositive = map(t -> t <= 0, F.values)
+    if first_nonpositive isa Number
+      throw(PosDefException(first_nonpositive))
+    end
+    return F.vectors*Diagonal(inv.(abs2.(F.values)))*F.vectors'
+  catch err
+    err = PumasFailedCovariance(err)
+    if rethrow_error
+      rethrow(err)
+    end
+    return err
+  end
 end
 
 """
@@ -1701,17 +1714,13 @@ based on the fitted model `fpm`.
 """
 function infer(fpm::FittedPumasModel; level = 0.95, rethrow_error=false)
   print("Calculating: variance-covariance matrix")
-  try
-    _vcov = vcov(fpm, fpm.args...; fpm.kwargs...)
+  _vcov = vcov(fpm, fpm.args...; rethrow_error=rethrow_error, fpm.kwargs...)
+  if _vcov isa AbstractMatrix
     println(". Done.")
-    return FittedPumasModelInference(fpm, _vcov, level)
-  catch err
+  else
     println(". Failed.")
-    if rethrow_error
-      rethrow(err)
-    end
-    return FittedPumasModelInference(fpm, err, level)
   end
+  return FittedPumasModelInference(fpm, _vcov, level)
 end
 StatsBase.coef(pmi::FittedPumasModelInference) = coef(pmi.fpm)
 function StatsBase.stderror(pmi::FittedPumasModelInference)

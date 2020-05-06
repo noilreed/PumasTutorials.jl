@@ -1,4 +1,9 @@
 const _subscriptvector = ["₀", "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉"]
+
+_coef_value(var) = var
+_coef_value(var::PDMat) = var.mat
+_coef_value(var::PDiagMat) = var.diag
+
 _to_subscript(number) = join([_subscriptvector[parse(Int32, dig)+1] for dig in string(number)])
 
 function _print_fit_header(io, fpm)
@@ -172,6 +177,7 @@ function _push_varinfo!(_names, _vals, _se, _confint, paramname, paramval::Numbe
   end
 end
 
+
 """
     coeftable(pmi::FittedPumasModelInference) -> DataFrame
 
@@ -181,7 +187,7 @@ interval from a `pmi`.
 function StatsBase.coeftable(pmi::FittedPumasModelInference)
 
   if pmi.vcov isa Exception
-    standard_errors = NamedTuple{keys(coef(pmi))}(fill(NaN, TransformVariables.dimension(totransform(pmi.fpm.model.param))))
+    standard_errors = map(x->NaN*_coef_value(x), coef(pmi))
   else
     standard_errors = stderror(pmi)
   end
