@@ -88,7 +88,7 @@ export aic, bic, coef, coeftable, deviance, fit, informationmatrix, predict, std
 # From StatsFuns
 export logistic
 
-# From SensitivityDiffEq
+# From DiffEqSensitivity
 export gsa
 
 end # module

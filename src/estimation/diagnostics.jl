@@ -51,9 +51,9 @@ end
 
 # FIXME! make this run in parallel
 """
-  npde(fpm::FittedPumasModel; nsim::Integer)
+    npde(fpm::FittedPumasModel; nsim::Integer)
 
-To calculate the normalised prediction distribution errors (NPDE).
+Calculate the normalised prediction distribution errors (NPDE). 
 """
 npde(fpm::FittedPumasModel; nsim=nothing) = [npde(fpm.model, subject, coef(fpm); nsim=nsim, fpm.kwargs...) for subject in fpm.data]
 
@@ -176,6 +176,16 @@ function wresiduals(
   end
 end
 
+"""
+    wresiduals(fpm::FittedPumasModel, approx::LikelihoodApproximation=fpm.approx; nsim=nothing)
+
+Calculate the individual and population weighted residual. 
+
+Takes a `fit` result, an approximation method for the marginal likelihood calculation which defaults to the method used in the `fit` and the number of 
+simulations with the keyword argument `nsim`. If `nsim` is specified only the Expected Simulation based Individual Weighted Residuals (EIWRES) is included 
+in the output as individual residual and population residual is not computed. Using the `FO` approximation method corresponds to the WRES and while `FOCE(I)` corresponds to CWRES.
+The output is a `SubjectResidual` object that stores the population (`wres`) and individual (`iwres`) residuals along with the `subject` and approximation method (`approx`).
+"""
 function wresiduals(
   fpm::FittedPumasModel,
   approx::LikelihoodApproximation=fpm.approx;
@@ -294,9 +304,9 @@ end
 
 # FIXME! Make it parallel over subjects
 """
-  epredict(fpm::FittedPumasModel, nsim::Integer)
+    epredict(fpm::FittedPumasModel, nsim::Integer)
 
-To calculate the expected simulation based population predictions.
+Calculate the expected simulation based population predictions.
 """
 epredict(fpm::FittedPumasModel; nsim=nothing) = [epredict(fpm.model, subject, coef(fpm); nsim=nsim, fpm.kwargs...) for subject in fpm.data]
 
@@ -323,9 +333,9 @@ function iwresiduals(
 end
 
 """
-  eiwres(model, subject, param, simulations_count)
+    eiwres(model::PumasModel, subject::Subject, param::NamedTuple, nsim::Integer)
 
-To calculate the Expected Simulation based Individual Weighted Residuals (EIWRES).
+Calculate the Expected Simulation based Individual Weighted Residuals (EIWRES).
 """
 function eiwres(m::PumasModel,
                 subject::Subject,
@@ -385,6 +395,13 @@ function ηshrinkage(m::PumasModel,
   return NamedTuple{keys(first(vtrandeffs))}(randeffsstd)
 end
 
+"""
+    ηshrinkage(fpm::FittedPumasModel)
+
+Calculate the η-shrinkage.  
+
+Takes the result of a `fit` as the only input argument. A named tuple of the random effects and corresponding η-shrinkage values is output.
+"""
 ηshrinkage(fpm::FittedPumasModel) = ηshrinkage(fpm.model, fpm.data, coef(fpm), fpm.approx, ; fpm.kwargs...)
 
 function ϵshrinkage(m::PumasModel,
@@ -421,6 +438,14 @@ function ϵshrinkage(m::PumasModel,
   map(name -> 1 - std(vec(VectorOfArray(getproperty.(_icwres, name))), corrected = false), NamedTuple{_keys_dv}(_keys_dv))
 end
 
+"""
+    ϵshrinkage(fpm::FittedPumasModel)
+
+Calculate the ϵ-shrinkage.
+
+Takes the result of a `fit` as the only input argument. Available only with the FOCEI and FOCE approximation methods for 
+marginal likelihood calculation. A named tuple of derived variables and corresponding ϵ-shrinkage values is output.
+"""
 ϵshrinkage(fpm::FittedPumasModel) = ϵshrinkage(fpm.model, fpm.data, coef(fpm), fpm.approx, ; fpm.kwargs...)
 
 function StatsBase.aic(m::PumasModel,
@@ -579,7 +604,14 @@ StatsBase.predict(insp::FittedPumasModelInspection, args...) = predict(insp.o, a
 wresiduals(insp::FittedPumasModelInspection) = insp.wres
 empirical_bayes(insp::FittedPumasModelInspection) = insp.ebes
 
+"""
+    inspect(fpm::FittedPumasModel; pred_approx=fpm.approx, wres_approx=fpm.approx)
 
+Output a summary of the model predictions, residuals and Empirical Bayes estimates.
+
+Called on a `fit` output and allows keyword arguments `pred_approx` and `wres_approx` for approximation method to be used in prediction and residual calculation respectively.
+A `FittedPumasModelInspection` object with `pred`, `wres` and `ebes` is output.
+"""
 function inspect(fpm; pred_approx=fpm.approx, wres_approx=fpm.approx)
   print("Calculating: ")
   print("predictions")
