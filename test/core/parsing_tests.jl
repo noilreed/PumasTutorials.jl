@@ -98,6 +98,15 @@ end
   @test_throws ArgumentError read_pumas(df, cvs=[:cv1, :cv2])
 end
 
+@testset "DosageRegimen (w/ or w/o offset)" begin
+  e1 = DosageRegimen(100, ii = 24, addl = 6)
+  e2 = DosageRegimen(50, ii = 12, addl = 13)
+  evs = DosageRegimen(e1, e2)
+  @test evs.data[!,:time] == [0, 0]
+  evs = DosageRegimen(e1, e2, offset = 10)
+  @test evs.data[!,:time] == [0, 178]
+end
+
 @testset "DataFrames Constructors" begin
   e1 = DosageRegimen(100, ii = 24, addl = 6)
   e2 = DosageRegimen(50, ii = 12, addl = 13)
