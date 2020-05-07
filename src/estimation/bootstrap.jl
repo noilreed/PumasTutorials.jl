@@ -53,7 +53,7 @@ end
 
 function Base.show(io::IO, mime::MIME"text/plain", bts::Bootstraps)
   println(io, "Bootstrap inference results\n")
-  println(io, "Successful fits: $(count(!isnothing, bts.fits)) out of $(length(bts.fits))")
+  println(io, "Successful fits: $(count(x -> x isa FittedPumasModel, bts.fits)) out of $(length(bts.fits))")
   if bts.stratify_by isa Nothing
 	println(io, "No stratifiation.")
   else
