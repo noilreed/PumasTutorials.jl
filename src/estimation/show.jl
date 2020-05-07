@@ -252,7 +252,7 @@ function Base.show(io::IO, mime::MIME"text/plain", pmi::FittedPumasModelInferenc
   end
   println(io,  "-"^max(length(labels)+1,length(stringrows[1])))
   if pmi.vcov isa Exception
-    println(io, """\n\nVariance-covariance matrix could not be be\nevaluated. The random effects may be over-\nparameterized. Check the coefficients for\nvariance estimates near zero.""")
+    println(io, """\n\nVariance-covariance matrix could not be\nevaluated. The random effects may be over-\nparameterized. Check the coefficients for\nvariance estimates near zero.""")
   end
 
 end

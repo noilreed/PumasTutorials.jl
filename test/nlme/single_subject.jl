@@ -76,7 +76,7 @@ end
 
   pop_with_covariates = Population(map(i -> Subject(id=i, evs=ev, cvs=choose_covariates()), 1:1000))
 
-  obs = simobs(model, pop_with_covariates, param, obstimes=0:1:120)
+  obs = simobs(model, pop_with_covariates, param, obstimes=0:1:120, ensemblealg=EnsembleSerial())
 
   simdf = DataFrame(obs)
   simdf.cmt .= 1

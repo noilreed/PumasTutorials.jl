@@ -149,7 +149,7 @@ df = identity.(df)
     @test coef(ft_normal).tvka     ≈ 0.88403                rtol=1e-3
     @test coef(ft_normal).ec50     ≈ 15.004                 rtol=1e-3
     @test coef(ft_normal).gaeffect ≈ 10.969                 rtol=1e-3
-    @test coef(ft_normal).Ω.diag   ≈ [0.0712376, 0.0856173] rtol=1e-3
+    @test coef(ft_normal).Ω.diag   ≈ [0.0712376, 0.0856173] rtol=1e-2
     @test coef(ft_normal).σ_prop   ≈ 0.20155                rtol=1e-3
   end
 

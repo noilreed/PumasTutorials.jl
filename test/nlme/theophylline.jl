@@ -841,7 +841,7 @@ end
  -211784.65803870826
       -2.4899564195251968e7
       -3.9191328978627914e10
-      -3.063904238107589e23] rtol=1e-3
+      -3.063904238107589e23] rtol=1e-2
   end
 
   @test Pumas._predict(  theopmodel_foce, theopp[1], param, Pumas.FOCE()).dv ≈ [

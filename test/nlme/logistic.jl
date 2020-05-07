@@ -100,7 +100,7 @@ end
   @test_broken simobs(mdl, pop_skeleton, par_init)
   # Hence we simulate with a comprehension
   Random.seed!(123)
-  pop_sim = simobs(mdl, pop_skeleton, par_init, [sample_randeffs(mdl, par_init) for i in 1:n])
+  pop_sim = simobs(mdl, pop_skeleton, par_init, [sample_randeffs(mdl, par_init) for i in 1:n], ensemblealg=EnsembleSerial())
 
   pop_est = Subject.(pop_sim)
 

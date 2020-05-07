@@ -53,29 +53,7 @@ end
 end
 
 res = fit(model_ss, estimpop, (par=0.5, ω=1.0), Pumas.FO())
-@test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(res)) == 
-"""FittedPumasModelInference
-
-Successful minimization:                true
-
-Likelihood approximation:           Pumas.FO
-Deviance:                           -831.833
-Total number of observation records:      65
-Number of active observation records:     65
-Number of subjects:                       13
-
------------------------------------------
-        Estimate      SE      95.0% C.I.
------------------------------------------
-par      0.50077    NaN     [NaN; NaN]
-ω        1.0352e-6  NaN     [NaN; NaN]
------------------------------------------
-
-Variance-covariance matrix could not be be
-evaluated. The random effects may be over-
-parameterized. Check the coefficients for
-variance estimates near zero.
-"""
+@test occursin("Variance-covariance matrix could not be", sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(res)))
 
 @test_throws Pumas.PumasFailedCovariance infer(res; rethrow_error=true)
 
@@ -105,29 +83,7 @@ end
 dr = DosageRegimen(293)
 
 res = fit(model_so, estimpop, (par=0.5, Ω=fill(1.0,1,1)), Pumas.FO())
-@test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(res)) == 
-"""FittedPumasModelInference
-
-Successful minimization:                true
-
-Likelihood approximation:           Pumas.FO
-Deviance:                           -831.833
-Total number of observation records:      65
-Number of active observation records:     65
-Number of subjects:                       13
-
--------------------------------------------
-         Estimate       SE      95.0% C.I.
--------------------------------------------
-par       0.50077     NaN     [NaN; NaN]
-Ω₁,₁      9.4149e-16  NaN     [NaN; NaN]
--------------------------------------------
-
-Variance-covariance matrix could not be be
-evaluated. The random effects may be over-
-parameterized. Check the coefficients for
-variance estimates near zero.
-"""
+@test occursin("Variance-covariance matrix could not be", sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(res)))
 
 @test_throws Pumas.PumasFailedCovariance infer(res; rethrow_error=true)
 
@@ -156,31 +112,7 @@ end
 end
 
 res = fit(model_sm, estimpop, (par=0.5, Ω=[1.0 0.0; 0.0 1.0]), Pumas.FO())
-@test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(res)) == 
-"""FittedPumasModelInference
-
-Successful minimization:                true
-
-Likelihood approximation:           Pumas.FO
-Deviance:                         -832.08426
-Total number of observation records:      65
-Number of active observation records:     65
-Number of subjects:                       13
-
-----------------------------------------
-        Estimate     SE      95.0% C.I.
-----------------------------------------
-par      0.50077   NaN     [NaN; NaN]
-Ω₁,₁     0.14061   NaN     [NaN; NaN]
-Ω₂,₁    -0.14099   NaN     [NaN; NaN]
-Ω₂,₂     0.14137   NaN     [NaN; NaN]
-----------------------------------------
-
-Variance-covariance matrix could not be be
-evaluated. The random effects may be over-
-parameterized. Check the coefficients for
-variance estimates near zero.
-"""
+@test occursin("Variance-covariance matrix could not be", sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(res)))
 
 @test_throws Pumas.PumasFailedCovariance infer(res; rethrow_error=true)
 
@@ -208,31 +140,7 @@ end
 end
 
 res = fit(model_vm, estimpop, (par=[0.5], Ω=[1.0 0.0; 0.0 1.0]), Pumas.FO())
-@test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(res)) == 
-"""FittedPumasModelInference
-
-Successful minimization:                true
-
-Likelihood approximation:           Pumas.FO
-Deviance:                         -832.08426
-Total number of observation records:      65
-Number of active observation records:     65
-Number of subjects:                       13
-
-----------------------------------------
-        Estimate     SE      95.0% C.I.
-----------------------------------------
-par₁     0.50077   NaN     [NaN; NaN]
-Ω₁,₁     0.14061   NaN     [NaN; NaN]
-Ω₂,₁    -0.14099   NaN     [NaN; NaN]
-Ω₂,₂     0.14137   NaN     [NaN; NaN]
-----------------------------------------
-
-Variance-covariance matrix could not be be
-evaluated. The random effects may be over-
-parameterized. Check the coefficients for
-variance estimates near zero.
-"""
+@test occursin("Variance-covariance matrix could not be", sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(res)))
 
 @test_throws Pumas.PumasFailedCovariance infer(res; rethrow_error=true)
 
