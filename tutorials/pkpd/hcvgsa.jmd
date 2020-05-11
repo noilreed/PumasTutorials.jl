@@ -8,7 +8,7 @@ date: April 25, 2020
 using Pumas, DiffEqSensitivity, Plots
 ```
 
-# Introduction
+## Introduction
 
 In this tutorial, we will cover running global sensitivity analysis on the HCV model.
 
@@ -126,10 +126,12 @@ param_PKPD = (
 
 We'll run the Morris method and Sobol method. The derived variables `cmax_pk` and `cmax_pd` which are CMAX outputs of NCA will be analysed.
 
-Let's take a look at the simulation of the model to ensure everything is working as expected.
+Let's take a look at the simulation of the model to ensure everything is working as expected. We'll use threading across subjects for
+simulation and also utlize this parallelism down the line in GSA as well.
 
 ```julia
-simdata = simobs(peg_inf_model, _pop, param_PKPD, ensemblealg = EnsembleSerial())
+simdata = simobs(peg_inf_model, _pop, param_PKPD,ensemblealg=EnsembleThreads())
+plot(simdata,obsnames=[:yPD,:yPK])
 ```
 
 To run the GSA we'll define the parameter ranges for our parameters of interest. Let's set the range between half and twice of the initial values.
@@ -159,7 +161,7 @@ Now, we are ready to run GSA on our model.
 #### The Morris Method.
 
 ```julia
-morris_ = Pumas.gsa(peg_inf_model,_pop,param_PKPD,DiffEqSensitivity.Morris(),[:cmax_pk,:cmax_pd],p_range_low,p_range_high)
+morris_ = Pumas.gsa(peg_inf_model,_pop,param_PKPD,DiffEqSensitivity.Morris(),[:cmax_pk,:cmax_pd],p_range_low,p_range_high,ensemblealg=EnsembleThreads())
 ```
 Let's create bar plots of the means of Morris Method output to visualize the output.
 
@@ -178,7 +180,7 @@ We observe that PK Cmax is most sensitive to `logVd`, `logKa` and `logKe` parame
 #### The Sobol Method
 
 ```julia
-sobol_ = Pumas.gsa(peg_inf_model,_pop,param_PKPD,DiffEqSensitivity.Sobol(),[:cmax_pk,:cmax_pd],p_range_low,p_range_high,N=4000)
+sobol_ = Pumas.gsa(peg_inf_model,_pop,param_PKPD,DiffEqSensitivity.Sobol(),[:cmax_pk,:cmax_pd],p_range_low,p_range_high,N=4000,ensemblealg=EnsembleThreads())
 ```
 We use heatmaps to visualize the Sobol output
 
@@ -195,11 +197,8 @@ plot_st = heatmap(["Cmax_PK","Cmax_PD"], string.(keys_), cmax_st, title = "Total
 plot(plot_s1, plot_st)
 ```
 
+## Conclusion
+
 For PK Cmax `logVd` comes out to be the most dominant parameter by a large margin as evident by both First and Total Order indices of Sobol.
 PD Cmax is most sensitive to `logc` and `logd` and the Total Order indices show `logKe` is also important, hence we can deduce that `logKe`
 has a greater influence due to its interactions as compared to its contribution individually.
-
-```julia{echo=false,skip="notebook"}
-using PumasTutorials
-PumasTutorials.tutorial_footer(WEAVE_ARGS[:folder],WEAVE_ARGS[:file])
-```
