@@ -10,11 +10,11 @@ using Pumas, DiffEqSensitivity, Plots
 
 # Introduction
 
-In this tutorial, we will cover running global sensitivity analysis on the Voriconazole model.
+In this tutorial, we will cover running global sensitivity analysis on the Voriconazole model published here https://github.com/metrumresearchgroup/Voriconazole-PBPK/
 
 ### Model Code
 
-```julia
+```julia;
 model = @model begin
     @param begin
         Fup ∈ RealDomain(init = 0.42)
@@ -182,6 +182,8 @@ model = @model begin
         art = ART
         ven = VEN
         Cvenn = VEN./Vve
+
+        #capturing NCA metrics for evaluations
         nca := @nca Cvenn
         auc =  last(NCA.auc(nca))
         cmax = last(NCA.cmax(nca))
@@ -190,7 +192,7 @@ end
 
 ```
 
-Let's create a subject to study.
+Let's create a subject to study the model
 
 ```julia
 regimen_s = DosageRegimen(200, time = 0, addl=13, ii=12, cmt=1, ss = 1)
@@ -199,6 +201,7 @@ sub_s = Subject(id=1,evs=regimen_s)
 
 ### GSA
 
+Below are setting the initial estimates of the parameters in the model
 ```julia
 p = (Fup = 0.42, fumic = 0.711, WEIGHT = 73, MPPGL = 30.3, MPPGI = 0,
     C_OUTPUT = 6.5, VmaxH = 40, VmaxG = 40, KmH = 9.3, KmG = 9.3, bp = 1,
@@ -216,9 +219,10 @@ Let's take a look at the simulation of the model to ensure everything is working
 
 ```julia
 simdata = simobs(model, sub_s, p)
+plot(simdata, obsnames=[:Cvenn])
 ```
 
-To run the GSA we'll define the parameter ranges for our parameters of interest. 
+To run the GSA we'll define the parameter ranges for our parameters of interest.
 
 ```julia
 p_range_low = (fperm=1/3, s_lumen=390/3, ITT = 3.32/3, MPPGI=1.44/3, )
@@ -252,7 +256,7 @@ plot(plot_cmax, plot_auc)
 
 We observe for both AUC and Cmax fperm and MPPGI show high values for both First and Total Order indices of Sobol whereas s_lumen and ITT have no effect at all and show a value of zero for the indices.
 
-```julia{echo=false,skip="notebook"}
+```julia{echo=false, eval=false,skip="notebook"}
 using PumasTutorials
 PumasTutorials.tutorial_footer(WEAVE_ARGS[:folder],WEAVE_ARGS[:file])
 ```
