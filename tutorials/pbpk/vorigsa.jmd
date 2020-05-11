@@ -8,7 +8,7 @@ date: May 10, 2020
 using Pumas, DiffEqSensitivity, Plots
 ```
 
-# Introduction
+## Introduction
 
 In this tutorial, we will cover running global sensitivity analysis on the Voriconazole model published here https://github.com/metrumresearchgroup/Voriconazole-PBPK/
 
@@ -234,9 +234,12 @@ Now, we are ready to run GSA on our model.
 
 #### The Sobol Method
 
+We will run the Sobol method for 1000 iterations, please note that this takes a couple of hours to finish because of the complexity of the model. 
+
 ```julia
-sobol_ = Pumas.gsa(model,sub_s,p,Sobol(),[:cmax,:auc],p_range_low,p_range_high,N=1000,ensemblealg=EnsembleThreads(),obstimes=0:1:300)
+sobol_ = Pumas.gsa(model,sub_s,p,Sobol(),[:cmax,:auc],p_range_low,p_range_high,N=1000,obstimes=0:1:300)
 ```
+
 We can use scatter plot the result to visualize the result.
 
 ```julia
@@ -244,19 +247,42 @@ keys_ = keys(p_range_low)
 cmax_s1 = [sobol_.first_order[1,:][key] for key in keys_]
 cmax_st = [sobol_.total_order[1,:][key] for key in keys_]
 
-plot_cmax = scatter([string.(keys_)...], cmax_s1, title="Cmax")
-scatter!(plot_cmax,[string.(keys_)...], cmax_st, marker=:utriangle)
+plot_cmax = scatter([string.(keys_)...], cmax_s1, ylims = (0,1), label = "First Order",title="Cmax")
+scatter!(plot_cmax,[string.(keys_)...], cmax_st, ylims = (0,1), label = "Total Order", marker=:utriangle)
 
 auc_s1 = [sobol_.first_order[2,:][key] for key in keys_]
 auc_st = [sobol_.total_order[2,:][key] for key in keys_]
-plot_auc = scatter([string.(keys_)...], auc_s1, title="AUC")
-scatter!(plot_auc,[string.(keys_)...], auc_st, marker=:utriangle)
-plot(plot_cmax, plot_auc)
+plot_auc = scatter([string.(keys_)...], auc_s1, ylims = (0,1), label = "First Order", title="AUC")
+scatter!(plot_auc,[string.(keys_)...], auc_st, ylims = (0,1), label = "Total Order", marker=:utriangle)
+plot(plot_cmax, plot_auc, size = (1200,400))
 ```
 
-We observe for both AUC and Cmax fperm and MPPGI show high values for both First and Total Order indices of Sobol whereas s_lumen and ITT have no effect at all and show a value of zero for the indices.
+### The eFAST method
 
-```julia{echo=false, eval=false,skip="notebook"}
-using PumasTutorials
-PumasTutorials.tutorial_footer(WEAVE_ARGS[:folder],WEAVE_ARGS[:file])
+eFAST method allows the estimation of first order and total Sobol indices in a more computationaly efficient way.
+
+```julia
+eFAST_ = Pumas.gsa(model,sub_s,p,eFAST(),[:cmax,:auc],p_range_low,p_range_high,n=1000,obstimes=0:1:300)
 ```
+
+We can use scatter plot the result to visualize the result.
+
+```julia
+keys_ = keys(p_range_low)
+cmax_s1 = [eFAST_.first_order[1,:][key] for key in keys_]
+cmax_st = [eFAST_.total_order[1,:][key] for key in keys_]
+
+plot_cmax = scatter([string.(keys_)...], cmax_s1, ylims = (0,1), label = "First Order",title="Cmax")
+scatter!(plot_cmax,[string.(keys_)...], cmax_st, ylims = (0,1), label = "Total Order", marker=:utriangle)
+
+auc_s1 = [eFAST_.first_order[2,:][key] for key in keys_]
+auc_st = [eFAST_.total_order[2,:][key] for key in keys_]
+plot_auc = scatter([string.(keys_)...], auc_s1, ylims = (0,1), label = "First Order", title="AUC")
+scatter!(plot_auc,[string.(keys_)...], auc_st, ylims = (0,1), label = "Total Order", marker=:utriangle)
+plot(plot_cmax, plot_auc, size = (1200,400))
+```
+
+## Conclusion
+
+We observe for both AUC and Cmax `fperm` and `MPPGI` show high values for both First and Total Order indices of Sobol whereas `s_lumen` and `ITT` have no effect 
+at all and show a value of zero for the indices.
