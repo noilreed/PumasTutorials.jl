@@ -46,7 +46,8 @@ using Pumas, Test, Random
   pd_negativebinomial  = Subject.(sim_negativebinomial)
 
   # FOCE
-  fitFOCE = fit(negativebinomial_model, pd_negativebinomial, param, Pumas.FOCE())
+  fitFOCE = fit(negativebinomial_model, pd_negativebinomial, param, Pumas.FOCE(),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitFOCE) ==
 """

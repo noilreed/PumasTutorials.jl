@@ -41,7 +41,8 @@ using Test, Pumas, Random
   @test @inferred(deviance(mdsl2, theopp_nlme, param, Pumas.LaplaceI())) ≈ 93.64166638742198 rtol = 1e-6 # NONMEM result
   @test_throws ArgumentError fit(mdsl2, theopp_nlme, param, Pumas.FOCE())
 
-  ft_focei = fit(mdsl2, theopp_nlme, param, Pumas.FOCEI())
+  ft_focei = fit(mdsl2, theopp_nlme, param, Pumas.FOCEI(),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
   @test ft_focei isa Pumas.FittedPumasModel
 
   @test ηshrinkage(ft_focei).η ≈ [0.016186940309938502, 0.050245367209653, 0.01330152716722488] rtol = 1e-5

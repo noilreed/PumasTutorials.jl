@@ -55,8 +55,10 @@ reread_df[reread_df[!, :evid].==1, :dv2] .= missing
 reread_df[reread_df[!, :time].==0.0, :dv2] .= missing
 reread = read_pumas(reread_df; dvs=[:dv1, :dv2])
 
-res_focei    = fit(model, reread, params, Pumas.FOCEI())
-res_laplacei = fit(model, reread, params, Pumas.LaplaceI())
+res_focei    = fit(model, reread, params, Pumas.FOCEI(),
+  optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
+res_laplacei = fit(model, reread, params, Pumas.LaplaceI(),
+  optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
 ref_focei = (
   tvcl     = 5.038557192551023,

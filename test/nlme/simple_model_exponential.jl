@@ -44,7 +44,9 @@ param = init_param(mdsl)
 @test deviance(mdsl, data, param, Pumas.FOCE())     ≈ 88.9136079338946 rtol=1e-6
 @test deviance(mdsl, data, param, Pumas.LaplaceI()) ≈ 88.9571564205892 rtol=1e-6
 
-@test deviance(fit(mdsl, data, param, Pumas.FOCE()))     ≈ 88.61049219271284 rtol=1e-6
-@test deviance(fit(mdsl, data, param, Pumas.LaplaceI())) ≈ 88.61017570108888 rtol=1e-6
+@test deviance(fit(mdsl, data, param, Pumas.FOCE(),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))) ≈ 88.61049219271284 rtol=1e-6
+@test deviance(fit(mdsl, data, param, Pumas.LaplaceI(),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))) ≈ 88.61017570108888 rtol=1e-6
 
 end

@@ -70,7 +70,8 @@ using Pumas, Test, CSV
 
     @test 2*Pumas.marginal_nll(poisson_model, pd, param, _approx) ≈ 4015.70427796336 rtol=1e-3
 
-    o = fit(poisson_model, pd, param, _approx)
+    o = fit(poisson_model, pd, param, _approx,
+      optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
     @test 2*Pumas.marginal_nll(o) ≈ 3809.80599298763 rtol=1e-3
 
     p = coef(o)

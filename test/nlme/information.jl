@@ -54,7 +54,8 @@ using Pumas, LinearAlgebra
         Pumas.FO()
       ) for d in data)) ≈ 50.6766056254067 rtol=1e-6
 
-  ft = fit(model, data, param, Pumas.FO())
+  ft = fit(model, data, param, Pumas.FO(),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
   @test logdet(informationmatrix(ft)) isa Number
 

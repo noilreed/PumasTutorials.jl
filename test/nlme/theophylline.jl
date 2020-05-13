@@ -95,10 +95,13 @@ end
                          # Elapsed estimation time in seconds:     0.04
                          # Elapsed covariance time in seconds:     0.02
 
-  o = fit(theopmodel_analytical_fo, theopp, param, Pumas.FO())
+  o = fit(theopmodel_analytical_fo, theopp, param, Pumas.FO(),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
-  ofix1 = fit(theopmodel_analytical_fo, theopp, param, Pumas.FO(); constantcoef=(θ₁=0.4,))
-  ofix2 = fit(theopmodel_analytical_fo, theopp, param, Pumas.FO(); constantcoef=(σ²_add=0.1,))
+  ofix1 = fit(theopmodel_analytical_fo, theopp, param, Pumas.FO(); constantcoef=(θ₁=0.4,),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
+  ofix2 = fit(theopmodel_analytical_fo, theopp, param, Pumas.FO(); constantcoef=(σ²_add=0.1,),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
   @test coef(ofix1).θ₁ == 0.4
   @test coef(ofix2).σ²_add == 0.1
@@ -348,7 +351,8 @@ end
                          # Elapsed estimation time in seconds:     0.45
                          # Elapsed covariance time in seconds:     0.18
 
-  o = @time fit(theopmodel_solver_fo, theopp, param, Pumas.FO())
+  o = @time fit(theopmodel_solver_fo, theopp, param, Pumas.FO(),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
   o_estimates = coef(o)
   o_stderror  = stderror(o)
@@ -404,9 +408,12 @@ Stratification by SEX.
   end
 
   # Test that the types work on both stiff and non-stiff solver methods
-  o = fit(theopmodel_solver_fo, theopp, param, Pumas.FO(), alg=Tsit5())
-  o = fit(theopmodel_solver_fo, theopp, param, Pumas.FO(), alg=Rosenbrock23(autodiff=false))
-  @test o = fit(theopmodel_solver_fo, theopp, param, Pumas.FO(), alg=Rosenbrock23()) isa Pumas.FittedPumasModel
+  o = fit(theopmodel_solver_fo, theopp, param, Pumas.FO(), alg=Tsit5(),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
+  o = fit(theopmodel_solver_fo, theopp, param, Pumas.FO(), alg=Rosenbrock23(autodiff=false),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
+  @test o = fit(theopmodel_solver_fo, theopp, param, Pumas.FO(), alg=Rosenbrock23(),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false)) isa Pumas.FittedPumasModel
 end
 
 @testset "run3.mod FOCE without interaction, diagonal omega and additive error" begin
@@ -503,8 +510,12 @@ end
   # Elapsed estimation time in seconds:     0.27
   # Elapsed covariance time in seconds:     0.19
 
-  o = fit(theopmodel_foce, theopp, param, Pumas.FOCE(), ensemblealg=EnsembleThreads())
-  @test_throws ArgumentError fit(theopmodel_foce, theopp, param, Pumas.FOCE(), ensemblealg=EnsembleDistributed())
+  o = fit(theopmodel_foce, theopp, param, Pumas.FOCE(),
+    ensemblealg=EnsembleThreads(),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
+  @test_throws ArgumentError fit(theopmodel_foce, theopp, param, Pumas.FOCE(),
+    ensemblealg=EnsembleDistributed(),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
   o_simobs_1 = simobs(theopmodel_foce, theopp, coef(o), empirical_bayes(o))
   o_simobs_2 = simobs(theopmodel_foce, theopp, coef(o), fill((η=[0,0],), length(theopp)))
@@ -794,7 +805,9 @@ end
   # Elapsed estimation time in seconds:     0.27
   # Elapsed covariance time in seconds:     0.19
 
-  o = fit(theopmodel_foce, theopp, param, Pumas.FOCE(), ensemblealg=EnsembleThreads())
+  o = fit(theopmodel_foce, theopp, param, Pumas.FOCE(),
+    ensemblealg=EnsembleThreads(),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
   @test_throws ArgumentError fit(theopmodel_foce, theopp, param, Pumas.FOCE(), ensemblealg=EnsembleDistributed())
 
   o_simobs_1 = simobs(theopmodel_foce, theopp, coef(o), empirical_bayes(o))
@@ -1083,7 +1096,8 @@ end
   # Elapsed estimation time in seconds:     0.30
   # Elapsed covariance time in seconds:     0.32
 
-  o = fit(theopmodel_focei, theopp, param, Pumas.FOCEI())
+  o = fit(theopmodel_focei, theopp, param, Pumas.FOCEI(),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
   o_estimates = coef(o)
   o_stderror  = stderror(o)
@@ -1391,7 +1405,8 @@ end
   @test deviance(theopmodel_laplace, theopp, laplace_estimated_params, Pumas.LaplaceI()) ≈ 123.76439574418291 atol=1e-3
 
   @testset "Test optimization" begin
-    o = fit(theopmodel_laplace, theopp, param, Pumas.LaplaceI())
+    o = fit(theopmodel_laplace, theopp, param, Pumas.LaplaceI(),
+      optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
     o_estimates = coef(o)
     o_stderror  = stderror(o)
@@ -1534,7 +1549,8 @@ end
   # Elapsed covariance time in seconds:     0.32
 
   @testset "Test optimization" begin
-    o = fit(theopmodel_laplacei, theopp, param, Pumas.LaplaceI())
+    o = fit(theopmodel_laplacei, theopp, param, Pumas.LaplaceI(),
+      optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
     o_estimates = coef(o)
     o_stderror  = stderror(o)

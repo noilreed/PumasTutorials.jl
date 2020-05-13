@@ -30,7 +30,7 @@ using Random
   param = init_param(mdsl1)
 
   for approx in (Pumas.FO, Pumas.FOI, Pumas.FOCE, Pumas.FOCEI, Pumas.LaplaceI, Pumas.LLQuad)
-    @test_throws ArgumentError fit(mdsl1, data[1], param, approx())
+    @test_throws ArgumentError fit(mdsl1, data[1], param, approx(),)
   end
 end
 
@@ -83,10 +83,12 @@ end
 
   data = read_pumas(simdf, time=:time, cvs=[:isPM, :wt])
 
-  res = fit(model, data[1], param)
+  res = fit(model, data[1], param,
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
   trf = Pumas.totransform(model.param)
-  fits = [fit(model, dat, param) for dat in data]
-  fitone = fit(model, first(data), param)
+  fits = [fit(model, dat, param, optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false)) for dat in data]
+  fitone = fit(model, first(data), param,
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
 @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone) ==
 """FittedPumasModel
@@ -109,7 +111,8 @@ pmoncl     -0.70079
 --------------------
 """
 
-  fitnp = fit(model, data, param, Pumas.NaivePooled())
+  fitnp = fit(model, data, param, Pumas.NaivePooled(),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(fitnp)) ==
 """FittedPumasModelInference
@@ -135,7 +138,8 @@ pmoncl    -0.69962         0.00059607         [-0.70079; -0.69845]
   inspect_np = DataFrame(inspect(fitnp))
   @test mean(inspect_np.dv_iwres) < 1e-6
 
-  fit2s = fit(model, data, param, Pumas.TwoStage())
+  fit2s = fit(model, data, param, Pumas.TwoStage(),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fit2s) ==
 """Vector{<:FittedPumasModel} with 1000 entries
@@ -235,7 +239,8 @@ end
 
 
   param_noeta = init_param(mdsl1_noeta)
-  fitone_noeta = fit(mdsl1_noeta, first(data), param_noeta)
+  fitone_noeta = fit(mdsl1_noeta, first(data), param_noeta,
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_noeta) ==
 """FittedPumasModel
@@ -277,7 +282,8 @@ Number of subjects:                        1
 """
 
   param = init_param(mdsl1)
-  fitone_constantcoef = fit(mdsl1, first(data), param; constantcoef=(Ω=[0.0],))
+  fitone_constantcoef = fit(mdsl1, first(data), param; constantcoef=(Ω=[0.0],),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_constantcoef) ==
 """FittedPumasModel
 
@@ -319,7 +325,8 @@ Number of subjects:                        1
 ----------------------------------------------------------
 """
 
-  fitone_omegas = fit(mdsl1, first(data), param; omegas=(:Ω,))
+  fitone_omegas = fit(mdsl1, first(data), param; omegas=(:Ω,),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_omegas) ==
 """FittedPumasModel
 
@@ -362,7 +369,8 @@ Number of subjects:                        1
 """
 
   param = init_param(mdsl1full)
-  fitone_constantcoef = fit(mdsl1full, first(data), param; constantcoef=(Ω=[0.0],))
+  fitone_constantcoef = fit(mdsl1full, first(data), param; constantcoef=(Ω=[0.0],),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_constantcoef) ==
 """FittedPumasModel
 
@@ -404,7 +412,8 @@ Number of subjects:                        1
 ----------------------------------------------------------
 """
 
-  fitone_omegas = fit(mdsl1full, first(data), param; omegas=(:Ω,))
+  fitone_omegas = fit(mdsl1full, first(data), param; omegas=(:Ω,),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_omegas) ==
 """FittedPumasModel
 

@@ -135,9 +135,6 @@ df = identity.(df)
         tvcov_model_normal,
         tvcov_pd, param_normal,
         Pumas.FOCEI();
-        optimize_fn = Pumas.DefaultOptimizeFN(
-          show_trace=true,
-        ),
         # We use a slightly lower tolerance in the ODE solves to avoid a very slow
         # last iteration.
         reltol=1e-9
@@ -161,7 +158,6 @@ df = identity.(df)
   #       param_gamma,
   #       Pumas.FOCE(),
   #       optimize_fn = Pumas.DefaultOptimizeFN(
-  #         show_trace=true,
   #         g_tol=1e-1))
 
   #   #   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), ft_normal) == """

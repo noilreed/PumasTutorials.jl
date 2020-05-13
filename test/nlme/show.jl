@@ -29,7 +29,8 @@ cvs = NamedTuple{ntuple(i -> Symbol("x$i"), 9)}(ntuple(i -> randn(), 9))
 
 pop = [Subject(id=i, obs=(dv=[randn()],), cvs=cvs, time=[0.0]) for i in 1:100]
 
-ft = fit(mdl, pop, param, Pumas.FOCEI())
+ft = fit(mdl, pop, param, Pumas.FOCEI(),
+  optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
 io_buffer = IOBuffer()
 show(io_buffer, ft)

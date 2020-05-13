@@ -52,7 +52,8 @@ end
 end
 end
 
-res = fit(model_ss, estimpop, (par=0.5, ω=1.0), Pumas.FO())
+res = fit(model_ss, estimpop, (par=0.5, ω=1.0), Pumas.FO(),
+  optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 @test occursin("Variance-covariance matrix could not be", sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(res)))
 
 @test_throws Pumas.PumasFailedCovariance infer(res; rethrow_error=true)
@@ -82,7 +83,8 @@ end
 
 dr = DosageRegimen(293)
 
-res = fit(model_so, estimpop, (par=0.5, Ω=fill(1.0,1,1)), Pumas.FO())
+res = fit(model_so, estimpop, (par=0.5, Ω=fill(1.0,1,1)), Pumas.FO(),
+  optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 @test occursin("Variance-covariance matrix could not be", sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(res)))
 
 @test_throws Pumas.PumasFailedCovariance infer(res; rethrow_error=true)
@@ -111,7 +113,8 @@ end
 end
 end
 
-res = fit(model_sm, estimpop, (par=0.5, Ω=[1.0 0.0; 0.0 1.0]), Pumas.FO())
+res = fit(model_sm, estimpop, (par=0.5, Ω=[1.0 0.0; 0.0 1.0]), Pumas.FO(),
+  optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 @test occursin("Variance-covariance matrix could not be", sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(res)))
 
 @test_throws Pumas.PumasFailedCovariance infer(res; rethrow_error=true)
@@ -139,7 +142,8 @@ end
 end
 end
 
-res = fit(model_vm, estimpop, (par=[0.5], Ω=[1.0 0.0; 0.0 1.0]), Pumas.FO())
+res = fit(model_vm, estimpop, (par=[0.5], Ω=[1.0 0.0; 0.0 1.0]), Pumas.FO(),
+  optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 @test occursin("Variance-covariance matrix could not be", sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(res)))
 
 @test_throws Pumas.PumasFailedCovariance infer(res; rethrow_error=true)

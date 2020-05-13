@@ -1014,12 +1014,13 @@ struct DefaultOptimizeFN{A,K}
 end
 
 DefaultOptimizeFN(alg = nothing;kwargs...) =
-                  DefaultOptimizeFN(alg,(show_trace=false, # Print progress
-                                                store_trace=true,
-                                                extended_trace=true,
-                                                g_tol=1e-3,
-                                                allow_f_increases=true,
-                                                kwargs...))
+  DefaultOptimizeFN(alg, (
+    show_trace=true, # Print progress
+    store_trace=true,
+    extended_trace=false,
+    g_tol=1e-3,
+    allow_f_increases=true,
+    kwargs...))
 
 function (A::DefaultOptimizeFN)(cost, p, callback)
 

@@ -87,7 +87,8 @@ using Pumas, Test, Random
         # Optim has been updated
         optimize_fn=Pumas.DefaultOptimizeFN(
           Pumas.BFGS(initial_invH=t -> Matrix(I*1e-6, 5, 5)),
-          g_tol=1e-3))).θlag ≈ params₀.θlag rtol=1e-1
+          g_tol=1e-3,
+          show_trace=false))).θlag ≈ params₀.θlag rtol=1e-1
     end
   end
 end
@@ -163,8 +164,9 @@ end
 
   @testset "$t" for t in ("closed form", "DiffEq")
     m = model_duration[t]
-    @test deviance(m, pop_est, params₀, Pumas.FOCEI())            ≈ 752.9000974645899 rtol=1e-4
-    @test coef(fit(m, pop_est, params , Pumas.FOCEI())).θduration ≈ params₀.θduration rtol=1e-1
+    @test deviance(m, pop_est, params₀, Pumas.FOCEI())                  ≈ 752.9000974645899 rtol=1e-4
+    @test coef(fit(m, pop_est, params , Pumas.FOCEI(),
+      optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))).θduration ≈ params₀.θduration rtol=1e-1
   end
 end
 
@@ -238,8 +240,9 @@ end
 
   @testset "$t" for t in ("closed form", "DiffEq")
     m = model_rate[t]
-    @test deviance(m, pop_est, params₀, Pumas.FOCEI())        ≈ 623.904942054 rtol=1e-4
-    @test coef(fit(m, pop_est, params , Pumas.FOCEI())).θrate ≈ params₀.θrate rtol=1e-1
+    @test deviance(m, pop_est, params₀, Pumas.FOCEI())              ≈ 623.904942054 rtol=1e-4
+    @test coef(fit(m, pop_est, params , Pumas.FOCEI(),
+      optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))).θrate ≈ params₀.θrate rtol=1e-1
   end
 end
 
@@ -320,7 +323,8 @@ end
 
   @testset "$t" for t in ("closed form", "DiffEq")
     m = model_bioav[t]
-    @test deviance(m, pop_est, params₀, Pumas.FOCEI())         ≈ 733.981432682  rtol=1e-4
-    @test coef(fit(m, pop_est, params , Pumas.FOCEI())).θbioav ≈ params₀.θbioav rtol=1e-1
+    @test deviance(m, pop_est, params₀, Pumas.FOCEI())               ≈ 733.981432682  rtol=1e-4
+    @test coef(fit(m, pop_est, params , Pumas.FOCEI(),
+      optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))).θbioav ≈ params₀.θbioav rtol=1e-1
   end
 end

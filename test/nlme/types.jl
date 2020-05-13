@@ -33,11 +33,13 @@ end
 
 param = init_param(mdsl1)
 
-ft_no_args = fit(mdsl1, data, param, Pumas.FOCEI())
+ft_no_args = fit(mdsl1, data, param, Pumas.FOCEI(),
+  optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 @test isempty(pairs(ft_no_args.args))
 @test isempty(pairs(ft_no_args.kwargs))
 
-ft_alg_kwargs = fit(mdsl1, data, param, Pumas.FOCEI(); alg=Rosenbrock23())
+ft_alg_kwargs = fit(mdsl1, data, param, Pumas.FOCEI(); alg=Rosenbrock23(),
+  optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 @test isempty(pairs(ft_alg_kwargs.args))
 kwarg_pairs = pairs(ft_alg_kwargs.kwargs)
 @test keys(kwarg_pairs) == (:alg,)
@@ -146,14 +148,19 @@ end
       _approx in (Pumas.FO(), Pumas.FOCE(), Pumas.FOCEI(), Pumas.LaplaceI())
 
     if _model == "proportional" && _approx == Pumas.FOCE()
-      @test_throws ArgumentError deviance(fit(model[_model], data, param, _approx))
+      @test_throws ArgumentError deviance(fit(model[_model], data, param, _approx,
+        optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false)))
       continue
     end
     # LaplaceI and proportional is very unstable and succeeds/fails depending on architecture
     # so we can't mark this as @test_broken
     if _model != "proportional" || _approx != Pumas.LaplaceI()
-      @test deviance(fit(model[_model], data, param, _approx)) == deviance(fit(model[_model], data_missing, param, _approx))
-      res = fit(model[_model], data, param, _approx)
+      @test deviance(fit(model[_model], data, param, _approx,
+        optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))) == deviance(
+        fit(model[_model], data_missing, param, _approx,
+          optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false)))
+      res = fit(model[_model], data, param, _approx,
+        optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
       @test Pumas.∂²l∂η²(model[_model], first(data), param, first(res.vvrandeffsorth), _approx) isa Tuple
     end
   end
@@ -212,6 +219,8 @@ end # begin
     Ω  = diagm(0 => [5.55, 0.0024, 0.515]), # update to block diagonal
     σ_add = sqrt(0.388)
     )
-  o = fit(theopmodel_solver_fo, theopp, param, Pumas.FO())
-  o = fit(theopmodel_solver_fo, theoppnew, param, Pumas.FO())
+  o = fit(theopmodel_solver_fo, theopp, param, Pumas.FO(),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
+  o = fit(theopmodel_solver_fo, theoppnew, param, Pumas.FO(),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 end # begin
