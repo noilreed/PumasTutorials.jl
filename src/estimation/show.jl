@@ -274,12 +274,24 @@ end
 function Base.show(io::IO, mime::MIME"text/plain", sens::SobolOutput)
   println(io, "Sobol Sensitivity Analysis", "\n")
   println(io, "First Order Indices")
-  println(io, sens.first_order, "\n")
+  if sens.first_order_conf_int !== nothing
+    println(io, sens.first_order_conf_int, "\n")
+  else
+    println(io, sens.first_order, "\n")
+  end
   println(io, "Total Order Indices")
-  println(io, sens.total_order, "\n")
+  if sens.total_order_conf_int !== nothing
+    println(io, sens.total_order_conf_int, "\n")
+  else
+    println(io, sens.total_order, "\n")
+  end
   if sens.second_order != nothing
     println(io, "Second Order Indices")
-    println(io, sens.second_order, "\n")
+    if sens.second_order_conf_int !== nothing
+      println(io, sens.second_order_conf_int, "\n")
+    else
+      println(io, sens.second_order, "\n")
+    end
   end
 end
 

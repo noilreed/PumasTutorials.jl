@@ -80,7 +80,10 @@ end
 function sens_result(sens::DiffEqSensitivity.SobolResult, p_range_low::NamedTuple, vars::AbstractVector, length_vars::AbstractVector)
     s1 = sens.S1
     st = sens.ST
-    s2 = sens.S2 === nothing ? nothing : sens.S2
+    s2 = sens.S2
+    s1_ci = sens.S1_Conf_Int
+    st_ci = sens.ST_Conf_Int
+    s2_ci = sens.S2_Conf_Int
 
     var_name = []
     for i in 1:length(vars)
@@ -109,15 +112,44 @@ function sens_result(sens::DiffEqSensitivity.SobolResult, p_range_low::NamedTupl
         insertcols!(S1, i+1, Symbol(par_name[i]) => s1[:,i])
         insertcols!(ST, i+1, Symbol(par_name[i]) => st[:,i])
     end
-    if s2 != nothing
+
+    if s2 !== nothing
         par_name_sec = [string(par_name[i],"*" ,par_name[j]) for i in 1:length(par_name) for j in i+1:length(par_name)]
         S2 = DataFrame(dv_name = var_name)
         for i in 1:length(par_name_sec)
             insertcols!(S2, i+1, Symbol(par_name_sec[i]) => s2[:,i])
         end
+        if s2_ci !== nothing
+            S2_CI = DataFrame(dv_name = var_name)
+            for (i,j) in zip(1:2:2*length(par_name_sec),1:length(par_name_sec))
+                insertcols!(S2_CI, i+1, Symbol(par_name_sec[j]*" Min CI") => s2[:,j] .- s2_ci[:,j])
+                insertcols!(S2_CI, i+2, Symbol(par_name_sec[j]*" Max CI") => s2[:,j] .+ s2_ci[:,j])
+            end
+        end
     end
 
-    return SobolOutput(S1, ST, s2 === nothing ? nothing : S2 , nothing, nothing, nothing)
+    if s1_ci !== nothing
+        S1_CI = DataFrame(dv_name = var_name)
+        for (i,j) in zip(1:2:2*length(par_name),1:length(par_name))
+            insertcols!(S1_CI, i+1, Symbol(par_name[j]*" Min CI") => s1[:,j] .- s1_ci[:,j])
+            insertcols!(S1_CI, i+2, Symbol(par_name[j]*" Max CI") => s1[:,j] .+ s1_ci[:,j])
+        end
+    end
+
+    if st_ci !== nothing
+        ST_CI = DataFrame(dv_name = var_name)
+        for (i,j) in zip(1:2:2*length(par_name),1:length(par_name))
+            insertcols!(ST_CI, i+1, Symbol(par_name[j]*" Min CI") => st[:,j] .- st_ci[:,j])
+            insertcols!(ST_CI, i+2, Symbol(par_name[j]*" Max CI") => st[:,j] .+ st_ci[:,j])
+        end
+    end
+
+    return SobolOutput(S1, 
+                        ST, 
+                        s2 === nothing ? nothing : S2 , 
+                        s1_ci === nothing ? nothing : S1_CI, 
+                        st_ci === nothing ? nothing : ST_CI, 
+                        s2_ci === nothing ? nothing : S2_CI)
 end
 
 

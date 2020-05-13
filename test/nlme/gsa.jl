@@ -113,6 +113,36 @@ Second Order Indices
 
 """
 
+sobol_ci = gsa(m_diffeq,
+                   ev2,
+                   p,
+                   DiffEqSensitivity.Sobol(order=[0,1,2],nboot=10),
+                   [:auc], (θ1 = 0.1, θ2 = 0.5, θ3 = 10); N=1000)
+@test sprint((io, t) -> show(io, MIME"text/plain"(), t), sobol_ci) ==
+"""Sobol Sensitivity Analysis
+
+First Order Indices
+1×7 DataFrame
+│ Row │ dv_name │ θ1 Min CI │ θ1 Max CI │ θ2 Min CI │ θ2 Max CI │ θ3 Min CI   │ θ3 Max CI   │
+│     │ Any     │ Float64   │ Float64   │ Float64   │ Float64   │ Float64     │ Float64     │
+├─────┼─────────┼───────────┼───────────┼───────────┼───────────┼─────────────┼─────────────┤
+│ 1   │ auc     │ 0.0       │ 0.0       │ 0.994448  │ 1.00966   │ -1.69063e-5 │ -2.78275e-6 │
+
+Total Order Indices
+1×7 DataFrame
+│ Row │ dv_name │ θ1 Min CI │ θ1 Max CI │ θ2 Min CI │ θ2 Max CI │ θ3 Min CI  │ θ3 Max CI  │
+│     │ Any     │ Float64   │ Float64   │ Float64   │ Float64   │ Float64    │ Float64    │
+├─────┼─────────┼───────────┼───────────┼───────────┼───────────┼────────────┼────────────┤
+│ 1   │ auc     │ 0.0       │ 0.0       │ 1.00474   │ 1.01593   │ 2.07908e-7 │ 2.67698e-6 │
+
+Second Order Indices
+1×7 DataFrame
+│ Row │ dv_name │ θ1*θ2 Min CI │ θ1*θ2 Max CI │ θ1*θ3 Min CI │ θ1*θ3 Max CI │ θ2*θ3 Min CI │ θ2*θ3 Max CI │
+│     │ Any     │ Float64      │ Float64      │ Float64      │ Float64      │ Float64      │ Float64      │
+├─────┼─────────┼──────────────┼──────────────┼──────────────┼──────────────┼──────────────┼──────────────┤
+│ 1   │ auc     │ 0.999923     │ 1.01246      │ 4.1844e-7    │ 4.27658e-7   │ 0.999933     │ 1.01247      │
+
+"""
 Random.seed!(123)
 morris = gsa(m_diffeq,
                    ev2,
