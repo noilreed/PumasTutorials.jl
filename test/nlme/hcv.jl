@@ -1,4 +1,4 @@
-using Pumas, Random
+using Pumas, Random, Test
 
 @testset "Median size ODE problem (HCV model)" begin
   t = [0.25, 0.5, 1.0, 2.0, 3.0, 4.0, 6.99, 10.0, 13.99, 20.99, 28.0]

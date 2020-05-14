@@ -142,12 +142,12 @@ end
 
 function df_to_nt(cvs_nt, data, time::Union{Symbol, Int})
   covar_nt = map(cvs_nt) do name
-             if name == time
-               throw(ErrorException(":time should not be used to reference current time for covariates. Please consult the documatation on time varying covariates for more information."))
-             end
-             dat = dropmissing(data[!, [time, name]])
-             dat[!, :ctime] = dat[!, time]
-             dat = disallowmissing(dat)
-             to_nt(dat[!, [:ctime, name]])
-           end
+    if name == time
+      throw(ErrorException(":time should not be used to reference current time for covariates. Please consult the documentation on time varying covariates for more information."))
+    end
+    dat = dropmissing(data[!, [time, name]])
+    dat[!, :ctime] = dat[!, time]
+    dat = disallowmissing(dat)
+    return to_nt(dat[!, [:ctime, name]])
+  end
 end

@@ -1,5 +1,6 @@
 using Test
-using Pumas, TransformVariables, Distributions
+using Pumas, Distributions
+import TransformVariables
 
 @testset "ParamSets and Domains tests" begin
   p = ParamSet((θ = VectorDomain(4, lower=zeros(4), init=ones(4)), # parameters
@@ -9,7 +10,7 @@ using Pumas, TransformVariables, Distributions
 
   t = Pumas.totransform(p)
   @test TransformVariables.dimension(t) == 8
-  u = transform(t, zeros(8))
+  u = TransformVariables.transform(t, zeros(8))
   @test all(u.θ .> 0)
   @test u.Ω isa Pumas.PDMats.AbstractPDMat
 
@@ -20,7 +21,7 @@ using Pumas, TransformVariables, Distributions
 
   td = Pumas.totransform(pd)
   @test TransformVariables.dimension(td) == 5
-  ud = transform(td, zeros(5))
+  ud = TransformVariables.transform(td, zeros(5))
   @test all(ud.θ .> -2.0)
   @test ud.Ω isa Pumas.PDMats.AbstractPDMat
 

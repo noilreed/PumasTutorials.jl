@@ -45,16 +45,15 @@ function ___read_nca(df; id=:id, time=:time, conc=:conc, occasion=:occasion,
                      ii=:ii, ss=:ss, group=nothing, concu=true, timeu=true, amtu=true, volumeu=true,
                      verbose=true, kwargs...)
   local ids, times, concs, amts
-  dfnames = names(df)
-  has_id = id in dfnames
-  has_time = time in dfnames
-  has_conc = conc in dfnames
+  has_id = hasproperty(df, id)
+  has_time = hasproperty(df, time)
+  has_conc = hasproperty(df, conc)
   if has_id && has_time && has_conc
     urine = false
   else
-    has_start_time = start_time in dfnames
-    has_end_time   = end_time   in dfnames
-    has_volume     = volume     in dfnames
+    has_start_time = hasproperty(df, start_time)
+    has_end_time   = hasproperty(df, end_time)
+    has_volume     = hasproperty(df, volume)
     if has_start_time && has_end_time && has_volume && has_conc
       urine = true
     else
@@ -62,13 +61,13 @@ function ___read_nca(df; id=:id, time=:time, conc=:conc, occasion=:occasion,
       throw(ArgumentError("The CSV file must have: `id, time, conc` or `id, start_time, end_time, volume, conc` columns"))
     end
   end
-  blq = (blq in dfnames) ? blq : nothing
-  amt = (amt in dfnames) ? amt : nothing
-  ii  = (ii in dfnames) ? ii : nothing
-  ss  = (ss in dfnames) ? ss : nothing
-  route = (route in dfnames) ? route : nothing
-  occasion = (occasion in dfnames) ? occasion : nothing
-  duration = (duration in dfnames) ? duration : nothing
+  blq = hasproperty(df, blq) ? blq : nothing
+  amt = hasproperty(df, amt) ? amt : nothing
+  ii  = hasproperty(df, ii) ? ii : nothing
+  ss  = hasproperty(df, ss) ? ss : nothing
+  route = hasproperty(df, route) ? route : nothing
+  occasion = hasproperty(df, occasion) ? occasion : nothing
+  duration = hasproperty(df, duration) ? duration : nothing
   hasdose = amt !== nothing && route !== nothing
   if verbose
     hasdose || @warn "No dosage information has passed. If the dataset has dosage information, you can pass the column names by `amt=:AMT, route=:route`."
@@ -83,8 +82,8 @@ function ___read_nca(df; id=:id, time=:time, conc=:conc, occasion=:occasion,
     df = deleterows!(deepcopy(df), findall(isequal(1), blqs))
   end
 
-  sortvars = urine ? (occasion === nothing ? (id, start_time, end_time) : (id, start_time, end_time, occasion)) :
-                     (occasion === nothing ? (id, time) : (id, time, occasion))
+  sortvars = urine ? (occasion === nothing ? [id, start_time, end_time] : [id, start_time, end_time, occasion]) :
+                     (occasion === nothing ? [id, time] : [id, time, occasion])
   iss = issorted(df, sortvars)
   # we need to use a stable sort because we want to preserve the order of `time`
   sortedf = iss ? df : sort(df, sortvars, alg=Base.Sort.DEFAULT_STABLE)

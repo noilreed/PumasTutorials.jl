@@ -29,8 +29,7 @@ function opt_minimizer end
 include("nca/NCA.jl")
 include("ivivc/IVIVC.jl")
 
-include("data_parsing/data_types.jl")
-include("data_parsing/data_read.jl")
+include("data_parsing/io.jl")
 
 include("dsl/model_macro.jl")
 

@@ -131,7 +131,7 @@ end
   predict_obstimes = predict(o, theopp[3]; obstimes=[theopp3.time[3], theopp3.time[4], theopp3.time[3]])
   @test predict_obstimes.pred.dv ≈ [predict_at_third, predict_at_fourth, predict_at_third]
   o_predict_df = DataFrame(o_predict)
-  @test in(:dv, names(o_predict_df))
+  @test hasproperty(o_predict_df, :dv)
 
   @test empirical_bayes(o)[1].η ≈ [-2.41894177806061, -0.01824682682564875, -1.2477915226281944] rtol=1e-5
   @test Pumas.empirical_bayes_dist(o)[1].η.Σ.mat ≈ [
@@ -526,8 +526,8 @@ end
 
   o_inspect  = inspect(o)
   o_inspect_df = DataFrame(o_inspect)
-  @test in(Symbol("η_1"), names(o_inspect_df))
-  @test in(Symbol("η_2"), names(o_inspect_df))
+  @test hasproperty(o_inspect_df, Symbol("η_1"))
+  @test hasproperty(o_inspect_df, Symbol("η_2"))
 
   bts = bootstrap(o; samples=5)
   bts = bootstrap(o; samples=5, stratify_by=:SEX)

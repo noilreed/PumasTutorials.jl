@@ -190,7 +190,7 @@ to be repeated in the other API functions
                           obstimes = nothing,
                           callback = nothing,
                           kwargs...)
-  
+
   obstimes = obstimes === nothing ? subject.time : obstimes
   # collate that arguments
   collated = m.pre(param, randeffs, subject)
