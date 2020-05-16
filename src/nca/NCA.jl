@@ -1,7 +1,7 @@
 module NCA
 
+using Statistics
 using Reexport
-using GLM
 using DataFrames
 using RecipesBase
 using Pkg, Dates, Printf

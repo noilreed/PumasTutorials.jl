@@ -352,12 +352,29 @@ function aumc_extrap_percent(nca::NCASubject; kwargs...)
   (aumcinf-aumclast)/aumcinf * 100
 end
 
-function fitlog(x, y)::Tuple{<:Any, Int}
-  mask = map(x->x > zero(x), y)
-  x, y = x[mask], y[mask]
-  points = length(y)
-  points < 3 && return missing, points
-  return lm(hcat(fill!(similar(x), 1), x), log.(y)), points
+function loglinreg(x, y)
+  # Filter out non-positive observations
+  _x, ly = similar(x, 0), similar(y, typeof(log(oneunit(eltype(y)))), 0)
+  for (i, yᵢ) in enumerate(y)
+    if yᵢ > zero(yᵢ)
+      push!(ly, log(yᵢ))
+      push!(_x, x[i])
+    end
+  end
+
+  points = length(ly)
+  if points < 3
+    return missing
+  end
+
+  x̄  = Statistics.mean(_x)
+  lȳ = Statistics.mean(ly)
+  Mxx = Statistics.varm(_x, x̄)
+  Mxy = Statistics.covm(_x, x̄, ly, lȳ)
+  β̂₁ = Mxy/Mxx
+  β̂₀ = lȳ - x̄*β̂₁
+  R² = var(lȳ - β̂₀ - β̂₁*xᵢ for xᵢ in _x)/Statistics.varm(ly, lȳ)
+  return (β̂₀=β̂₀, β̂₁=β̂₁, R²=R², adjR²=1 - (1 - R²)*(points - 1)/(points - 2), points=points)
 end
 
 """
@@ -375,7 +392,9 @@ function lambdaz(nca::NCASubject{C,TT,T,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,V,R,RT
   end
   _F = eltype(F)
   _Z = eltype(Z)
-  !(idxs === nothing) && !(slopetimes === nothing) && throw(ArgumentError("you must provide only one of idxs or slopetimes"))
+  if !(idxs === nothing) && !(slopetimes === nothing)
+    throw(ArgumentError("you must provide only one of idxs or slopetimes"))
+  end
   conc, time = nca.conc, nca.time
   maxadjr2::_F = -oneunit(_F)
   adjr2factor *= oneunit(_F)
@@ -392,27 +411,28 @@ function lambdaz(nca::NCASubject{C,TT,T,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,V,R,RT
     validpoints = isafterinfusion ? idx2-cmaxidx+1 : idx2-cmaxidx
     m = min(threshold, validpoints) - 1
     if m < 2
-        verbose && @info "ID $(nca.id) errored: lambdaz calculation needs at least three data points between Cmax and the last positive concentration"
-        cachelambdaz!(nca)
-        setretcode!(nca, :NotEnoughDataAfterCmax)
-        return missing
+      if verbose
+        @info "ID $(nca.id) errored: lambdaz calculation needs at least three data points between Cmax and the last positive concentration"
+      end
+      cachelambdaz!(nca)
+      setretcode!(nca, :NotEnoughDataAfterCmax)
+      return missing
     end
     for i in 2:m
       idxs = idx2-i:idx2
       x = time′[idxs]
       y = conc′[idxs]
-      model, points′ = fitlog(x, y)
-      model === missing && continue
-      adjr2 = oneunit(_F) * adjr²(model)
+      _fit = loglinreg(x, y)
+      _fit === missing && continue
+      adjr2 = oneunit(_F) * _fit.adjR²
       if adjr2 > (maxadjr2 - adjr2factor)
         maxadjr2 = adjr2
-        r2 = oneunit(_F) * r²(model)
-        coefs = coef(model)
-        λ = oneunit(_Z) * coefs[2]
-        intercept = coefs[1]
+        r2 = oneunit(_F) * _fit.R²
+        λ = oneunit(_Z) * _fit.β̂₁
+        intercept = _fit.β̂₀
         firstpoint = time[idxs[1]]
         lastpoint = time[idxs[end]]
-        points = points′
+        points = _fit.points
         valid = true
       end
     end
@@ -423,14 +443,14 @@ function lambdaz(nca::NCASubject{C,TT,T,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,V,R,RT
     length(idxs) != points && throw(ArgumentError("elements slopetimes must occur in nca.time"))
     x = time′[idxs]
     y = conc′[idxs]
-    model, points = fitlog(x, y)
-    if model !== missing
-      λ = oneunit(_Z) * coef(model)[2]
-      intercept = coef(model)[1]
-      r2 = oneunit(_F) * r²(model)
+    _fit = loglinreg(x, y)
+    if _fit !== missing
+      λ = oneunit(_Z) * _fit.β̂₁
+      intercept = _fit.β̂₀
+      r2 = oneunit(_F) * _fit.R²
       firstpoint = time[idxs[1]]
       lastpoint = time[idxs[end]]
-      maxadjr2 = oneunit(_F) * adjr²(model)
+      maxadjr2 = oneunit(_F) * _fit.adjR²
       valid = true
     end
   end

@@ -1,7 +1,7 @@
 module Pumas
 
 using FiniteDiff, Reexport, StatsBase,
-      StaticArrays, Distributed, LabelledArrays, GLM,
+      StaticArrays, Distributed, LabelledArrays,
       TreeViews, CSV, ForwardDiff, DiffResults, Optim, PDMats,
       Missings, RecipesBase, RecursiveArrayTools, Quadrature,
       Statistics, DiffEqSensitivity
