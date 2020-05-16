@@ -19,7 +19,7 @@ function read_nca(df; group=nothing, kwargs...)
   else
     dfs = groupby(df, group)
     groupnum = length(dfs)
-    dfpops = map(dfs) do df
+    dfpops = combine(dfs, ungroup=false) do df
       if group isa AbstractArray && length(group) > 1
         grouplabel = map(string, group)
         groupnames = map(string, first(df[!,group]))
@@ -79,7 +79,7 @@ function ___read_nca(df; id=:id, time=:time, conc=:conc, occasion=:occasion,
     blqs = df[!,blq]
     eltype(blqs) <: Union{Int, Bool} || blqerr()
     extrema(blqs) == (0, 1) || blqerr()
-    df = deleterows!(deepcopy(df), findall(isequal(1), blqs))
+    df = delete!(deepcopy(df), findall(isequal(1), blqs))
   end
 
   sortvars = urine ? (occasion === nothing ? [id, start_time, end_time] : [id, start_time, end_time, occasion]) :

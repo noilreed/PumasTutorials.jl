@@ -91,7 +91,7 @@ function DataFrames.DataFrame(
 
     # Remove negative evid's
     df = filter(i -> i.evid != -1, df)
-    sort!(df, (:time, order(:evid, rev=true)))
+    sort!(df, [:time, order(:evid, rev=true)])
   end
 
   include_covariates && _add_covariates!(df, obs.subject)
@@ -133,7 +133,7 @@ function DataFrames.DataFrame(pop::SimulatedPopulation; kwargs...)
   for s in pop
     df = DataFrame(s; kwargs...)
     id = [s.subject.id for i in 1:size(df, 1)]
-    insertcols!(df, 1, id=id)
+    insertcols!(df, 1, :id => id)
     push!(dfs, df)
   end
   reduce(vcat,dfs)
