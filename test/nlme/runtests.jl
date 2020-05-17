@@ -23,6 +23,9 @@ if group == "All" || group == "NLME_ML1"
     @time @safetestset "Theophylline" begin
       include("theophylline.jl")
     end
+    @time @safetestset "Analytical solutions" begin
+      include("analytical_solutions.jl")
+    end
   end
 end
 
