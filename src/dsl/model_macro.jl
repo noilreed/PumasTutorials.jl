@@ -1,4 +1,4 @@
-const IIP_SIZE = 13
+const IIP_SIZE = 8
 
 islinenum(x) = x isa LineNumberNode
 function nt_expr(set, prefix=nothing)

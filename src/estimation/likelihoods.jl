@@ -523,16 +523,15 @@ StatsBase.deviance(m::PumasModel,
 # dη/dθ = -∂²ℓᵖ∂η² \ ∂²ℓᵖ∂η∂θ
 #
 # ℓᵖ is the penalized conditional likelihood function.
-function marginal_nll_gradient!(g::AbstractVector,
-                                model::PumasModel,
-                                subject::Subject,
-                                vparam::AbstractVector,
-                                vrandeffsorth::AbstractVector,
-                                approx::Union{FOCE,FOCEI,LaplaceI},
-                                trf::TransformVariables.TransformTuple,
-                                args...; kwargs...)
 
-  param = TransformVariables.transform(trf, vparam)
+function _∂ℓᵐ∂θ(
+  model::PumasModel,
+  subject::Subject,
+  vparam::AbstractVector,
+  vrandeffsorth::AbstractVector,
+  approx::LikelihoodApproximation,
+  trf::TransformVariables.TransformTuple,
+  args...; kwargs...)
 
   _cs = max(1, div(8, length(vrandeffsorth)))
 
@@ -546,7 +545,18 @@ function marginal_nll_gradient!(g::AbstractVector,
   )
   cs = min(length(vparam), _cs)
   cfg_∂ℓᵐ∂θ = ForwardDiff.GradientConfig(_f_∂ℓᵐ∂θ, vparam, ForwardDiff.Chunk{cs}())
-  ∂ℓᵐ∂θ = ForwardDiff.gradient(_f_∂ℓᵐ∂θ, vparam, cfg_∂ℓᵐ∂θ)
+  return ForwardDiff.gradient(_f_∂ℓᵐ∂θ, vparam, cfg_∂ℓᵐ∂θ)
+end
+
+function _∂ℓᵐ∂η(
+  model::PumasModel,
+  subject::Subject,
+  param::NamedTuple,
+  vrandeffsorth::AbstractVector,
+  approx::LikelihoodApproximation,
+  args...; kwargs...)
+
+  _cs = max(1, div(8, length(vrandeffsorth)))
 
   _f_∂ℓᵐ∂η = vηorth -> marginal_nll(
     model,
@@ -558,7 +568,15 @@ function marginal_nll_gradient!(g::AbstractVector,
   )
   cs = min(length(vrandeffsorth), _cs)
   cfg_∂ℓᵐ∂η = ForwardDiff.GradientConfig(_f_∂ℓᵐ∂η, vrandeffsorth, ForwardDiff.Chunk{cs}())
-  ∂ℓᵐ∂η = ForwardDiff.gradient(_f_∂ℓᵐ∂η, vrandeffsorth, cfg_∂ℓᵐ∂η)
+  return ForwardDiff.gradient(_f_∂ℓᵐ∂η, vrandeffsorth, cfg_∂ℓᵐ∂η)
+end
+
+function _∂²ℓᵖ∂η²(
+  model::PumasModel,
+  subject::Subject,
+  param::NamedTuple,
+  vrandeffsorth::AbstractVector,
+  args...; kwargs...)
 
   _f_∂²ℓᵖ∂η² = vηorth -> penalized_conditional_nll(
     model,
@@ -566,24 +584,66 @@ function marginal_nll_gradient!(g::AbstractVector,
     param,
     vηorth,
     args...; kwargs...)
+
   cs = min(length(vrandeffsorth), 3)
   cfg_∂²ℓᵖ∂η² = ForwardDiff.HessianConfig(_f_∂²ℓᵖ∂η², vrandeffsorth, ForwardDiff.Chunk{cs}())
-  ∂²ℓᵖ∂η² = ForwardDiff.hessian(_f_∂²ℓᵖ∂η², vrandeffsorth, cfg_∂²ℓᵖ∂η²)
+  return ForwardDiff.hessian(_f_∂²ℓᵖ∂η², vrandeffsorth, cfg_∂²ℓᵖ∂η²)
+end
+
+function _∂²ℓᵖ∂η∂θ(
+  model::PumasModel,
+  subject::Subject,
+  vparam::AbstractVector,
+  vrandeffsorth::AbstractVector,
+  trf::TransformVariables.TransformTuple,
+  args...; kwargs...)
+
+  csθ = min(length(vparam), 3)
+  csη = min(length(vrandeffsorth), 3)
 
   _f_∂²ℓᵖ∂η∂θ = _vparam -> begin
+
     _param = TransformVariables.transform(trf, _vparam)
-    ForwardDiff.gradient(
-      vηorth -> penalized_conditional_nll(
+
+    _f_∂ℓᵖ∂η = vηorth -> penalized_conditional_nll(
         model,
         subject,
         _param,
         vηorth,
-        args...; kwargs...),
-      vrandeffsorth
-    )
+        args...; kwargs...)
+
+    cfg_∂ℓᵖ∂η = ForwardDiff.GradientConfig(_f_∂ℓᵖ∂η, vrandeffsorth, ForwardDiff.Chunk{csη}())
+
+    ForwardDiff.gradient(
+      _f_∂ℓᵖ∂η,
+      vrandeffsorth,
+      cfg_∂ℓᵖ∂η)
   end
-  cfg_∂²ℓᵖ∂η∂θ = ForwardDiff.JacobianConfig(_f_∂²ℓᵖ∂η∂θ, vparam, ForwardDiff.Chunk{1}())
-  ∂²ℓᵖ∂η∂θ = ForwardDiff.jacobian(_f_∂²ℓᵖ∂η∂θ, vparam, cfg_∂²ℓᵖ∂η∂θ)
+
+  cfg_∂²ℓᵖ∂η∂θ = ForwardDiff.JacobianConfig(_f_∂²ℓᵖ∂η∂θ, vparam, ForwardDiff.Chunk{csθ}())
+
+  return ForwardDiff.jacobian(_f_∂²ℓᵖ∂η∂θ, vparam, cfg_∂²ℓᵖ∂η∂θ)
+end
+
+function marginal_nll_gradient!(g::AbstractVector,
+                                model::PumasModel,
+                                subject::Subject,
+                                vparam::AbstractVector,
+                                vrandeffsorth::AbstractVector,
+                                approx::Union{FOCE,FOCEI,LaplaceI},
+                                trf::TransformVariables.TransformTuple,
+                                args...; kwargs...)
+
+  param = TransformVariables.transform(trf, vparam)
+
+
+  ∂ℓᵐ∂θ = _∂ℓᵐ∂θ(model, subject, vparam, vrandeffsorth, approx, trf, args...; kwargs...)
+
+  ∂ℓᵐ∂η = _∂ℓᵐ∂η(model, subject, param, vrandeffsorth, approx, args...; kwargs...)
+
+  ∂²ℓᵖ∂η² = _∂²ℓᵖ∂η²(model, subject, param, vrandeffsorth, args...; kwargs...)
+
+  ∂²ℓᵖ∂η∂θ = _∂²ℓᵖ∂η∂θ(model, subject, vparam, vrandeffsorth, trf, args...; kwargs...)
 
   dηdθ = -∂²ℓᵖ∂η² \ ∂²ℓᵖ∂η∂θ
 
