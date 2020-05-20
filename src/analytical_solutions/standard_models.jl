@@ -271,3 +271,11 @@ struct Central1Periph1Meta1 <: ExplicitModel end
 end
 varnames(::Type{Central1Periph1Meta1}) = (:Central, :CPeripheral, :Metabolite)
 pk_init(::Central1Periph1Meta1) = SLVector(Central=0.0, CPeripheral=0.0, Metabolite=0.0)
+
+struct LinearODE <: ExplicitModel end
+function (m::LinearODE)(t, t₀, amounts, doses, pre, rates)
+  p = pre(t₀)
+  amt₀ = amounts + doses   # initial values for cmt's + new doses
+  expAt = exp(p.A*(t - t₀))
+  return expAt*amt₀ + (expAt - I)*(p.A\rates)
+end

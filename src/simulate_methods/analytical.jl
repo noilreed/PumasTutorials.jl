@@ -17,10 +17,21 @@ function DiffEqBase.solve(prob::NullDEProblem,args...;kwargs...)
   return NullDESolution(prob)
 end
 
-function _build_analytical_problem(m::PumasModel, subject::Subject, tspan, col,
-                                   args...; kwargs...)
-  f = m.prob isa ExplicitModel ? m.prob : m.prob.pkprob
-  u0 = pk_init(f)
+function _build_analytical_problem(
+  m::PumasModel,
+  subject::Subject,
+  tspan, col, args...; kwargs...)
+
+  # For Mixed PKPD, the PK variables are initialized at zero via the
+  # pk_init methods for each of the closed form models. In all other cases
+  # the @init is used for the initialization
+  if m.prob isa ExplicitModel
+    f = m.prob
+    u0 = m.init(col, first(tspan))
+  else
+    f = m.prob.pkprob
+    u0 = pk_init(f)
+  end
   numtypecol = numtype(col(tspan[1]))
   # we don't want to promote units
   if numtypecol <: Unitful.Quantity || numtype(u0) <: Unitful.Quantity || numtype(tspan) <: Unitful.Quantity

@@ -242,35 +242,42 @@ function extract_dynamics!(vars, odevars, prevars, callvars, ode_init, expr::Exp
   else
     error("Invalid @dynamics expression: $expr")
   end
-  return true # isstatic
+  return length(odevars) < IIP_SIZE # isstatic
 end
 
 # used for pre-defined analytical systems
 function extract_dynamics!(vars, odevars, prevars, callvars, ode_init, sym::Symbol, eqs)
-  obj = getproperty(@__MODULE__,sym)
-  if obj isa Type && obj <: ExplicitModel # explict model
-    for p in varnames(obj)
-      if p in keys(ode_init)
-        push!(odevars, p)
-      else
-        if p ∉ vars
-          push!(vars,p)
+  obj = getproperty(@__MODULE__, sym)
+  if obj <: ExplicitModel # explict model
+    if hasmethod(varnames, Tuple{Type{obj}})
+      for p in varnames(obj)
+        if p in keys(ode_init)
           push!(odevars, p)
+        else
+          if p ∉ vars
+            push!(vars,p)
+            push!(odevars, p)
+          end
+          ode_init[p] = 0
         end
-        ode_init[p] = 0
       end
+      return true # isstatic
+    else
+      # we assume they are defined in @init
+      if isempty(ode_init)
+        throw(ArgumentError("variable names must be specified in init block or by overloading the varnames function."))
+      end
+      for p in keys(ode_init)
+        push!(odevars, p)
+      end
+      return true # isstatic
     end
-    return true # isstatic
   else
-    # we assume they are defined in @init
-    for p in keys(ode_init)
-      push!(odevars, p)
-    end
-    return false # isstatic
+    throw(ArgumentError("model must be of type ExplicitModel"))
   end
 end
 
-function init_obj(ode_init,_odevars,prevars,isstatic,ismixed,odeexpr)
+function init_obj(ode_init, _odevars, prevars, isstatic, ismixed, odeexpr)
   if ismixed
     #in MixedPK, the init should only be the non-PK vars
     pkvars = varnames(getproperty(Pumas,odeexpr[1]))
@@ -279,40 +286,24 @@ function init_obj(ode_init,_odevars,prevars,isstatic,ismixed,odeexpr)
     odevars = _odevars
   end
 
+  vecexpr = []
+  for p in odevars
+    push!(vecexpr, ode_init[p])
+  end
   if isstatic
-    vecexpr = []
-    for p in odevars
-      push!(vecexpr, ode_init[p])
-    end
-    if length(odevars) < IIP_SIZE
-      typeexpr = :(Pumas.LabelledArrays.SLArray{Tuple{$(length(odevars))},($(Meta.quot.(odevars)...),)}())
-      append!(typeexpr.args,vecexpr)
-    else
-
-      typeexpr = :(Pumas.LabelledArrays.LArray{($(Meta.quot.(odevars)...),)}([]))
-      append!(typeexpr.args[2].args,vecexpr)
-    end
-
-    quote
-      function (_pre,t)
-        # since _pre is a function, we will unpack prevars (on the left hand side)
-        # from a call to _pre(t) (on the right hand side)
-        $(var_def(:(_pre(t)), prevars))
-        $(esc(typeexpr))
-      end
-    end
+    typeexpr = :(Pumas.LabelledArrays.SLArray{Tuple{$(length(odevars))},($(Meta.quot.(odevars)...),)}())
+    append!(typeexpr.args,vecexpr)
   else
-    vecexpr = :([])
-    for p in odevars
-      push!(vecexpr.args, ode_init[p])
-    end
-    quote
-      function (_pre,t)
-        # since _pre is a function, we will unpack prevars (on the left hand side)
-        # from a call to _pre(t) (on the right hand side)
-        $(var_def(:(_pre(t)), prevars))
-        $(esc(vecexpr))
-      end
+    typeexpr = :(Pumas.LabelledArrays.LArray{($(Meta.quot.(odevars)...),)}([]))
+    append!(typeexpr.args[2].args,vecexpr)
+  end
+
+  quote
+    function (_pre,t)
+      # since _pre is a function, we will unpack prevars (on the left hand side)
+      # from a call to _pre(t) (on the right hand side)
+      $(var_def(:(_pre(t)), prevars))
+      $(esc(typeexpr))
     end
   end
 end
@@ -330,15 +321,9 @@ function dynamics_obj(odeexpr::Expr, pre, odevars, callvars, bvars, eqs, isstati
   W_tname = gensym(:PumasW_tFactFunction)
   funcname = gensym(:PumasODEFunction)
 
-  if length(odevars) < IIP_SIZE
-    iip = false
-    funcindex = 1
-  else
-    iip = true
-    funcindex = 2
-  end
+  funcindex = 2 - isstatic
 
-  diffeq = :(ODEProblem{$iip}($funcname,nothing,nothing,nothing))
+  diffeq = :(ODEProblem{$(!isstatic)}($funcname,nothing,nothing,nothing))
 
   # DVar - create array of dynamic variables
   # Combines symbols (v's), the Variable constructor and
