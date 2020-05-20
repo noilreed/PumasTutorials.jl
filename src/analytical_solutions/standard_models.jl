@@ -56,8 +56,8 @@ pk_init(::Central1) = SLVector(Central=0.0)
 
 An analytical model for a one compartment model with a central compartment, `Central`, and a depot, `Depot`. Equivalent to
 
-  Depot'   = -Ka*Depot   
-  Central' = -CL/Vc*Central  
+  Depot'   = -Ka*Depot
+  Central' = -CL/Vc*Central
 
 where absoption rate, `Ka`, clearance, `CL`, and volume, `Vc`, are required to be defined in the `@pre` block.
 """
@@ -81,11 +81,11 @@ pk_init(::Depots1Central1) = SLVector(Depot=0.0,Central=0.0)
 
 An analytical model for a one compartment model with a central compartment, `Central`, and two depots, `Depot1` and `Depot2`. Equivalent to
 
-  Depot1'   = -Ka1*Depot1  
-  Depot2'   = -Ka2*Depot2  
-  Central' = -CL/Vc*Central  
+  Depot1'   = -Ka1*Depot1
+  Depot2'   = -Ka2*Depot2
+  Central' = -CL/Vc*Central
 
-where absorption rates, `Ka1` and `Ka2`, clearance, `CL`, and volume, `Vc`, are required to be defined in the `@pre` block. 
+where absorption rates, `Ka1` and `Ka2`, clearance, `CL`, and volume, `Vc`, are required to be defined in the `@pre` block.
 
 When using this model during simulation or estimation, it is preferred to have 2 dosing rows for each subject in the dataset, where the first dose goes into `cmt =1` (or `cmt = Depot1`) and the second dose goes into `cmt=2` (or `cmt=Depot2`). Central compartment gets `cmt=3` or (`cmt = Central`). e.g.
 
@@ -123,8 +123,8 @@ pk_init(::Depots2Central1) = SLVector(Depot1=0.0,Depot2=0.0,Central=0.0)
 
 An analytical model for a two-compartment model with a central compartment, `Central` and a peripheral compartment, `Peripheral`. Equivalent to
 
-  Central'    = -(CL+Q)/Vc*Central + Q/Vp*Peripheral  
-  Peripheral' =        Q/Vc*Central - Q/Vp*Peripheral  
+  Central'    = -(CL+Q)/Vc*Central + Q/Vp*Peripheral
+  Peripheral' =        Q/Vc*Central - Q/Vp*Peripheral
 
 where clearance, `CL`, and volumes, `Vc` and `Vp`, and distribution clearance, `Q`, are required to be defined in the `@pre` block.
 """
@@ -154,10 +154,10 @@ pk_init(::Central1Periph1) = SLVector(Central=0.0, Peripheral=0.0)
     Depots1Central1Periph1()
 
 An analytical model for a two-compartment model with a central compartment, `Central`, a peripheral compartment, `Peripheral`, and a depot `Depot`. Equivalent to
-  
-  Depot'      = -Ka*Depot  
-  Central'    =  Ka*Depot -(CL+Q)/Vc*Central + Q/Vp*Peripheral  
-  Peripheral' =                  Q/Vc*Central - Q/Vp*Peripheral  
+
+  Depot'      = -Ka*Depot
+  Central'    =  Ka*Depot -(CL+Q)/Vc*Central + Q/Vp*Peripheral
+  Peripheral' =                  Q/Vc*Central - Q/Vp*Peripheral
 
 where absorption rate, `Ka`, clearance, `CL`, and volumes, `Vc` and `Vp`, and distribution clearance, `Q`, are required to be defined in the `@pre` block.
 """
@@ -188,11 +188,11 @@ pk_init(::Depots1Central1Periph1 ) = SLVector(Depot=0.0, Central=0.0, Peripheral
     Central1Periph1Meta1Periph1()
 
 An analytical model for a two compartment model with a central compartment, `Central`, with a peripheral compartment, `Peripheral`, and a metabolite compartment, `Metabolite`, with a peripheral compartment, `MPeripheral`. Equivalent to
-  
-  Central'     = -(CL+Q+CLfm)/Vc*Central + Q/Vp*CPeripheral  
-  CPeripheral' =          Q/Vc*Central - Q/Vp*CPeripheral  
-  Metabolite'  = -(CLm+Qm)/Vm*Metabolite + Qm/Vmp*MPeripheral + CLfm/Vc*Central  
-  MPeripheral' =        Qm/Vm*Metabolite - Qm/Vmp*MPeripheral  
+
+  Central'     = -(CL+Q+CLfm)/Vc*Central + Q/Vp*CPeripheral
+  CPeripheral' =          Q/Vc*Central - Q/Vp*CPeripheral
+  Metabolite'  = -(CLm+Qm)/Vm*Metabolite + Qm/Vmp*MPeripheral + CLfm/Vc*Central
+  MPeripheral' =        Qm/Vm*Metabolite - Qm/Vmp*MPeripheral
 
 where clearances (`CL` and `CLm`) and volumes (`Vc`, `Vp`, `Vm` and `Vmp`), distribution clearances (`Q` and `Qm`) and formation clearance of metabolite `CLfm` are required to be defined in the `@pre` block.
 """
@@ -240,10 +240,10 @@ pk_init(::Central1Periph1Meta1Periph1) = SLVector(Central=0.0, CPeripheral=0.0, 
     Central1Periph1Meta1()
 
 An analytical model for a two compartment model with a central compartment, `Central`, with a peripheral compartment, `Peripheral`, and a metabolite compartment, `Metabolite`. Equivalent to
-  
-  Central'     = -(CL+Q+CLfm)/Vc*Central + Q/Vp*CPeripheral  
-  CPeripheral' =          Q/Vc*Central - Q/Vp*CPeripheral  
-  Metabolite'  = -CLm/Vm*Metabolite + CLfm/Vc*Central  
+
+  Central'     = -(CL+Q+CLfm)/Vc*Central + Q/Vp*CPeripheral
+  CPeripheral' =          Q/Vc*Central - Q/Vp*CPeripheral
+  Metabolite'  = -CLm/Vm*Metabolite + CLfm/Vc*Central
 
 where clearances (`CL` and `CLm`) and volumes (`Vc`, `Vp` and `Vm`), distribution clearance (`Q`), and formation clearance of metabolite `CLfm` are required to be defined in the `@pre` block.
 """
