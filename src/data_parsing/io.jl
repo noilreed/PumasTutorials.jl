@@ -510,22 +510,22 @@ end
 Base.summary(::Subject) = "Subject"
 function Base.show(io::IO, subject::Subject)
   println(io, summary(subject))
-  println(io, string("  ID: $(subject.id)"))
+  print(io, string("  ID: $(subject.id)"))
   evs = subject.events
-  isnothing(evs) || println(io, "  Events: ", length(subject.events))
+  isnothing(evs) || print(io, "\n  Events: ", length(subject.events))
   obs = subject.observations
   observables = propertynames(obs)
   if !isempty(observables)
     vals = mapreduce(pn -> string(pn, ": (n=$(length(getindex(obs, pn))))"),
                      (x, y) -> "$x, $y",
                      observables)
-    println(io, "  Observables: $vals")
+    print(io, "\n  Observables: $vals")
   end
   if subject.covariates != nothing
     if length(subject.covariates) > 10
-      println(io, string("  Too many Covariates to display. Run DataFrame(Subject) to see the Covariates. "))
+      print(io, string("\n  Too many Covariates to display. Run DataFrame(Subject) to see the Covariates. "))
     else
-      println(io, string("  Covariates: $(subject.covariates)"))
+      print(io, string("\n  Covariates: $(subject.covariates)"))
     end
   end
 end
@@ -569,12 +569,12 @@ end
 Base.summary(::Population) = "Population"
 function Base.show(io::IO, ::MIME"text/plain", population::Population)
   println(io, summary(population))
-  println(io, "  Subjects: ", length(population))
+  print(io, "  Subjects: ", length(population))
   if isassigned(population, 1)
     co = population[1].covariates
-    !isnothing(co) && println(io, "  Covariates: ", join(fieldnames(typeof(co)),", "))
+    !isnothing(co) && print(io, "\n  Covariates: ", join(fieldnames(typeof(co)),", "))
     obs = population[1].observations
-    !isnothing(obs) && println(io, "  Observables: ", join(keys(obs),", "))
+    !isnothing(obs) && print(io, "\n  Observables: ", join(keys(obs),", "))
   end
   return nothing
 end
