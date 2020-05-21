@@ -4,10 +4,8 @@ using Pumas.NCA, Test, Pumas
 @test_nowarn NCA.checkconctime([1,2,missing,4], 1:4)
 @test_throws ArgumentError NCA.checkconctime([1,2,missing,4], 1:5)
 
-@test_logs (:warn, "No concentration data given") NCA.checkconctime(Int[])
-@test_logs (:warn, "No time data given") begin
-  @test_throws ArgumentError NCA.checkconctime([1,2], Int[])
-end
+@test_throws ArgumentError NCA.checkconctime(Int[])
+@test_throws ArgumentError NCA.checkconctime([1,2], Int[])
 @test_throws ArgumentError NCA.checkconctime(Set([1,2]))
 @test_throws ArgumentError NCA.checkconctime([1,2], Set([1,2]))
 @test_throws ArgumentError NCA.checkconctime([missing, true])
@@ -69,3 +67,5 @@ conc = [0.0
  0.013251953705527533
 ]
 @test NCA.thalf(NCASubject(conc, t, concblq=:keep)) ≈ 16.23778094
+
+@test_throws ArgumentError NCA.lambdaz(Float64[], Float64[])

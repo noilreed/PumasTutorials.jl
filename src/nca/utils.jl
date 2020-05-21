@@ -36,6 +36,8 @@ Reasons for being invalid are:
   3. `time` value is `missing`
   4. `time` is not monotonically increasing
   5. `conc` and `time` are not of same length
+  6. `conc` is empty.
+  7. `time` is empty.
 
 Some cases may generate warnings
   1.  A negative concentration is often but not always an error; it will generate a warning.
@@ -47,7 +49,7 @@ function checkconctime(conc, time=nothing; monotonictime=true, dose=nothing, ver
   isallmissing = all(x -> x === missing, conc)
   local _neg_idx, _missing_idx
   if isempty(conc)
-    verbose && @warn "No concentration data given"
+    throw(ArgumentError("No concentration data given"))
   elseif !(E <: Maybe{Number} && conc isa AbstractArray) || E <: Maybe{Bool} && !isallmissing
     throw(ArgumentError("Concentration data must be numeric and an array"))
   elseif isallmissing
@@ -59,15 +61,13 @@ function checkconctime(conc, time=nothing; monotonictime=true, dose=nothing, ver
   time == nothing && return
   T = eltype(time)
   if isempty(time)
-    verbose && @warn "No time data given"
+    throw(ArgumentError("No concentration data given"))
   elseif any(x->(_missing_idx=x[1]; x[2] === missing), enumerate(time))
     throw(ArgumentError("Time may not be missing (missing occured at index $_missing_idx)"))
   elseif !(T <: Maybe{Number} && time isa AbstractArray)
     throw(ArgumentError("Time data must be numeric and an array"))
   end
   monotonictime && checkmonotonic(conc, time, eachindex(time), dose)
-  # check both
-  # TODO: https://github.com/UMCTM/Pumas.jl/issues/153
   length(conc) != length(time) && throw(ArgumentError("Concentration and time must be the same length"))
   return
 end
