@@ -74,8 +74,8 @@ for i in eachindex(sim)
 end
 
 pop = Population(map(i->sim[i].subject, eachindex(sim)))
-@test_nowarn NCAPopulation(pop, name=:cp, verbose=false)
-@test_nowarn NCASubject(pop[1], name=:cp)
+@test_throws ArgumentError NCAPopulation(pop, name=:cp, verbose=false)
+@test_throws ArgumentError NCASubject(pop[1], name=:cp)
 @test NCADose(ev2[1].events[1]) === NCADose(0.0, 100.0, 0.0, NCA.IVBolus)
 
 ev = DosageRegimen(2000, ii=24, addl=3)

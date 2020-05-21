@@ -613,14 +613,7 @@ function Base.convert(::Type{NCASubject}, subj::Subject; name=:dv, kwargs...)
   dose = convert.(NCADose, subj.events)
   ii = subj.events[end].ii
   if subj.observations === nothing || subj.time === nothing
-    return NCASubject(
-      Float64[],
-      Float64[];
-      id=subj.id,
-      dose=nothing,
-      clean=false,
-      ii=ii,
-      kwargs...)
+    throw(ArgumentError("The subject (id=$(subj.id)) has empty time or observations."))
   else
     return NCASubject(
       subj.observations[name],
