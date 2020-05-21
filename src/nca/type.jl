@@ -112,20 +112,14 @@ function NCASubject(conc, time;
                     lambdaz=nothing, clean=true, check=true, kwargs...)
   time isa AbstractRange && (time = collect(time))
   conc isa AbstractRange && (conc = collect(conc))
-  if concu !== true
-    conc = map(x -> x === missing ? x : x*concu, conc)
-  end
-  if timeu !== true
-    if time !== nothing
-      time = map(x -> x === missing ? x : x*timeu, time)
-    end
-    if start_time !== nothing
-      start_time = map(x -> x === missing ? x : x*timeu, start_time)
-    end
-    if end_time !== nothing
-      end_time = map(x -> x === missing ? x : x*timeu, end_time)
-    end
-  end
+  time = tighten_container_eltype(time)
+  conc = tighten_container_eltype(conc)
+
+  conc = addunit(conc, concu)
+  time = addunit(time, timeu)
+  start_time = addunit(start_time, timeu)
+  end_time = addunit(end_time, timeu)
+
   multidose = dose isa AbstractArray && length(dose) > 1
   nonmissingeltype(x) = Base.nonmissingtype(eltype(x))
   unitconc = float(oneunit(nonmissingeltype(conc)))

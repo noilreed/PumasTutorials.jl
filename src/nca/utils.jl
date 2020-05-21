@@ -331,3 +331,14 @@ function setretcode!(subj::NCASubject, retcode)
 end
 
 _first(x) = x === missing ? x : first(x)
+
+@inline function tighten_container_eltype(u::Vector{T}) where T
+  E = Base.nonmissingtype(T)
+  return isconcretetype(E) ? u : map(identity, u)
+end
+tighten_container_eltype(u) = u
+
+@inline function addunit(u, unit)
+  u === nothing && return nothing
+  unit === true ? u : map(x -> x === missing ? missing : x*unit, u)
+end
