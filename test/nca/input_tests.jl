@@ -45,7 +45,8 @@ subj = read_nca(df, time=:time, conc=:conc, verbose=false, concblq=:drop)[1]
 subj = read_nca(df, time=:time, conc=:conc, verbose=false, concblq=Dict(:first=>:drop, :middle=>:keep, :last=>:keep))[1]
 @test subj.conc == [1,1,3,0]
 
-@test_nowarn show(NCASubject([1,2,3.]*u"mg/L", (1:3)*u"hr"))
+io = IOBuffer()
+show(io, NCASubject([1,2,3.]*u"mg/L", (1:3)*u"hr"))
 
 @test NCA.choosescheme(0, 1, 0, 1, 1, 10, :linuplogdown) === NCA.Linear
 

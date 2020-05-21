@@ -428,7 +428,7 @@ function c0(subj::NCASubject, returnev=false; verbose=true, kwargs...) # `return
   return c0
 end
 
-retcode(subj::NCASubject; kwargs...) = subj.retcode
+run_status(subj::NCASubject; kwargs...) = subj.run_status
 
 # TODO: user input lambdaz, clast, and tlast?
 # TODO: multidose?

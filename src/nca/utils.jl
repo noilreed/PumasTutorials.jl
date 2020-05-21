@@ -276,7 +276,7 @@ Base.@propagate_inbounds function subject_at_ithdose(nca::NCASubject, i::Integer
     firstpoint = view(nca.firstpoint, i)
     lastpoint = view(nca.lastpoint, i)
     points = view(nca.points, i)
-    retcode = view(nca.retcode, i)
+    run_status = view(nca.run_status, i)
     auc, auc_0, aumc = view(nca.auc_last, i), view(nca.auc_0, i), view(nca.aumc_last, i)
     return NCASubject(
                  nca.id,  nca.group,
@@ -285,7 +285,7 @@ Base.@propagate_inbounds function subject_at_ithdose(nca::NCASubject, i::Integer
                  dose,                                      # dose
                  lambdaz, nca.llq, r2, adjr2, intercept,
                  firstpoint, lastpoint, points,             # lambdaz related cache
-                 auc, auc_0, aumc, nca.method, retcode      # AUC related cache
+                 auc, auc_0, aumc, nca.method, run_status      # AUC related cache
                 )
   end
 end
@@ -301,7 +301,7 @@ function urine2plasma(subj::NCASubject)
                subj.dose,                               # dose
                subj.lambdaz, subj.llq, subj.r2, subj.adjr2, subj.intercept,
                subj.firstpoint, subj.lastpoint, subj.points,           # lambdaz related cache
-               subj.auc_last, subj.auc_0, subj.aumc_last, subj.method, subj.retcode) # AUC related cache
+               subj.auc_last, subj.auc_0, subj.aumc_last, subj.method, subj.run_status) # AUC related cache
   end
 end
 
@@ -320,13 +320,13 @@ function cache_ncasubj!(subj1::NCASubject, subj2::NCASubject)
   return nothing
 end
 
-function setretcode!(subj::NCASubject, retcode)
-  ismultidose = subj.retcode isa AbstractArray
-  subjretcode = ismultidose ? subj.retcode[1] : subj.retcode
-  ret = subjretcode == :Success ? retcode :
-    occursin(String(subjretcode), String(retcode)) ? subjretcode :
-    Symbol(subjretcode, :_, retcode)
-  ismultidose ? (subj.retcode[1] = ret) : (subj.retcode = ret)
+function setrun_status!(subj::NCASubject, run_status)
+  ismultidose = subj.run_status isa AbstractArray
+  subjrun_status = ismultidose ? subj.run_status[1] : subj.run_status
+  ret = subjrun_status == :Success ? run_status :
+    occursin(String(subjrun_status), String(run_status)) ? subjrun_status :
+    Symbol(subjrun_status, :_, run_status)
+  ismultidose ? (subj.run_status[1] = ret) : (subj.run_status = ret)
   return nothing
 end
 

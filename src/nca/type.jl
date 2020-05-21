@@ -83,17 +83,17 @@ mutable struct NCASubject{C,T,TT,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,V,R,RT}
   auc_0::Union{Missing,AUC}
   aumc_last::Union{Missing,AUMC}
   method::Symbol
-  retcode::RT
+  run_status::RT
   function NCASubject(id, group, conc, rate, time, start_time, end_time, volume,
                       abstime, maxidx, lastidx, dose, lambdaz, llq, r2, adjr2,
                       intercept, firstpoint, lastpoint, points, auc_last, auc_0,
-                      aumc_last, method, retcode)
+                      aumc_last, method, run_status)
     new{typeof(conc), typeof(time), typeof(abstime), typeof(firstpoint), typeof(auc_last),
         typeof(aumc_last), typeof(dose), typeof(lambdaz), typeof(r2), typeof(llq), typeof(lastidx),
-        typeof(points), typeof(id), typeof(group), typeof(volume), typeof(rate), typeof(retcode)
+        typeof(points), typeof(id), typeof(group), typeof(volume), typeof(rate), typeof(run_status)
        }(id, group, conc, rate, time, start_time, end_time, volume, abstime,
          maxidx, lastidx, dose, lambdaz, llq, r2, adjr2, intercept, firstpoint,
-         lastpoint, points, auc_last, auc_0, aumc_last, method, retcode)
+         lastpoint, points, auc_last, auc_0, aumc_last, method, run_status)
   end
 end
 
@@ -415,7 +415,7 @@ function NCAReport(pop::NCAPopulation; pred=nothing, normalize=nothing, auctype=
            "span"               =>     span,
            "route"              =>     dosetype,
            has_ii && "tau"      =>     tau,
-           "retcode"            =>     retcode,
+           "run_status"            =>     run_status,
         ]
   end
   deleteat!(report_pairs, findall(x->x.first isa Bool, report_pairs))
