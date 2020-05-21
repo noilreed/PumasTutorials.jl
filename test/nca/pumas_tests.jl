@@ -143,7 +143,10 @@ for i in eachindex(sim)
   @test NCA.cmax(subjcm) == sim[i].observed.cmaxcm
 end
 
-pop = Population(map(i->sim[i].subject, eachindex(sim)))
-@test_nowarn NCAPopulation(pop, name=:cp, verbose=false)
-@test_nowarn NCASubject(pop[1], name=:cp)
 @test NCADose(ev1[1].events[1]) === NCADose(0.0, 2000.0, 0.0, NCA.IVBolus)
+
+theopp = read_pumas(example_data("event_data/THEOPP"),cvs = [:SEX,:WT])
+theonca = NCAPopulation(theopp, name=:dv)
+@test all(i->theonca[i].time == theopp[i].time, eachindex(theopp))
+@test all(i->theonca[i].conc == theopp[i].observations.dv, eachindex(theopp))
+@test_nowarn NCA.auc(theonca)
