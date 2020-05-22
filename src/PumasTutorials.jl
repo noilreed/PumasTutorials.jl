@@ -63,7 +63,7 @@ function tutorial_footer(folder=nothing, file=nothing)
     display("text/markdown", """
     ## Appendix
 
-     These tutorials are part of the PumasTutorials.jl repository, found at: <https://github.com/JuliaDiffEq/DiffEqTutorials.jl>
+     These tutorials are part of the PumasTutorials.jl repository, found at: <https://github.com/PumasAI/PumasTutorials.jl>
     """)
     if folder !== nothing && file !== nothing
         display("text/markdown", """
