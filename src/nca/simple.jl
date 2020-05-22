@@ -290,39 +290,6 @@ function bioav(nca::NCASubject{C,TT,T,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,V,R,RT};
   return sol
 end
 
-#isiv(x) = x === IVBolus || x === IVInfusion
-#"""
-#    cl(nca::NCASubject; ithdose::Integer, kwargs...)
-#
-#Total drug clearance
-#"""
-#function cl(nca::NCASubject{C,TT,T,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,V,R,RT}; ithdose=missing, kwargs...) where {C,TT,T,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,V,R,RT}
-#  nca.dose === nothing && return missing
-#  _clf = clf(nca; kwargs...)
-#  @show 1
-#  dose = nca.dose
-#  if nca.dose isa NCADose # single dose
-#    isiv(dose.formulation) || return missing
-#    _bioav = one(eltype(AUC))
-#    return _bioav*_clf
-#  else # multiple doses
-#    # TODO: check back on logic for this ithdose for CL, not sure about the user specification
-#    ismissing(ithdose) && return missing
-#    map(eachindex(dose)) do idx
-#      subj = subject_at_ithdose(nca, idx)
-#      formulation = subj.dose.formulation
-#      if idx == ithdose
-#        isiv(formulation) || throw(ArgumentError("the formulation of `ithdose` must be IV"))
-#      end
-#      if isiv(formulation)
-#        one(eltype(AUC))*_clf[idx]
-#      else
-#        missing
-#      end
-#    end # end multidoses
-#  end # end if
-#end
-
 """
     tlag(nca::NCASubject; kwargs...)
 
@@ -365,32 +332,6 @@ function mrt(nca::NCASubject; auctype=:inf, kwargs...)
     return quotient
   end
 end
-
-# Not possible to calculate MAT
-#"""
-#    mat(nca::NCASubject; kwargs...)
-#
-#Mean absorption time:
-#``MAT = MRT_po - MRT_iv``
-#
-#For multiple dosing only.
-#"""
-#function mat(nca::NCASubject; kwargs...)
-#  # dose is checked in `mrt`, so we don't need to check it in `mat`
-#  multidose = nca.dose isa AbstractArray
-#  #multidose || error("Need more than one type of dose to calculate MAT")
-#  multidose || return missing
-#  mrt_po = mrt_iv = zero(eltype(eltype(nca.time)))
-#  for idx in eachindex(nca.dose)
-#    subj = subject_at_ithdose(nca, idx)
-#    if isiv(subj.dose.formulation)
-#      mrt_iv += mrt(subj; kwargs...)
-#    else
-#      mrt_po += mrt(subj; kwargs...)
-#    end
-#  end # end for
-#  mrt_po - mrt_iv
-#end
 
 """
     tau(nca::NCASubject)
@@ -487,80 +428,7 @@ function c0(subj::NCASubject, returnev=false; verbose=true, kwargs...) # `return
   return c0
 end
 
-retcode(subj::NCASubject; kwargs...) = subj.retcode
-
-#= issue #391
-# The function is originally translated from the R package PKNCA
-"""
-  c0(nca::NCASubject; c0method=(:c0, :logslope, :c1, :cmin, :set0), kwargs...)
-
-Estimate the concentration at dosing time for an IV bolus dose. It takes the
-following methods:
-
-- c0: If the observed `conc` at `dose.time` is nonzero, return that. This method should usually be used first for single-dose IV bolus data in case nominal time zero is measured.
-- logslope: Compute the semilog line between the first two measured times, and use that line to extrapolate backward to `dose.time`.
-- c1: Use the first point after `dose.time`.
-- cmin: Set c0 to cmin during the interval. This method should usually be used for multiple-dose oral data and IV infusion data.
-- set0: Set c0 to zero (regardless of any other data). This method should usually be used first for single-dose oral data.
-"""
-function c0(nca::NCASubject; c0method=(:c0, :logslope, :c1, :cmin, :set0), kwargs...)
-  ret = missing
-  # if we get one method, then convert it to a tuple anyway
-  c0method isa Symbol && (c0method = tuple(c0method))
-  dosetime = nca.dose === nothing ? zero(eltype(nca.time)) : first(nca.dose).time
-  nca = nca.dose isa AbstractArray ? subject_at_ithdose(nca, 1) : nca
-  #nca.dose !== nothing && nca.dose.formulation === EV && return missing
-  while ismissing(ret) && !isempty(c0method)
-    current_method = c0method[1]
-    c0method = Base.tail(c0method)
-    if current_method == :c0
-      ret = _c0_method_c0(nca, dosetime)
-    elseif current_method == :logslope
-      ret = _c0_method_logslope(nca, dosetime)
-    elseif current_method == :c1
-      ret = _c0_method_c1(nca, dosetime)
-    elseif current_method == :cmin
-      ret = cmin(nca, dosetime)
-    elseif current_method == :set0
-      ret = nca.dose isa AbstractArray ? fill(zero(eltype(eltype(nca.conc))), length(nca.dose)) : zero(eltype(nca.conc))
-    else
-      throw(ArgumentError("unknown method $current_method, please use any combination of :c0, :logslope, :c1, :cmin, :set0. E.g. `c0(subj, c0method=(:c0, :cmin, :set0))`"))
-    end
-  end
-  return ret
-end
-
-function _c0_method_c0(nca::NCASubject, dosetime)
-  for i in eachindex(nca.time)
-    c = nca.conc[i]
-    t = nca.time[i]
-    t == dosetime && !ismissing(c) && !iszero(c) && return c
-  end
-  return missing
-end
-
-function _c0_method_logslope(nca::NCASubject, dosetime)
-  idxs = findall(eachindex(nca.time)) do i
-    nca.time[i] > dosetime && !ismissing(nca.conc[i])
-  end
-  length(idxs) < 2 && return missing
-  # If there is enough data, proceed to calculate
-  c1 = ustrip(nca.conc[idxs[1]]); t1 = ustrip(nca.time[idxs[1]])
-  c2 = ustrip(nca.conc[idxs[2]]); t2 = ustrip(nca.time[idxs[2]])
-  if c2 < c1 && !iszero(c1)
-    return exp(log(c1) - (t1 - ustrip(dosetime))*(log(c2)-log(c1))/(t2-t1))*oneunit(eltype(nca.conc))
-  else
-    return missing
-  end
-end
-
-function _c0_method_c1(nca::NCASubject, dosetime)
-  idx = findfirst(eachindex(nca.time)) do i
-    nca.time[i] > dosetime && !ismissing(nca.conc[i])
-  end
-  return idx isa Number ? nca.conc[idx] : missing
-end
-=#
+run_status(subj::NCASubject; kwargs...) = subj.run_status
 
 # TODO: user input lambdaz, clast, and tlast?
 # TODO: multidose?

@@ -190,13 +190,13 @@ subj = read_nca(df, verbose=false)[1]
 @test subj.time == [1; 2;findall(!iszero, df.conc);7]
 
 
-# check retcode
+# check run_status
 ncapop2 = @test_nowarn read_nca(rawdata[1:370, :], id=:ID, time=:TIME, conc=:CObs, amt=:AMT_IV, route=:route,
                                     llq=0concu, timeu=timeu, concu=concu, amtu=amtu)
 @test NCA.lambdaz(ncapop2, verbose=false)[end, end] === missing
-@test NCA.retcode(ncapop2)[end, end] === :NotEnoughDataAfterCmax
+@test NCA.run_status(ncapop2)[end, end] === :NotEnoughDataAfterCmax
 @test NCA.lambdaz(ncapop2, verbose=false)[end, end] === missing
-@test NCA.retcode(ncapop2)[end, end] === :NotEnoughDataAfterCmax
+@test NCA.run_status(ncapop2)[end, end] === :NotEnoughDataAfterCmax
 
 didxs = findall(!iszero, rawdata.AMT_IV)
 rawdata[rand(didxs), :AMT_IV] = 10

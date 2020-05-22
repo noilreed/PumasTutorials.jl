@@ -149,15 +149,6 @@ function ___read_nca(df; id=:id, time=:time, conc=:conc, occasion=:occasion,
       end
       duration′ = duration === nothing ? nothing : df[!,duration][dose_idx]*timeu
       doses = NCADose.(dose_time*timeu, amts[dose_idx]*amtu, duration′, route′, ii*timeu, ss)
-    #elseif occasion !== nothing
-    #  subjoccasion = @view occasions[idx]
-    #  occs = unique(subjoccasion)
-    #  doses = map(occs) do occ
-    #    dose_idx = findfirst(isequal(occ), subjoccasion)
-    #    dose_time = subjtime[dose_idx]
-    #    ii = iis === nothing ? false : iis[i]
-    #    NCADose(dose_time*timeu, zero(amtu), ii*timeu, DosingUnknown)
-    #  end
     else
       doses = nothing
     end

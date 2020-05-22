@@ -36,6 +36,8 @@ Reasons for being invalid are:
   3. `time` value is `missing`
   4. `time` is not monotonically increasing
   5. `conc` and `time` are not of same length
+  6. `conc` is empty.
+  7. `time` is empty.
 
 Some cases may generate warnings
   1.  A negative concentration is often but not always an error; it will generate a warning.
@@ -47,7 +49,7 @@ function checkconctime(conc, time=nothing; monotonictime=true, dose=nothing, ver
   isallmissing = all(x -> x === missing, conc)
   local _neg_idx, _missing_idx
   if isempty(conc)
-    verbose && @warn "No concentration data given"
+    throw(ArgumentError("No concentration data given"))
   elseif !(E <: Maybe{Number} && conc isa AbstractArray) || E <: Maybe{Bool} && !isallmissing
     throw(ArgumentError("Concentration data must be numeric and an array"))
   elseif isallmissing
@@ -59,15 +61,13 @@ function checkconctime(conc, time=nothing; monotonictime=true, dose=nothing, ver
   time == nothing && return
   T = eltype(time)
   if isempty(time)
-    verbose && @warn "No time data given"
+    throw(ArgumentError("No concentration data given"))
   elseif any(x->(_missing_idx=x[1]; x[2] === missing), enumerate(time))
     throw(ArgumentError("Time may not be missing (missing occured at index $_missing_idx)"))
   elseif !(T <: Maybe{Number} && time isa AbstractArray)
     throw(ArgumentError("Time data must be numeric and an array"))
   end
   monotonictime && checkmonotonic(conc, time, eachindex(time), dose)
-  # check both
-  # TODO: https://github.com/UMCTM/Pumas.jl/issues/153
   length(conc) != length(time) && throw(ArgumentError("Concentration and time must be the same length"))
   return
 end
@@ -276,7 +276,7 @@ Base.@propagate_inbounds function subject_at_ithdose(nca::NCASubject, i::Integer
     firstpoint = view(nca.firstpoint, i)
     lastpoint = view(nca.lastpoint, i)
     points = view(nca.points, i)
-    retcode = view(nca.retcode, i)
+    run_status = view(nca.run_status, i)
     auc, auc_0, aumc = view(nca.auc_last, i), view(nca.auc_0, i), view(nca.aumc_last, i)
     return NCASubject(
                  nca.id,  nca.group,
@@ -285,7 +285,7 @@ Base.@propagate_inbounds function subject_at_ithdose(nca::NCASubject, i::Integer
                  dose,                                      # dose
                  lambdaz, nca.llq, r2, adjr2, intercept,
                  firstpoint, lastpoint, points,             # lambdaz related cache
-                 auc, auc_0, aumc, nca.method, retcode      # AUC related cache
+                 auc, auc_0, aumc, nca.method, run_status      # AUC related cache
                 )
   end
 end
@@ -301,7 +301,7 @@ function urine2plasma(subj::NCASubject)
                subj.dose,                               # dose
                subj.lambdaz, subj.llq, subj.r2, subj.adjr2, subj.intercept,
                subj.firstpoint, subj.lastpoint, subj.points,           # lambdaz related cache
-               subj.auc_last, subj.auc_0, subj.aumc_last, subj.method, subj.retcode) # AUC related cache
+               subj.auc_last, subj.auc_0, subj.aumc_last, subj.method, subj.run_status) # AUC related cache
   end
 end
 
@@ -320,14 +320,25 @@ function cache_ncasubj!(subj1::NCASubject, subj2::NCASubject)
   return nothing
 end
 
-function setretcode!(subj::NCASubject, retcode)
-  ismultidose = subj.retcode isa AbstractArray
-  subjretcode = ismultidose ? subj.retcode[1] : subj.retcode
-  ret = subjretcode == :Success ? retcode :
-    occursin(String(subjretcode), String(retcode)) ? subjretcode :
-    Symbol(subjretcode, :_, retcode)
-  ismultidose ? (subj.retcode[1] = ret) : (subj.retcode = ret)
+function setrun_status!(subj::NCASubject, run_status)
+  ismultidose = subj.run_status isa AbstractArray
+  subjrun_status = ismultidose ? subj.run_status[1] : subj.run_status
+  ret = subjrun_status == :Success ? run_status :
+    occursin(String(subjrun_status), String(run_status)) ? subjrun_status :
+    Symbol(subjrun_status, :_, run_status)
+  ismultidose ? (subj.run_status[1] = ret) : (subj.run_status = ret)
   return nothing
 end
 
 _first(x) = x === missing ? x : first(x)
+
+@inline function tighten_container_eltype(u::Vector{T}) where T
+  E = Base.nonmissingtype(T)
+  return isconcretetype(E) ? u : map(identity, u)
+end
+tighten_container_eltype(u) = u
+
+@inline function addunit(u, unit)
+  u === nothing && return nothing
+  unit === true ? u : map(x -> x === missing ? missing : x*unit, u)
+end

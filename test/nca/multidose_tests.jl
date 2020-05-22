@@ -66,14 +66,14 @@ NCA.cleancache!(mncapop)
 df = NCAReport(mncapop, sigdigits=2)
 @test df.lambda_z[2] == round(ustrip(df.lambda_z[2]), sigdigits=2)*oneunit(df.lambda_z[2])
 
-# check retcode
+# check run_status
 mdata2 = mdata[1:1522, :]
 mncapop2 = @test_nowarn read_nca(mdata2, id=:ID, time=:TIME, conc=:COBS, amt=:AMT, route=:route, occasion=:OCC,
                                      timeu=timeu, concu=concu, amtu=amtu)
 @test NCA.lambdaz(mncapop2, verbose=false)[end, end] === missing
-@test NCA.retcode(mncapop2)[end, end] === :NotEnoughDataAfterCmax
+@test NCA.run_status(mncapop2)[end, end] === :NotEnoughDataAfterCmax
 @test NCA.lambdaz(mncapop2, verbose=false)[end, end] === missing
-@test NCA.retcode(mncapop2)[end, end] === :NotEnoughDataAfterCmax
+@test NCA.run_status(mncapop2)[end, end] === :NotEnoughDataAfterCmax
 
 data1 = CSV.read(IOBuffer("""
   id,time,tad,conc,amt,occasion,formulation

@@ -54,37 +54,9 @@ function extrapolateconc(nca::NCASubject, timeout::Number; kwargs...)
   λz = lambdaz(nca; recompute=false, kwargs...)
   _tlast = tlast(nca)
   _clast = clast(nca; kwargs...)
-  #!(extrapmethod === :AUCinf) &&
-    #throw(ArgumentError("extrapmethod must be one of AUCinf"))
   if timeout <= _tlast
     throw(ArgumentError("extrapolateconc can only work beyond Tlast, please use interpextrapconc to combine both interpolation and extrapolation"))
   else
-    #if extrapmethod === :AUCinf
-      # If AUCinf is requested, extrapolate using the half-life
     return _clast*exp(-λz*(timeout - _tlast))
-    #elseif extrapmethod === :AUCall && tlast == (maxtime=maximum(time))
-    #  # If AUCall is requested and there are no BLQ at the end, we are already
-    #  # certain that we are after Tlast, so the answer is 0.
-    #  return oneunit(eltype(conc))*false
-    #elseif extrapmethod === :AUCall
-    #  # If the last non-missing concentration is below the limit of
-    #  # quantification, extrapolate with the triangle method of AUCall.
-    #  previdx = findlast(t->t<=timeout, time)
-    #  timeprev, concprev = time[previdx], concprev[previdx]
-    #  if iszero(concprev)
-    #    return oneunit(eltype(conc))*false
-    #  else
-    #    # If we are not already BLQ, then we have confirmed that we are in the
-    #    # triangle extrapolation region and need to draw a line.
-    #    #if timeprev != maxtime
-    #      nextidx = findfirst(t->t=>timeout, time)
-    #      timenext, concnext = time[nextidx], conc[nextidx]
-    #    #end
-    #    return (timeout - timeprev)/(timenext - timeprev)*concprev
-    #  end
-    #else
-    #  error("Invalid extrap.method caught too late (seeing this error indicates a software bug)")
-    #  return nothing
-    #end
   end
 end

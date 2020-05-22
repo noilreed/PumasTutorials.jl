@@ -91,12 +91,12 @@ function cleancache!(nca::NCASubject{C,TT,T,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,V,
     fill!(nca.points, 0)
     fill!(nca.auc_last, -oneunit(eltype(AUC)))
     fill!(nca.aumc_last, -oneunit(eltype(AUMC)))
-    fill!(nca.retcode, :Success)
+    fill!(nca.run_status, :Success)
   else
     nca.points = 0
     nca.auc_last  = -oneunit(eltype(AUC))
     nca.aumc_last = -oneunit(eltype(AUMC))
-    nca.retcode = :Success
+    nca.run_status = :Success
   end
   return nothing
 end
@@ -205,7 +205,7 @@ function _auc(nca::NCASubject{C,TT,T,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,V,R,RT}, 
       c0′ = c0(nca, true)
       if c0′ === missing
         verbose && @info "ID $(nca.id) errored: AUC calculation cannot proceed, because `c0` gives missing"
-        setretcode!(nca, :C0IsMissing)
+        setrun_status!(nca, :C0IsMissing)
         cacheauc!(nca, missing, interval, method, isauc)
         cacheauc0!(nca, missing)
         return missing
@@ -415,7 +415,7 @@ function lambdaz(nca::NCASubject{C,TT,T,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,V,R,RT
         @info "ID $(nca.id) errored: lambdaz calculation needs at least three data points between Cmax and the last positive concentration"
       end
       cachelambdaz!(nca)
-      setretcode!(nca, :NotEnoughDataAfterCmax)
+      setrun_status!(nca, :NotEnoughDataAfterCmax)
       return missing
     end
     for i in 2:m
@@ -457,13 +457,13 @@ function lambdaz(nca::NCASubject{C,TT,T,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,V,R,RT
   if !valid
     verbose && @info "ID $(nca.id) errored: lambdaz calculation failed because of non-positive concentration"
     cachelambdaz!(nca)
-    setretcode!(nca, :ConcentrationIsNotPositive)
+    setrun_status!(nca, :ConcentrationIsNotPositive)
     return missing
   end
   if λ ≥ zero(λ)
     verbose && @info "ID $(nca.id) errored: the estimated slope is not negative, got $λ"
     cachelambdaz!(nca)
-    setretcode!(nca, :SlopeIsNotNegative)
+    setrun_status!(nca, :SlopeIsNotNegative)
     return missing
   end
   _lambdaz = -λ

@@ -83,17 +83,17 @@ mutable struct NCASubject{C,T,TT,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,V,R,RT}
   auc_0::Union{Missing,AUC}
   aumc_last::Union{Missing,AUMC}
   method::Symbol
-  retcode::RT
+  run_status::RT
   function NCASubject(id, group, conc, rate, time, start_time, end_time, volume,
                       abstime, maxidx, lastidx, dose, lambdaz, llq, r2, adjr2,
                       intercept, firstpoint, lastpoint, points, auc_last, auc_0,
-                      aumc_last, method, retcode)
+                      aumc_last, method, run_status)
     new{typeof(conc), typeof(time), typeof(abstime), typeof(firstpoint), typeof(auc_last),
         typeof(aumc_last), typeof(dose), typeof(lambdaz), typeof(r2), typeof(llq), typeof(lastidx),
-        typeof(points), typeof(id), typeof(group), typeof(volume), typeof(rate), typeof(retcode)
+        typeof(points), typeof(id), typeof(group), typeof(volume), typeof(rate), typeof(run_status)
        }(id, group, conc, rate, time, start_time, end_time, volume, abstime,
          maxidx, lastidx, dose, lambdaz, llq, r2, adjr2, intercept, firstpoint,
-         lastpoint, points, auc_last, auc_0, aumc_last, method, retcode)
+         lastpoint, points, auc_last, auc_0, aumc_last, method, run_status)
   end
 end
 
@@ -112,20 +112,14 @@ function NCASubject(conc, time;
                     lambdaz=nothing, clean=true, check=true, kwargs...)
   time isa AbstractRange && (time = collect(time))
   conc isa AbstractRange && (conc = collect(conc))
-  if concu !== true
-    conc = map(x -> x === missing ? x : x*concu, conc)
-  end
-  if timeu !== true
-    if time !== nothing
-      time = map(x -> x === missing ? x : x*timeu, time)
-    end
-    if start_time !== nothing
-      start_time = map(x -> x === missing ? x : x*timeu, start_time)
-    end
-    if end_time !== nothing
-      end_time = map(x -> x === missing ? x : x*timeu, end_time)
-    end
-  end
+  time = tighten_container_eltype(time)
+  conc = tighten_container_eltype(conc)
+
+  conc = addunit(conc, concu)
+  time = addunit(time, timeu)
+  start_time = addunit(start_time, timeu)
+  end_time = addunit(end_time, timeu)
+
   multidose = dose isa AbstractArray && length(dose) > 1
   nonmissingeltype(x) = Base.nonmissingtype(eltype(x))
   unitconc = float(oneunit(nonmissingeltype(conc)))
@@ -421,7 +415,7 @@ function NCAReport(pop::NCAPopulation; pred=nothing, normalize=nothing, auctype=
            "span"               =>     span,
            "route"              =>     dosetype,
            has_ii && "tau"      =>     tau,
-           "retcode"            =>     retcode,
+           "run_status"            =>     run_status,
         ]
   end
   deleteat!(report_pairs, findall(x->x.first isa Bool, report_pairs))
