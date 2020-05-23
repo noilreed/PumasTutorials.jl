@@ -102,6 +102,9 @@ end
 
 Constructs a NCASubject
 
+Note that `llq` keyword argument still takes effects with the presence of the
+`blq` data column, and `llq` defaults to `0`.
+
 Setting `clean=false` disables all checks on `conc` and `time` to remove the
 cost of checking and cleaning data. It should only be used when the data is for
 sure "clean".
