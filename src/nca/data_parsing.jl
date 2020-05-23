@@ -70,7 +70,10 @@ function ___read_nca(df; id=:id, time=:time, conc=:conc, occasion=:occasion,
   duration = hasproperty(df, duration) ? duration : nothing
   hasdose = amt !== nothing && route !== nothing
   if verbose
-    hasdose || @warn "No dosage information has passed. If the dataset has dosage information, you can pass the column names by `amt=:AMT, route=:route`."
+    hasdose || @warn "No dosage information has passed. If the dataset has dosage information, you can pass the column names by `amt=:amt, route=:route`."
+    if amt !== nothing && route === nothing
+      @warn "Dosage information requires the presence of both amt & route information. Looks like you only entered the amt and not the route. If your dataset does not have route, please add a column that specifies the route of administration and then pass both columns as `amt=:amt, route=:route.`"
+    end
   end
 
   # BLQ
