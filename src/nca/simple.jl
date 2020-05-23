@@ -502,6 +502,7 @@ function superposition(nca::NCASubject{C,TT,T,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,
   return DataFrame(conc=conc′, time=tmptime)
 end
 
+subject_id(subj::NCASubject; kwargs...) = subj.id
 n_samples(subj::NCASubject; kwargs...) = length(subj.time)
 doseamt(subj::NCASubject; kwargs...) = hasdose(subj) ? subj.dose.amt : missing
 dosetype(subj::NCASubject; kwargs...) = hasdose(subj) ? string(subj.dose.formulation) : missing
