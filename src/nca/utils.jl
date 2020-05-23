@@ -1,6 +1,6 @@
 const Maybe{T} = Union{Missing, T}
 
-@noinline monotonerr(i) = throw(ArgumentError("Time must be monotonically increasing. Errored at index $i"))
+@noinline monotonerr(time, i) = throw(ArgumentError("Time must be monotonically increasing. Errored at `time=$(time[i])` (index $i)"))
 checkmonotonic(time, idxs) = checkmonotonic(nothing, time, idxs, nothing)
 @inline function checkmonotonic(conc, time, idxs, dose)
   length(idxs) < 2 && return
@@ -19,7 +19,7 @@ checkmonotonic(time, idxs) = checkmonotonic(nothing, time, idxs, nothing)
         continue
       end
     end
-    monotonerr(i)
+    monotonerr(time, i)
   end
   return
 end
