@@ -78,7 +78,10 @@ function ___read_nca(df; id=:id, time=:time, conc=:conc, occasion=:occasion,
   if blq !== nothing
     blqs = df[!,blq]
     eltype(blqs) <: Union{Int, Bool} || blqerr()
-    extrema(blqs) == (0, 1) || blqerr()
+    if eltype(blqs) <: Int # save computation when `blq` are all Bools
+      exa = extrema(blqs)
+      all(x->x in (0, 1), exa) || blqerr()
+    end
     df = delete!(deepcopy(df), findall(isequal(1), blqs))
   end
 

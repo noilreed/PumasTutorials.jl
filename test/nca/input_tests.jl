@@ -70,3 +70,13 @@ conc = [0.0
 @test NCA.thalf(NCASubject(conc, t, concblq=:keep)) ≈ 16.23778094
 
 @test_throws ArgumentError NCA.lambdaz(Float64[], Float64[])
+
+df11 = DataFrame(id = [1,1,1,1,1,2,2,2,2,2],
+                time = [0,1,2,3,4,0,1,2,3,4],
+                amt=[10,missing,missing,missing,missing,10,missing,missing,missing,missing],
+                conc=[10,8,6,4,2,10,8,6,4,2],
+                blq = [0,0,0,0,0,0,0,0,0,0],
+                route = ["iv","iv","iv","iv","iv","iv","iv","iv","iv","iv"])
+
+ncasubj = read_nca(df11,blq=:blq)
+@test mapreduce(x->x.conc, vcat, ncasubj) == df11.conc
