@@ -64,7 +64,7 @@ NCA.cleancache!(mncapop)
 @test count(!ismissing, df.cl_pred) == 24
 @test count(!ismissing, df.cl_f_pred) == 72
 df = NCAReport(mncapop, sigdigits=2)
-@test df.lambda_z[2] == round(ustrip(df.lambda_z[2]), sigdigits=2)*oneunit(df.lambda_z[2])
+@test df.kel[2] == round(ustrip(df.kel[2]), sigdigits=2)*oneunit(df.kel[2])
 
 # check run_status
 mdata2 = mdata[1:1522, :]
