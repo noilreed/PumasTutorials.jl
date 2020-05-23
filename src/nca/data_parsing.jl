@@ -107,6 +107,9 @@ function ___read_nca(df; id=:id, time=:time, conc=:conc, occasion=:occasion,
   occasions = occasion === nothing ? nothing : df[!,occasion]
   uids = unique(ids)
   idx  = -1
+  checkdata(times, :time)
+  checkdata(concs, :conc)
+  amts === nothing || checkdata(amts, :amt)
   # FIXME! This is better written as map(uids) do id it currently triggers a dispatch bug in Julia via CSV
   ncas = Vector{Any}(undef, length(uids))
   lo = 1
@@ -172,3 +175,11 @@ function ___read_nca(df; id=:id, time=:time, conc=:conc, occasion=:occasion,
 end
 
 @noinline routethrow() = throw(ArgumentError("route can only be `iv`, `ev`, or `inf`"))
+
+@noinline function checkdata(data, name, typ=Maybe{Number})
+  if !(eltype(data) <: typ)
+    idx = findall(x->!(x isa typ), data)
+    throw(ArgumentError("$name has non-numeric values at index=$idx. We expect the $names column to be of numeric type. Please fix your input data before proceeding further."))
+  end
+  return nothing
+end

@@ -80,3 +80,17 @@ df11 = DataFrame(id = [1,1,1,1,1,2,2,2,2,2],
 
 ncasubj = read_nca(df11,blq=:blq)
 @test mapreduce(x->x.conc, vcat, ncasubj) == df11.conc
+
+df4 = DataFrame(id = [1,1,1,1,1,2,2,2,2,2],
+                time = [0,1,2,3,4,0,1,2,3,4],
+                amt=[10,missing,missing,missing,missing,10,missing,missing,missing,missing],
+                conc=[missing,8,6,4,"<LOQ",missing,8,6,4,2],
+                route = ["iv","iv","iv","iv","iv","iv","iv","iv","iv","iv"])
+@test_throws ArgumentError read_nca(df4)
+
+df5 = DataFrame(id = [1,1,1,1,1,2,2,2,2,2],
+                time = [0,1,2,3,4,0,1,2,3,4],
+                amt=["10",missing,missing,missing,missing,"10",missing,missing,missing,missing],
+                conc=[missing,8,6,4,2,missing,8,6,4,2],
+                route = ["iv","iv","iv","iv","iv","iv","iv","iv","iv","iv"])
+@test_throws ArgumentError  read_nca(df5)

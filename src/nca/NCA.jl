@@ -7,6 +7,8 @@ using RecipesBase
 using Pkg, Dates, Printf
 using LinearAlgebra: norm
 
+const Maybe{T} = Union{Missing, T}
+
 include("type.jl")
 include("data_parsing.jl")
 include("utils.jl")
