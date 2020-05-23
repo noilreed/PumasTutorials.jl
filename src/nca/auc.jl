@@ -132,17 +132,16 @@ end
 function _auc(nca::NCASubject{C,TT,T,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,V,R,RT}, interval, linear, log, inf, ret_typ;
               auctype, method=:linear, isauc, verbose=true, kwargs...) where {C,TT,T,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,V,R,RT}
   # fast return
-  ret_typ = Union{ret_typ, Missing}
   if interval === nothing && nca.method === method
     if auctype === :inf
       _clast = clast(nca; verbose=verbose, kwargs...)
       _tlast = tlast(nca)
       aucinf′ = inf(_clast, _tlast, lambdaz(nca; recompute=false, verbose=verbose, kwargs...))
-      isauc  && iscached(nca, :auc)  && return (nca.auc_last[1] + aucinf′) ::ret_typ
-      !isauc && iscached(nca, :aumc) && return (nca.aumc_last[1] + aucinf′)::ret_typ
+      isauc  && iscached(nca, :auc)  && return (nca.auc_last  === missing ? missing : nca.auc_last[1] + aucinf′)
+      !isauc && iscached(nca, :aumc) && return (nca.aumc_last === missing ? missing : nca.aumc_last[1] + aucinf′)
     elseif auctype === :last
-      isauc  && iscached(nca, :auc)  && return nca.auc_last[1] ::ret_typ
-      !isauc && iscached(nca, :aumc) && return nca.aumc_last[1]::ret_typ
+      isauc  && iscached(nca, :auc)  && return nca.auc_last  === missing ? missing : nca.auc_last[1]
+      !isauc && iscached(nca, :aumc) && return nca.aumc_last === missing ? missing : nca.aumc_last[1]
     end
   end
 

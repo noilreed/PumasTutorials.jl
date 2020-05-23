@@ -136,3 +136,10 @@ subj = NCASubject(1:2, 1:2, dose=[NCADose(0, 0.1, 0, NCA.IVBolus), NCADose(10, 0
 @test subj.dose[1] === valid_dose
 
 @test_throws InvalidStateException NCASubject(1:2, 1:2, dose=[NCADose(0, 0.1, 0, NCA.IVBolus), NCADose(10, 0.1, 0, NCA.IVBolus), valid_dose, valid_dose])
+
+df2 = DataFrame(id = [1,1,1,1,1,2,2,2,2,2],
+                time = [0,1,2,3,4,0,1,2,3,4],
+                amt=[10,0,0,0,0,10,0,0,0,0],
+                conc=[missing,8,6,4,2,missing,8,6,4,2])
+df2_r = read_nca(df2)
+@test all(ismissing, NCAReport(df2_r).aucinf_obs)
