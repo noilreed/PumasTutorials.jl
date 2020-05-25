@@ -36,6 +36,44 @@ model = @model begin
     dv2 ~ @. Normal(cp2, abs(cp1)*σ)
   end
 end
+
+model_diffeq = @model begin
+  @param begin
+    tvcl ∈ RealDomain(lower=0, init = 1.0)
+    tvmetacl ∈ RealDomain(lower=0, init = 1.0)
+    tvv ∈ RealDomain(lower=0, init = 100)
+    tvvp ∈ RealDomain(lower=0, init = 30)
+    tvq ∈ RealDomain(lower=0, init = 1.0)
+    tvt ∈ RealDomain(lower=0, init = 1.0)
+    tvvmeta ∈ RealDomain(lower=0, init = 100)
+    Ω ∈ PDiagDomain(init=[0.04, 0.04])
+    σ ∈ RealDomain(lower=0,init=0.01)
+  end
+  @random begin
+    η ~ MvNormal(Ω)
+  end
+  @pre begin
+    CL = tvcl *  exp(η[1])
+    Vc  = tvv
+    Vp  = tvvp
+    Q = tvq
+    CLfm = tvt
+    Vm = tvvmeta
+    CLm = tvmetacl *  exp(η[2])
+  end
+  @dynamics begin
+      Central'          = -(CL/Vc)*Central - (Q/Vc)*Central - (CLfm/Vc)*Central + (Q/Vp)*ParentPeriph
+      ParentPeriph'     = -(Q/Vp)*ParentPeriph + (Q/Vc)*Central
+      Metabolite'       = -(CLm/Vm)*Metabolite + (CLfm/Vc)*Central
+  end
+     
+  @derived begin
+    cp1 := @. Central/Vc
+    dv1 ~ @. Normal(cp1, abs(cp1)*σ)
+    cp2 := @. Metabolite/Vm
+    dv2 ~ @. Normal(cp2, abs(cp1)*σ)
+  end
+end
 params = (tvcl     = 5.0,
           tvmetacl = 8.0,
           tvv      = 10.0,
@@ -55,32 +93,38 @@ reread_df[reread_df[!, :evid].==1, :dv2] .= missing
 reread_df[reread_df[!, :time].==0.0, :dv2] .= missing
 reread = read_pumas(reread_df; dvs=[:dv1, :dv2])
 
+deviance_analytical = deviance(model, reread, params, Pumas.FOCEI())
+deviance_diffeq = deviance(model_diffeq, reread, params, Pumas.FOCEI())
+@test deviance_analytical ≈ deviance_diffeq rtol=1e-2
+
 res_focei    = fit(model, reread, params, Pumas.FOCEI(),
   optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 res_laplacei = fit(model, reread, params, Pumas.LaplaceI(),
   optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
 ref_focei = (
-  tvcl     = 5.038557192551023,
-  tvmetacl = 7.9626886345076064,
-  tvv      = 10.051457260229189,
-  tvvp     = 9.926144330686864,
-  tvq      = 6.930875337583671,
-  tvt      = 7.014672271623278,
-  tvvmeta  = 7.018090211121181,
-  Ω        = Pumas.PDMats.PDiagMat{Float64,Array{Float64,1}}(2, [0.04903170563234689, 0.05300578322628484], [20.39496662625349, 18.865865932608532]),
-  σ        = 0.12053908276835537)
+  tvcl = 6.715592442065195,
+  tvmetacl = 6.0900313123527665,
+  tvv = 10.050299214318207,
+  tvvp = 9.974386611168296,
+  tvq = 6.971669524314598,
+  tvt = 5.361734303081132,
+  tvvmeta = 5.356045290063821,
+  Ω = Pumas.PDMats.PDiagMat{Float64,Array{Float64,1}}(2, [0.027967176123167337, 0.052792034715620786], [35.75620204185091, 18.94225152310917]),
+  σ = 0.12054933413657265)
+
 
 ref_laplacei = (
-  tvcl     = 5.008087897705468,
-  tvmetacl = 7.987488005953879,
-  tvv      = 10.053531364113608,
-  tvvp     = 9.957954965757953,
-  tvq      = 6.94205607262063,
-  tvt      = 7.012380635267924,
-  tvvmeta  = 6.998586717352016,
-  Ω        = Pumas.PDMats.PDiagMat{Float64,Array{Float64,1}}(2, [0.049366651970012415, 0.05293917143976929], [20.256589420069364, 18.889604291176607]),
-  σ        = 0.12046367847192586)
+  tvcl = 7.847462662716163,
+  tvmetacl = 4.796813332826394,
+  tvv = 10.053015800094743,
+  tvvp = 9.986110551249347,
+  tvq = 6.977868238727858,
+  tvt = 4.21406331637431,
+  tvvmeta = 4.202633969615397,
+  Ω = Pumas.PDMats.PDiagMat{Float64,Array{Float64,1}}(2, [0.020404412904399264, 0.0528569006856447], [49.00900627159904, 18.919005598668935]),
+  σ = 0.1204816293521871)
+
 
 @testset "FOCEI" for k in keys(params)
   if k == :Ω

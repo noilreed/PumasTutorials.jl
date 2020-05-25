@@ -256,18 +256,17 @@ struct Central1Periph1Meta1 <: ExplicitModel end
   d = p.CLfm/p.Vc
   e = p.CLm/p.Vm
 
-  β = a + b
-  Λ = vcat(_Λ(Central1Periph1(), a, b, c), @SVector([-e]))
+  β = a + d
+  Λ = vcat(_Λ(Central1Periph1(), a+d, b, c), @SVector([-e]))
 
   v1_1 = (Λ[1] + e)/d
-  v1_2 = (Λ[1] + β)*v1_1/c
+  v1_2 = -((Λ[1] + β)*c+(Λ[2] + c)*e)/(c*d)
   v2_1 = (Λ[2] + e)/d
-  v2_2 = (Λ[2] + β)*v2_1/c
+  v2_2 = -((Λ[2] + β)*c+(Λ[1] + c)*e)/(c*d)
 
   𝕍 = @SMatrix([v1_1 v2_1 0;
                 v1_2 v2_2 0;
                 1    1    1])
-
   return Λ, 𝕍
 end
 varnames(::Type{Central1Periph1Meta1}) = (:Central, :CPeripheral, :Metabolite)
