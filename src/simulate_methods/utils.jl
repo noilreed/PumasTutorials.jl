@@ -156,8 +156,13 @@ numtype(x::Number)        = typeof(x)
 numtype(x::AbstractArray) = eltype(x)
 numtype(x::Factorization) = eltype(x)
 numtype(X::PDMats.AbstractPDMat) = numtype(eltype(X))
-# numtype(x::Tuple)         = reduce(promote_type, map(numtype,x))
-numtype(x::Tuple)         = promote_type(map(numtype, x)...)
+function numtype(x::Tuple)
+  if length(x) == 1
+    return numtype(first(x))
+  else
+    return promote_type(numtype(first(x)), numtype(Base.tail(x)))
+  end
+end
 numtype(x::NamedTuple) = numtype(values(x))
 numtype(x::AbstractString) = Float32 # To allow string covariates
 numtype(x::Integer) = Float32

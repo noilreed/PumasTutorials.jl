@@ -1,4 +1,4 @@
-using Pumas, Random, Test
+using Pumas, Random, Test, ForwardDiff
 
 @testset "Median size ODE problem (HCV model)" begin
   t = [0.25, 0.5, 1.0, 2.0, 3.0, 4.0, 6.99, 10.0, 13.99, 20.99, 28.0]
@@ -103,6 +103,14 @@ using Pumas, Random, Test
     # variance parameter in proportional error model
     σPK = 0.2,
     σPD = 0.2)
+
+  @testset "numtype shouldn't allocate for large named tuples" begin
+    _param = (param_PKPD..., dummy=ForwardDiff.Dual(1.0, 1.0))
+    # Run once to compile
+    Pumas.numtype(_param)
+    # Then test that it no longer allocates
+    @test @allocated(Pumas.numtype(_param)) == 0
+  end
 
   _pop = map(i -> Subject(id=i, obs=(yPK=[], yPD=[]), evs=peg_inf_dr, time=t), 1:3)
 
