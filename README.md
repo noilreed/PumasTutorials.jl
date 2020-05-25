@@ -45,16 +45,16 @@ model = @model begin
 
   @pre begin
     CL = tvcl * (1 + pmoncl*isPM) * (wt/70)^0.75 * exp(η[1])
-    V  = tvv * (wt/70) * exp(η[2])
+    Vc  = tvv * (wt/70) * exp(η[2])
   end
 
   @dynamics Central1
     #@dynamics begin
-    #    Central' =  - (CL/V)*Central
+    #    Central' =  - (CL/Vc)*Central
     #end
 
   @derived begin
-      cp = @. 1000*(Central / V)
+      cp = @. 1000*(Central / Vc)
       dv ~ @. Normal(cp, sqrt(cp^2*σ_prop))
     end
 end
