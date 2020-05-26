@@ -1,0 +1,234 @@
+---
+title: Introduction to Bioequivalence
+author: José Bayoán Santiago Calderón
+date: May 26, 2020
+---
+
+# Introduction
+
+This is an introduction to `Bioequivalence.jl`, a software for bioequivalence analysis (BE).
+In this tutorial we will show how to use `Bioequivalence.jl` to analysis data.
+
+## Installation
+
+You must first install install Bioequivalence.jl.
+
+```julia
+using Pkg
+Pkg.add("Bioequivalence")
+```
+
+## Getting Started
+
+To load the package, use
+
+```julia
+using Bioequivalence
+```
+
+# Designs
+
+## Nonparametric
+
+Nonparametric designs are included for analysis of endpoints such as Tmax.
+
+```@example Main
+PJ316 = Bioequivalence.testdata("PJ2017_3_16")
+first(PJ316, 6)
+```
+
+The average bioequivalence analysis can be requested through `pumas_be`
+
+```@example Main
+Cmax = pumas_be(PJ316, endpoint = :Tmax)
+```
+
+Nonparametric analysis uses the Wilcoxon signed rank test.
+
+```@example Main
+Cmax.model
+```
+
+Other endpoints can potentially be analyzed through a nonparametric method as well
+
+```@example Main
+PJ46 = Bioequivalence.testdata("PJ2017_4_6")
+first(PJ46, 6)
+```
+
+```@example Main
+NP = pumas_be(PJ46, nonparametric = true)
+```
+
+## Parallel
+
+Consider a parallel design dataset with balance between treatment groups such as Clayton and Leslie ([1981](https://doi.org/10.1177/030006058100900608)).
+
+```@example Main
+ClaytonandLeslie1981 = Bioequivalence.testdata("FSL2015_1")
+first(ClaytonandLeslie1981, 6)
+```
+
+The bioequivalence analysis can be requested through `BioequivalenceStudy`
+
+```@example Main
+# notice it defaults to the AUC endpoint
+Parallel = pumas_be(ClaytonandLeslie1981)
+```
+
+The output shows the design, statistical model, and result.
+
+One can access the statistical model directly through
+
+```@example Main
+Parallel.model
+```
+
+The results can be accessed through
+
+```@example Main
+Parallel.result
+```
+
+or calling `coeftable` on the object
+
+```@example Main
+coeftable(Parallel)
+```
+
+Notice that the results are validated with those reported in Fuglsang, Schütz, and Labes ([2015](https://doi.org/10.1208/s12248-014-9704-6)). The Geometric Means Ratio (GMR) has a point estimate of (48.58) and a 90% confidence interval of (26.78, 88.14). These are the values reported in the study obtained with various statistical packages with the Welch correction.
+
+## Crossover
+
+The most common bioequivalence design is perhaps the 2x2 crossover (RT|TR). Consider a dataset from Schütz, Labes, and Fuglsang ([2014](https://doi.org/10.1208/s12248-014-9661-0)) which has been simulated with an extreme range in raw data, outliers, and imbalance between sequences and a large number of subjects.
+
+```@example Main
+SLF2014 = Bioequivalence.testdata("SLF2014_8")
+first(SLF2014, 6)
+```
+
+The bioequivalence analysis can be requested through `BioequivalenceStudy`
+
+```@example Main
+# notice it defaults to the AUC endpoint
+Crossover = pumas_be(SLF2014)
+```
+
+As with other designs one can access the specific elements of the models use in the analysis.
+
+```@example Main
+loglikelihood(Crossover.model.model)
+```
+
+The results are obtained through,
+
+```@example Main
+Crossover.result
+```
+
+Crossover 2x2 designs are validated with Schütz, Labes, and Fuglsang ([2014](https://doi.org/10.1208/s12248-014-9661-0)) and Patterson and Jones (2006). In this example, the estimate for the GMR is (93.42) with a 90% confidence interval of (86.81, 100.55).
+
+## Balaam
+
+The Balaam design (RR|RT|TR|TT) is explored with a dataset from Chow and Liu (2009).
+
+```@example Main
+ChowandLiu2009 = Bioequivalence.testdata("CL2009_9_2_1")
+first(ChowandLiu2009, 6)
+```
+
+The data has the same specification as other crossover studies.
+
+The analysis follows similarly as well.
+
+```@example Main
+# notice it defaults to the AUC endpoint
+Balaam = pumas_be(ChowandLiu2009)
+```
+
+!!! note
+    Designs with repeated measures include rescaled parameter estimates and variance analysis.
+
+We can also obtain the results for the assess the intra-subject variabilities through
+
+```@example Main
+Balaam.model.σ
+```
+
+## Dual
+
+Consider the example 4.1 in Patterson and Jones (2006)
+
+```@example Main
+PJ41 = Bioequivalence.testdata("PJ2017_4_1")
+first(PJ41, 6)
+```
+
+```@example Main
+Dual = pumas_be(PJ41, endpoint = :Cmax)
+```
+
+## 2S4P Designs
+
+For 2S4P designs both RRTT|TTRR and RTRT|TRTR are supported
+
+```@example Main
+PJ43 = Bioequivalence.testdata("PJ2017_4_3")
+first(PJ43, 6)
+```
+
+```@example Main
+Inner = pumas_be(PJ43)
+```
+
+```@example Main
+PJ44 = Bioequivalence.testdata("PJ2017_4_4")
+first(PJ44, 6)
+```
+
+```@example Main
+Outer = pumas_be(PJ44, endpoint = :Cmax)
+```
+
+## Williams
+
+Consider a 3 formulations Williams design
+
+```@example Main
+PJ45 = Bioequivalence.testdata("PJ2017_4_5")
+first(PJ45, 6)
+```
+
+```@example Main
+W3F = pumas_be(PJ45)
+```
+
+Imagine for a moment that the reference formulation is actually S instead of R.
+One can pass such a parameter as following.
+
+```@example Main
+W3F = pumas_be(PJ45, reference = 'S')
+```
+
+Williams designs for four formulations are available as well
+
+```@example Main
+PJ46 = Bioequivalence.testdata("PJ2017_4_6")
+first(PJ46, 6)
+```
+
+```@example Main
+W4F = pumas_be(PJ46)
+```
+
+# References
+
+Chow, Shein-Chung, and Jen-pei Liu. 2009. Design and Analysis of Bioavailability and Bioequivalence Studies. 3rd ed. Chapman & Hall/CRC Biostatistics Series 27. Boca Raton: CRC Press.
+
+Clayton, D, and A Leslie. 1981. "The Bioavailability of Erythromycin Stearate versus Enteric-Coated Erythromycin Base When Taken Immediately before and after Food." Journal of International Medical Research 9 (6): 470–77. DOI: [10.1177/030006058100900608](https://doi.org/10.1177/030006058100900608).
+
+Fuglsang, Anders, Helmut Schütz, and Detlew Labes. 2015. "Reference Datasets for Bioequivalence Trials in a Two-Group Parallel Design." The AAPS Journal 17 (2): 400–404. DOI: [10.1208/s12248-014-9704-6](https://doi.org/10.1208/s12248-014-9704-6).
+
+Patterson, Scott D., and Byron Jones. 2017. Bioequivalence and Statistics in Clinical Pharmacology. 2nd ed. Chapman and Hall/CRC. DOI: [10.1201/9781315374161](https://doi.org/10.1201/9781315374161).
+
+Schütz, Helmut, Detlew Labes, and Anders Fuglsang. 2014. "Reference Datasets for 2-Treatment, 2-Sequence, 2-Period Bioequivalence Studies." The AAPS Journal 16 (6): 1292–97. [DOI:10.1208/s12248-014-9661-0](https://doi.org/10.1208/s12248-014-9661-0).
