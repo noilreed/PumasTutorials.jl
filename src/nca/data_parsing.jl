@@ -13,9 +13,6 @@ efficient NCA calculation.
     Concentrations at dosing rows are NOT ignored in `read_nca`.
 """
 read_nca(file::AbstractString; kwargs...) = read_nca(CSV.read(file); kwargs...)
-# TODO: add ploting time
-# TODO: infusion
-# TODO: plot time
 function read_nca(df; group=nothing, kwargs...)
   pop = if group === nothing
     ___read_nca(df; kwargs...)
