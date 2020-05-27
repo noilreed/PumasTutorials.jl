@@ -62,7 +62,7 @@ include("plotting/plotting.jl")
 
 example_data(filename) = joinpath(joinpath(@__DIR__, ".."),"examples/"*filename*".csv")
 
-export Subject, Population, DosageRegimen
+export Subject, Population, DosageRegimen, TimeToEvent
 export PumasModel, init_param, init_randeffs, sample_randeffs
 export simobs, pre
 export tad, eventnum

@@ -81,6 +81,39 @@ end
 end
 
 """
+    TimeToEvent{T}
+
+Distribution like struct to store the hazard and the cumulative hazard in a time-to-event
+model. The dependent variable in a model that uses `TimeToEvent` should be a censoring
+variable that is zero if the variable isn't censored and one if the variable is right
+censored. Currently, no other censoring types are supported.
+
+# Example
+```
+...
+@pre begin
+  θeff = θ*DOSE
+  λ = λ₀*exp(θeff)
+end
+
+@dynamics begin
+  Λ' = λ
+end
+
+@derived begin
+  DV ~ @. TimeToEvent(λ, Λ)
+end
+...
+```
+"""
+struct TimeToEvent{T}
+  λ::T
+  Λ::T
+end
+_lpdf(D::TimeToEvent, d::Number) = d*log(D.λ) - D.Λ
+
+
+"""
     conditional_nll(m::PumasModel, subject::Subject, param, randeffs, args...; kwargs...)
 
 Compute the conditional negative log-likelihood of model `m` for `subject` with parameters `param` and
