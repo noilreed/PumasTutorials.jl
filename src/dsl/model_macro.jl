@@ -367,22 +367,12 @@ function dynamics_obj(odeexpr::Expr, pre, odevars, callvars, bvars, eqs, isstati
   sys = ODESystem(mteqs,t,dvars,params)
   f_ex = ModelingToolkit.generate_function(sys)[funcindex]
   J_ex = ModelingToolkit.generate_jacobian(sys)[funcindex]
-  if length(eqs.args) < 4
-    W_exs = ModelingToolkit.generate_factorized_W(sys)
-    W_ex = W_exs[1][funcindex]
-    W_t_ex = W_exs[2][funcindex]
-  else
-    W_ex = :nothing
-    W_t_ex = :nothing
-  end
 
   quote
     let
       $fname = $f_ex
       $jname = $J_ex
-      $Wname = $W_ex
-      $W_tname = $W_t_ex
-      $funcname = ODEFunction($fname,jac=$jname,Wfact=$Wname,Wfact_t=$W_tname)
+      $funcname = ODEFunction($fname,jac=$jname)
       $diffeq
     end
   end
