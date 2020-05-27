@@ -382,7 +382,7 @@ end
     Calculate terminal elimination rate constant ``λz`` with the end point > `concthreshold`.
 """
 function lambdaz(nca::NCASubject{C,TT,T,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,V,R,RT};
-                 adjr2factor=0.0001, threshold=10, idxs=nothing, slopetimes=nothing, recompute=true, verbose=true,
+                 adjr2factor=0.0001, threshold=100, idxs=nothing, slopetimes=nothing, recompute=true, verbose=true,
                  concthreshold=1e-10, # in long simulation, the concentration could go ~eps(1.0), so we need to pick the end at `concthreshold`
                  kwargs...
                 )::Union{Missing,eltype(Z)} where {C,TT,T,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,V,R,RT}
