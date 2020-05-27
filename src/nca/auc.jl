@@ -520,14 +520,14 @@ calculate `lambdaz` before calculating this quantity.
 
 See also [`lambdaz`](@ref).
 """
-lambdaztimelast(nca::NCASubject; kwargs...) = (lambdaz(nca; recompute=false, kwargs...); _first(nca.lastpoint))
+lambdaztimelast(nca::NCASubject; kwargs...) = (lz = lambdaz(nca; recompute=false, kwargs...); lz === missing ? missing : _first(nca.lastpoint))
 
 """
     span(nca::NCASubject; kwargs...)
 
 Calculate span
 """
-span(nca::NCASubject; kwargs...) = (lambdaztimelast(nca; recompute=false, kwargs...) - lambdaztimefirst(nca; recompute=false, kwargs...)) / thalf(nca; recompute=false, kwargs...)
+span(nca::NCASubject; kwargs...) = (lz = lambdaz(nca; recompute=false, kwargs...); lz === missing ? missing : (lambdaztimelast(nca; recompute=false, kwargs...) - lambdaztimefirst(nca; recompute=false, kwargs...)) / thalf(nca; recompute=false, kwargs...))
 
 """
   lambdazintercept(nca::NCASubject; kwargs...)
@@ -537,7 +537,7 @@ calculate `lambdaz` before calculating this quantity.
 
 See also [`lambdaz`](@ref).
 """
-lambdazintercept(nca::NCASubject; kwargs...) = (lambdaz(nca; recompute=false, kwargs...); _first(nca.intercept))
+lambdazintercept(nca::NCASubject; kwargs...) = (lz = lambdaz(nca; recompute=false, kwargs...); lz === missing ? missing : _first(nca.intercept))
 
 
 """
@@ -548,7 +548,7 @@ calculate `lambdaz` before calculating this quantity.
 
 See also [`lambdaz`](@ref).
 """
-lambdazr2(nca::NCASubject; kwargs...) = (lambdaz(nca; recompute=false, kwargs...); _first(nca.r2))
+lambdazr2(nca::NCASubject; kwargs...) = (lz = lambdaz(nca; recompute=false, kwargs...); lz === missing ? missing : _first(nca.r2))
 
 """
   lambdazr(nca::NCASubject; kwargs...)
@@ -558,7 +558,7 @@ calculate `lambdaz` before calculating this quantity.
 
 See also [`lambdaz`](@ref).
 """
-lambdazr(nca::NCASubject; kwargs...) = (lambdaz(nca; recompute=false, kwargs...); sqrt(_first(nca.r2)))
+lambdazr(nca::NCASubject; kwargs...) = (lz = lambdaz(nca; recompute=false, kwargs...); lz === missing ? missing : sqrt(_first(nca.r2)))
 
 """
   lambdazadjr2(nca::NCASubject; kwargs...)
@@ -568,4 +568,4 @@ Give the adjusted coefficient of determination (``adjr²``) when calculating
 
 See also [`lambdaz`](@ref).
 """
-lambdazadjr2(nca::NCASubject; kwargs...) = (lambdaz(nca; recompute=false, kwargs...); _first(nca.adjr2))
+lambdazadjr2(nca::NCASubject; kwargs...) = (lz = lambdaz(nca; recompute=false, kwargs...); lz === missing ? missing : _first(nca.adjr2))
