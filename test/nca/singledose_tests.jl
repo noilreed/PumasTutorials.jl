@@ -122,7 +122,6 @@ end
 @test NCA.lambdaz(nca, slopetimes=t[10:13]) !== NCA.lambdaz(conc[idx], t[idx])
 @test NCA.lambdaz(nca, idxs=12:16) ≈ data[!, :Lambda_z][1]/timeu atol=1e-6/timeu
 
-fails = (6,)
 for i in 1:24
   idx = 16(i-1)+1:16*i
   dose = NCADose(0.0timeu, doses[i], nothing, NCA.IVInfusion)
@@ -135,27 +134,15 @@ for i in 1:24
   @test_nowarn NCA.aumc(conc[idx], t[idx], method=:linuplogdown)
   aucps = NCA.auc(nca, method=:linear, pred=true)
   aumcps = NCA.aumc(nca, method=:linear, pred=true)
-  if i in fails
-    @test_broken data[!,:AUCINF_obs][i]*timeu*concu ≈ aucs atol = 1e-6*timeu*concu
-    @test_broken data[!,:AUMCINF_obs][i]*timeu^2*concu ≈ aumcs atol = 1e-6*timeu^2*concu
-    @test_broken data[!,:AUCINF_pred][i]*timeu*concu ≈ aucps atol = 1e-6*timeu*concu
-    @test_broken data[!,:AUMCINF_pred][i]*timeu^2*concu ≈ aumcps atol = 1e-6*timeu^2*concu
-    @test_broken data[!,:Lambda_z][i]/timeu ≈ NCA.lambdaz(nca) atol = 1e-6/timeu
-    @test_broken data[!,:Lambda_z_intercept][i] ≈ NCA.lambdazintercept(nca) atol = 1e-6
-    @test_broken data[!,:Clast_pred][i]*concu ≈ NCA.clast(nca, pred=true) atol = 1e-6*concu
-    @test_broken data[!,:Vss_obs][i]*u"L" ≈ NCA.vss(nca) atol = 1e-6*u"L"
-    @test_broken data[!,:Vz_obs][i]*u"L" ≈ NCA.vz(nca) atol = 1e-6*u"L"
-  else
-    @test data[!,:AUCINF_obs][i]*timeu*concu ≈ aucs atol = 1e-6*timeu*concu
-    @test data[!,:AUMCINF_obs][i]*timeu^2*concu ≈ aumcs atol = 1e-6*timeu^2*concu
-    @test data[!,:AUCINF_pred][i]*timeu*concu ≈ aucps atol = 1e-6*timeu*concu
-    @test data[!,:AUMCINF_pred][i]*timeu^2*concu ≈ aumcps atol = 1e-6*timeu^2*concu
-    @test data[!,:Lambda_z][i]/timeu ≈ NCA.lambdaz(nca) atol = 1e-6/timeu
-    @test data[!,:Lambda_z_intercept][i] ≈ NCA.lambdazintercept(nca) atol = 1e-6
-    @test data[!,:Clast_pred][i]*concu ≈ NCA.clast(nca, pred=true) atol = 1e-6*concu
-    @test data[!,:Vss_obs][i]*u"L" ≈ NCA.vss(nca) atol = 1e-6*u"L"
-    @test data[!,:Vz_obs][i]*u"L" ≈ NCA.vz(nca) atol = 1e-6*u"L"
-  end
+  @test data[!,:AUCINF_obs][i]*timeu*concu ≈ aucs atol = 1e-6*timeu*concu
+  @test data[!,:AUMCINF_obs][i]*timeu^2*concu ≈ aumcs atol = 1e-6*timeu^2*concu
+  @test data[!,:AUCINF_pred][i]*timeu*concu ≈ aucps atol = 1e-6*timeu*concu
+  @test data[!,:AUMCINF_pred][i]*timeu^2*concu ≈ aumcps atol = 1e-6*timeu^2*concu
+  @test data[!,:Lambda_z][i]/timeu ≈ NCA.lambdaz(nca) atol = 1e-6/timeu
+  @test data[!,:Lambda_z_intercept][i] ≈ NCA.lambdazintercept(nca) atol = 1e-6
+  @test data[!,:Clast_pred][i]*concu ≈ NCA.clast(nca, pred=true) atol = 1e-6*concu
+  @test data[!,:Vss_obs][i]*u"L" ≈ NCA.vss(nca) atol = 1e-6*u"L"
+  @test data[!,:Vz_obs][i]*u"L" ≈ NCA.vz(nca) atol = 1e-6*u"L"
   aucs = NCA.auc(nca, dose=dose, method=:linear, auctype=:last)
   @test aucs == NCA.auclast(nca, dose=dose, method=:linear)
   aumcs = NCA.aumc(nca, dose=dose, method=:linear, auctype=:last)
@@ -163,8 +150,8 @@ for i in 1:24
   @test normalizedose(aucs, nca) == aucs/doses[i]
   @test data[!,:AUClast][i]*timeu*concu ≈ aucs atol = 1e-6*timeu*concu
   @test data[!,:AUMClast][i]*timeu^2*concu ≈ aumcs atol = 1e-6*timeu^2*concu
-  @test NCA.aumc_extrap_percent(nca) === NCA.aumc_extrap_percent(conc[idx], t[idx])
-  @test NCA.auc_extrap_percent(nca) === NCA.auc_extrap_percent(conc[idx], t[idx])
+  @test NCA.aumc_extrap_percent(nca) === NCA.aumc_extrap_percent(conc[idx], t[idx], dose=dose, method=:linear)
+  @test NCA.auc_extrap_percent(nca) === NCA.auc_extrap_percent(conc[idx], t[idx], dose=dose, method=:linear)
   ncareport = @test_nowarn NCAReport(nca)
   i == 1 && @test normalizedose(missing, nca) === missing
 end
