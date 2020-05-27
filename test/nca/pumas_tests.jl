@@ -58,9 +58,9 @@ p = (
 
 sim = @test_nowarn simobs(m_diffeq, ev2, p; abstol=1e-14, reltol=1e-14)
 for i in eachindex(sim)
-  @test NCA.auc(sim[i].observed.cp, sim[i].times)   === sim[i].observed.auc
-  @test NCA.thalf(sim[i].observed.cp, sim[i].times) === sim[i].observed.thalf
-  @test NCA.cmax(sim[i].observed.cp, sim[i].times)  === sim[i].observed.cmax
+  @test NCA.auc(sim[i].observed.cp, sim[i].times)   ≈ sim[i].observed.auc
+  @test NCA.thalf(sim[i].observed.cp, sim[i].times) ≈ sim[i].observed.thalf
+  @test NCA.cmax(sim[i].observed.cp, sim[i].times)  ≈ sim[i].observed.cmax
 
   ncasubj = NCASubject(
     Subject(
@@ -68,9 +68,9 @@ for i in eachindex(sim)
       obs  = (dv=sim[i].observed.cp,),
       time = sim[i].times,
       evs  = sim[i].subject.events))
-  @test NCA.auc(ncasubj)   === sim[i].observed.auc
-  @test NCA.thalf(ncasubj) === sim[i].observed.thalf
-  @test NCA.cmax(ncasubj)  === sim[i].observed.cmax
+  @test NCA.auc(ncasubj)   ≈ sim[i].observed.auc
+  @test NCA.thalf(ncasubj) ≈ sim[i].observed.thalf
+  @test NCA.cmax(ncasubj)  ≈ sim[i].observed.cmax
 end
 
 pop = Population(map(i->sim[i].subject, eachindex(sim)))
@@ -135,18 +135,18 @@ dose = NCADose.(filter(ev -> ev.rate_dir==1, sim[1].subject.events))
 for i in eachindex(sim)
   subjcp = NCASubject(sim[i].observed.cp, sim[i].times, dose=dose, clean=false)
   subjcm = NCASubject(sim[i].observed.cm, sim[i].times, dose=dose, clean=false)
-  @test NCA.auc(subjcp) == sim[i].observed.auccp
-  @test NCA.thalf(subjcp) == sim[i].observed.thalfcp
-  @test NCA.cmax(subjcp) == sim[i].observed.cmaxcp
-  @test NCA.auc(subjcm) == sim[i].observed.auccm
-  @test NCA.thalf(subjcm) == sim[i].observed.thalfcm
-  @test NCA.cmax(subjcm) == sim[i].observed.cmaxcm
+  @test NCA.auc(subjcp) ≈ sim[i].observed.auccp
+  @test NCA.thalf(subjcp) ≈ sim[i].observed.thalfcp
+  @test NCA.cmax(subjcp) ≈ sim[i].observed.cmaxcp
+  @test NCA.auc(subjcm) ≈ sim[i].observed.auccm
+  @test NCA.thalf(subjcm) ≈ sim[i].observed.thalfcm
+  @test NCA.cmax(subjcm) ≈ sim[i].observed.cmaxcm
 end
 
 @test NCADose(ev1[1].events[1]) === NCADose(0.0, 2000.0, 0.0, NCA.IVBolus)
 
 theopp = read_pumas(example_data("event_data/THEOPP"),cvs = [:SEX,:WT])
 theonca = NCAPopulation(theopp, name=:dv)
-@test all(i->theonca[i].time == theopp[i].time, eachindex(theopp))
-@test all(i->theonca[i].conc == theopp[i].observations.dv, eachindex(theopp))
+@test all(i->theonca[i].time ≈ theopp[i].time, eachindex(theopp))
+@test all(i->theonca[i].conc ≈ theopp[i].observations.dv, eachindex(theopp))
 @test_nowarn NCA.auc(theonca)
