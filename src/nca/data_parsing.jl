@@ -8,6 +8,9 @@ using CSV, DataFrames
 Parse a `DataFrame` object or a CSV file to `NCAPopulation`. `NCAPopulation`
 holds an array of `NCASubject`s which can cache certain results to achieve
 efficient NCA calculation.
+
+!!! remark
+    Concentrations at dosing rows are NOT ignored in `read_nca`.
 """
 read_nca(file::AbstractString; kwargs...) = read_nca(CSV.read(file); kwargs...)
 # TODO: add ploting time
