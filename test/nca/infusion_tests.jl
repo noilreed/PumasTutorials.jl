@@ -12,6 +12,12 @@ data = @test_nowarn read_nca(df, id=:ID, time=:Time, conc=:Prefilter_Conc, verbo
 @test NCA.mrt(data; auctype=:inf)[!, :mrt] == NCA.aumc(data)[!, :aumc]./NCA.auc(data)[!, :auc] .- 0.25timeu/2
 @test !ismissing(NCA.vss(data)[!, 1])
 
+# 1029
+allowmissing!(df)
+df.Prefilter_Conc[1]=missing
+data = read_nca(df, id=:ID, time=:Time, conc=:Prefilter_Conc, verbose=true, route=:route, amt=:Amount, duration=:Infusion_Time, timeu=timeu, concu=concu, amtu=amtu)
+@test_nowarn NCA.aumclast(data)
+
 inf_data = CSV.read(IOBuffer("""
 id,time,conc,amt,duration,rate,route
 1,0,0,2551,0.5,5101,inf

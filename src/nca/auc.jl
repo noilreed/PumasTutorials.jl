@@ -198,7 +198,7 @@ function _auc(nca::NCASubject{C,TT,T,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,V,R,RT}, 
   else
     idx1, idx2 = firstindex(time), nca.lastidx
     # handle C0
-    cacheauc0!(nca, zero(_first(nca.auc_0)))
+    isauc && cacheauc0!(nca, zero(_first(nca.auc_0)))
     time0 = zero(time[idx1])
     if time[idx1] > time0
       c0′ = c0(nca, true)
@@ -206,11 +206,11 @@ function _auc(nca::NCASubject{C,TT,T,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,V,R,RT}, 
         verbose && @info "ID $(nca.id) errored: AUC calculation cannot proceed, because `c0` gives missing"
         setrun_status!(nca, :C0IsMissing)
         cacheauc!(nca, missing, interval, method, isauc)
-        cacheauc0!(nca, missing)
+        isauc && cacheauc0!(nca, missing)
         return missing
       end
       auc_0 = intervalauc(c0′, conc[idx1], time0, time[idx1], idx1-1, maxidx(nca), method, linear, log, ret_typ)
-      cacheauc0!(nca, auc_0)
+      isauc && cacheauc0!(nca, auc_0)
       auc += auc_0
     end
   end
