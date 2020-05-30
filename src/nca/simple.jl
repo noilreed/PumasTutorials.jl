@@ -437,26 +437,38 @@ function superposition(subj::NCASubject, args...;
   subj.dose === Nothing && throw(ArgumentError("Dose must be known to compute superposition"))
   ndoses >= 1 || throw(ArgumentError("ndoses must be >= 1"))
   !(ndoses isa Integer) && ndoses != Inf && throw(ArgumentError("ndoses must be an integer or Inf"))
-  time = ismultidose(subj) ? subj.time[end] : subj.time
-  conc = ismultidose(subj) ? subj.conc[end] : subj.conc
-  dosetime  = ismultidose(subj) ? subj.dose[1].time : subj.dose.time
   doseamt = ismultidose(subj) ? subj.dose[1].amt  : subj.dose.amt
   dosescaling = amt === nothing ? one(doseamt) : amt / doseamt
-  currenttime = time .+ ii
-  len = length(time)
-  outtime = [time]
-  outconc = [dosescaling .* conc]
+  if ismultidose(subj)
+    time = subj.time[end]
+    conc = subj.conc[end]
+    len = length(subj.time[end])
+    outtime = [t for t in subj.time]
+    outconc = [dosescaling .* c for c in subj.conc]
+    occasion = [fill(i, len) for i in eachindex(outconc)]
+    addl = length(occasion) - 1
+    # we need the first dose to do superposition
+    subj = subject_at_ithdose(subj, 1)
+  else
+    time = subj.time
+    conc = subj.conc
+    len = length(time)
+    outtime = [time]
+    outconc = [dosescaling .* conc]
+    occasion = [fill(1, len)]
+    addl = 0
+  end
   prevclast = outconc[end][findlast(!iszero, outconc[end])]
-  occasion = [fill(1, len)]
-  addl = 0 # computed addl (ndoses - 1)
+  nii = 0
   # Stop either when reaching steady-state or reaching ndoses
   for ndose in 2:ndoses
     addl += 1
+    nii += 1
     prevconc = outconc[end]
-    currconc = prevconc + interpextrapconc(subj, time .+ addl*ii; method=method, kwargs...)
+    currconc = prevconc + dosescaling * interpextrapconc(subj, time .+ nii*ii; method=method, kwargs...)
     push!(outconc, currconc)
     push!(outtime, outtime[end] .+ ii)
-    push!(occasion, fill(ndose, len))
+    push!(occasion, fill(addl+1, len))
     currclast = currconc[findlast(!iszero, currconc)]
     abs(one(currclast) - prevclast / currclast) <= steadystatetol && break
     prevclast = currclast
