@@ -18,6 +18,8 @@ mncapop = @test_nowarn read_nca(mdata, id=:ID, time=:TIME, conc=:COBS, amt=:AMT,
 @test ustrip.(NCA.doseamt(mncapop)[!, end]) == mdata[didxs, :AMT]
 
 @test_nowarn NCA.superposition(mncapop; ii=10timeu)
+@test reduce(vcat, read_nca(NCA.superposition(mncapop[1]; ii=10timeu))[1].conc) == NCA.superposition(mncapop[1]; ii=10timeu).conc
+@test reduce(vcat, read_nca(NCA.superposition(mncapop[1]; ii=10timeu))[1].time) == NCA.superposition(mncapop[1]; ii=10timeu).time
 
 @test_throws ArgumentError NCA.interpextrapconc(mncapop[1], 22timeu, method=:linear)
 

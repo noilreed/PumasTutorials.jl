@@ -12,6 +12,8 @@ data[!,:route] .= "iv"
 ncapop = @test_nowarn read_nca(data, id=:ID, time=:TIME, conc=:CObs, amt=:AMT_IV, route=:route,
                                     llq=0concu, timeu=timeu, concu=concu, amtu=amtu)
 @test_nowarn NCA.superposition(ncapop; ii=10timeu)
+@test reduce(vcat, read_nca(NCA.superposition(ncapop[1]; ii=10timeu))[1].conc) == NCA.superposition(ncapop[1]; ii=10timeu).conc
+@test reduce(vcat, read_nca(NCA.superposition(ncapop[1]; ii=10timeu))[1].time) == NCA.superposition(ncapop[1]; ii=10timeu).time
 @test_nowarn NCA.auc(ncapop, method=:linuplogdown)
 @test all(ismissing, NCA.bioav(ncapop, ithdose=1)[!, 2])
 @test_logs (:warn, "No dosage information has passed. If the dataset has dosage information, you can pass the column names by `amt=:amt, route=:route`.") NCA.auc(read_nca(data, id=:ID, time=:TIME, conc=:CObs));
@@ -113,8 +115,6 @@ for m in (:linear, :linuplogdown, :linlog)
   x = (0:.1:50) .* timeu
   y = NCA.interpextrapconc(conc[idx], t[idx], x; method=m)
   @test NCA.lambdaz(y, x) ≈ NCA.lambdaz(conc[idx], t[idx])
-
-  @test_nowarn NCA.superposition(ncapop, 24timeu, method=m)
 end
 
 @test NCA.lambdaz(nca, idxs=12:16) == NCA.lambdaz(conc[idx], t[idx])

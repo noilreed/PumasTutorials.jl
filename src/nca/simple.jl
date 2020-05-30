@@ -439,7 +439,8 @@ function superposition(subj::NCASubject, args...;
   ndoses >= 1 || throw(ArgumentError("ndoses must be >= 1"))
   !(ndoses isa Integer) && ndoses != Inf && throw(ArgumentError("ndoses must be an integer or Inf"))
   doseamt = ismultidose(subj) ? subj.dose[1].amt  : subj.dose.amt
-  dosescaling = amt === nothing ? one(doseamt) : amt / doseamt
+  amt = amt === nothing ? doseamt : amt
+  dosescaling = amt / doseamt
   if ismultidose(subj)
     time = subj.time[end]
     conc = subj.conc[end]
@@ -448,6 +449,9 @@ function superposition(subj::NCASubject, args...;
     outconc = [dosescaling .* c for c in subj.conc]
     occasion = [fill(i, len) for i in eachindex(outconc)]
     addl = length(occasion) - 1
+    outamt = fill(zero(amt), len)
+    outamt[1] = amt
+    outamt = [outamt for _ in subj.dose]
     # we need the first dose to do superposition
     subj = subject_at_ithdose(subj, 1)
   else
@@ -458,7 +462,12 @@ function superposition(subj::NCASubject, args...;
     outconc = [dosescaling .* conc]
     occasion = [fill(1, len)]
     addl = 0
+    outamt = fill(zero(amt), len)
+    outamt[1] = amt
+    outamt = [outamt]
   end
+  dosetype = subj.dose.formulation
+  route = dosetype === IVInfusion ? "inf" : dosetype === IVBolus ? "iv" : "ev"
   prevclast = outconc[end][findlast(!iszero, outconc[end])]
   nii = 0
   # Stop either when reaching steady-state or reaching ndoses
@@ -468,13 +477,14 @@ function superposition(subj::NCASubject, args...;
     prevconc = outconc[end]
     currconc = prevconc + dosescaling * interpextrapconc(subj, time .+ nii*ii; method=method, kwargs...)
     push!(outconc, currconc)
-    push!(outtime, outtime[end] .+ ii)
+    push!(outtime, outtime[end])
     push!(occasion, fill(addl+1, len))
+    push!(outamt, outamt[end])
     currclast = currconc[findlast(!iszero, currconc)]
     abs(one(currclast) - prevclast / currclast) <= steadystatetol && break
     prevclast = currclast
   end
-  return DataFrame(id=subject_id(subj), conc=reduce(vcat, outconc), time=reduce(vcat, outtime), ii=ii, addl=addl, occasion=reduce(vcat, occasion))
+  return DataFrame(id=subject_id(subj), conc=reduce(vcat, outconc), time=reduce(vcat, outtime), ii=ii, addl=addl, occasion=reduce(vcat, occasion), route=route, amt=reduce(vcat, outamt))
 end
 
 subject_id(subj::NCASubject; kwargs...) = subj.id
