@@ -447,11 +447,9 @@ function superposition(subj::NCASubject, args...;
     len = length(subj.time[end])
     outtime = [t for t in subj.time]
     outconc = [dosescaling .* c for c in subj.conc]
-    occasion = [fill(i, len) for i in eachindex(outconc)]
+    occasion = [fill(i, length(conc)) for (i, conc) in enumerate(outconc)]
     addl = length(occasion) - 1
-    outamt = fill(zero(amt), len)
-    outamt[1] = amt
-    outamt = [outamt for _ in subj.dose]
+    outamt = [map(i->i==1 ? amt : zero(amt), 1:length(conc)) for conc in outconc]
     # we need the first dose to do superposition
     subj = subject_at_ithdose(subj, 1)
   else
@@ -484,7 +482,17 @@ function superposition(subj::NCASubject, args...;
     abs(one(currclast) - prevclast / currclast) <= steadystatetol && break
     prevclast = currclast
   end
-  return DataFrame(id=subject_id(subj), conc=reduce(vcat, outconc), time=reduce(vcat, outtime), ii=ii, addl=addl, occasion=reduce(vcat, occasion), route=route, amt=reduce(vcat, outamt))
+  df = DataFrame(id=subject_id(subj), conc=reduce(vcat, outconc), time=reduce(vcat, outtime), ii=ii, addl=addl, occasion=reduce(vcat, occasion), route=route, amt=reduce(vcat, outamt))
+  if subj.group !== nothing
+    if subj.group isa Pair
+      df[!, Symbol(subj.group[1])] .= subj.group[2]
+    else
+      for group in subj.group
+        df[!, Symbol(group[1])] .= group[2]
+      end
+    end
+  end
+  return df
 end
 
 subject_id(subj::NCASubject; kwargs...) = subj.id

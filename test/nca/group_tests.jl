@@ -8,6 +8,9 @@ df[!,:amt] .= 0.0
 df.amt[1:23:end] .= 0.1
 df[!,:route] .= "ev"
 data = @test_nowarn read_nca(df, id=:ID, time=:TIME, conc=:TCONC, occasion=:PERIOD, group=[:METABOLITE], verbose=false)
+
+@test all(x->x.group[1] == "METABOLITE", read_nca(NCA.superposition(data; ii=5, ndoses=2), group=[:METABOLITE]))
+
 io = IOBuffer()
 show(io, "text/plain", data)
 @test occursin("5 subjects", String(take!(io)))
