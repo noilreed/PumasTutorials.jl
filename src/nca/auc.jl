@@ -24,7 +24,6 @@ end
 
 """
     extrapaucinf(clast, tlast, lambdaz)
-
 Extrapolate auc to the infinite.
 """
 @inline extrapaucinf(clast, tlast, lambdaz) = clast/lambdaz
