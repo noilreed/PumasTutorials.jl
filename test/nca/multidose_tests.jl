@@ -17,6 +17,8 @@ mncapop = @test_nowarn read_nca(mdata, id=:ID, time=:TIME, conc=:COBS, amt=:AMT,
                                      timeu=timeu, concu=concu, amtu=amtu)
 @test ustrip.(NCA.doseamt(mncapop)[!, end]) == mdata[didxs, :AMT]
 
+@test_nowarn NCA.superposition(mncapop; ii=10timeu)
+
 @test_throws ArgumentError NCA.interpextrapconc(mncapop[1], 22timeu, method=:linear)
 
 # test caching

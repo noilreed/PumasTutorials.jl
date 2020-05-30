@@ -430,6 +430,7 @@ end
 
 run_status(subj::NCASubject; kwargs...) = subj.run_status
 
+superposition(pop::NCAPopulation, args...; kwargs...) = reduce(vcat, map(subj->superposition(subj, args...; kwargs...), pop))
 function superposition(subj::NCASubject, args...;
                        ii::Number, ndoses::Union{Integer,AbstractFloat}=5,
                        amt=nothing, steadystatetol::Number=3e-2, method=:linear,
