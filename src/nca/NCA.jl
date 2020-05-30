@@ -27,10 +27,11 @@ for f in [:lambdaz, :lambdazr2, :lambdazadjr2, :lambdazr, :lambdazintercept, :la
           :cmax, :cmaxss, :tmax, :cmin, :cminss, :ctau, :c0, :tmin, :clast, :tlast, :thalf, :cl, :_cl, :_clf, :vss, :vz, :_vz, :_vzf,
           :interpextrapconc, :auc, :auclast, :auctau, :aumc, :aumclast, :aumctau, :auc_extrap_percent, :aumc_extrap_percent, :auc_back_extrap_percent,
           :bioav, :tlag, :mrt, :mat, :tau, :cavgss, :fluctuation, :accumulationindex,
-          :swing, :n_samples, :doseamt, :dosetype, :subject_id,
+          :swing, :n_samples, :doseamt, :dosetype, :subject_id, :superposition,
           :tmax_rate, :max_rate, :mid_time_last, :rate_last, :aurc, :aurc_extrap_percent, :urine_volume, :percent_recovered, :amount_recovered, :run_status,
          ]
   @eval $f(conc, time, args...; kwargs...) = $f(NCASubject(conc, time; kwargs...), args...; kwargs...) # f(conc, time) interface
+  f === :superposition && continue
   @eval function $f(pop::NCAPopulation, args...; label=true, verbose=true, kwargs...) # NCAPopulation handling
     ismulti = ismultidose(pop)
     if ismulti
@@ -70,16 +71,6 @@ for f in [:lambdaz, :lambdazr2, :lambdazadjr2, :lambdazr, :lambdazintercept, :la
     df.$f = sol
     return df
   end
-end
-
-# special handling for superposition
-superposition(conc, time, args...; kwargs...) = superposition(NCASubject(conc, time; kwargs...), args...; kwargs...) # f(conc, time) interface
-function superposition(pop::NCAPopulation, args...; kwargs...) # NCAPopulation handling
-  sol = map(pop) do subj
-    res = superposition(subj, args...; kwargs...)
-    DataFrame(id=subj.id, conc=res[!,1], time=res[!,2])
-  end
-  return vcat(sol...) # splat is faster than `reduce(vcat, sol)`
 end
 
 # add `tau`
