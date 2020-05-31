@@ -605,7 +605,7 @@ function Base.convert(::Type{NCADose}, ev::Event)
   time = ev.time
   amt = ev.amt
   duration = isinf(ev.duration) ? zero(ev.duration) : ev.duration
-  NCADose(time, amt, duration, IVBolus) # FIXME: when is an event extravascular?
+  NCADose(time, amt, duration, IVBolus)
 end
 NCADose(dose::Event) = convert(NCADose, dose)
 

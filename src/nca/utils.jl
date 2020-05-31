@@ -340,3 +340,42 @@ tighten_container_eltype(u) = u
   u === nothing && return nothing
   unit === true ? u : map(x -> x === missing ? missing : x*unit, u)
 end
+
+"""
+    liftunits2header(df::AbstractDataFrame)
+
+Lift units to the header row.
+
+Example:
+
+```julia
+julia> first(df, 3)
+3×8 DataFrame
+│ Row │ id    │ conc            │ time     │ ii       │ addl  │ occasion │ route  │ amt       │
+│     │ Int64 │ Quantity…       │ Quantit… │ Quantit… │ Int64 │ Int64    │ String │ Quantity… │
+├─────┼───────┼─────────────────┼──────────┼──────────┼───────┼──────────┼────────┼───────────┤
+│ 1   │ 1     │ 157.021 mg L^-1 │ 0.0 hr   │ 10 hr    │ 4     │ 1        │ iv     │ 5000.0 mg │
+│ 2   │ 1     │ 141.892 mg L^-1 │ 0.05 hr  │ 10 hr    │ 4     │ 1        │ iv     │ 0.0 mg    │
+│ 3   │ 1     │ 116.228 mg L^-1 │ 0.35 hr  │ 10 hr    │ 4     │ 1        │ iv     │ 0.0 mg    │
+
+julia> first(NCA.liftunits2header(df), 3)
+3×8 DataFrame
+│ Row │ id    │ conc (mg L^-1) │ time (hr) │ ii (hr) │ addl  │ occasion │ route  │ amt (mg) │
+│     │ Int64 │ Float64        │ Float64   │ Int64   │ Int64 │ Int64    │ String │ Float64  │
+├─────┼───────┼────────────────┼───────────┼─────────┼───────┼──────────┼────────┼──────────┤
+│ 1   │ 1     │ 157.021        │ 0.0       │ 10      │ 4     │ 1        │ iv     │ 5000.0   │
+│ 2   │ 1     │ 141.892        │ 0.05      │ 10      │ 4     │ 1        │ iv     │ 0.0      │
+│ 3   │ 1     │ 116.228        │ 0.35      │ 10      │ 4     │ 1        │ iv     │ 0.0      │
+```
+"""
+liftunits2header(df::AbstractDataFrame) = liftunits2header!(copy(df))
+function liftunits2header!(df::AbstractDataFrame)
+  newcolnames = map(eachcol(df), names(df)) do v, name
+    eltype(v) <: Quantity ? string(name, " (", Unitful.unit(eltype(v)), ')') : name
+  end
+  rename!(df, newcolnames)
+  foreach(axes(df, 2)) do i
+    df[!, i] .= map(x->x isa Quantity ? ustrip(x) : x, df[!, i])
+  end
+  return df
+end
