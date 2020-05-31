@@ -18,7 +18,7 @@ m_diffeq = @model begin
   @param   begin
     θ1 ∈ RealDomain(lower=0.1,  upper=3)
     θ2 ∈ RealDomain(lower=0.5,  upper=10)
-    θ3 ∈ RealDomain(lower=10,  upper=30)	
+    θ3 ∈ RealDomain(lower=10,  upper=30)
   end
 
   @pre begin
@@ -55,7 +55,7 @@ sobol = gsa(m_diffeq,
             DiffEqSensitivity.Sobol(order=[0,1,2]),
             [:auc], (θ1 = 0.1, θ2 = 0.5); N=1000)
 
-@test sprint((io, t) -> show(io, MIME"text/plain"(), t), sobol) == 
+@test sprint((io, t) -> show(io, MIME"text/plain"(), t), sobol) ==
 """Sobol Sensitivity Analysis
 
 First Order Indices
@@ -164,21 +164,21 @@ Means (μ)
 │ Row │ dv_name │ θ1      │ θ2        │
 │     │ Any     │ Float64 │ Float64   │
 ├─────┼─────────┼─────────┼───────────┤
-│ 1   │ auc     │ 0.0     │ -0.889085 │
+│ 1   │ auc     │ 0.0     │ -0.889083 │
 
 Means star (μ*)
 1×3 DataFrame
 │ Row │ dv_name │ θ1      │ θ2       │
 │     │ Any     │ Float64 │ Float64  │
 ├─────┼─────────┼─────────┼──────────┤
-│ 1   │ auc     │ 0.0     │ 0.889085 │
+│ 1   │ auc     │ 0.0     │ 0.889083 │
 
 Variances
 1×3 DataFrame
 │ Row │ dv_name │ θ1      │ θ2       │
 │     │ Any     │ Float64 │ Float64  │
 ├─────┼─────────┼─────────┼──────────┤
-│ 1   │ auc     │ 0.0     │ 0.149503 │
+│ 1   │ auc     │ 0.0     │ 0.149501 │
 
 """
 
