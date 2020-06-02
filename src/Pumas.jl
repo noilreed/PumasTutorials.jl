@@ -91,4 +91,19 @@ export logistic
 # From DiffEqSensitivity
 export gsa
 
+# Print summary license intormation after new installations and upgrades. This is implemented
+# by printing the info from the toplevel such that it's triggered only during precompilation.
+# For ordinary users, procompilation will mostly happen after updates and new installation but
+# will also happen sometimes when the user switches environment.
+function print_license()
+    printstyled("Important Note:", bold=true)
+    print("""
+ Pumas.jl is a proprietary package. It is free to use for non-commercial
+academic teaching and research purposes. For commercial users, license fees apply. Please
+refer to End User License Agreement (https://juliacomputing.com/eula) for details. Please
+contact sales@juliacomputing.com for purchase.
+""")
+end
+print_license()
+
 end # module
