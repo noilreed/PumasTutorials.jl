@@ -273,9 +273,11 @@ varnames(::Type{Central1Periph1Meta1}) = (:Central, :CPeripheral, :Metabolite)
 pk_init(::Central1Periph1Meta1) = SLVector(Central=0.0, CPeripheral=0.0, Metabolite=0.0)
 
 struct LinearODE <: ExplicitModel end
+_expAt(AΔt::StaticMatrix)  = exp(AΔt)
+_expAt(AΔt::StridedMatrix) = ExponentialUtilities.exp_generic(AΔt)
 function (m::LinearODE)(t, t₀, amounts, doses, pre, rates)
   p = pre(t₀)
   amt₀ = amounts + doses   # initial values for cmt's + new doses
-  expAt = exp(p.A*(t - t₀))
+  expAt = _expAt(p.A*(t - t₀))
   return expAt*amt₀ + (expAt - I)*(p.A\rates)
 end

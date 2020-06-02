@@ -18,7 +18,7 @@ import MCMCChains: Chains
 
 import DiffResults: DiffResult
 
-import DataInterpolations
+import DataInterpolations, ExponentialUtilities
 
 @reexport using OrdinaryDiffEq, Unitful
 @reexport using Distributions, DataFrames
