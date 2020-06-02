@@ -28,7 +28,8 @@ function bootstrap(model::PumasModel, data::Population, coef, approx::Likelihood
   # Find all individual values of the variable we're stratisfying by
   n_subject = length(data)
   if stratify_by !== nothing
-    strata_values = [getproperty(subject.covariates, stratify_by) for subject in data]
+    # Just grab the time 0 covariate. It should be constant if we stratify
+    strata_values = [getproperty(subject.covariates(0.0), stratify_by) for subject in data]
   else
     strata_values = fill(1, n_subject)
   end

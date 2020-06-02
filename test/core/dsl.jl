@@ -67,10 +67,11 @@ function rfx_f(p)
 end
 
 function col_f(param,randeffs,subject)
-    function f(t=nothing)
+    function f(t=0.0)
+        cvs = subject.covariates(t)
         (Ka = param.θ[1],  # pre
-        CL = param.θ[2] * ((subject.covariates.wt/70)^0.75) *
-             (param.θ[4]^subject.covariates.sex) * exp(randeffs.η[1]),
+        CL = param.θ[2] * ((cvs.wt/70)^0.75) *
+             (param.θ[4]^cvs.sex) * exp(randeffs.η[1]),
         Vc = param.θ[3] * exp(randeffs.η[2]))
     end
 end

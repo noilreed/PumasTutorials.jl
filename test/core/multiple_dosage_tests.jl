@@ -70,6 +70,6 @@ sim_analytic = begin
 end
 @test sim_diffeq ≈ sim_analytic rtol=1e-3
 
-pop = Population(map(i -> Subject(id=i, time=i:20, cvs=subject1.covariates),1:3))
+pop = Population(map(i -> Subject(id=i, time=i:20, covariates=subject1.covariates, covartime=subject1.covartime),1:3))
 s = simobs(m_diffeq,pop,param,fill(randeffs, length(pop));ensemblealg = EnsembleSerial())
 @test map(x->x.times, s) == map(x->x.time, pop)

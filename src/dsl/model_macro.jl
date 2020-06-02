@@ -195,7 +195,7 @@ function pre_obj(preexpr, prevars, params, randoms, covariates)
     function (_param::NamedTuple, _random::NamedTuple, _subject::Subject)
       # pre is evaluated at t. All covariates are available in `covar`.
       function pre(t)
-        covar = _subject.tvcov(t)
+        covar = _subject.covariates(t)
         $(Expr(:escape, :t)) = t
         $(Expr(:block, [:($(esc(v)) = covar.$v) for v in _keys(covariates)]...))
         $(Expr(:block, [:($(esc(v)) = _param.$v) for v in _keys(params)]...))
@@ -550,7 +550,7 @@ function derived_obj(derivedexpr, derivedvars, pre, odevars, params, randoms)
       # that we want to use v at all obstime (in the denominator of the fraction
       # for cp that depends also on Central at obstimes, though this is unpacked
       # from the solution, not pre)
-      if _subject.tvcov isa ConstantCovar
+      if _subject.covariates isa ConstantCovar
         $(var_def(:(_pre(0.0)), pre))
       else
         $(timed_var_def(:_pre, pre, :_obstimes))
@@ -574,7 +574,7 @@ function observed_obj(observedexpr, observedvars, pre, odevars, derivedvars)
         end
         $(solvars_def(:(_solarr), odevars))
       end
-      if _subject.tvcov isa ConstantCovar
+      if _subject.covariates isa ConstantCovar
         $(var_def(:(_pre(0.0)), pre))
       else
         $(timed_var_def(:_pre, pre, :_obstimes))

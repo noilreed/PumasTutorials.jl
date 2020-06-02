@@ -296,19 +296,19 @@ Fields:
 - `events`: a vector of `Event`s.
 - `time`: a vector of time stamps for the observations
 """
-struct Subject{T1,T2,T3,T4,T5,T6}
+struct Subject{T1,T2,T3,T4,T5}
   id::String
   observations::T1
   covariates::T2
   events::T3
   time::T4
-  tvcov::T5
-  covartime::T6
+  covartime::T5
   function Subject(df::AbstractDataFrame,
                    id, time, evid, amt, addl, ii, cmt, rate, ss,
                    cvs::Vector{<:Symbol} = Symbol[],
                    dvs::Vector{<:Symbol} = Symbol[:dv],
-                   event_data = true)
+                   event_data = true, cvs_direction=:right,
+                   covariates=nothing, covartime=nothing)
     ## Observations
     idx_obs = findall(iszero, df[!,evid])
     obs_times = Missings.disallowmissing(df[!,time][idx_obs])
@@ -338,12 +338,11 @@ struct Subject{T1,T2,T3,T4,T5,T6}
     ==#
 
     # build individual interpolants and use them to create a batch interpolant
-    ## Pass the ID to build_tvcov to make error message more informative
+    ## Pass the ID to covariate_interpolant to make error message more informative
     _id_string = string(first(df[!,id]))
-    covar_times, tvcov = build_tvcov(cvs, df, time, _id_string)
-
-    ## FIXME we still keep the old covar
-    covariates = isempty(cvs) ? nothing : to_nt(df[!, cvs])
+    if covartime isa Nothing || covariates isa Nothing
+      covartime, covariates = covariate_interpolant(cvs, df, time, _id_string; cvs_direction=cvs_direction)
+    end
     ## Events
     idx_evt = setdiff(1:size(df, 1), idx_obs)
 
@@ -368,7 +367,7 @@ struct Subject{T1,T2,T3,T4,T5,T6}
       build_event_list!(events, event_data, t, _evid, _amt, _addl, _ii, _cmt, _rate, ss′)
     end
     sort!(events)
-    new{typeof(observations),typeof(covariates),typeof(events),typeof(_obs_times), typeof(tvcov), typeof(covar_times)}(_id_string, observations, covariates, events, _obs_times, tvcov, covar_times)
+    new{typeof(observations),typeof(covariates),typeof(events),typeof(_obs_times), typeof(covartime)}(_id_string, observations, covariates, events, _obs_times, covartime)
   end
 
   function Subject(;id = "1",
@@ -377,15 +376,20 @@ struct Subject{T1,T2,T3,T4,T5,T6}
                    cvstime = obs isa AbstractDataFrame ? obs.time : nothing,
                    evs = Event[],
                    time = obs isa AbstractDataFrame ? obs.time : nothing,
-                   event_data = true,)
+                   event_data = true,
+                   covariates = nothing,
+                   covartime = nothing,
+                   cvs_direction=:right)
     obs = build_observation_list(obs)
     evs = build_event_list(evs, event_data)
-    covar_times, tvcov = build_tvcov(cvs, cvstime, id)
+    if covariates isa Nothing || covartime isa Nothing
+      covartime, covariates = covariate_interpolant(cvs, cvstime, id; cvs_direction=cvs_direction)
+    end
     # Check that time is well-specified (not nothing, not missing and increasing)
     _time = isnothing(time) ? nothing : Missings.disallowmissing(time)
     @assert isnothing(time) || issorted(_time) "Time is not monotonically increasing within subject"
 
-    new{typeof(obs),typeof(cvs),typeof(evs),typeof(_time), typeof(tvcov), typeof(covar_times)}(string(id), obs, cvs, evs, _time, tvcov, covar_times)
+    new{typeof(obs),typeof(covariates),typeof(evs),typeof(_time), typeof(covartime)}(string(id), obs, covariates, evs, _time, covartime)
   end
 end
 
@@ -420,7 +424,6 @@ function DataFrames.DataFrame(subject::Subject; include_covariates=true, include
     # There are infusions, and they're specified by duration
     select!(df_events, Not(:rate))
   end
-
   # Generate the name for the dependent variable in a manner consistent with
   # multiple dvs etc
   if isnothing(subject.time)
@@ -467,7 +470,6 @@ function DataFrames.DataFrame(subject::Subject; include_covariates=true, include
   else
     df
   end
-
   include_covariates && _add_covariates!(df, subject)
 
   # Sort the df according to time first, and use :base_time to ensure that events
@@ -498,35 +500,51 @@ function DataFrames.DataFrame(subject::Subject; include_covariates=true, include
 end
 
 function _add_covariates!(df::DataFrame, subject::Subject)
-  covariates = subject.covariates
-  if !isa(covariates, Nothing)
+  covariates = subject.covariates.(subject.time)
+  df_idx = hasproperty(df, :evid) ? df[!, :evid].==0 : !
+  if !(isa(covariates, Nothing) || isa(covariates, Tuple{})) && !isa(first(covariates), Nothing)
+    if covariates isa AbstractVector
+      _keys = keys(covariates[1])
+      covariates = map(NamedTuple{_keys}(_keys)) do x
+         [_covar[x] for _covar in covariates]
+        end
+    end
     for (covariate, value) in pairs(covariates)
-      df[!,covariate] .= value
+      if value isa String || value isa Number
+        df[!, covariate] .= value isa Number ? typeof(value)(0) : Ref("")
+        df[df_idx, covariate] .= Ref(value)
+      else
+        df[!, covariate] .= eltype(value)(0)
+        df[df_idx, covariate] .= value
+      end
+      if hasproperty(df, :evid)
+        allowmissing!(df, covariate)
+        df[df[!, :evid].!=0, covariate] .= missing
+      end
     end
   end
 end
-
+hascovariates(covariates) = true
+hascovariates(covariates::NoCovar) = false
+hascovariates(subject::Subject) = hascovariates(subject.covariates)
 ### Display
 Base.summary(::Subject) = "Subject"
 function Base.show(io::IO, subject::Subject)
   println(io, summary(subject))
-  print(io, string("  ID: $(subject.id)"))
+  println(io, string("  ID: $(subject.id)"))
   evs = subject.events
-  isnothing(evs) || print(io, "\n  Events: ", length(subject.events))
+  isnothing(evs) || println(io, "  Events: ", length(subject.events))
   obs = subject.observations
   observables = propertynames(obs)
   if !isempty(observables)
     vals = mapreduce(pn -> string(pn, ": (n=$(length(getindex(obs, pn))))"),
                      (x, y) -> "$x, $y",
                      observables)
-    print(io, "\n  Observables: $vals")
+    println(io, "  Observables: $vals")
   end
-  if subject.covariates != nothing
-    if length(subject.covariates) > 10
-      print(io, string("\n  Too many Covariates to display. Run DataFrame(Subject) to see the Covariates. "))
-    else
-      print(io, string("\n  Covariates: $(subject.covariates)"))
-    end
+  if hascovariates(subject)
+    _covariates = subject.covariates(0.0)
+    println(io, "  Covariates: ", join(fieldnames(typeof(_covariates)),", "))
   end
 end
 TreeViews.hastreeview(::Subject) = true
@@ -569,12 +587,12 @@ end
 Base.summary(::Population) = "Population"
 function Base.show(io::IO, ::MIME"text/plain", population::Population)
   println(io, summary(population))
-  print(io, "  Subjects: ", length(population))
+  println(io, "  Subjects: ", length(population))
   if isassigned(population, 1)
-    co = population[1].covariates
-    !isnothing(co) && print(io, "\n  Covariates: ", join(fieldnames(typeof(co)),", "))
+    co = population[1].covariates(0.0)
+    !isnothing(co) && println(io, "  Covariates: ", join(fieldnames(typeof(co)),", "))
     obs = population[1].observations
-    !isnothing(obs) && print(io, "\n  Observables: ", join(keys(obs),", "))
+    !isnothing(obs) && println(io, "  Observables: ", join(keys(obs),", "))
   end
   return nothing
 end
@@ -650,8 +668,7 @@ function read_pumas(filepath::AbstractString; kwargs...)
 end
 function read_pumas(df::AbstractDataFrame;
   cvs=Symbol[], dvs=Symbol[:dv], id=:id, time=:time, evid=:evid, amt=:amt, addl=:addl,
-  ii=:ii, cmt=:cmt, rate=:rate, ss=:ss, mdv=:mdv, event_data = true)
-
+  ii=:ii, cmt=:cmt, rate=:rate, ss=:ss, mdv=:mdv, event_data = true, cvs_direction=:right)
   df = copy(df)
   colnames = names(df)
 
@@ -683,8 +700,7 @@ function read_pumas(df::AbstractDataFrame;
   for dv in dvs
     df[!, dv] .= ifelse.(mdv, missing, df[!, dv])
   end
-
   return [Subject(subject_df, id, time, evid, amt, addl, ii, cmt,
-                  rate, ss, cvs, dvs, event_data) for subject_df in groupby(df, id)]
+                  rate, ss, cvs, dvs, event_data, cvs_direction) for subject_df in groupby(df, id)]
 end
 

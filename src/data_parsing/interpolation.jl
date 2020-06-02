@@ -1,10 +1,11 @@
 using StructArrays
+
 struct ConstantInterpolationStructArray{T, U, D}
   t::T
   u::U
   dir::D
 end
-function (A::ConstantInterpolationStructArray{<:Any,<:StructArray})(t::Number)
+function (A::ConstantInterpolationStructArray{<:Any,<:StructArray,<:Any})(t::Number)
   if A.dir === :left
     # :left means that value to the left is used for interpolation
     i = searchsortedlast(A.t, t)
@@ -19,11 +20,12 @@ end
 struct NoCovar end
 (nc::NoCovar)(t) = nothing
 struct ConstantCovar{C}
-  cvs_nt::C
+  u::C
 end
-(cc::ConstantCovar)(t=nothing) = cc.cvs_nt
+(cc::ConstantCovar)(t=nothing) = cc.u
+
 """
-  build_tvcov(cvs, data, time)
+  covariate_interpolant(cvs, data, time)
 
 Creates an interpolation of the time-varying covariate u at time points t using
 the interpolation scheme interp from DataInterpolations.jl. Returns a function
@@ -32,12 +34,17 @@ observations. This is safe for values which are not time-varying as well, allowi
 one to mix subjects with multiple measurements and subjects with a single measurement.
 Defaults to do a left-sided ConstantInterpolation.
 """
-function build_tvcov(cvs_keys,
+function covariate_interpolant(cvs_keys,
                      data,
                      time::Union{Nothing,Symbol},
                      id;
-                     interp=ConstantInterpolationStructArray)
+                     interp=ConstantInterpolationStructArray,
+                     cvs_direction=:right)
+   
+  _covariate_interpolant(cvs_keys, data, time, interp, id, cvs_direction)
+end
 
+function _covariate_interpolant(cvs_keys, data, time, interp, id, direction)
   # Create helper named tuple. It has keys == values so you can easily map
   # over it, use the name and get a namedtuple back.
   cvs_keys = Tuple(cvs_keys) # from vector to tuple
@@ -50,7 +57,7 @@ function build_tvcov(cvs_keys,
     # times without covariates and vice versa) and then we convert it
     # to a name tuple (ctime=, name=)
     covar_nt = df_to_nt(cvs_nt, data, time)
-    if all(covar -> (covar_nt[covar] isa String || length(unique(covar_nt[covar][covar])) == 1), cvs_keys)
+    if all(covar -> (covar_nt[covar][covar] isa String || length(unique(covar_nt[covar][covar])) == 1), cvs_keys)
       return 0.0, ConstantCovar(NamedTuple{cvs_keys}(map(c->covar_nt[c][c], cvs_keys)))
     end
   elseif data isa NamedTuple
@@ -75,7 +82,7 @@ function build_tvcov(cvs_keys,
       if length(unique(_covar)) == 1
         interped = fill(first(_covar), length(tvcov_times))
       else
-        interpi = DataInterpolations.ConstantInterpolation(_covar, _time, dir=:right)
+        interpi = DataInterpolations.ConstantInterpolation(_covar, _time, dir=direction)
         interped = interpi.(tvcov_times)
       end
       return interped
@@ -83,20 +90,19 @@ function build_tvcov(cvs_keys,
       # In the Subject constructor, users can specify covariates
       # like this: Subject(; cvs=(sex="female", k=1)) for constant
       # covariates.
-      return fill(_covar, length(tvcov_times))
+      return interped = fill(_covar, length(tvcov_times))
     end
   end
-  tvcov_sa = StructArray(tvcov_nt)
 
-  # this of course needs to allow for mixed interpolants and customly chosen interpolants
-  return tvcov_times, interp(tvcov_times, tvcov_sa, :right)
+    tvcov_sa = StructArray(tvcov_nt)
+    tvcov_times, interp(tvcov_times, tvcov_sa, direction)
 end
 # Should this be special cased throughout?  I mean should we dispatch on a "constant covariates" type (and pre?)
 # We could have a pre object that also holds covariates.
-build_tvcov(cvs_nt::Nothing, time, id) = (@SVector([0.0]), t->())
+covariate_interpolant(cvs_nt::Nothing, time, id; cvs_direction=cvs_direction) = (@SVector([0.0]), NoCovar())
 
 # Keys as vec
-function build_tvcov(cvs_nt::NamedTuple, cvstimes, id)
+function covariate_interpolant(cvs_nt::NamedTuple, cvstimes, id; cvs_direction=cvs_direction)
   # This is the case where everything was passed in the correct form from the Subject
   # constructor
   # We allow for two ways of entering covariate times. Either you
@@ -118,14 +124,15 @@ function build_tvcov(cvs_nt::NamedTuple, cvstimes, id)
       end
     end
   end
-  build_tvcov(cvs_keys, cvs_data, nothing, id)
+  covariate_interpolant(cvs_keys, cvs_data, nothing, id; cvs_direction=cvs_direction)
 end
 # No times were given, but there were covariates. Either this is an
 # error, or they're not varying over time (any of them!).
 
-function build_tvcov(cvs_nt::NamedTuple, cvstimes_nt::Nothing, id)
+# FIXME need one for BOV and no cvs!!!covariate_interpolant
+function covariate_interpolant(cvs_nt::NamedTuple, cvstimes_nt::Nothing, id; cvs_direction=cvs_direction)
   # You can only reach this method from the raw Subject constructor. If
-  # build_tvcov is called from the read_pumas call, the input would have
+  # covariate_interpolant is called from the read_pumas call, the input would have
   # a time column where we could grab these.
   cvs_keys = keys(cvs_nt)
   cvs_keys_nt = NamedTuple{cvs_keys}(cvs_keys)
@@ -141,7 +148,7 @@ function build_tvcov(cvs_nt::NamedTuple, cvstimes_nt::Nothing, id)
 end
 
 function df_to_nt(cvs_nt, data, time::Union{Symbol, Int})
-  covar_nt = map(cvs_nt) do name
+  map(cvs_nt) do name
     if name == time
       throw(ErrorException(":time should not be used to reference current time for covariates. Please consult the documentation on time varying covariates for more information."))
     end

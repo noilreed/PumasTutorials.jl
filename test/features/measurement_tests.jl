@@ -81,7 +81,7 @@ end
 
   function col_f(param, randeffs, subject)
     function pre(t)
-      cov = subject.covariates
+      cov = subject.covariates(t)
       (
         Ka = param.θ[1],
         CL = param.θ[2] * ((cov.wt/70)^0.75) * (param.θ[4]^cov.sex) * exp(randeffs.η[1]),

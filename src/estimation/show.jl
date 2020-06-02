@@ -149,7 +149,15 @@ function _push_varinfo!(_names, _vals, _se, _confint, paramname, paramval::PDiag
     for i = 1:length(mat)
       # We set stdii to nothing in case SEs are not requested to avoid indexing
       # into `nothing`.
-      stdii = _se == nothing ? nothing : std.diag[i]
+      if _se == nothing
+        stdii = nothing
+      else
+        if hasproperty(std, :diag)
+          stdii = std.diag[i]
+        else
+          stdii = std[i]
+        end
+      end
       _name = string(paramname)*"$(_to_subscript(i)),$(_to_subscript(i))"
       _push_varinfo!(_names, _vals, _se, _confint, _name, mat[i], stdii, quant)
     end

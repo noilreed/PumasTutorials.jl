@@ -34,6 +34,9 @@ end
 
 if group == "All" || group == "NLME_ML2"
   @time @safetestset "Maximum-likelihood models 2" begin
+    @time @safetestset "BOV" begin
+      include("bov.jl")
+    end
     @time @safetestset "Poisson" begin
       include("poisson_model.jl")
     end

@@ -16,7 +16,7 @@ function _npqreg(yname::Symbol, xname::Symbol, df::AbstractDataFrame, τ::Real, 
 end
 
 function discretize_cvs(population, cvname::Symbol, numstrat)
-    cvs = vcat([[subject.covariates[cvname] for j in 1:length(subject.time)] for subject in population]...)
+    cvs = vcat([[getproperty(subject.covariates.u, cvname) for j in 1:length(subject.time)] for subject in population]...)
     unqcvs = unique(cvs)
     if length(unqcvs) > numstrat
         boundvals = [quantile(unqcvs,i/numstrat) for i in 1:numstrat]

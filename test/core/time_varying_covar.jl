@@ -26,7 +26,7 @@ end
 
 function col_f(param,randeffs,subject)
   function __pre(t)
-    cov = subject.tvcov(t)
+    cov = subject.covariates(t)
     Ka = t*cov.ka  # pre
     CL = cov.cl
     Vc  = cov.v

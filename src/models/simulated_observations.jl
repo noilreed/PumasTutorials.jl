@@ -24,7 +24,8 @@ function Subject(simsubject::SimulatedObservations)
     evs        = simsubject.subject.events,
     time       = simsubject.times,
     event_data = !isnothing(simsubject.subject.events),
-    cvstime  = covartime)
+    covariates = covariates,
+    covartime = covartime)
   return subject
 end
 
