@@ -15,6 +15,9 @@ if group == "All" || group == "NLME_Basic"
     @time @safetestset "Soft failing infer" begin
       include("infer_error.jl")
     end
+    @time @safetestset "VPC" begin
+      include("vpc.jl")
+    end
   end
 end
 

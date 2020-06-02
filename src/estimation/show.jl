@@ -312,3 +312,14 @@ function Base.show(io::IO, mime::MIME"text/plain", sens::eFASTOutput)
   println(io, "Total Order Indices")
   println(io, sens.total_order, "\n")
 end
+
+function Base.show(io::IO, mime::MIME"text/plain", vpc::PopVPC)
+  println(io, "Data Quantiles", "\n")
+  println(io, vpc.data_quantiles)
+end
+
+function Base.show(io::IO, mime::MIME"text/plain", vpc::VPC)
+  show(io, mime, vpc.popvpc)
+  println(io, "\nSimulation Quantiles", "\n")
+  println(io, vpc.simulated_quantiles)
+end

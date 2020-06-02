@@ -586,11 +586,12 @@ function TreeViews.treelabel(io::IO, population::Population, mime::MIME"text/pla
 end
 TreeViews.nodelabel(io::IO, population::Population, i::Integer, mime::MIME"text/plain") = show(io, mime, Text(population[i].id))
 
-@recipe function f(pop::Population)
+@recipe function f(pop::Population;obsnames=nothing)
   for p in pop
     @series begin
       linewidth --> 1.5
       title --> "Population Simulation"
+      obsnames --> obsnames
       p
     end
   end

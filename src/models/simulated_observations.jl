@@ -20,9 +20,9 @@ function Subject(simsubject::SimulatedObservations)
   subject = Subject(;
     id         = simsubject.subject.id,
     obs        = NamedTuple{dvnames}(map(k -> simsubject.observed[k], dvnames)),
-    cvs        = covariates===nothing ? nothing : map(copy, covariates),
-    evs        = copy(simsubject.subject.events),
-    time       = copy(simsubject.times),
+    cvs        = covariates===nothing ? nothing : covariates,
+    evs        = simsubject.subject.events,
+    time       = simsubject.times,
     event_data = !isnothing(simsubject.subject.events),
     cvstime  = covartime)
   return subject

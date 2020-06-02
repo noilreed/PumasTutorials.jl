@@ -4,7 +4,7 @@ using FiniteDiff, Reexport, StatsBase,
       StaticArrays, Distributed, LabelledArrays,
       TreeViews, CSV, ForwardDiff, DiffResults, Optim, PDMats,
       Missings, RecipesBase, RecursiveArrayTools, Quadrature,
-      Statistics, DiffEqSensitivity
+      Statistics, DiffEqSensitivity, QuantileRegressions
 using LinearAlgebra
 using Base.Threads # for bootstrap
 using AdvancedHMC: DiagEuclideanMetric, Hamiltonian, NUTS, Leapfrog, find_good_stepsize, StanHMCAdaptor, MassMatrixAdaptor, StepSizeAdaptor, MultinomialTS, GeneralisedNoUTurn
@@ -44,6 +44,7 @@ include("estimation/bootstrap.jl")
 include("estimation/bayes.jl")
 include("estimation/diagnostics.jl")
 include("estimation/gsa.jl")
+include("estimation/vpc.jl")
 include("estimation/show.jl")
 
 include("analytical_solutions/standard_models.jl")
@@ -71,7 +72,7 @@ export wresiduals, empirical_bayes
 export ηshrinkage, ϵshrinkage
 export read_pumas, example_data
 export @model, @nca
-export infer, inspect
+export infer, inspect, vpc
 
 export expectation, KoopmanExpectation, MonteCarloExpectation
 
