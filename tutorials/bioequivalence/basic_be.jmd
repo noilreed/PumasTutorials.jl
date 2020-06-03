@@ -1,234 +1,185 @@
 ---
 title: Introduction to Bioequivalence
-author: José Bayoán Santiago Calderón
-date: May 26, 2020
+author: José Bayoán Santiago Calderón, PhD
+date: 2020-06-03
+weave_options:
+  line_width : 130
 ---
 
 # Introduction
 
-This is an introduction to `Bioequivalence.jl`, a software for bioequivalence analysis (BE).
-In this tutorial we will show how to use `Bioequivalence.jl` to analysis data.
+We recommend first reading the [documentation](https://docs.pumas.ai/dev/) which goes over how to download and install the module.
 
-## Installation
+## Quick Start
 
-You must first install install Bioequivalence.jl.
+We first explore an example from the `pumas_be` function documentation.
 
-```julia
-using Pkg
-Pkg.add("Bioequivalence")
+```julia; echo = false; results = "hidden"; @setup Main
+ENV["COLUMNS"] = 130;
+ENV["LINES"] = 30;
 ```
 
-## Getting Started
+Let us load the module through
 
-To load the package, use
-
-```julia
+```julia @example Main
+using Pkg
+Pkg.activate(joinpath(@__DIR__, "tutorials", "bioequivalence"))
 using Bioequivalence
 ```
 
-# Designs
+The first example comes from a two sequences, two periods, two formulations crossover design (`RT|TR`) from Schütz, Labes, and Fuglsang (2014).
 
-## Nonparametric
-
-Nonparametric designs are included for analysis of endpoints such as Tmax.
-
-```@example Main
-PJ316 = Bioequivalence.testdata("PJ2017_3_16")
-first(PJ316, 6)
-```
-
-The average bioequivalence analysis can be requested through `pumas_be`
-
-```@example Main
-Cmax = pumas_be(PJ316, endpoint = :Tmax)
-```
-
-Nonparametric analysis uses the Wilcoxon signed rank test.
-
-```@example Main
-Cmax.model
-```
-
-Other endpoints can potentially be analyzed through a nonparametric method as well
-
-```@example Main
-PJ46 = Bioequivalence.testdata("PJ2017_4_6")
-first(PJ46, 6)
-```
-
-```@example Main
-NP = pumas_be(PJ46, nonparametric = true)
-```
-
-## Parallel
-
-Consider a parallel design dataset with balance between treatment groups such as Clayton and Leslie ([1981](https://doi.org/10.1177/030006058100900608)).
-
-```@example Main
-ClaytonandLeslie1981 = Bioequivalence.testdata("FSL2015_1")
-first(ClaytonandLeslie1981, 6)
-```
-
-The bioequivalence analysis can be requested through `BioequivalenceStudy`
-
-```@example Main
-# notice it defaults to the AUC endpoint
-Parallel = pumas_be(ClaytonandLeslie1981)
-```
-
-The output shows the design, statistical model, and result.
-
-One can access the statistical model directly through
-
-```@example Main
-Parallel.model
-```
-
-The results can be accessed through
-
-```@example Main
-Parallel.result
-```
-
-or calling `coeftable` on the object
-
-```@example Main
-coeftable(Parallel)
-```
-
-Notice that the results are validated with those reported in Fuglsang, Schütz, and Labes ([2015](https://doi.org/10.1208/s12248-014-9704-6)). The Geometric Means Ratio (GMR) has a point estimate of (48.58) and a 90% confidence interval of (26.78, 88.14). These are the values reported in the study obtained with various statistical packages with the Welch correction.
-
-## Crossover
-
-The most common bioequivalence design is perhaps the 2x2 crossover (RT|TR). Consider a dataset from Schütz, Labes, and Fuglsang ([2014](https://doi.org/10.1208/s12248-014-9661-0)) which has been simulated with an extreme range in raw data, outliers, and imbalance between sequences and a large number of subjects.
-
-```@example Main
+```julia @example Main
 SLF2014 = Bioequivalence.testdata("SLF2014_8")
-first(SLF2014, 6)
+show(SLF2014)
 ```
 
-The bioequivalence analysis can be requested through `BioequivalenceStudy`
+The `id` variable specifyies the identifier for each subject.
 
-```@example Main
-# notice it defaults to the AUC endpoint
+The `sequence` must be a `String` with each `Character` representing a formulation.
+
+For example, `"RTTR"` represents `R` formulation in the first period, `T` formulation in the second and third periods, and `R` formulation in the fourth period.
+
+The `period` variable must be integers specifying the period based on the sequence.
+
+For example,
+```julia; eval = false
+id = 1
+period = 1
+sequence = "TR"
+endpoint = 168.407
+```
+means that the endpoint for subject with ID `1` in the first period when receiving the `T` formulation recorded the value 168.407.
+
+Notice that the study design is fully characterized by the unique values of the `sequence` variable.
+
+In order to perform the bioequivalence analysis we can pass the data to the `pumas_be` function.
+
+```julia @example Main
 Crossover = pumas_be(SLF2014)
+show(Crossover)
 ```
 
-As with other designs one can access the specific elements of the models use in the analysis.
+When passing only the data argument it will use the default values for all the other arguments.
 
-```@example Main
-loglikelihood(Crossover.model.model)
+For example, if the dataset had the variable indicating the subject ID as `subj` instead of `id`,
+
+```julia @example Main
+using DataFrames
+rename!(SLF2014, "id" => "subj")
+try
+    pumas_be(SLF2014)
+catch err
+    err
+end
 ```
 
-The results are obtained through,
+In this case we can pass the variable position (i.e., `1`) or the name of the variable as a `Symbol` to the function.
 
-```@example Main
-Crossover.result
+```julia @example Main
+Crossover = pumas_be(SLF2014, id = :subj)
+show(Crossover)
 ```
 
-Crossover 2x2 designs are validated with Schütz, Labes, and Fuglsang ([2014](https://doi.org/10.1208/s12248-014-9661-0)) and Patterson and Jones (2006). In this example, the estimate for the GMR is (93.42) with a 90% confidence interval of (86.81, 100.55).
+## Examining the Results
 
-## Balaam
+The `BioequivalenceStudy` will show the study design as well as how many subjects were in each sequence.
 
-The Balaam design (RR|RT|TR|TT) is explored with a dataset from Chow and Liu (2009).
+For convenience it also shows the formulation and periods as well as how many there are for that design.
 
-```@example Main
-ChowandLiu2009 = Bioequivalence.testdata("CL2009_9_2_1")
-first(ChowandLiu2009, 6)
+A coefficients table will also be showing the parameter estimates and related values for each comparison among each non-reference formulation and the reference formulation. Those will include the point estimate (`PE`), standard error (`SE`), the 90% confidence interval in the natural log scale (i.e., `lnLB`, `lnUB`), the geometric means ratio (`GMR`), and the 90% confidence intervals in the natural scale (i.e., `LB`, `UB`).
+
+The average bioequivalence is assessed based on the lower and upper bounds of the 90% percent confidence interval. Based on the regulatory guidelines for the FDA, the confidence intervals are reported in percentage form with two decimal places. In other words, if the lower bound value is 0.85793 the percentage form would be 85.793% and be rounded down to 85.79%. If the upper bound value is 1.20522 the percentage form would be 120.522% and be rounded up to 120.53%. The Bioequivalence results will have correct percentage format in decimal form (e.g. 1.2053 for 120.53%). 
+
+Besides the bioequivalence results one can query a number of properties.
+
+We can access the information about the design
+
+```julia @example Main
+show(Crossover.design)
 ```
 
-The data has the same specification as other crossover studies.
+The data used for the model
 
-The analysis follows similarly as well.
-
-```@example Main
-# notice it defaults to the AUC endpoint
-Balaam = pumas_be(ChowandLiu2009)
+```julia @example Main
+show(Crossover.data)
 ```
 
-!!! note
-    Designs with repeated measures include rescaled parameter estimates and variance analysis.
+Statistics about the data such as:
 
-We can also obtain the results for the assess the intra-subject variabilities through
+how many observations did the initial data had.
 
-```@example Main
-Balaam.model.σ
+```julia @example Main
+show(Crossover.data_stats.total)
 ```
 
-## Dual
+how many observations did the analysis actually used (e.g., total - count of missing values).
 
-Consider the example 4.1 in Patterson and Jones (2006)
-
-```@example Main
-PJ41 = Bioequivalence.testdata("PJ2017_4_1")
-first(PJ41, 6)
+```julia @example Main
+show(Crossover.data_stats.used_for_analysis)
 ```
 
-```@example Main
-Dual = pumas_be(PJ41, endpoint = :Cmax)
+as well as summary statistics of the endpoint distribution by sequence, period or formulation.
+
+```julia @example Main
+show(Crossover.data_stats.sequence)
 ```
 
-## 2S4P Designs
-
-For 2S4P designs both RRTT|TTRR and RTRT|TRTR are supported
-
-```@example Main
-PJ43 = Bioequivalence.testdata("PJ2017_4_3")
-first(PJ43, 6)
+```julia @example Main
+show(Crossover.data_stats.period)
 ```
 
-```@example Main
-Inner = pumas_be(PJ43)
+```julia @example Main
+show(Crossover.data_stats.formulation)
 ```
 
-```@example Main
-PJ44 = Bioequivalence.testdata("PJ2017_4_4")
-first(PJ44, 6)
+One can also query the model used for inference.
+The exact API for extracting values from the models will depend on the design.
+The most common API is documented [here](https://juliastats.org/StatsBase.jl/stable/statmodels/).
+For example, we can obtain the coefficient of determination (`R²`) through the API.
+
+```julia @example Main
+using StatsBase
+r2(Crossover.model)
 ```
 
-```@example Main
-Outer = pumas_be(PJ44, endpoint = :Cmax)
+likewise we can obtain the `deviance` of the model through
+
+```julia @example Main
+deviance(Crossover.model)
 ```
 
-## Williams
+Derived statistics for the model such as the Wald test for join-significance for the sequence, period, and formulation covariates
 
-Consider a 3 formulations Williams design
-
-```@example Main
-PJ45 = Bioequivalence.testdata("PJ2017_4_5")
-first(PJ45, 6)
+```julia @example Main
+show(Crossover.model_stats.Wald)
 ```
 
-```@example Main
-W3F = pumas_be(PJ45)
+and the linear regression mean estimates per formulation
+
+```julia @example Main
+show(Crossover.model_stats.lsmeans)
 ```
 
-Imagine for a moment that the reference formulation is actually S instead of R.
-One can pass such a parameter as following.
+are available as showen above.
 
-```@example Main
-W3F = pumas_be(PJ45, reference = 'S')
+You can also run models for various endpoints easily as following
+
+```julia @example Main
+data = Bioequivalence.testdata("PJ2017_4_3")
+show(data)
 ```
 
-Williams designs for four formulations are available as well
-
-```@example Main
-PJ46 = Bioequivalence.testdata("PJ2017_4_6")
-first(PJ46, 6)
+```julia @example Main
+auc = pumas_be(data)
+cmax = pumas_be(data, endpoint = :Cmax)
+output = Dict(endpoint => pumas_be(data, endpoint = endpoint) for endpoint in setdiff(propertynames(data), (:id, :sequence, :period)))
 ```
 
-```@example Main
-W4F = pumas_be(PJ46)
+```julia @example Main
+show(output[:AUC])
 ```
 
-# References
-
-Chow, Shein-Chung, and Jen-pei Liu. 2009. Design and Analysis of Bioavailability and Bioequivalence Studies. 3rd ed. Chapman & Hall/CRC Biostatistics Series 27. Boca Raton: CRC Press.
-
-Clayton, D, and A Leslie. 1981. "The Bioavailability of Erythromycin Stearate versus Enteric-Coated Erythromycin Base When Taken Immediately before and after Food." Journal of International Medical Research 9 (6): 470–77. DOI: [10.1177/030006058100900608](https://doi.org/10.1177/030006058100900608).
-
-Fuglsang, Anders, Helmut Schütz, and Detlew Labes. 2015. "Reference Datasets for Bioequivalence Trials in a Two-Group Parallel Design." The AAPS Journal 17 (2): 400–404. DOI: [10.1208/s12248-014-9704-6](https://doi.org/10.1208/s12248-014-9704-6).
-
-Patterson, Scott D., and Byron Jones. 2017. Bioequivalence and Statistics in Clinical Pharmacology. 2nd ed. Chapman and Hall/CRC. DOI: [10.1201/9781315374161](https://doi.org/10.1201/9781315374161).
-
-Schütz, Helmut, Detlew Labes, and Anders Fuglsang. 2014. "Reference Datasets for 2-Treatment, 2-Sequence, 2-Period Bioequivalence Studies." The AAPS Journal 16 (6): 1292–97. [DOI:10.1208/s12248-014-9661-0](https://doi.org/10.1208/s12248-014-9661-0).
+```julia @example Main
+show(output[:Cmax])
+```
