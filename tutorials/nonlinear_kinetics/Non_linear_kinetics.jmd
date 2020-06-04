@@ -1,0 +1,220 @@
+---
+title : Non-linear Kinetics
+author : Parsshava R Mehta
+date : 2nd June 2020
+---
+Load the necessary libraries
+```julia
+using Pumas, Plots
+```
+
+## Introduction
+  In this tutorial you will learn the following non-linear models
+
+  * Non-linear Elimination
+  * Non-linear Metabolite Formation
+  * Non-linear Absorption
+
+In all these models you can see the Michaelis-Menten term is mentioned in the **`@vars`** block as a short
+hand notation. It is then incorporated into the differential equation in the **`@dynamics`** block
+
+#### Non-linear Elimination
+  In this model the elimination of the  metabolite is saturated at higher concentrations and is written
+  using the Michaelis-Menten term
+
+```julia
+one_compt_non_linear_eli = @model begin
+  @param begin
+    tvvc   ∈ RealDomain(lower=0)
+    tvvmax ∈ RealDomain(lower=0)
+    tvkm   ∈ RealDomain(lower=0)
+    Ω      ∈ PDiagDomain(2)
+  end
+
+  @random begin
+    η      ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Vc     = tvvc * exp(η[1])
+    Vmax   = tvvmax
+    Km     = tvkm * exp(η[2])
+  end
+
+  @vars begin
+    Cl    := Vmax/(Km+(Central/Vc)) #Let us call this VMKM for lack of better term.
+    #Calling it Cl (perhaps you meant CL) is risky in terms of interpretation. Mathematically CL=Vmax/km (avg CL)
+  end
+
+  @dynamics begin
+    Central' = - Cl * (Central/Vc)
+  end
+
+  @derived begin
+    Cp    = @. Central
+  end
+end
+```
+Parameters for the model are as below:
+```julia
+par1 = ( tvvc   = 50,    # (L)
+         tvvmax = 45,    # (mg/hr)
+         tvkm   = 2,     # (mg/L)
+         Ω      = Diagonal([0.04, 0.01]))
+```
+**Simulating a population of two subjects with different doses**
+ * Subject 1 receives a dose of 25 mg given as an IV-bolus at `time=0`
+ * Subject 2 receives a dose of 600 mg given as an IV-bolus at `time=0`
+
+```julia
+ev1  = DosageRegimen(25, time=0, cmt=:Central)
+sub1 = Subject(id=1, evs= ev1)
+ev2  = DosageRegimen(600, time=0, cmt=:Central)
+sub2 = Subject(id=2, evs=ev2);
+```
+Concatenate both the subjects as a population and use the `simobs` function for simulation
+```julia
+sub  = [sub1, sub2]
+obs1 = simobs(one_compt_non_linear_eli, sub, par1, obstimes=0.1:0.1:30)
+plot(obs1, yaxis=:log)
+```
+
+#### Non-linear Metabolite Formation
+  In this model the formation of the metabolite is saturated at higher concentration and follows
+  a Michaelis-Menten type reaction
+
+```julia
+two_compt_non_linear_metform = @model begin
+  @param begin
+    tvvc    ∈ RealDomain(lower=0)
+    tvq     ∈ RealDomain(lower=0)
+    tvvp    ∈ RealDomain(lower=0)
+    tvvmax  ∈ RealDomain(lower=0)
+    tvkm    ∈ RealDomain(lower=0)
+    tvkme   ∈ RealDomain(lower=0)
+    tvvme   ∈ RealDomain(lower=0)
+    Ω       ∈ PDiagDomain(3)
+  end
+
+  @random begin
+    η       ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Vc      = tvvc * (Wt/70) * exp(η[1])
+    Q       = tvq * (Wt/70)^0.75 * exp(η[2])
+    Vp      = tvvp * (Wt/70)
+    Vmax    = tvvmax * (Wt/70)
+    Km      = tvkm
+    Kme     = tvkme * exp(η[3])
+    Vme     = tvvme * (Wt/70)
+  end
+
+  @covariates Wt
+
+  @vars begin
+    Clfm   := Vmax/(Km+(Central/Vc))
+  end
+
+  @dynamics begin
+    Central'    = -(Q/Vc)*Central + (Q/Vp)*Peripheral - Clfm*(Central/Vc)
+    Peripheral' = (Q/Vc)*Central - (Q/Vp)*Peripheral
+    Metabolite' = Clfm*(Central/Vc) - Kme*Metabolite
+  end
+
+  @derived begin
+    Cp    = @. Central/Vc
+    Met   = @. Metabolite/Vme
+  end
+end
+```
+Parameters for the model are as below:
+```julia
+par_met = ( tvvc    = 1,        # (L/kg)
+            tvq     = 0.2,      # (L/min/kg)
+            tvvp    = 3,        # (L/kg)
+            tvvmax  = 2,        # (μg/min/kg)
+            tvkm    = 60,       # (μg/L)
+            tvkme   = 0.15,     # (min⁻¹)
+            tvvme   = 0.3,      # (L/kg)
+            Ω       = Diagonal([0.09, 0.04, 0.0625]))
+```
+**Simulating a population of two subjects with different doses**
+ * Subject 1 receives a dose of 50 μg/kg given as an IV-Bolus at `time=0`
+ * Subject 2 receives a dose of 400 μg/kg given as an IV-Bolus at `time=0`
+```julia
+ev1  = DosageRegimen(50, time=0, cmt=:Central)
+sub1 = Subject(id=1, evs=ev1, cvs=(Wt=60,))
+ev2  = DosageRegimen(400, time=0, cmt=:Central)
+sub2 = Subject(id=2, evs=ev2, cvs=(Wt=60,))
+sub  = [sub1, sub2]
+```
+Use the `simobs` function to run the simulation
+```julia
+sub  = [sub1, sub2]
+obs1 = simobs(two_compt_non_linear_metform, sub, par_met, obstimes=0.1:0.1:600)
+plot(obs1, yaxis=:log)
+```
+
+#### Non-linear Absorption
+  In this model the absorption of the drug is saturated at higher concentration and follows
+  a Michaelis-Menten type reaction
+
+```julia
+one_compt_non_linear_abs = @model begin
+  @param begin
+    tvvc   ∈ RealDomain(lower=0)
+    tvvmax ∈ RealDomain(lower=0)
+    tvkm   ∈ RealDomain(lower=0)
+    tvcl   ∈ RealDomain(lower=0)
+    Ω      ∈ PDiagDomain(2)
+  end
+
+  @random begin
+    η      ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Vc     = tvvc * exp(η[1])
+    Vmax   = tvvmax
+    Km     = tvkm
+    Cl     = tvcl * exp(η[2])
+  end
+
+  @vars begin
+    Ka    := Vmax/(Km+Depot)
+  end
+
+  @dynamics begin
+    Depot'   = -Ka*Depot
+    Central' = Ka*Depot - (Cl/Vc)*Central
+  end
+
+  @derived begin
+    Cp    = @. Central/Vc
+  end
+end
+```
+Parameters for the model are as below:
+```julia
+par_abs = ( tvvc   = 10,    # (L)
+            tvvmax = 5,     # (mg/hr)
+            tvkm   = 1,     # (mg/L)
+            tvcl   = 5,     # (L/hr)
+            Ω      = Diagonal([0.0001,0.0001]))
+```
+**Simulating a population of two subjects with different doses:**
+ * Subject 1 receives an oral dose of 3 mg at `time=0`
+ * Subject 2 receives an oral dose of 30 mg given as an IV-Bolus at `time=0`
+```julia
+ev1 = DosageRegimen(3, time=0, cmt=:Depot)
+sub1 = Subject(id=1, evs=ev1)
+ev2 = DosageRegimen(30, time=0, cmt=:Depot)
+sub2 = Subject(id=2, evs=ev2)
+sub = [sub1, sub2]
+```
+Use the `simobs` function to run the simulation
+```julia
+obs = simobs(one_compt_non_linear_abs, sub, par_abs, obstimes=0.1:0.1:24)
+plot(obs, yaxis=:log)
+```
