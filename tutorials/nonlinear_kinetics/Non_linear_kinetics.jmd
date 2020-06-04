@@ -42,16 +42,15 @@ one_compt_non_linear_eli = @model begin
   end
 
   @vars begin
-    Cl    := Vmax/(Km+(Central/Vc)) #Let us call this VMKM for lack of better term.
-    #Calling it Cl (perhaps you meant CL) is risky in terms of interpretation. Mathematically CL=Vmax/km (avg CL)
+    VMKM    := Vmax/(Km+Central)
   end
 
   @dynamics begin
-    Central' = - Cl * (Central/Vc)
+    Central' = - VMKM * Central
   end
 
   @derived begin
-    Cp    = @. Central
+    Cp    = @. Central/Vc
   end
 end
 ```
@@ -59,7 +58,7 @@ Parameters for the model are as below:
 ```julia
 par1 = ( tvvc   = 50,    # (L)
          tvvmax = 45,    # (mg/hr)
-         tvkm   = 2,     # (mg/L)
+         tvkm   = 100,   # (mg)
          Ω      = Diagonal([0.04, 0.01]))
 ```
 **Simulating a population of two subjects with different doses**
@@ -113,13 +112,13 @@ two_compt_non_linear_metform = @model begin
   @covariates Wt
 
   @vars begin
-    Clfm   := Vmax/(Km+(Central/Vc))
+    VMKM   := Vmax/(Km+Central)
   end
 
   @dynamics begin
-    Central'    = -(Q/Vc)*Central + (Q/Vp)*Peripheral - Clfm*(Central/Vc)
+    Central'    = -(Q/Vc)*Central + (Q/Vp)*Peripheral - VMKM*Central
     Peripheral' = (Q/Vc)*Central - (Q/Vp)*Peripheral
-    Metabolite' = Clfm*(Central/Vc) - Kme*Metabolite
+    Metabolite' = VMKM*Central - Kme*Metabolite
   end
 
   @derived begin
@@ -134,7 +133,7 @@ par_met = ( tvvc    = 1,        # (L/kg)
             tvq     = 0.2,      # (L/min/kg)
             tvvp    = 3,        # (L/kg)
             tvvmax  = 2,        # (μg/min/kg)
-            tvkm    = 60,       # (μg/L)
+            tvkm    = 60,       # (μg)
             tvkme   = 0.15,     # (min⁻¹)
             tvvme   = 0.3,      # (L/kg)
             Ω       = Diagonal([0.09, 0.04, 0.0625]))
@@ -151,7 +150,6 @@ sub  = [sub1, sub2]
 ```
 Use the `simobs` function to run the simulation
 ```julia
-sub  = [sub1, sub2]
 obs1 = simobs(two_compt_non_linear_metform, sub, par_met, obstimes=0.1:0.1:600)
 plot(obs1, yaxis=:log)
 ```
@@ -182,12 +180,12 @@ one_compt_non_linear_abs = @model begin
   end
 
   @vars begin
-    Ka    := Vmax/(Km+Depot)
+    VMKM    := Vmax/(Km+Depot)
   end
 
   @dynamics begin
-    Depot'   = -Ka*Depot
-    Central' = Ka*Depot - (Cl/Vc)*Central
+    Depot'   = -VMKM*Depot
+    Central' = VMKM*Depot - (Cl/Vc)*Central
   end
 
   @derived begin
@@ -199,7 +197,7 @@ Parameters for the model are as below:
 ```julia
 par_abs = ( tvvc   = 10,    # (L)
             tvvmax = 5,     # (mg/hr)
-            tvkm   = 1,     # (mg/L)
+            tvkm   = 1,     # (mg)
             tvcl   = 5,     # (L/hr)
             Ω      = Diagonal([0.0001,0.0001]))
 ```
