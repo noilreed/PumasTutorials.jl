@@ -1,4 +1,4 @@
-using Pumas, Test, CSV
+using Pumas, Test, CSV, Random
 
 @testset "nmtran" begin
   data = read_pumas(example_data("event_data/data1"))
@@ -275,3 +275,20 @@ end
   @test_throws Pumas.PumasDataError read_pumas(df12, amt=:amt, cvs=[:age,:sex,:crcl])
 end
 
+@testset "Covartime inclusion in time vector" begin
+  Random.seed!(8765492)
+  covar3() = (WT = fill(rand(13.1:18.3), 2),)
+  covar4() = (WT = rand(13.1:18.3),)
+  e3 = DosageRegimen(320,
+                     time = 0,
+                     cmt = 1,
+                     addl = 3,
+                     ii = 24)
+
+  pop1 = map(i -> Subject(id=i, evs=e3, cvs=covar4()), 2:5)
+  pop1df = DataFrame(pop1)
+  @test pop1df.WT == reduce(vcat, map(i->fill(pop1[i].covariates(0.0).WT, 4), 1:length(pop1)))
+  pop2 = map(i -> Subject(id=i, evs=e3, cvs=covar3(), cvstime = (WT = range(0, 8; length=2))),2:5)
+  pop2df = DataFrame(pop2)
+  @test pop2df.WT == reduce(vcat, map(i->fill(pop2[i].covariates(0.0).WT, 6), 1:length(pop2)))
+end

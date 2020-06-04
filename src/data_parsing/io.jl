@@ -393,13 +393,9 @@ struct Subject{T1,T2,T3,T4,T5}
       covartime, covariates = covariate_interpolant(cvs, cvstime, id; cvs_direction=cvs_direction)
     end
     # Check that time is well-specified (not nothing, not missing and increasing)
-    if isnothing(time)
-      _time = nothing
-    else
-      _time = Missings.disallowmissing(time)
-      if !issorted(_time)
-        throw(PumasDataError("Time is not monotonically increasing within subject"))
-      end
+    _time = isnothing(time) ? nothing : Missings.disallowmissing(time)
+    if !isnothing(_time) && !issorted(_time)
+      throw(PumasDataError("Time is not monotonically increasing within subject"))
     end
 
     new{typeof(obs),typeof(covariates),typeof(evs),typeof(_time), typeof(covartime)}(string(id), obs, covariates, evs, _time, covartime)
@@ -488,6 +484,15 @@ function DataFrames.DataFrame(subject::Subject; include_covariates=true, include
   else
     df
   end
+
+  # If the covariates are time varying we include them explicitly as evid 0 rows.
+  # The thought here is to be able to recreate the interpolant from the DataFrame
+  # that we end up returning here.
+  if subject.covariates isa ConstantInterpolationStructArray
+    covartime = subject.covariates.t
+    df_covar = DataFrame(id = fill(subject.id, length(covartime)), time=covartime)
+    df = vcat(df, df_covar; cols=:union)
+  end
   include_covariates && _add_covariates!(df, subject)
 
   # Sort the df according to time first, and use :base_time to ensure that events
@@ -518,8 +523,7 @@ function DataFrames.DataFrame(subject::Subject; include_covariates=true, include
 end
 
 function _add_covariates!(df::DataFrame, subject::Subject)
-  covariates = subject.covariates.(subject.time)
-  df_idx = hasproperty(df, :evid) ? df[!, :evid].==0 : !
+  covariates = subject.covariates.(df.time)
   if !(isa(covariates, Nothing) || isa(covariates, Tuple{})) && !isa(first(covariates), Nothing)
     if covariates isa AbstractVector
       _keys = keys(covariates[1])
@@ -528,16 +532,12 @@ function _add_covariates!(df::DataFrame, subject::Subject)
         end
     end
     for (covariate, value) in pairs(covariates)
-      if value isa String || value isa Number
-        df[!, covariate] .= value isa Number ? typeof(value)(0) : Ref("")
-        df[df_idx, covariate] .= Ref(value)
+      if eltype(value) == String || eltype(value) == Number
+        df[!, covariate] .= eltype(value) isa Number ? typeof(value)(0) : Ref("")
+        df[!, covariate] .= value
       else
         df[!, covariate] .= eltype(value)(0)
-        df[df_idx, covariate] .= value
-      end
-      if hasproperty(df, :evid)
-        allowmissing!(df, covariate)
-        df[df[!, :evid].!=0, covariate] .= missing
+        df[!, covariate] .= value
       end
     end
   end

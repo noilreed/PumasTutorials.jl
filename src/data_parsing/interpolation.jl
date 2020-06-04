@@ -120,7 +120,7 @@ function covariate_interpolant(cvs_nt::NamedTuple, cvstimes, id; cvs_direction=c
         return (ctime=AbstractFloat.(cvstimes), name=cvs_nt[name])
       else
         # ... unless the user failed to provide a proper cvstimes vector.
-        throw(ErrorException("Length of covariate $name ($(length(cvs_nt[name]))) does not match length of cvstimes ($(length(cvstimes)))."))
+        throw(ErrorException("Length of covariate $name ($(length(cvs_nt[name]))) does not match length of cvstime ($(length(cvstimes)))."))
       end
     end
   end
@@ -144,7 +144,7 @@ function covariate_interpolant(cvs_nt::NamedTuple, cvstimes_nt::Nothing, id; cvs
   # Else we require the user to specify the times each covariate
   # is observed. Say cvs_nt = (wt = [50.0, 75.0, 100.0], isPM = "no"),
   # then you have to input cvstime = (wt =[0.0, 10.0, 30.0], isPM = [0.0]).
-  throw(ErrorException("You must provide covariate times for subject $id using the `cvstimes` keyword when specifying time-varying covariates."))
+  throw(ErrorException("You must provide covariate times for subject $id using the `cvstime` keyword when specifying time-varying covariates."))
 end
 
 function df_to_nt(cvs_nt, data, time::Union{Symbol, Int})
