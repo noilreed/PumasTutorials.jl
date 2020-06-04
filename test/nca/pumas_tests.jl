@@ -145,7 +145,7 @@ end
 
 @test NCADose(ev1[1].events[1]) === NCADose(0.0, 2000.0, 0.0, NCA.IVBolus)
 
-theopp = read_pumas(example_data("event_data/THEOPP"),cvs = [:SEX,:WT])
+theopp = read_pumas(example_data("event_data/THEOPP"), cvs = [:SEX,:WT])
 theonca = NCAPopulation(theopp, name=:dv)
 @test all(i->theonca[i].time ≈ theopp[i].time, eachindex(theopp))
 @test all(i->theonca[i].conc ≈ theopp[i].observations.dv, eachindex(theopp))

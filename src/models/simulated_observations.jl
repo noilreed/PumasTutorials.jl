@@ -75,12 +75,12 @@ function DataFrames.DataFrame(
     df[!,:rate] = zeros(typeof(events[1].rate), nrows)
     # Add rows corresponding to the events
     ## For events that have a matching observation at the event
-    ## time, the values of the derived variables are copied.
+    ## time, the values of the derived variables set to missing.
     ## Otherwise they are set to `missing`.
     for ev in events
       ind = searchsortedlast(obs.times, ev.time)
       if ind != 0 && obs.times[ind] == ev.time
-        ev_row = vcat(ev.time, df[ind, obs_columns]...,
+        ev_row = vcat(ev.time, fill(missing, length(obs_columns))...,
                       ev.amt, ev.evid, ev.cmt, ev.rate)
         push!(df, ev_row)
       else

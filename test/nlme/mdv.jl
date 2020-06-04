@@ -66,7 +66,7 @@ model_diffeq = @model begin
       ParentPeriph'     = -(Q/Vp)*ParentPeriph + (Q/Vc)*Central
       Metabolite'       = -(CLm/Vm)*Metabolite + (CLfm/Vc)*Central
   end
-     
+
   @derived begin
     cp1 := @. Central/Vc
     dv1 ~ @. Normal(cp1, abs(cp1)*σ)
@@ -74,6 +74,7 @@ model_diffeq = @model begin
     dv2 ~ @. Normal(cp2, abs(cp1)*σ)
   end
 end
+
 params = (tvcl     = 5.0,
           tvmetacl = 8.0,
           tvv      = 10.0,

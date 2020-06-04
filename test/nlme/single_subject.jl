@@ -79,7 +79,6 @@ end
   obs = simobs(model, pop_with_covariates, param, obstimes=0:1:120, ensemblealg=EnsembleSerial())
 
   simdf = DataFrame(obs)
-  simdf.cmt .= 1
 
   data = read_pumas(simdf, time=:time, cvs=[:isPM, :wt])
 

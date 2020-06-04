@@ -1,8 +1,9 @@
 using Pumas, Quadrature, Test, CSV, Random
 
 # Read the data
-data = read_pumas(example_data("data1"),
-                      cvs = [:sex,:wt,:etn])
+df = CSV.read(example_data("data1"))
+df[!, :cmt] .= 1
+data = read_pumas(df, cvs = [:sex,:wt,:etn])
 
 # Definition using diffeqs
 m_diffeq = @model begin

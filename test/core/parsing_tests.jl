@@ -36,21 +36,23 @@ using Pumas, Test, CSV
 end
 
 @testset "Time Variant Covariates" begin
-  data = read_pumas(example_data("time_varying_covariates"), cvs = [:weight, :dih])
+  df = CSV.read(example_data("time_varying_covariates"))
+  df[!,:amt] .= missing
+  data = read_pumas(df, cvs = [:weight, :dih])
   @test data[1].covariates(0).dih == 2
 end
 
 @testset "Chronological Observations" begin
-  data = DataFrame(time = [0, 1, 2, 2], dv = rand(4), evid = 0)
+  data = DataFrame(id = 1, time = [0.0, 1, 2], dv = rand(3), evid = 0, amt = missing)
   @test isa(read_pumas(data), Population)
-  append!(data, DataFrame(time = 1, dv = rand(), evid = 0))
-  @test_throws AssertionError read_pumas(data)
-  @test_throws AssertionError Subject(obs=DataFrame(x=[2:3;], time=1:-1:0))
+  append!(data, DataFrame(id = 1, time = 0.5, dv = rand(), evid = 0, amt=missing))
+  @test_throws Pumas.PumasDataError("Time is not monotonically increasing within subject") read_pumas(data)
+  @test_throws Pumas.PumasDataError("Time is not monotonically increasing within subject") Subject(obs=DataFrame(x=[2:3;], time=1:-1:0))
 end
 
 @testset "event_data" begin
-  data = DataFrame(time = [0, 1, 2, 2], amt = zeros(4), dv = rand(4), evid = 1)
-  @test_throws AssertionError read_pumas(data)
+  data = DataFrame(id = 1, time = [0, 1, 2, 2], amt = zeros(4), dv = missing, evid = 1)
+  @test_throws Pumas.PumasDataError("Some dose-related data items must be non-zero when evid = 1") read_pumas(data)
   @test isa(read_pumas(data, event_data = false), Population)
   @test isa(DosageRegimen(100, rate = -2, cmt = 2, ii = 24, addl = 3), DosageRegimen)
   @test isa(DosageRegimen(0, time = 50, evid = 3, cmt = 2), DosageRegimen)
@@ -79,22 +81,24 @@ end
 end
 
 @testset "Missing Observables" begin
-  data = read_pumas(
-    DataFrame(
-      time = [0, 1, 2, 4],
-      evid = [1, 1, 0, 0],
-      dv1 = [0, 0, 1, missing],
-      dv2 = [0, 0, missing, 2],
-      x = [missing, missing, 0.5, 0.75],
-      amt = [0.25, 0.25, 0, 0]),
+  df = DataFrame(
+    id   = 1,
+    time = [0, 1, 2, 4],
+    evid = [1, 1, 0, 0],
+    dv1  = [missing, missing, 1, missing],
+    dv2  = [missing, missing, missing, 2],
+    x    = [missing, missing, 0.5, 0.75],
+    amt  = [0.25, 0.25, 0, 0],
+    cmt  = 1)
+  data = read_pumas(df,
     cvs = [:x],
     dvs = [:dv1, :dv2])
   @test isa(data, Population)
   isa(data[1].observations[1], NamedTuple{(:dv1,:dv2),NTuple{2, Union{Missing,Float64}}})
 
-  df = DataFrame(id=[1], time=0.0, dv=[0.0], evid=0, cv1=1, cv2=missing)
-  @test_throws ArgumentError read_pumas(df, cvs=[:cv2])
-  @test_throws ArgumentError read_pumas(df, cvs=[:cv1, :cv2])
+  df = DataFrame(id=[1], time=0.0, dv=[0.0], evid=0, cv1=1, cv2=missing, amt=missing)
+  @test_throws Pumas.PumasDataError("covariate cv2 for subject with ID 1 had no non-missing values") read_pumas(df, cvs=[:cv2])
+  @test_throws Pumas.PumasDataError("covariate cv2 for subject with ID 1 had no non-missing values")  read_pumas(df, cvs=[:cv1, :cv2])
 end
 
 @testset "DosageRegimen (w/ or w/o offset)" begin
@@ -116,7 +120,7 @@ end
 end
 
 @testset "MDV" begin
-  data = DataFrame(amt = 10, dv = 0, evid = 0, mdv = 1)
+  data = DataFrame(id = 1, time = 0.0, amt = missing, dv = 0, evid = 0, mdv = 1)
   output = read_pumas(data)
   @test ismissing(output[1].observations.dv[1])
 end
@@ -141,3 +145,133 @@ DosageRegimen
   @test sprint((io, t) -> show(io, MIME"text/html"(), t), dr) == """
 <table class="data-frame"><thead><tr><th></th><th>time</th><th>cmt</th><th>amt</th><th>evid</th><th>ii</th><th>addl</th><th>rate</th><th>duration</th><th>ss</th></tr><tr><th></th><th>Float64</th><th>Int64</th><th>Float64</th><th>Int8</th><th>Float64</th><th>Int64</th><th>Float64</th><th>Float64</th><th>Int8</th></tr></thead><tbody><p>1 rows × 9 columns</p><tr><th>1</th><td>0.0</td><td>1</td><td>2.0</td><td>1</td><td>24.0</td><td>2</td><td>0.0</td><td>0.0</td><td>0</td></tr></tbody></table>"""
 end
+
+@testset "Dataset format checks" begin
+  # no error
+  df1 = DataFrame(id = [1,1,1,1,1,2,2,2,2,2],
+                time = [0,1,2,3,4,0,1,2,3,4],
+                amt=[10,0,0,0,0,10,0,0,0,0],
+                cmt=[1,2,2,2,2,1,2,2,2,2],
+                evid=[1,0,0,0,0,1,0,0,0,0],
+                dv=[missing,8,6,4,2,missing,8,6,4,2],
+                age=[45,45,45,45,45,50,50,50,50,50],
+                sex = ["M","M","M","M","M","F","F","F","F","F"],
+                crcl =[90,85,75,72,70,110,110,110,110,110])
+  @test_nowarn read_pumas(df1, cvs=[:age,:sex,:crcl])
+
+  # dv observation is present at the time of dose
+  df2 = DataFrame(id = [1,1,1,1,1,2,2,2,2,2],
+                time = [0,1,2,3,4,0,1,2,3,4],
+                amt=[10,0,0,0,0,10,0,0,0,0],
+                cmt=[1,2,2,2,2,1,2,2,2,2],
+                evid=[1,0,0,0,0,1,0,0,0,0],
+                dv=[10,8,6,4,2,10,8,6,4,2],
+                age=[45,45,45,45,45,50,50,50,50,50],
+                sex = ["M","M","M","M","M","F","F","F","F","F"],
+                crcl =[90,85,75,72,70,110,110,110,110,110])
+  @test_throws Pumas.PumasDataError read_pumas(df2, cvs=[:age,:sex,:crcl])
+
+  # We expect the dv column to be of numeric type.
+  df4 = DataFrame(id = [1,1,1,1,1,2,2,2,2,2],
+                time = [0,1,2,3,4,0,1,2,3,4],
+                amt=[10,missing,missing,missing,missing,10,missing,missing,missing,missing],
+                cmt=[1,2,2,2,2,1,2,2,2,2],
+                evid=[1,0,0,0,0,1,0,0,0,0],
+                dv=[missing,8,6,4,"<LOQ",missing,8,6,4,2],
+                age=[45,45,45,45,45,50,50,50,50,50],
+                sex = ["M","M","M","M","M","F","F","F","F","F"],
+                crcl =[90,85,75,72,70,110,110,110,110,110])
+  @test_throws Pumas.PumasDataError read_pumas(df4, amt=:amt, cvs=[:age,:sex,:crcl])
+
+  # evid is missing with event_data = true (default)
+  df5 = DataFrame(id = [1,1,1,1,1,2,2,2,2,2],
+                time = [0,1,2,3,4,0,1,2,3,4],
+                amt=[10,missing,missing,missing,missing,10,missing,missing,missing,missing],
+                cmt=[1,2,2,2,2,1,2,2,2,2],
+                #evid=[1,0,0,0,0,1,0,0,0,0],
+                dv=[missing,8,6,4,2,missing,8,6,4,2],
+                age=[45,45,45,45,45,50,50,50,50,50],
+                sex = ["M","M","M","M","M","F","F","F","F","F"],
+                crcl =[90,85,75,72,70,110,110,110,110,110])
+  # @test_throws Pumas.PumasDataError read_pumas(df5, amt=:amt, cvs=[:age,:sex,:crcl])
+
+  # cmt column should be positive
+  df6 = DataFrame(id = [1,1,1,1,1,2,2,2,2,2],
+                time = [0,1,2,3,4,0,1,2,3,4],
+                amt=[10,missing,missing,missing,missing,10,missing,missing,missing,missing],
+                cmt=[-1,2,2,2,2,-1,2,2,2,2],
+                evid=[1,0,0,0,0,1,0,0,0,0],
+                dv=[missing,8,6,4,2,missing,8,6,4,2],
+                age=[45,45,45,45,45,50,50,50,50,50],
+                sex = ["M","M","M","M","M","F","F","F","F","F"],
+                crcl =[90,85,75,72,70,110,110,110,110,110])
+  @test_throws Pumas.PumasDataError read_pumas(df6, amt=:amt, cvs=[:age,:sex,:crcl])
+
+  #  We expect the amt column to be of numeric type.
+  df7 = DataFrame(id = [1,1,1,1,1,2,2,2,2,2],
+                time = [0,1,2,3,4,0,1,2,3,4],
+                amt=["10","","","","",10,"","","",""],
+                cmt=["Depot","Central","Central","Central","Central","Depot","Central","Central","Central","Central"],
+                evid=[1,0,0,0,0,1,0,0,0,0],
+                dv=[missing,8,6,4,2,missing,8,6,4,2],
+                age=[45,45,45,45,45,50,50,50,50,50],
+                sex = ["M","M","M","M","M","F","F","F","F","F"],
+                crcl =[90,85,75,72,70,110,110,110,110,110])
+  @test_throws Pumas.PumasDataError read_pumas(df7, amt=:amt, cvs=[:age,:sex,:crcl])
+
+  # dataset has column addl but not ii
+  df8 = DataFrame(id = [1,1,1,1,1,2,2,2,2,2],
+                time = [0,1,2,3,4,0,1,2,3,4],
+                 amt=[10,0,0,0,0,10,0,0,0,0],
+                addl = [5,0,0,0,0,5,0,0,0,0],
+                cmt=["Depot","Central","Central","Central","Central","Depot","Central","Central","Central","Central"],
+                evid=[1,0,0,0,0,1,0,0,0,0],
+                dv=[missing,8,6,4,2,missing,8,6,4,2],
+                age=[45,45,45,45,45,50,50,50,50,50],
+                sex = ["M","M","M","M","M","F","F","F","F","F"],
+                crcl =[90,78,75,72,70,110,110,110,110,110])
+  @test_throws Pumas.PumasDataError read_pumas(df8, amt=:amt, cvs=[:age,:sex,:crcl])
+
+  # ii must be positive for addl > 0
+  df9 = DataFrame(id = [1,1,1,1,1,2,2,2,2,2],
+                time = [0,1,2,3,4,0,1,2,3,4],
+                 amt=[10,0,0,0,0,10,0,0,0,0],
+                addl = [5,0,0,0,0,5,0,0,0,0],
+                ii = [0,0,0,0,0,0,0,0,0,0],
+                cmt=["Depot","Central","Central","Central","Central","Depot","Central","Central","Central","Central"],
+                evid=[1,0,0,0,0,1,0,0,0,0],
+                dv=[missing,8,6,4,2,missing,8,6,4,2],
+                age=[45,45,45,45,45,50,50,50,50,50],
+                sex = ["M","M","M","M","M","F","F","F","F","F"],
+                crcl =[90,78,75,72,70,110,110,110,110,110])
+  @test_throws Pumas.PumasDataError read_pumas(df9, amt=:amt, cvs=[:age,:sex,:crcl])
+
+  # addl must be positive for ii > 0
+  df10 = DataFrame(id = [1,1,1,1,1,2,2,2,2,2],
+                time = [0,1,2,3,4,0,1,2,3,4],
+                amt=[10,0,0,0,0,10,0,0,0,0],
+                addl = [0,0,0,0,0,0,0,0,0,0],
+                ii = [12,0,0,0,0,12,0,0,0,0],
+                cmt=["Depot","Central","Central","Central","Central","Depot","Central","Central","Central","Central"],
+                evid=[1,0,0,0,0,1,0,0,0,0],
+                dv=[missing,8,6,4,2,missing,8,6,4,2],
+                age=[45,45,45,45,45,50,50,50,50,50],
+                sex = ["M","M","M","M","M","F","F","F","F","F"],
+                crcl =[90,78,75,72,70,110,110,110,110,110])
+  @test_throws Pumas.PumasDataError read_pumas(df10, amt=:amt, cvs=[:age,:sex,:crcl])
+
+  # evid must be nonzero when amt > 0 or addl and ii are positive
+  df12 = DataFrame(id = [1,1,1,1,1,2,2,2,2,2],
+                time = [0,1,2,3,4,0,1,2,3,4],
+                 amt=[10,0,0,0,0,10,0,0,0,0],
+                addl = [5,0,0,0,0,5,0,0,0,0],
+                ii = [12,0,0,0,0,12,0,0,0,0],
+                cmt=["Depot","Central","Central","Central","Central","Depot","Central","Central","Central","Central"],
+                evid=[0,0,0,0,0,0,0,0,0,0],
+                dv=[missing,8,6,4,2,missing,8,6,4,2],
+                age=[45,45,45,45,45,50,50,50,50,50],
+                sex = ["M","M","M","M","M","F","F","F","F","F"],
+                crcl =[90,78,75,72,70,110,110,110,110,110])
+  @test_throws Pumas.PumasDataError read_pumas(df12, amt=:amt, cvs=[:age,:sex,:crcl])
+end
+

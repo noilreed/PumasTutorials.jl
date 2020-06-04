@@ -880,6 +880,7 @@ sim = simobs(mbld_analytic, subject, param, randeffs; abstol=1e-12, reltol=1e-12
 # evid = 1: indicates a dosing event
 # mdv = 1: indicates that observations are not avaialable at this dosing record
 
+# Dataset contains a ss column but not a rate column which is required
 subject = read_pumas(example_data("event_data/data15"), dvs = [:cp])[1]
 
 param = (θ = [
@@ -962,7 +963,9 @@ sim = simobs(m_analytic, subject, param, randeffs; abstol=1e-12, reltol=1e-12, c
 # evid = 1: indicates a dosing event
 # mdv = 1: indicates that observations are not avaialable at this dosing record
 
-subject = read_pumas(example_data("event_data/data17"), dvs = [:cp])[1]
+# The dataset is invalid since it has ii>0 for steady-state infusion. See https://github.com/PumasAI/Pumas.jl/issues/871
+@test_broken read_pumas(example_data("event_data/data17"), dvs = [:cp])[1] isa Subject
+subject = read_pumas(example_data("event_data/data17"), dvs = [:cp], check=false)[1]
 
 param = (θ = [
               1.0,  #Ka
@@ -992,7 +995,9 @@ sim = simobs(m_analytic, subject, param, randeffs; abstol=1e-12, reltol=1e-12)
 # evid = 1: indicates a dosing event
 # mdv = 1: indicates that observations are not avaialable at this dosing record
 
-subject = read_pumas(example_data("event_data/data18"), dvs = [:cp])[1]
+# The dataset is invalid since it has ii>0 for steady-state infusion. See https://github.com/PumasAI/Pumas.jl/issues/871
+@test_broken read_pumas(example_data("event_data/data18"), dvs = [:cp])[1] isa Subject
+subject = read_pumas(example_data("event_data/data18"), dvs = [:cp], check=false)[1]
 
 param = (θ = [
             1.0,  #Ka
@@ -1173,7 +1178,7 @@ sim = simobs(mbl2_analytic, subject, param, randeffs; abstol=1e-12, reltol=1e-12
 # evid = 4: indicates a dosing event where time and amounts in all compartments are reset to zero
 # mdv = 1: indicates that observations are not avaialable at this dosing record
 
-subject = read_pumas(example_data("event_data/data21"), dvs = [:cp])[1]
+subject = read_pumas(example_data("event_data/data21"), id=:ID, dvs = [:cp])[1]
 
 param = (θ = [
             1.5,  #Ka

@@ -3,12 +3,15 @@ using Pumas, CSV
 
 @testset "Models from the Wang paper" begin
 
-  data = read_pumas(example_data("wang"))
-
+  df   = CSV.read(example_data("wang"), copycols=true)
   # Add initial events following Wang's model
-  for i in eachindex(data)
-    push!(data[i].events, Pumas.Event(10.0, 0.0, 1, 1))
-  end
+  df[!,:amt] .= missing
+  df[!,:cmt] .= missing
+  allowmissing!(df)
+  df_doses = DataFrame(id=unique(df.id), time=0.0, dv=missing, amt=10.0, cmt=1)
+  df = vcat(df, df_doses)
+
+  data = read_pumas(df)
 
   @testset "Additive error model" begin
 
@@ -117,6 +120,8 @@ using Pumas, CSV
     # First we load a new verison of data and log transform dv
     _df = CSV.read(example_data("wang"))
     _df[!,:dv] = log.(_df[!,:dv])
+    _df[!,:amt] .= missing
+    _df[!,:cmt] .= missing
     data_log = read_pumas(_df)
 
     # Add initial events following Wang's model

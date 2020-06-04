@@ -40,7 +40,7 @@ function covariate_interpolant(cvs_keys,
                      id;
                      interp=ConstantInterpolationStructArray,
                      cvs_direction=:right)
-   
+
   _covariate_interpolant(cvs_keys, data, time, interp, id, cvs_direction)
 end
 
@@ -69,7 +69,7 @@ function _covariate_interpolant(cvs_keys, data, time, interp, id, direction)
   # If any of the covariates is all missings then we error out
   for (k, v) in pairs(covar_nt)
     if isempty(v.ctime)
-      throw(ArgumentError("covariate $k for subject with ID $id had no non-missing values"))
+      throw(PumasDataError("covariate $k for subject with ID $id had no non-missing values"))
     end
   end
 

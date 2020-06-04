@@ -240,9 +240,13 @@ function build_event_list!(events, event_data, t, evid, amt, addl, ii, cmt, rate
   drdi = iszero(amt) && (rate == 0) && iszero(ii) && iszero(addl) && iszero(ss)
   if event_data
     if evid ∈ [0, 2, 3]
-      @assert drdi "Dose-related data items must be zero when evid = $evid"
+      if !drdi
+        throw(PumasDataError("Dose-related data items must be zero when evid = $evid"))
+      end
     else
-      @assert !drdi "Some dose-related data items must be non-zero when evid = $evid"
+      if drdi
+        throw(PumasDataError("Some dose-related data items must be non-zero when evid = $evid"))
+      end
     end
   end
   duration = amt / rate
@@ -307,12 +311,15 @@ struct Subject{T1,T2,T3,T4,T5}
                    id, time, evid, amt, addl, ii, cmt, rate, ss,
                    cvs::Vector{<:Symbol} = Symbol[],
                    dvs::Vector{<:Symbol} = Symbol[:dv],
-                   event_data = true, cvs_direction=:right,
+                   event_data=true, cvs_direction=:right,
                    covariates=nothing, covartime=nothing)
     ## Observations
     idx_obs = findall(iszero, df[!,evid])
     obs_times = Missings.disallowmissing(df[!,time][idx_obs])
-    @assert issorted(obs_times) "Time is not monotonically increasing within subject"
+    if !issorted(obs_times)
+      throw(PumasDataError("Time is not monotonically increasing within subject"))
+    end
+
     if isa(obs_times, Unitful.Time)
       _obs_times = convert.(Float64, getfield(uconvert.(u"hr", obs_times), :val))
     else
@@ -386,8 +393,14 @@ struct Subject{T1,T2,T3,T4,T5}
       covartime, covariates = covariate_interpolant(cvs, cvstime, id; cvs_direction=cvs_direction)
     end
     # Check that time is well-specified (not nothing, not missing and increasing)
-    _time = isnothing(time) ? nothing : Missings.disallowmissing(time)
-    @assert isnothing(time) || issorted(_time) "Time is not monotonically increasing within subject"
+    if isnothing(time)
+      _time = nothing
+    else
+      _time = Missings.disallowmissing(time)
+      if !issorted(_time)
+        throw(PumasDataError("Time is not monotonically increasing within subject"))
+      end
+    end
 
     new{typeof(obs),typeof(covariates),typeof(evs),typeof(_time), typeof(covartime)}(string(id), obs, covariates, evs, _time, covartime)
   end
@@ -453,9 +466,14 @@ function DataFrames.DataFrame(subject::Subject; include_covariates=true, include
       end
       # ... and do the same for df
       if include_events
-        for df_name in names(df_events)
+        for df_name in Symbol.(names(df_events))
           if !hasproperty(df, df_name)
-            df[!, df_name] .= missing
+            if df_name == :ss
+              # See NONMEM Users Guide Part VI - PREDPP Guide: V.F.2
+              df[!, df_name] .= 0
+            else
+              df[!, df_name] .= missing
+            end
           end
         end
       end
@@ -664,43 +682,310 @@ Import NMTRAN-formatted data.
 - `event_data` toggles assertions applicable to event data
 """
 function read_pumas(filepath::AbstractString; kwargs...)
-  read_pumas(CSV.read(filepath, missingstrings=["."]) ; kwargs...)
+  read_pumas(CSV.read(filepath, missingstrings=["", ".", "NA"]) ; kwargs...)
 end
 function read_pumas(df::AbstractDataFrame;
-  cvs=Symbol[], dvs=Symbol[:dv], id=:id, time=:time, evid=:evid, amt=:amt, addl=:addl,
-  ii=:ii, cmt=:cmt, rate=:rate, ss=:ss, mdv=:mdv, event_data = true, cvs_direction=:right)
-  df = copy(df)
-  colnames = names(df)
+  cvs=Symbol[], dvs=Symbol[:dv],
+  id=:id, time=:time, evid=nothing, amt=:amt, addl=:addl,
+  ii=:ii, cmt=:cmt, rate=:rate, ss=:ss, mdv=nothing,
+  event_data=true, cvs_direction=:right, check=event_data)
 
-  if !hasproperty(df, id)
-    df[!,id] .= "1"
+  df = preprocess_data(df, dvs, amt, mdv, evid, event_data)
+  _evid = evid===nothing ? :evid : evid
+
+  if check
+    check_pumas_data(df, cvs, dvs,
+      id, time, _evid, amt, addl, ii, cmt, rate, ss, mdv,
+      event_data)
   end
-  if !hasproperty(df, time)
-    df[!,time] .= 0.0
-  end
-  if !hasproperty(df, evid)
-    df[!,evid] .= Int8(0)
-  end
-  if !hasproperty(df, mdv)
-    df[!,mdv] .= Int8(0)
-  end
+
+  __read_pumas(df, cvs, dvs,
+    id, time, _evid, amt, addl, ii, cmt, rate, ss, mdv,
+    event_data, cvs_direction)
+end
+
+function __read_pumas(df::AbstractDataFrame,
+  cvs::Vector{Symbol},
+  dvs::Vector{Symbol},
+  id::Symbol, time::Union{Symbol,Nothing}, evid::Union{Symbol,Nothing}, amt::Union{Symbol,Nothing},
+  addl::Union{Symbol,Nothing}, ii::Union{Symbol,Nothing}, cmt::Union{Symbol,Nothing},
+  rate::Union{Symbol,Nothing}, ss::Union{Symbol,Nothing}, mdv::Union{Symbol,Nothing},
+  event_data::Bool, cvs_direction::Symbol)
+
   if cvs isa AbstractVector{<:Integer}
     Base.depwarn("selecting covariate columns by integer indexing has been deprecated. Please specify the name of the columns instead.", :read_pumas)
-    cvs = Symbol.(colnames[cvs])
+    cvs = Symbol.(names(df)[cvs])
   end
   if dvs isa AbstractVector{<:Integer}
     Base.depwarn("selecting dependent variable columns by integer indexing has been deprecated. Please specify the name of the columns instead.", :read_pumas)
-    dvs = Symbol.(colnames[dvs])
+    dvs = Symbol.(names(df)[dvs])
   end
 
-  # We allow specifying missing values in of the dependent variable with an mdv column
-  # but internally we encode missing values with missing directly in the dv columns
-  allowmissing!(df, dvs)
-  mdv = isone.(df[!,mdv])
-  for dv in dvs
-    df[!, dv] .= ifelse.(mdv, missing, df[!, dv])
-  end
   return [Subject(subject_df, id, time, evid, amt, addl, ii, cmt,
                   rate, ss, cvs, dvs, event_data, cvs_direction) for subject_df in groupby(df, id)]
 end
 
+struct PumasDataError <: Exception  msg::AbstractString end
+Base.showerror(io::IO, e::PumasDataError) = print(io, "PumasDataError: ", e.msg)
+
+
+function preprocess_data(df::AbstractDataFrame,
+  dvs::Vector{Symbol},
+  amt::Symbol,
+  mdv::Union{Symbol,Nothing},
+  evid::Union{Symbol,Nothing},
+  event_data::Bool)
+
+  df = copy(df)
+
+  # If no evid column is specified then construct one from amt
+  if evid === nothing && !hasproperty(df, :evid)
+    if event_data
+      @warn """
+Your dataset has dose event but it hasn't an evid column. We are adding 1 for dosing rows and 0 for others in evid column. If this is not the case, please add your evid column.
+      """
+      df[!,:evid] = map(t -> Int(!ismissing(t) && t > 0), df[!,amt])
+    else
+      df[!,:evid] .= 0
+    end
+  end
+
+  # We allow specifying missing values in of the dependent variable with an mdv column
+  # but internally we encode missing values with missing directly in the dv columns.
+  if mdv !== nothing || hasproperty(df, :mdv)
+    mdv = mdv === nothing ? :mdv : mdv
+    allowmissing!(df, dvs)
+    mdv = isone.(df[!,mdv])
+    for dv in dvs
+      df[!, dv] .= ifelse.(mdv, missing, df[!, dv])
+    end
+  end
+
+  return df
+end
+
+function check_pumas_data(df::AbstractDataFrame,
+  cvs::Vector{Symbol},
+  dvs::Vector{Symbol},
+  id::Symbol, time::Union{Symbol,Nothing}, evid::Union{Symbol,Nothing}, amt::Union{Symbol,Nothing},
+  addl::Union{Symbol,Nothing}, ii::Union{Symbol,Nothing}, cmt::Union{Symbol,Nothing},
+  rate::Union{Symbol,Nothing}, ss::Union{Symbol,Nothing}, mdv::Union{Symbol,Nothing},
+  event_data::Bool)
+
+  colnames = propertynames(df)
+  # Check if all necessary columns are present or not
+  has_id   = id   in colnames
+  has_time = time in colnames
+  has_amt  = amt  in colnames
+  has_cmt  = cmt  in colnames
+  has_evid = evid in colnames
+  has_addl = addl in colnames
+  has_ii   = ii   in colnames
+  has_ss   = ss   in colnames
+  has_rate = rate in colnames
+
+  if dvs isa AbstractVector{<:Integer}
+    dvs = colnames[dvs]
+  end
+  has_dvs = true
+  for dv in dvs
+    has_dvs &= dv in colnames
+  end
+  # CASE : no event identifier (evid) with event_data = true  # top most check
+  if !has_evid && event_data
+    throw(PumasDataError("""
+Your dataset has no events (doses) as you have not specified the $(string(evid)) column.
+If your intent is to have a Population with no events, then you can use the
+argument event_data=false in your read_pumas function.
+"""))
+  end
+  if event_data
+    if !has_dvs
+      throw(PumasDataError("Column(s) in dvs arg is(are) not present in the data file"))
+    end
+    ok = has_id && has_time && has_amt
+    if !ok
+      @info "The CSV file has keys: $colnames"
+      throw(PumasDataError("The CSV file must have: `id, time, amt, and dvs` when `event_data` is `true`" ))
+    end
+  else
+    if !has_id
+      @info "The CSV file has keys: $colnames"
+      throw(PumasDataError("The CSV file must have: `id` when `event_data` is `false`"))
+    end
+  end
+
+  # CASE: (id, time) pair should be unique
+  if has_time
+    _df_onlyobs = filter(row -> row[evid] == 0, df[!, [id, time, evid]])
+    if length(unique(zip(_df_onlyobs[!, id], _df_onlyobs[!, time]))) != size(_df_onlyobs, 1)
+      throw(PumasDataError("($(id), $(time)) pair should be unique, if your data has multiple dvs in one column, please convert it to wide format."))
+    end
+  end
+
+  # CASE : non-numeric/string observations in dvs
+  for dv in dvs
+    check_non_numeric(df, id, dv; allow_missings=true)
+  end
+
+  # CASE : amt cannot be a string/non-numeric
+  if has_amt
+    check_non_numeric(df, id, amt, allow_missings=true)
+    cmt_ok = true
+    for dose in df[!, amt]
+      if dose !== missing && dose > zero(dose)
+        if !has_cmt
+          cmt_ok = false
+        end
+        if !cmt_ok
+          break # no need go further
+        end
+      end
+    end
+
+    if !cmt_ok
+      throw(PumasDataError("Your dataset has dose event(s) but it doesn't have cmt column"))
+    end
+  end
+
+  # CASE : cmt must be positive or string
+  if has_cmt
+    idx = findfirst(x -> !((x isa String) || (x isa Integer && x > 0)),
+      filter(i -> i[evid] > 0, df)[!, cmt])
+  end
+  if has_cmt && idx !== nothing
+    throw(PumasDataError("[Subject $(id): $(df[!, id][idx]), row = $(idx), col = $(cmt)] $(cmt) column should be positive"))
+  end
+
+  for (idx, row) in enumerate(eachrow(df))
+    ok = has_evid && has_amt # make sure these are present before doing checks
+    ok || break
+    _id, _evid, _amt = row[id], row[evid], row[amt]
+
+    # CASE : amt can be missing or zero when evid = 0
+    if _evid == zero(_evid) && !(_amt isa Missing) && _amt != zero(_amt)
+      throw(PumasDataError("[Subject $(id): $(_id), row = $(idx), col = $(evid)] $(amt) can only be missing or zero when $(evid) is zero"))
+    end
+
+    # CASE : amt can be positive or zero when evid = 1
+     if _evid == one(_evid) && _amt != zero(_amt) && _amt < zero(_amt)
+       throw(PumasDataError("[Subject $(id): $(_id), row = $(idx), col = $(evid)] $(amt) can only be positive or zero when $(evid) is one"))
+     end
+
+    # CASE : observations (dv) at time of dose
+    for dv in dvs
+      _dv = row[dv]
+      if _evid == 1 && !(_dv isa Missing)
+        throw(PumasDataError("[Subject $(id): $(_id), row = $(idx), col = $(dv)] an observation is present at the time of dose in column $(dv). It is recommended and required in Pumas to have a blank record (`missing`) at the time of time of dosing, i.e. when `amt` is positive."))
+      end
+    end
+  end
+
+  # The rules for addl and ii depends on the existence of an ss column with non-zero elements
+  # First we consider the steady-state rules
+  if has_ss
+    # See NONMEM Users Guide Part VI - PREDPP Guide: V.F.2. Specifics of the Steady-State (SS) Data Item
+
+    # CASE : Steady-state column requires ii column
+    if !has_ii
+      throw(PumasDataError("your dataset does not have $(ii) which is a required column for steady state dosing."))
+    end
+
+    for (idx, row) in enumerate(eachrow(df))
+      _id, _ss, _ii, _amt = row[id], row[ss], row[ii], row[amt]
+      # If rate column isn't present the set to zero
+      _rate = has_rate ? row[rate] : 0.0
+      if _ss > 0
+        # CASE : repeated bolus doses with a given period
+        if _rate == 0 && _amt > 0 ||
+          # CASE : repeated infusions with a given period
+          _rate > 0 && _amt > 0
+
+          # CASE: Steady-state dosing requires ii>0
+          if _ii == 0
+            throw(PumasDataError("[Subject $(id): $(_id), row = $(idx), col = $(_ii)] for steady-state dosing the value of the interval column $ii must be non-zero but was $_ii"))
+          end
+
+        elseif (_rate > 0 || _rate == -1) && _amt == 0
+          # CASE : Steady-state infusion
+          # CASE : requires ii=0
+          if _ii != 0
+            throw(PumasDataError("[Subject $(id): $(_id), row = $(idx), col = $(_ii)] for steady-state infusion the value of the interval column $ii must be zero but was $_ii"))
+          end
+
+          # CASE : requires addl=0
+          if has_addl
+            _addl = row[addl]
+            if _addl != 0
+              throw(PumasDataError("[Subject $(id): $(_id), row = $(idx), col = $(_addl)] for steady-state infusion the value of the additional dose column $addl must be zero but was $_addl"))
+            end
+          end
+        else
+          throw(PumasDataError("for steady state events either dose amout variable $amt or rate variable $rate must be non-zero"))
+        end
+      end
+    end
+  end
+
+  if has_addl && !has_ii
+    throw(PumasDataError("your dataset does not have $(ii) which is a required column when $(addl) is specified."))
+  end
+
+  if has_addl && has_ii
+    for (idx, row) in enumerate(eachrow(df))
+      _id, _addl, _ii = row[id], row[addl], row[ii]
+
+      # Non-steady-state dosing (we considered the steady state dosing above)
+      if has_ss && row[ss] != 0
+        continue
+      end
+
+      # CASE : ii must be positive for addl > 0
+      if _addl > 0 && _ii == zero(_ii)
+        throw(PumasDataError("[Subject $(id): $(_id), row = $(idx), col = $(ii)]  $(ii) must be positive for $(addl) > 0"))
+      end
+
+      # CASE : addl must be positive for ii > 0
+      if _ii > 0 && _addl == 0
+        throw(PumasDataError("[Subject $(id): $(_id), row = $(idx), col = $(addl)]  $(addl) must be positive for $(ii) > 0"))
+      end
+
+      if has_evid
+        _evid = row[evid]
+        # CASE : ii can be missing or zero when evid = 0
+        if _evid == zero(_evid) && !(_ii isa Missing) && _ii != zero(_ii)
+          throw(PumasDataError("[Subject $(id): $(_id), row = $(idx), col = $(evid)]  $(ii) can only be missing or zero when $(evid) is zero"))
+        end
+
+        # CASE : addl can be positive or zero when evid = 1
+        if _evid == one(_evid) && _addl != zero(_addl) && _addl < zero(_addl)
+          throw(PumasDataError("[Subject $(id): $(_id), row = $(idx), col = $(evid)]  $(addl) can only be positive or zero when $(evid) is one"))
+        end
+
+        # CASE : evid must be nonzero when amt > 0 or addl and ii are positive
+        if _addl > 0 && _ii > 0 && _evid == 0
+          throw(PumasDataError("[Subject $(id): $(_id), row = $(idx), col = $(evid)]  $(evid) must be nonzero when $(amt) > 0 or $(addl) and $(ii) are positive"))
+        end
+      end
+    end
+  end
+end
+
+function check_non_numeric(df::AbstractDataFrame, id, colname; allow_missings=false)
+  T = allow_missings === true ? Union{Number, Missing} : Number
+  has_dv = colname in propertynames(df)
+  if !has_dv
+    throw(PumasDataError("The column $(colname) is not present in data file but it is specified in `read_pumas` as arg"))
+  end
+  if !(eltype(df[!, colname]) <: T)
+    idx = findall(x -> !(x isa T), df[!, colname])
+    if idx !== nothing
+      els = unique(df[!, colname][idx])
+    end
+    if idx !== nothing
+      throw(PumasDataError("""
+[Subject $(id): $(df[!, id][idx]), row = $(idx), col = $(colname)]  We expect the $(colname) column to be of numeric type.
+These are the unique non-numeric values present in the column $(colname): $((els...,))"""))
+    end
+  end
+end

@@ -9,23 +9,23 @@ model = @model begin
       Ω ∈ PDiagDomain(2)
       σ_prop ∈ RealDomain(lower=0)
     end
-  
+
     @random begin
       η ~ MvNormal(Ω)
     end
-  
+
     @covariates wt isPM
-  
+
     @pre begin
       CL = tvcl * (1 + pmoncl*isPM) * (wt/70)^0.75 * exp(η[1])
       Vc  = tvv * (wt/70) * exp(η[2])
     end
-  
+
     @dynamics Central1
       #@dynamics begin
       #    Central' =  - (CL/V)*Central
       #end
-  
+
     @derived begin
         cp = @. 1000*(Central / Vc)
         dv ~ @. Normal(cp, sqrt(cp^2*σ_prop))
