@@ -72,7 +72,7 @@ Number of subjects:                       20
 """
 
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(fitFOCE)) == """
-FittedPumasModelInference
+Asymptotic inference results
 
 Successful minimization:                true
 
@@ -118,7 +118,7 @@ Number of subjects:                       20
 """
 
       @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(fitLaplaceI)) == """
-FittedPumasModelInference
+Asymptotic inference results
 
 Successful minimization:                true
 

@@ -113,8 +113,8 @@ pmoncl     -0.70079
   fitnp = fit(model, data, param, Pumas.NaivePooled(),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
-  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(fitnp)) ==
-"""FittedPumasModelInference
+@test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(fitnp)) ==
+"""Asymptotic inference results
 
 Successful minimization:                true
 
@@ -140,7 +140,7 @@ pmoncl    -0.69962         0.00059607         [-0.70079; -0.69845]
   fit2s = fit(model, data, param, Pumas.TwoStage(),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
-  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fit2s) ==
+@test sprint((io, t) -> show(io, MIME"text/plain"(), t), fit2s) ==
 """Vector{<:FittedPumasModel} with 1000 entries
 
 Parameter statistics
@@ -241,7 +241,7 @@ end
   fitone_noeta = fit(mdsl1_noeta, first(data), param_noeta,
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
-  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_noeta) ==
+@test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_noeta) ==
 """FittedPumasModel
 
 Successful minimization:                true
@@ -261,8 +261,8 @@ Number of subjects:                        1
 """
 
   infer_noeta = infer(fitone_noeta)
-  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_noeta) ==
-"""FittedPumasModelInference
+@test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_noeta) ==
+"""Asymptotic inference results
 
 Successful minimization:                true
 
@@ -272,18 +272,18 @@ Total number of observation records:       2
 Number of active observation records:      2
 Number of subjects:                        1
 
----------------------------------------------------------
+-----------------------------------------------------------
       Estimate           SE                  95.0% C.I.
----------------------------------------------------------
+-----------------------------------------------------------
 θ₁     0.13038         1.0297e-5       [0.13036; 0.1304]
 σ      0.31623         NaN             [ NaN   ;  NaN    ]
----------------------------------------------------------
+-----------------------------------------------------------
 """
 
   param = init_param(mdsl1)
   fitone_constantcoef = fit(mdsl1, first(data), param; constantcoef=(Ω=[0.0],),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
-  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_constantcoef) ==
+@test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_constantcoef) ==
 """FittedPumasModel
 
 Successful minimization:                true
@@ -304,8 +304,8 @@ Number of subjects:                        1
 """
 
   infer_constantcoef = infer(fitone_constantcoef)
-  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_constantcoef) ==
-"""FittedPumasModelInference
+@test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_constantcoef) ==
+"""Asymptotic inference results
 
 Successful minimization:                true
 
@@ -315,18 +315,18 @@ Total number of observation records:       2
 Number of active observation records:      2
 Number of subjects:                        1
 
-----------------------------------------------------------
+------------------------------------------------------------
       Estimate           SE                   95.0% C.I.
-----------------------------------------------------------
+------------------------------------------------------------
 θ₁     0.1305          0.00010387       [0.13029; 0.1307]
 Ω₁     0.0             NaN              [ NaN   ;  NaN    ]
 σ      0.31623         NaN              [ NaN   ;  NaN    ]
-----------------------------------------------------------
+------------------------------------------------------------
 """
 
   fitone_omegas = fit(mdsl1, first(data), param; omegas=(:Ω,),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
-  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_omegas) ==
+@test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_omegas) ==
 """FittedPumasModel
 
 Successful minimization:                true
@@ -347,8 +347,8 @@ Number of subjects:                        1
 """
 
   infer_omegas = infer(fitone_omegas)
-  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_omegas) ==
-"""FittedPumasModelInference
+@test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_omegas) ==
+"""Asymptotic inference results
 
 Successful minimization:                true
 
@@ -358,19 +358,19 @@ Total number of observation records:       2
 Number of active observation records:      2
 Number of subjects:                        1
 
-------------------------------------------------------------
+--------------------------------------------------------------
         Estimate           SE                   95.0% C.I.
-------------------------------------------------------------
+--------------------------------------------------------------
 θ₁       0.1305          0.00010387       [0.13029; 0.1307]
 Ω₁,₁     0.0             NaN              [ NaN   ;  NaN    ]
 σ        0.31623         NaN              [ NaN   ;  NaN    ]
-------------------------------------------------------------
+--------------------------------------------------------------
 """
 
   param = init_param(mdsl1full)
   fitone_constantcoef = fit(mdsl1full, first(data), param; constantcoef=(Ω=[0.0],),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
-  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_constantcoef) ==
+@test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_constantcoef) ==
 """FittedPumasModel
 
 Successful minimization:                true
@@ -391,8 +391,8 @@ Number of subjects:                        1
 """
 
   infer_constantcoef = infer(fitone_constantcoef)
-  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_constantcoef) ==
-"""FittedPumasModelInference
+@test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_constantcoef) ==
+"""Asymptotic inference results
 
 Successful minimization:                true
 
@@ -402,18 +402,18 @@ Total number of observation records:       2
 Number of active observation records:      2
 Number of subjects:                        1
 
-----------------------------------------------------------
+------------------------------------------------------------
       Estimate           SE                   95.0% C.I.
-----------------------------------------------------------
+------------------------------------------------------------
 θ₁     0.1305          0.00010387       [0.13029; 0.1307]
 Ω₁     0.0             NaN              [ NaN   ;  NaN    ]
 σ      0.31623         NaN              [ NaN   ;  NaN    ]
-----------------------------------------------------------
+------------------------------------------------------------
 """
 
   fitone_omegas = fit(mdsl1full, first(data), param; omegas=(:Ω,),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
-  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_omegas) ==
+@test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_omegas) ==
 """FittedPumasModel
 
 Successful minimization:                true
@@ -434,8 +434,8 @@ Number of subjects:                        1
 """
 
   infer_omegas = infer(fitone_omegas)
-  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_omegas) ==
-"""FittedPumasModelInference
+@test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_omegas) ==
+"""Asymptotic inference results
 
 Successful minimization:                true
 
@@ -445,12 +445,13 @@ Total number of observation records:       2
 Number of active observation records:      2
 Number of subjects:                        1
 
-----------------------------------------------------------
+------------------------------------------------------------
       Estimate           SE                   95.0% C.I.
-----------------------------------------------------------
+------------------------------------------------------------
 θ₁     0.1305          0.00010387       [0.13029; 0.1307]
 Ω₁     0.0             NaN              [ NaN   ;  NaN    ]
 σ      0.31623         NaN              [ NaN   ;  NaN    ]
-----------------------------------------------------------
+------------------------------------------------------------
 """
+
 end

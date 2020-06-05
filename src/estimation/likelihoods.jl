@@ -1428,8 +1428,11 @@ function Distributions.fit(m::PumasModel,
   for (vrandefforths, subject) in zip(vvrandeffsorth, population)
     _orth_empirical_bayes!(vrandefforths, m, subject, TransformVariables.transform(fixedtrf, opt_minimizer(o)), approx, args...; kwargs...)
   end
+  
 
-  return FittedPumasModel(m, population, o, approx, vvrandeffsorth, args, kwargs, fixedparamset)
+  explicit_kwargs = (; optimize_fn=optimize_fn, constantcoef=constantcoef, omegas=omegas, ensemblealg=ensemblealg)     
+  allkwargs = merge(explicit_kwargs, kwargs)
+  return FittedPumasModel(m, population, o, approx, vvrandeffsorth, args, allkwargs, fixedparamset)
 end
 
 function Distributions.fit(m::PumasModel,
@@ -1754,7 +1757,7 @@ for f in (:mean, :std, :var)
     names = keys(coef(first(vfpm)))
     means = []
     for name in names
-      push!(means, ($f)([coef(fpm)[name] for fpm in vfpm]))
+      push!(means, ($f)([_coef_value(coef(fpm)[name]) for fpm in vfpm]))
     end
     NamedTuple{names}(means)
   end
@@ -1792,35 +1795,6 @@ function _E_and_V(model::PumasModel,
   V = FF*FF' + Diagonal(dd)
 
   return E, V
-end
-
-struct FittedPumasModelInference{T1, T2, T3}
-  fpm::T1
-  vcov::T2
-  level::T3
-end
-
-"""
-    infer(fpm::FittedPumasModel) -> FittedPumasModelInference
-
-Compute the `vcov` matrix and return a struct used for inference
-based on the fitted model `fpm`.
-"""
-function infer(fpm::FittedPumasModel; level = 0.95, rethrow_error=false)
-  print("Calculating: variance-covariance matrix")
-  _vcov = vcov(fpm, fpm.args...; rethrow_error=rethrow_error, fpm.kwargs...)
-  if _vcov isa AbstractMatrix
-    println(". Done.")
-  else
-    println(". Failed.")
-  end
-  return FittedPumasModelInference(fpm, _vcov, level)
-end
-StatsBase.coef(pmi::FittedPumasModelInference) = coef(pmi.fpm)
-function StatsBase.stderror(pmi::FittedPumasModelInference)
-  ss = sqrt.(diag(pmi.vcov))
-  trf = tostderrortransform(pmi.fpm.fixedparamset)
-  return TransformVariables.transform(trf, ss)
 end
 
 # empirical_bayes_dist for FittedPumasModel

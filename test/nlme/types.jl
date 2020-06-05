@@ -35,15 +35,15 @@ param = init_param(mdsl1)
 
 ft_no_args = fit(mdsl1, data, param, Pumas.FOCEI(),
   optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
-@test isempty(pairs(ft_no_args.args))
-@test isempty(pairs(ft_no_args.kwargs))
+@test isempty(ft_no_args.args)
+@test keys(ft_no_args.kwargs) == (:optimize_fn, :constantcoef, :omegas, :ensemblealg)
 
 ft_alg_kwargs = fit(mdsl1, data, param, Pumas.FOCEI(); alg=Rosenbrock23(),
   optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 @test isempty(pairs(ft_alg_kwargs.args))
 kwarg_pairs = pairs(ft_alg_kwargs.kwargs)
-@test keys(kwarg_pairs) == (:alg,)
-@test kwarg_pairs[1] == Rosenbrock23()
+@test keys(kwarg_pairs) == (:optimize_fn, :constantcoef, :omegas, :ensemblealg, :alg,)
+@test kwarg_pairs[5] == Rosenbrock23()
 
 end
 

@@ -47,7 +47,7 @@ using Pumas
 
   ft = fit(mdsl1, data, param, Pumas.FOCEI(),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
-  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), ft) ==
+@test sprint((io, t) -> show(io, MIME"text/plain"(), t), ft) ==
 """
 FittedPumasModel
 
@@ -68,9 +68,9 @@ Number of subjects:                       10
 ------------------
 """
 
-  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(ft)) ==
+@test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(ft)) ==
 """
-FittedPumasModelInference
+Asymptotic inference results
 
 Successful minimization:                true
 
@@ -80,12 +80,12 @@ Total number of observation records:      20
 Number of active observation records:     20
 Number of subjects:                       10
 
------------------------------------------------------------
+-------------------------------------------------------------
         Estimate          SE                  95.0% C.I.
------------------------------------------------------------
+-------------------------------------------------------------
 θ₁       0.36476        0.078498        [0.21091; 0.51861]
 Ω₁,₁     0.04           NaN             [ NaN   ;  NaN     ]
 Σ        0.1            NaN             [ NaN   ;  NaN     ]
------------------------------------------------------------
+-------------------------------------------------------------
 """
 end# testset

@@ -40,7 +40,7 @@ include("models/model_utils.jl")
 
 include("estimation/transforms.jl")
 include("estimation/likelihoods.jl")
-include("estimation/bootstrap.jl")
+include("estimation/inference.jl")
 include("estimation/bayes.jl")
 include("estimation/diagnostics.jl")
 include("estimation/gsa.jl")

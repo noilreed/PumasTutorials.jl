@@ -138,18 +138,65 @@ end
     0.03282388757574916    -0.00041459973200541107 -0.006289667479989163
    -0.00041459973200541107  2.8084159378198597e-5   0.0006126638425598551
    -0.006289667479989163    0.0006126638425598551   0.014897292696384252  ] rtol=1e-5
-
+  Random.seed!(12349)
   bts = bootstrap(o; samples=5)
-    @test sprint((io, t) -> show(io, MIME"text/plain"(), t), bts) == """
+@test sprint((io, t) -> show(io, MIME"text/plain"(), t), bts) == """
 Bootstrap inference results
 
+Successful minimization:                true
+
+Likelihood approximation:           Pumas.FO
+Deviance:                          71.979975
+Total number of observation records:     132
+Number of active observation records:    132
+Number of subjects:                       12
+
+--------------------------------------------------------------------------
+           Estimate             SE                       95.0% C.I.
+--------------------------------------------------------------------------
+θ₁          4.2026            0.22273           [ 4.1256   ;  4.6946    ]
+θ₂          0.072527          0.0092327         [ 0.060577 ;  0.083399  ]
+θ₃          0.03575           0.0063604         [ 0.027896 ;  0.043743  ]
+θ₄          2.124             0.33467           [ 1.957    ;  2.6748    ]
+Ω₁,₁       18.123             5.9395            [18.769    ; 32.556     ]
+Ω₂,₁       -0.011252          0.028665          [-0.033474 ;  0.031952  ]
+Ω₃,₁       -0.030697          1.9778            [-1.5527   ;  2.8283    ]
+Ω₂,₂        0.00022509        0.00013489        [ 2.488e-5 ;  0.00036611]
+Ω₃,₂        0.010458          0.0072709         [ 0.0012109;  0.018967  ]
+Ω₃,₃        0.59984           0.50304           [ 0.07539  ;  1.2498    ]
+σ²_add      0.26654           0.050357          [ 0.24575  ;  0.36047   ]
+--------------------------------------------------------------------------
 Successful fits: 5 out of 5
-No stratifiation.
+No stratification.
 """
-  bts = bootstrap(o; samples=5, stratify_by=:SEX)
-    @test sprint((io, t) -> show(io, MIME"text/plain"(), t), bts) == """
+Random.seed!(102349)
+bts = bootstrap(o; samples=5, stratify_by=:SEX)
+@test sprint((io, t) -> show(io, MIME"text/plain"(), t), bts) == """
 Bootstrap inference results
 
+Successful minimization:                true
+
+Likelihood approximation:           Pumas.FO
+Deviance:                          71.979975
+Total number of observation records:     132
+Number of active observation records:    132
+Number of subjects:                       12
+
+---------------------------------------------------------------------------
+           Estimate             SE                        95.0% C.I.
+---------------------------------------------------------------------------
+θ₁          4.2026            0.372              [ 3.4137   ;  4.2865    ]
+θ₂          0.072527          0.0057351          [ 0.067688 ;  0.082293  ]
+θ₃          0.03575           0.003067           [ 0.033307 ;  0.040746  ]
+θ₄          2.124             0.34265            [ 1.6081   ;  2.4392    ]
+Ω₁,₁       18.123             6.3403             [ 6.8675   ; 20.176     ]
+Ω₂,₁       -0.011252          0.022839           [-0.036726 ;  0.021097  ]
+Ω₃,₁       -0.030697          1.8685             [-1.6103   ;  2.7368    ]
+Ω₂,₂        0.00022509        0.00010619         [ 3.3332e-5;  0.00028206]
+Ω₃,₂        0.010458          0.0072881          [ 0.0022264;  0.019884  ]
+Ω₃,₃        0.59984           0.66599            [ 0.21211  ;  1.6899    ]
+σ²_add      0.26654           0.081522           [ 0.16314  ;  0.34591   ]
+---------------------------------------------------------------------------
 Successful fits: 5 out of 5
 Stratification by SEX.
 """
@@ -368,18 +415,65 @@ end
   o_empirical_bayes_df = DataFrame(o_empirical_bayes)
 
   @test_throws DimensionMismatch simobs(o.model, theopp, coef(o), empirical_bayes(o)[1:end-1])
-
+  Random.seed!(12349)
   bts = bootstrap(o; samples=5)
-    @test sprint((io, t) -> show(io, MIME"text/plain"(), t), bts) == """
+@test sprint((io, t) -> show(io, MIME"text/plain"(), t), bts) == """
 Bootstrap inference results
 
+Successful minimization:                true
+
+Likelihood approximation:           Pumas.FO
+Deviance:                          71.979975
+Total number of observation records:     132
+Number of active observation records:    132
+Number of subjects:                       12
+
+--------------------------------------------------------------------------
+           Estimate             SE                       95.0% C.I.
+--------------------------------------------------------------------------
+θ₁          4.2026            0.22273           [ 4.1256   ;  4.6946    ]
+θ₂          0.072527          0.0092327         [ 0.060577 ;  0.083399  ]
+θ₃          0.03575           0.0063604         [ 0.027896 ;  0.043743  ]
+θ₄          2.124             0.33467           [ 1.957    ;  2.6748    ]
+Ω₁,₁       18.123             5.9395            [18.769    ; 32.556     ]
+Ω₂,₁       -0.011252          0.028665          [-0.033474 ;  0.031952  ]
+Ω₃,₁       -0.030697          1.9778            [-1.5527   ;  2.8283    ]
+Ω₂,₂        0.00022509        0.00013489        [ 2.488e-5 ;  0.00036611]
+Ω₃,₂        0.010458          0.0072709         [ 0.0012109;  0.018967  ]
+Ω₃,₃        0.59984           0.50304           [ 0.07539  ;  1.2498    ]
+σ²_add      0.26654           0.050357          [ 0.24575  ;  0.36047   ]
+--------------------------------------------------------------------------
 Successful fits: 5 out of 5
-No stratifiation.
+No stratification.
 """
-  bts = bootstrap(o; samples=5, stratify_by=:SEX)
-    @test sprint((io, t) -> show(io, MIME"text/plain"(), t), bts) == """
+Random.seed!(123849)
+bts = bootstrap(o; samples=5, stratify_by=:SEX)
+@test sprint((io, t) -> show(io, MIME"text/plain"(), t), bts) == """
 Bootstrap inference results
 
+Successful minimization:                true
+
+Likelihood approximation:           Pumas.FO
+Deviance:                          71.979975
+Total number of observation records:     132
+Number of active observation records:    132
+Number of subjects:                       12
+
+-------------------------------------------------------------------------
+           Estimate             SE                       95.0% C.I.
+-------------------------------------------------------------------------
+θ₁          4.2026            0.30102           [ 3.8133   ;  4.5407   ]
+θ₂          0.072527          0.009504          [ 0.066435 ;  0.090567 ]
+θ₃          0.03575           0.0066559         [ 0.030319 ;  0.046939 ]
+θ₄          2.124             0.16426           [ 2.2643   ;  2.6507   ]
+Ω₁,₁       18.123             3.8784            [13.558    ; 21.692    ]
+Ω₂,₁       -0.011252          0.036768          [-0.020454 ;  0.065244 ]
+Ω₃,₁       -0.030697          2.0168            [-0.91822  ;  3.7994   ]
+Ω₂,₂        0.00022509        0.00012755        [ 5.693e-5 ;  0.0003825]
+Ω₃,₂        0.010458          0.0086354         [ 0.0024713;  0.024282 ]
+Ω₃,₃        0.59984           0.55421           [ 0.19576  ;  1.5641   ]
+σ²_add      0.26654           0.024813          [ 0.21214  ;  0.27514  ]
+-------------------------------------------------------------------------
 Successful fits: 5 out of 5
 Stratification by SEX.
 """

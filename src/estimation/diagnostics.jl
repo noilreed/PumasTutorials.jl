@@ -20,7 +20,7 @@ function npde(
   m::PumasModel,
   subject::Subject,
   param::NamedTuple;
-  nsim::Union{Nothing,Integer}=nothing)
+  nsim::Union{Nothing,Integer}=nothing, kwargs...)
 
   if nsim === nothing
     throw(ArgumentError("the number of simulations argument (nsim) was not specified."))
@@ -30,7 +30,7 @@ function npde(
   end
 
   _names = keys(subject.observations)
-  sims = [simobs(m, subject, param).observed for i in 1:nsim]
+  sims = [simobs(m, subject, param; kwargs...).observed for i in 1:nsim]
 
   return map(NamedTuple{_names}(_names)) do name
     y        = subject.observations[name]
@@ -198,7 +198,7 @@ function wresiduals(
     # re-estimate under approx
     vvrandeffsorth = [_orth_empirical_bayes(fpm.model, subject, coef(fpm), approx, fpm.args...; fpm.kwargs...) for subject in subjects]
   end
-  [wresiduals(fpm, subjects[i], approx, vvrandeffsorth[i], fpm.args...; nsim=nsim, fpm.kwargs...) for i = 1:length(subjects)]
+  [wresiduals(fpm, subjects[i], approx, vvrandeffsorth[i]; nsim=nsim) for i = 1:length(subjects)]
 end
 
 # predict

@@ -6,6 +6,18 @@ _coef_value(var::PDiagMat) = var.diag
 
 _to_subscript(number) = join([_subscriptvector[parse(Int32, dig)+1] for dig in string(number)])
 
+
+function show_dashrow_table(io, labels, stringrows)
+  dashrow = "-"^max(length(labels)+1,maximum(length.(stringrows)))
+  println(io, dashrow)
+  print(io, labels)
+  println(io,"\n" , dashrow)
+  for stringrow in stringrows
+    print(io, stringrow)
+  end
+  println(io, dashrow)
+end
+
 function _print_fit_header(io, fpm)
   println(io, string("Successful minimization:",
                      lpad(string(Optim.converged(fpm.optim)), 20)))
@@ -61,13 +73,8 @@ function Base.show(io::IO, mime::MIME"text/plain", fpm::FittedPumasModel)
   for (name, val) in zip(coefdf.parameter, paramvals)
     push!(stringrows, string(name, " "^(maxname-length(name)-getdecimal(val)+Int(round(maxval/1.2))), val, "\n"))
   end
-  println(io,"-"^max(length(labels)+1,maximum(length.(stringrows))))
-  print(io, labels)
-  println(io,"\n" ,"-"^max(length(labels)+1,maximum(length.(stringrows))))
-  for stringrow in stringrows
-    print(io, stringrow)
-  end
-  println(io,"-"^max(length(labels)+1,maximum(length.(stringrows))))
+
+  show_dashrow_table(io, labels, stringrows)
 end
 
 TreeViews.hastreeview(x::FittedPumasModel) = true
@@ -115,14 +122,9 @@ function Base.show(io::IO, mime::MIME"text/plain", vfpm::Vector{<:FittedPumasMod
         std,
         "\n"))
   end
+
   println(io, "Parameter statistics")
-  println(io, "-"^max(length(labels) + 1, maximum(length.(stringrows))))
-  print(io, labels)
-  println(io,"\n" ,"-"^max(length(labels) + 1, maximum(length.(stringrows))))
-  for stringrow in stringrows
-    print(io, stringrow)
-  end
-  println(io,"-"^max(length(labels) + 1, maximum(length.(stringrows))))
+  show_dashrow_table(io, labels, stringrows)
 end
 
 TreeViews.hastreeview(x::Vector{<:FittedPumasModel}) = true
@@ -132,7 +134,7 @@ function TreeViews.treelabel(io::IO,x::Vector{<:FittedPumasModel},
 end
 
 # _push_varinfo! methods
-function _push_varinfo!(_names, _vals, _se, _confint, paramname, paramval::PDMat, std, quant)
+function _push_varinfo!(_names, _vals, _se, _confint, paramname, paramval::PDMat, std, quant, bootvals=nothing)
   mat = paramval.mat
   for j = 1:size(mat, 2)
     for i = j:size(mat, 1)
@@ -140,39 +142,33 @@ function _push_varinfo!(_names, _vals, _se, _confint, paramname, paramval::PDMat
       # into `nothing`.
       stdij = _se == nothing ? nothing : std[i, j]
       _name = string(paramname)*"$(_to_subscript(i)),$(_to_subscript(j))"
-      _push_varinfo!(_names, _vals, _se, _confint, _name, mat[i, j], stdij, quant)
+      _bts = bootvals == nothing ? nothing : getindex.(bootvals, j, i)
+      _push_varinfo!(_names, _vals, _se, _confint, _name, mat[i, j], stdij, quant, _bts)
     end
   end
 end
-function _push_varinfo!(_names, _vals, _se, _confint, paramname, paramval::PDiagMat, std, quant)
+function _push_varinfo!(_names, _vals, _se, _confint, paramname, paramval::PDiagMat, std, quant, bootvals=nothing)
   mat = paramval.diag
     for i = 1:length(mat)
       # We set stdii to nothing in case SEs are not requested to avoid indexing
       # into `nothing`.
-      if _se == nothing
-        stdii = nothing
-      else
-        if hasproperty(std, :diag)
-          stdii = std.diag[i]
-        else
-          stdii = std[i]
-        end
-      end
+      stdii = _se == nothing ? nothing : _coef_value(std)[i]
       _name = string(paramname)*"$(_to_subscript(i)),$(_to_subscript(i))"
-      _push_varinfo!(_names, _vals, _se, _confint, _name, mat[i], stdii, quant)
+      _bts = bootvals == nothing ? nothing : getindex.(bootvals, i)
+      _push_varinfo!(_names, _vals, _se, _confint, _name, mat[i], stdii, quant, _bts)
     end
 end
-_push_varinfo!(_names, _vals, _se, _confint, paramname, paramval::Diagonal, std, quant) =
-  _push_varinfo!(_names, _vals, _se, _confint, paramname, PDiagMat(paramval.diag), std, quant)
-function _push_varinfo!(_names, _vals, _se, _confint, paramname, paramval::AbstractVector, std, quant)
+_push_varinfo!(_names, _vals, _se, _confint, paramname, paramval::Diagonal, std, quant, bootvals=nothing) =
+  _push_varinfo!(_names, _vals, _se, _confint, paramname, PDiagMat(paramval.diag), std, quant, bootvals)
+function _push_varinfo!(_names, _vals, _se, _confint, paramname, paramval::AbstractVector, std, quant, bootvals=nothing)
   for i in 1:length(paramval)
     # We set stdi to nothing in case SEs are not requested to avoid indexing
     # into `nothing`.
     stdi = _se == nothing ? nothing : std[i]
-    _push_varinfo!(_names, _vals, _se, _confint, string(paramname, _to_subscript(i)), paramval[i], stdi, quant)
+    _push_varinfo!(_names, _vals, _se, _confint, string(paramname, _to_subscript(i)), paramval[i], stdi, quant, bootvals)
   end
 end
-function _push_varinfo!(_names, _vals, _se, _confint, paramname, paramval::Number, std, quant)
+function _push_varinfo!(_names, _vals, _se, _confint, paramname, paramval::Number, std, quant, bootvals=nothing)
   # Push variable names and values.
   push!(_names, string(paramname))
   push!(_vals, paramval)
@@ -181,7 +177,11 @@ function _push_varinfo!(_names, _vals, _se, _confint, paramname, paramval::Numbe
     push!(_se, std)
   end
   if _confint !== nothing
-    push!(_confint, (paramval - std*quant, paramval+std*quant))
+    if bootvals == nothing
+      push!(_confint, (paramval - std*quant, paramval + std*quant))
+    else
+      push!(_confint, (quantile(bootvals, 0.025), quantile(bootvals, 0.975)))
+    end
   end
 end
 
@@ -205,24 +205,35 @@ function StatsBase.coeftable(pmi::FittedPumasModelInference)
   paramvals    = T[]
   paramse      = T[]
   paramconfint = Tuple{T,T}[]
-
   quant = quantile(Normal(), pmi.level + (1 - pmi.level)/2)
 
   for (paramname, paramval) in pairs(coef(pmi))
     std = standard_errors[paramname]
-    _push_varinfo!(paramnames, paramvals, paramse, paramconfint, paramname, paramval, std, quant)
+    bts_param = pmi.vcov isa Bootstraps ? map(p->_coef_value(p[paramname]), coef.(filter(x->isa(x, FittedPumasModel),pmi.vcov.fits))) : nothing
+    _push_varinfo!(paramnames, paramvals, paramse, paramconfint, paramname, paramval, std, quant, bts_param)
   end
 
+  for (paramname, paramval) in pairs(coef(pmi))
+    lower = (1-pmi.level)/2
+#    for p in bts_param
+    #println("in a new param")
+    #@show bts_param
+    #@show _coef_value.(bts_param)
+    #@show (quantile(bts_param, lower), quantile(bts_param, 1-lower))
+  end
   return DataFrame(parameter=paramnames, estimate=paramvals, se=paramse, ci_lower=first.(paramconfint), ci_upper=last.(paramconfint))
 end
-
 function Base.show(io::IO, mime::MIME"text/plain", pmi::FittedPumasModelInference)
   fpm = pmi.fpm
 
-  println(io, "FittedPumasModelInference\n")
+  if pmi.vcov isa Bootstraps
+    println(io, "Bootstrap inference results")
+  else
+    println(io, "Asymptotic inference results")
+  end
+  println(io)
   _print_fit_header(io, pmi.fpm)
-
-  # Get a table with the estimates standard errors and confidense intervals
+  # Get a table with the estimates standard errors and confidence intervals
   coefdf = coeftable(pmi)
 
   paramvals    = map(t -> string(round(t, sigdigits=5)), coefdf.estimate)
@@ -252,17 +263,19 @@ function Base.show(io::IO, mime::MIME"text/plain", pmi::FittedPumasModelInferenc
     push!(stringrows, row)
   end
 
-  println(io, "-"^max(length(labels)+1,length(stringrows[1])))
-  print(io, labels)
-  println(io, "\n",  "-"^max(length(labels)+1,length(stringrows[1])))
-  for stringrow in stringrows
-    print(io, stringrow)
-  end
-  println(io,  "-"^max(length(labels)+1,length(stringrows[1])))
+  show_dashrow_table(io, labels, stringrows)
+
+  # Print a useful warning if vcov failed
   if pmi.vcov isa Exception
     println(io, """\n\nVariance-covariance matrix could not be\nevaluated. The random effects may be over-\nparameterized. Check the coefficients for\nvariance estimates near zero.""")
+  elseif pmi.vcov isa Bootstraps
+    println(io, "Successful fits: $(count(x -> x isa FittedPumasModel, pmi.vcov.fits)) out of $(length(pmi.vcov.fits))")
+    if pmi.vcov.stratify_by isa Nothing
+    println(io, "No stratification.")
+    else
+      println(io, "Stratification by $(pmi.vcov.stratify_by).")
+    end
   end
-
 end
 TreeViews.hastreeview(x::FittedPumasModelInference) = true
 function TreeViews.treelabel(io::IO,x::FittedPumasModelInference,
