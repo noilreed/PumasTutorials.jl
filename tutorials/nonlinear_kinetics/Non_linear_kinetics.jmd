@@ -1,5 +1,5 @@
 ---
-title : Non-linear Kinetics
+title : Concentration-dependant Kinetics
 author : Parsshava R Mehta
 date : 2nd June 2020
 ---
@@ -9,16 +9,17 @@ using Pumas, Plots
 ```
 
 ## Introduction
-  In this tutorial you will learn the following non-linear models
+  In this tutorial you will learn the following concentration-dependant models
 
-  * Non-linear Elimination
-  * Non-linear Metabolite Formation
-  * Non-linear Absorption
+  * Concentration-dependant Elimination
+  * Concentration-dependant Metabolite Formation
+  * Concentration-dependant Absorption
+  * Concentration-dependant Bioavailability
 
 In all these models you can see the Michaelis-Menten term is mentioned in the **`@vars`** block as a short
 hand notation. It is then incorporated into the differential equation in the **`@dynamics`** block
 
-#### Non-linear Elimination
+#### Concentration-dependant Elimination
   In this model the elimination of the  metabolite is saturated at higher concentrations and is written
   using the Michaelis-Menten term
 
@@ -41,8 +42,8 @@ one_compt_non_linear_eli = @model begin
     Km     = tvkm * exp(η[2])
   end
 
-  @vars begin
-    VMKM    := Vmax/(Km+Central)
+  @vars begin  # Concentration-dependant : Elimination
+    VMKM  := Vmax/(Km+Central)
   end
 
   @dynamics begin
@@ -50,7 +51,7 @@ one_compt_non_linear_eli = @model begin
   end
 
   @derived begin
-    Cp    = @. Central/Vc
+    Cp     = @. Central/Vc
   end
 end
 ```
@@ -78,7 +79,7 @@ obs1 = simobs(one_compt_non_linear_eli, sub, par1, obstimes=0.1:0.1:30)
 plot(obs1, yaxis=:log)
 ```
 
-#### Non-linear Metabolite Formation
+#### Concentration-dependant Metabolite Formation
   In this model the formation of the metabolite is saturated at higher concentration and follows
   a Michaelis-Menten type reaction
 
@@ -111,7 +112,7 @@ two_compt_non_linear_metform = @model begin
 
   @covariates Wt
 
-  @vars begin
+  @vars begin  # Concentration-dependant : Metabolite formation
     VMKM   := Vmax/(Km+Central)
   end
 
@@ -150,60 +151,60 @@ sub  = [sub1, sub2]
 ```
 Use the `simobs` function to run the simulation
 ```julia
-obs1 = simobs(two_compt_non_linear_metform, sub, par_met, obstimes=0.1:0.1:600)
+obs1 = simobs(two_compt_non_linear_metform, sub, par_met, obstimes=0.1:1:600)
 plot(obs1, yaxis=:log)
 ```
 
-#### Non-linear Absorption
+#### Concentration-dependant Absorption
   In this model the absorption of the drug is saturated at higher concentration and follows
   a Michaelis-Menten type reaction
 
 ```julia
 one_compt_non_linear_abs = @model begin
   @param begin
-    tvvc   ∈ RealDomain(lower=0)
-    tvvmax ∈ RealDomain(lower=0)
-    tvkm   ∈ RealDomain(lower=0)
-    tvcl   ∈ RealDomain(lower=0)
-    Ω      ∈ PDiagDomain(2)
+    tvvc       ∈ RealDomain(lower=0)
+    tvkabs_max ∈ RealDomain(lower=0)
+    tvAabs50   ∈ RealDomain(lower=0)
+    tvcl       ∈ RealDomain(lower=0)
+    Ω          ∈ PDiagDomain(2)
   end
 
   @random begin
-    η      ~ MvNormal(Ω)
+    η         ~ MvNormal(Ω)
   end
 
   @pre begin
-    Vc     = tvvc * exp(η[1])
-    Vmax   = tvvmax
-    Km     = tvkm
-    Cl     = tvcl * exp(η[2])
+    Vc        = tvvc * exp(η[1])
+    Kabs_max  = tvkabs_max
+    Aabs50    = tvAabs50
+    Cl        = tvcl * exp(η[2])
   end
 
-  @vars begin
-    VMKM    := Vmax/(Km+Depot)
+  @vars begin  # Concentration-dependant : Absorption
+    VMKM     := Kabs_max/(Aabs50+Depot)
   end
 
   @dynamics begin
-    Depot'   = -VMKM*Depot
-    Central' = VMKM*Depot - (Cl/Vc)*Central
+    Depot'    = -VMKM*Depot
+    Central'  = VMKM*Depot - (Cl/Vc)*Central
   end
 
   @derived begin
-    Cp    = @. Central/Vc
+    Cp        = @. Central/Vc
   end
 end
 ```
 Parameters for the model are as below:
 ```julia
-par_abs = ( tvvc   = 10,    # (L)
-            tvvmax = 5,     # (mg/hr)
-            tvkm   = 1,     # (mg)
-            tvcl   = 5,     # (L/hr)
-            Ω      = Diagonal([0.0001,0.0001]))
+par_abs = ( tvvc       = 10,    # (L)
+            tvkabs_max = 5,     # (mg/hr)
+            tvAabs50   = 1,     # (mg)
+            tvcl       = 5,     # (L/hr)
+            Ω          = Diagonal([0.0001,0.0001]))
 ```
 **Simulating a population of two subjects with different doses:**
  * Subject 1 receives an oral dose of 3 mg at `time=0`
- * Subject 2 receives an oral dose of 30 mg given as an IV-Bolus at `time=0`
+ * Subject 2 receives an oral dose of 30 mg given at `time=0`
 ```julia
 ev1 = DosageRegimen(3, time=0, cmt=:Depot)
 sub1 = Subject(id=1, evs=ev1)
@@ -215,4 +216,83 @@ Use the `simobs` function to run the simulation
 ```julia
 obs = simobs(one_compt_non_linear_abs, sub, par_abs, obstimes=0.1:0.1:24)
 plot(obs, yaxis=:log)
+```
+#### Concentration-dependant : Bioavailability
+  In this model the bioavailability of the drug is saturated at higher concentration and follows
+  a Michaelis-Menten type reaction
+
+  Note: To introduce a covariate in the @vars block you need to pass them through @pre block. In this
+  current example the covariate `Dose1` is assigned a new variable `Dose` in the @pre block and then
+  introduced into the @vars block.
+```julia
+one_compt_non_linear_bio = @model begin
+  @param begin
+    tvcl       ∈ RealDomain(lower=0)
+    tvvc       ∈ RealDomain(lower=0)
+    tvka       ∈ RealDomain(lower=0)
+    tvrelfmax  ∈ RealDomain(lower=0)
+    tvf20      ∈ RealDomain(lower=0)
+    tved50     ∈ RealDomain(lower=0)
+    Ω          ∈ PDiagDomain(2)
+  end
+
+  @random begin
+    η          ~ MvNormal(Ω)
+  end
+
+  @covariates Dose1
+
+  @pre begin
+    Cl         = tvcl*exp(η[1])
+    Vc         = tvvc*exp(η[2])
+    Ka         = tvka
+    RelFmax    = tvrelfmax
+    F20        = tvf20
+    ED50       = tved50
+    RefDose    = 20
+    Dose       = Dose1
+  end
+
+  @vars begin  # Concentration-dependant : Bioavailability
+    F         := F20*(1+((RelFmax*(Dose-RefDose))/(ED50+(Dose-RefDose))))
+  end
+
+  @dynamics begin
+    Depot'     = -F*Ka*Depot
+    Central'   = Ka*Depot - (Cl/Vc)*Central
+  end
+
+  @derived begin
+    Cp         = @. Central/Vc
+  end
+end
+```
+Parameters for the model are as below:
+```julia
+par1 = ( tvcl      = 20,     # (L/hr)
+         tvvc      = 80,     # (L)
+         tvka      = 1.77,   # (h⁻¹)
+         tvrelfmax = 0.504,  # Relative Bioavailability to 20mg
+         tvf20     = 1,      # Bioavailability at Dose of 20mg
+         tved50    = 67,     # (mg)
+         Ω = Diagonal([0.01,0.01]))
+```
+**Simulating a population of three subjects with different doses:**
+ * Subject 1 receives an oral dose of 20 mg at `time=0` (Reference Dose)
+ * Subject 2 receives an oral dose of 100 mg at `time=0`
+ * Subject 3 receives an oral dose of 200 mg at `time=0`
+
+```julia
+ev1 = DosageRegimen(20, time=0, cmt=:Depot)
+sub1 = Subject(id=1, evs=ev1, cvs=(Dose1=20,))
+ev2 = DosageRegimen(100, time=0, cmt=:Depot)
+sub2 = Subject(id=2, evs=ev2, cvs=(Dose1=100,))
+ev3 = DosageRegimen(200, time=0, cmt=:Depot)
+sub3 = Subject(id=3, evs=ev3, cvs=(Dose1=200,))
+sub = [sub1, sub2, sub3]
+```
+Use the `simobs` function to run the simulation
+```julia
+obs1 = simobs(one_compt_non_linear_bio, sub, par1, obstimes=0:0.1:48)
+plot(obs1)
 ```
