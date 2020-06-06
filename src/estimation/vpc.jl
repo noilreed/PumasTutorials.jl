@@ -1,6 +1,6 @@
 struct PopVPC
     data_quantiles::DataFrame
-    data::Population
+    data::Array{Population}
     stratify_by::Union{Nothing,Array{Symbol}}
     dv::Symbol
 end
@@ -62,7 +62,7 @@ function _vpc(
         return combine(t -> _npqreg(:dv, :idv, t, τ, qreg_method; xrange=_xrange, bandwidth=bandwidth), groupby(df, stratify_by === nothing ? [] : stratify_by))
     end
 
-    return data_quantiles
+    return data_quantiles, [read_pumas(DataFrame(df), id = :id, dvs = [:dv], time = :idv, event_data=false) for df in groupby(df, stratify_by === nothing ? [] : stratify_by)]
 end
 
 
@@ -86,7 +86,7 @@ function _vpc(
     for i in 1:reps
         # Simulate a new population
         sim_pop = Subject.(simobs(m, population, param, ensemblealg=ensemblealg))
-        sim_quantiles_v[i] = _vpc(sim_pop, qreg_method; quantiles=quantiles, dv=dv, bandwidth=bandwidth, stratify_by=stratify_by, numstrats = numstrats)
+        sim_quantiles_v[i], = _vpc(sim_pop, qreg_method; quantiles=quantiles, dv=dv, bandwidth=bandwidth, stratify_by=stratify_by, numstrats = numstrats)
     end
 
     sim_quantiles_df = reduce(vcat, sim_quantiles_v)
@@ -110,9 +110,9 @@ function vpc(
     ensemblealg=EnsembleSerial(),
     bandwidth=2,
     numstrats= stratify_by === nothing ? nothing : [4 for i in 1:length(stratify_by)])
-    _vpc_data = _vpc(population, qreg_method; dv = dv, stratify_by = stratify_by, quantiles = quantiles, bandwidth = bandwidth, numstrats = numstrats)
+    _vpc_data, pop_stratified = _vpc(population, qreg_method; dv = dv, stratify_by = stratify_by, quantiles = quantiles, bandwidth = bandwidth, numstrats = numstrats)
     _vpc_simulated = _vpc(m, population, param, reps, qreg_method;dv = dv, stratify_by = stratify_by, quantiles = quantiles, level = level, ensemblealg = ensemblealg, bandwidth = bandwidth, numstrats = numstrats)
-    return VPC(_vpc_simulated, PopVPC(_vpc_data, population, stratify_by, dv))
+    return VPC(_vpc_simulated, PopVPC(_vpc_data, pop_stratified, stratify_by, dv))
 end
 
 function vpc(population::Population,
@@ -120,8 +120,8 @@ function vpc(population::Population,
     dv::Symbol = keys(population[1].observations)[1],
     stratify_by = nothing,
     kwargs...)
-    _vpc_data = _vpc(population, qreg_method;stratify_by = stratify_by, dv = dv, kwargs...)
-    return PopVPC(_vpc_data, population, stratify_by, dv)
+    _vpc_data, pop_stratified = _vpc(population, qreg_method;stratify_by = stratify_by, dv = dv, kwargs...)
+    return PopVPC(_vpc_data, pop_stratified, stratify_by, dv)
 end
 
 """
@@ -170,15 +170,32 @@ vpc(fpm::FittedPumasModel, reps::Integer=499, qreg_method=IP();
 @recipe function f(vpc::PopVPC;scatter=true)
     scatterlabel = ["Observed data", "Observation quantiles"]
     if scatter == true
-        for (i,sub) in enumerate(vpc.data)
-            @series begin
-                obsnames --> [vpc.dv]
-                seriestype --> :scatter
-                markercolor --> :blue
-                markeralpha --> 0.2
-                label --> (i == 1 ? scatterlabel[1] : "")
-                legend --> :outertop
-                sub
+        if vpc.stratify_by === nothing
+            for (i,sub) in enumerate(vpc.data[1])
+                @series begin
+                    obsnames --> [vpc.dv]
+                    seriestype --> :scatter
+                    markercolor --> :blue
+                    markeralpha --> 0.2
+                    label --> (i == 1 ? scatterlabel[1] : "")
+                    legend --> :outertop
+                    sub
+                end
+            end
+        else
+            for (pltno,data_strat) in enumerate(vpc.data)
+                for (i,sub) in enumerate(data_strat)
+                    @series begin
+                        subplot --> pltno
+                        obsnames --> [vpc.dv]
+                        seriestype --> :scatter
+                        markercolor --> :blue
+                        markeralpha --> 0.2
+                        label --> (i == 1 && pltno == 1 ? scatterlabel[1] : "")
+                        legend --> :outertop
+                        sub
+                    end
+                end
             end
         end
     end
@@ -218,22 +235,6 @@ end
 @recipe function f(vpc::VPC; plottype=:scatter)
     if plottype == :scatter || plottype == :percentile
         scatterlabel = ["Observed data", "Observation quantiles", "Simulated quantiles"]
-        if plottype == :scatter
-            for (i,sub) in enumerate(vpc.popvpc.data)
-                @series begin
-                    obsnames --> [vpc.popvpc.dv]
-                    seriestype --> :scatter
-                    markercolor --> :blue
-                    markeralpha --> 0.2
-                    label --> (i == 1 ? scatterlabel[1] : "")
-                    legend --> :outertop
-                    sub
-                end
-            end
-        else
-            scatter --> false
-            vpc.popvpc
-        end
         if vpc.popvpc.stratify_by === nothing
             sim_quantiles = groupby(vpc.simulated_quantiles, :τ)
             for i in 1:3
@@ -262,6 +263,12 @@ end
                     end
                 end
             end
+        end
+        if plottype == :scatter
+            vpc.popvpc
+        else
+            scatter --> false
+            vpc.popvpc
         end
     elseif plottype == :interval
         if vpc.popvpc.stratify_by === nothing
@@ -297,6 +304,7 @@ end
                 end
             end
         end
+        legend --> false
         scatter --> false
         vpc.popvpc
     end
