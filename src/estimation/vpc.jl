@@ -173,7 +173,6 @@ vpc(fpm::FittedPumasModel, reps::Integer=499, qreg_method=IP();
         if vpc.stratify_by === nothing
             for (i,sub) in enumerate(vpc.data[1])
                 @series begin
-                    obsnames --> [vpc.dv]
                     seriestype --> :scatter
                     markercolor --> :blue
                     markeralpha --> 0.2
@@ -187,7 +186,6 @@ vpc(fpm::FittedPumasModel, reps::Integer=499, qreg_method=IP();
                 for (i,sub) in enumerate(data_strat)
                     @series begin
                         subplot --> pltno
-                        obsnames --> [vpc.dv]
                         seriestype --> :scatter
                         markercolor --> :blue
                         markeralpha --> 0.2
@@ -220,7 +218,7 @@ vpc(fpm::FittedPumasModel, reps::Integer=499, qreg_method=IP();
             for i in 1:3
                 @series begin
                     subplot --> pltno
-                    title --> "Stratified on " * string(["$(colnames[j]): $(data_quantile[1,colinds[j]])" for j in 1:length(colinds)]...)
+                    title --> "Stratified on " * string(["$(colnames[j]): $(data_quantile[1,colinds[j]]) " for j in 1:length(colinds)]...)
                     linewidth --> 2
                     label --> ((i == 1 && pltno == 1) ? scatterlabel[2] : "")
                     seriescolor --> :red
@@ -255,7 +253,7 @@ end
                 for i in 1:3
                     @series begin
                         subplot --> pltno
-                        title --> "Stratified on " * string(["$(colnames[j]): $(sim_quantile[1,colinds[j]])" for j in 1:length(colinds)]...)
+                        title --> "Stratified on " * string(["$(colnames[j]): $(sim_quantile[1,colinds[j]]) " for j in 1:length(colinds)]...)
                         seriescolor --> :black
                         legend --> :outertop
                         label --> ((i == 1 && pltno == 1) ? scatterlabel[3] : "")
@@ -295,7 +293,7 @@ end
                         subplot --> pltno
                         ribbon --> [df_sim_quantile[i][!,:middle] .- df_sim_quantile[i][!,:lower],df_sim_quantile[i][!,:upper] .- df_sim_quantile[i][!,:middle]]
                         fillalpha --> 0.2
-                        title --> "Stratified on " * string(["$(colnames[j]): $(sim_quantile[1,colinds[j]])" for j in 1:length(colinds)]...)
+                        title --> "Stratified on " * string(["$(colnames[j]): $(sim_quantile[1,colinds[j]]) " for j in 1:length(colinds)]...)
                         seriescolor --> :black
                         legend --> :outertop
                         label --> ((i == 1 && pltno == 1) ? "Simulated quantiles" : "")
@@ -304,7 +302,6 @@ end
                 end
             end
         end
-        legend --> false
         scatter --> false
         vpc.popvpc
     end
