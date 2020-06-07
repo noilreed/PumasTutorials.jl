@@ -1,0 +1,155 @@
+---
+title : Induction Models
+author : Parsshava R Mehta
+date : 4th June 2020
+---
+Load the necessary libraries
+```julia
+using Pumas, Plots
+```
+## Introduction
+In this tutorial you will learn the following induction models
+  * Heteroinduction Model
+  * Autoinduction Model
+
+#### Heteroinduction Model
+Ref: [von Bahr C, Steiner E, Koike Y, Gabrielsson J. Time course of enzyme induction in humans: effect of pentobarbital on nortriptyline metabolism. Clin Pharmacol Ther. 1998;64(1):18‐26.](https://pubmed.ncbi.nlm.nih.gov/9695715/)
+
+In this model you can see a term `t` in the pre block; this indicates the **solver time**. `t`(time) is used to provide a condition of true or false with the _if elseif else_ statment.
+
+Note: The `dose` is in **mg** and `conc` are obatined in **μg/L**. Hence concentrations are scaled to μg/L in the @derived block by multiplying by 1000.
+```julia
+hetero_model = @model begin
+  @param begin
+    tvka    ∈ RealDomain(lower=0)
+    tvclss  ∈ RealDomain(lower=0)
+    tvclpre ∈ RealDomain(lower=0)
+    tvkout  ∈ RealDomain(lower=0)
+    tvvc    ∈ RealDomain(lower=0)
+    Ω       ∈ PDiagDomain(2)
+  end
+
+  @random begin
+    η       ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Ka      = tvka
+    Clss    = tvclss * exp(η[1])
+    Clpre   = tvclpre
+    Vc      = tvvc * exp(η[2])
+    Kout    = tvkout
+    Kpre    = Clpre/Vc
+    Kss     = Clss/Vc
+    A       = Kss - (Kss-Kpre)*exp(-Kout*(516-216))
+    K10     = if (t<216)
+                Kpre
+              elseif (t>=216 && t<=516)
+                Kss - (Kss-Kpre)*exp(-Kout*(t-216))
+              else
+                Kpre - (Kpre-A)*exp(-Kout*(t-516))
+              end
+  end
+
+  @dynamics begin
+    Depot'   = -Ka*Depot
+    Central' = Ka*Depot - K10*Central
+  end
+
+  @derived begin
+    Cp       = @. 1000*Central/Vc
+  end
+end
+```
+Parameters for the model are as below:
+```julia
+par = ( tvka    = 1.8,    # (hr⁻¹)  Absorption Rate Constant
+        tvclss  = 115,    # (L/hr)  Induced Clearance
+        tvclpre = 47,     # (L/hr)  Pre-induced Clearance
+        tvkout  = 0.005,  # (hr⁻¹)  Fractional turnover rate
+        tvvc    = 1679,   # (L)     Volume of distribution
+        Ω       = Diagonal([0.04, 0.0225]))
+```
+Simulating a single subject who receives a dose of 10 mg every 8 hours for 29 days.
+The induction is by the drug Pentobarbital which is started on day 9 (216 hrs) and stopped on day 21.5 (516 hrs).
+
+Note: We incorporate `ii` (interdose-interval) and `addl` (additional no. of doses) for the ease of coding
+```julia
+ev1  = DosageRegimen(10, cmt=1, time=0, ii=8, addl=87)
+sub1 = Subject(id=1, evs=ev1)
+```
+Use the `simobs` function for simulation
+```julia
+obs21 = simobs(hetero_model, sub1, par, obstimes=0:1:800)
+plot(obs21)
+```
+#### Autoinduction Model
+In this model as the concentration increases it simulates the production of _enzyme_ which inturn affects the _clearance_ of the drug.
+
+In this model you can see **@init** block which intializes the enzyme compartment. We assume at steady state the rate of enzyme synthesis is
+equal to the rate of degradation, thus **Kin = Kout**.
+
+```julia
+auto_model  = @model begin
+  @param begin
+    tvvc    ∈ RealDomain(lower=0)
+    tvcl    ∈ RealDomain(lower=0)
+    tvkin   ∈ RealDomain(lower=0)
+    tvkout  ∈ RealDomain(lower=0)
+    tvemax  ∈ RealDomain(lower=0)
+    tvec50  ∈ RealDomain(lower=0)
+    Ω       ∈ PDiagDomain(2)
+  end
+
+  @random begin
+    η       ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Cl      = tvcl * exp(η[1])
+    Vc      = tvvc * exp(η[2])
+    Kin     = tvkin
+    Kout    = tvkout
+    Emax    = tvemax
+    EC50    = tvec50
+  end
+
+  @init begin
+    Enzyme  = Kin/Kout
+  end
+
+  @vars begin
+    Simulation := 1+(Emax*(Central/Vc)/(EC50+(Central/Vc)))
+  end
+
+  @dynamics begin
+    Central'   = -(Cl/Vc)*Central*Enzyme
+    Enzyme'    = Kin*Simulation - Kout*Enzyme
+  end
+
+  @derived begin
+    Cp     = @. Central/Vc
+    Enz    = @. Enzyme
+  end
+end
+```
+Parameters are as given below:
+```julia
+par1 = (  tvcl   = 1,     # (L/hr)
+          tvvc   = 15,    # (L)
+          tvkin  = 0.03,  # (h⁻¹)
+          tvkout = 0.03,  # (h⁻¹)
+          tvemax = 5,     # (mg/hr)
+          tvec50 = 20,    # (mg/L)
+          Ω      = Diagonal([0.01,0.0225]))
+```
+A single subject receives a dose of 100mg IV-Bolus every 4 hrs followed by 20 additional doses
+```julia
+ev1  = DosageRegimen(100, cmt=:Central, time=0, ii=4, addl=20)
+sub1 = Subject(id=1, evs=ev1)
+```
+Use the `simobs` function to simulate.
+```julia
+obs1 = simobs(auto_model, sub1, par1, obstimes=0:0.1:90)
+plot(obs1)
+```
