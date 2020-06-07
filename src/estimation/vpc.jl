@@ -56,10 +56,8 @@ function _vpc(
     # filter out missing obs
     df = filter(i -> !ismissing(i.dv), df)
 
-    _xrange = sort(unique(df.idv))
-
     data_quantiles = mapreduce(vcat, quantiles) do τ
-        return combine(t -> _npqreg(:dv, :idv, t, τ, qreg_method; xrange=_xrange, bandwidth=bandwidth), groupby(df, stratify_by === nothing ? [] : stratify_by))
+        return combine(t -> _npqreg(:dv, :idv, t, τ, qreg_method; xrange=sort(unique(t.idv)), bandwidth=bandwidth), groupby(df, stratify_by === nothing ? [] : stratify_by))
     end
 
     return data_quantiles, [read_pumas(DataFrame(df), id = :id, dvs = [:dv], time = :idv, event_data=false) for df in groupby(df, stratify_by === nothing ? [] : stratify_by)]
