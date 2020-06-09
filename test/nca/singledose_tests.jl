@@ -14,7 +14,7 @@ ncapop = @test_nowarn read_nca(data, id=:ID, time=:TIME, conc=:CObs, amt=:AMT_IV
 df = @test_nowarn NCA.superposition(ncapop; ii=10timeu)
 nounit_df = NCA.liftunits2header(df)
 @test all(x->!(eltype(x) <: Quantity), eachcol(nounit_df))
-@test names(nounit_df) == ["id", "conc (mg L^-1)", "time (hr)", "ii (hr)", "addl", "occasion", "route", "amt (mg)"]
+@test names(nounit_df) == ["id", "time (hr)", "conc (mg L^-1)", "amt (mg)", "ii (hr)", "addl", "occasion", "route"]
 
 @test reduce(vcat, read_nca(NCA.superposition(ncapop[1]; ii=10timeu))[1].conc) == NCA.superposition(ncapop[1]; ii=10timeu).conc
 @test reduce(vcat, read_nca(NCA.superposition(ncapop[1]; ii=10timeu))[1].time) == NCA.superposition(ncapop[1]; ii=10timeu).time
