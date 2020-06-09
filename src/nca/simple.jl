@@ -482,7 +482,7 @@ function superposition(subj::NCASubject, args...;
     abs(one(currclast) - prevclast / currclast) <= steadystatetol && break
     prevclast = currclast
   end
-  df = DataFrame(id=subject_id(subj), conc=reduce(vcat, outconc), time=reduce(vcat, outtime), ii=ii, addl=addl, occasion=reduce(vcat, occasion), route=route, amt=reduce(vcat, outamt))
+  df = DataFrame(id=subject_id(subj), time=reduce(vcat, outtime), conc=reduce(vcat, outconc), amt=reduce(vcat, outamt), ii=ii, addl=addl, occasion=reduce(vcat, occasion), route=route)
   if subj.group !== nothing
     if subj.group isa Pair
       df[!, Symbol(subj.group[1])] .= subj.group[2]
