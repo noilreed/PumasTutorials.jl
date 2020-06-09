@@ -5,7 +5,7 @@ date : 4th June 2020
 ---
 Load the necessary libraries
 ```julia
-using Pumas, Plots
+using Pumas, Plots, DataFrames, StatsPlots
 ```
 ## Introduction
 In this tutorial you will learn the following induction models
@@ -17,7 +17,8 @@ Ref: [von Bahr C, Steiner E, Koike Y, Gabrielsson J. Time course of enzyme induc
 
 In this model you can see a term `t` in the pre block; this indicates the **solver time**. `t`(time) is used to provide a condition of true or false with the _if elseif else_ statment.
 
-Note: The `dose` is in **mg** and `conc` are obatined in **μg/L**. Hence concentrations are scaled to μg/L in the @derived block by multiplying by 1000.
+**Note:** The `dose` is in **mg** and `conc` are obatined in **μg/L**. Hence concentrations are scaled to μg/L in the @derived block by multiplying by 1000.
+
 ```julia
 hetero_model = @model begin
   @param begin
@@ -57,33 +58,46 @@ hetero_model = @model begin
   end
 
   @derived begin
-    Cp       = @. 1000*Central/Vc
+    cp       = @. 1000*Central/Vc
   end
 end
 ```
+
 Parameters for the model are as below:
+
 ```julia
-par = ( tvka    = 1.8,    # (hr⁻¹)  Absorption Rate Constant
-        tvclss  = 115,    # (L/hr)  Induced Clearance
-        tvclpre = 47,     # (L/hr)  Pre-induced Clearance
-        tvkout  = 0.005,  # (hr⁻¹)  Fractional turnover rate
-        tvvc    = 1679,   # (L)     Volume of distribution
-        Ω       = Diagonal([0.04, 0.0225]))
+par_hetero = ( tvka    = 1.8,    # (hr⁻¹)  Absorption Rate Constant
+               tvclss  = 115,    # (L/hr)  Induced Clearance
+               tvclpre = 47,     # (L/hr)  Pre-induced Clearance
+               tvkout  = 0.005,  # (hr⁻¹)  Fractional turnover rate
+               tvvc    = 1679,   # (L)     Volume of distribution
+               Ω       = Diagonal([0.04, 0.0225]))
 ```
-Simulating a single subject who receives a dose of 10 mg every 8 hours for 29 days.
-The induction is by the drug Pentobarbital which is started on day 9 (216 hrs) and stopped on day 21.5 (516 hrs).
+
+* Simulating a single subject who receives a dose of Nortryptyline 10 mg every 8 hours for 29 days.
+* The induction is by the drug Pentobarbital which is started on day 9 (216 hrs) and stopped on day 21.5 (516 hrs).
 
 Note: We incorporate `ii` (interdose-interval) and `addl` (additional no. of doses) for the ease of coding
+
 ```julia
 ev1  = DosageRegimen(10, cmt=1, time=0, ii=8, addl=87)
 sub1 = Subject(id=1, evs=ev1)
 ```
 Use the `simobs` function for simulation
+
 ```julia
-obs21 = simobs(hetero_model, sub1, par, obstimes=0:1:800)
-plot(obs21)
+obs1 = simobs(hetero_model, sub1, par_hetero, obstimes=0:1:800);
 ```
+
+Convert the file to a dataframe for plotting
+
+```julia
+simdf = DataFrame(obs1)
+@df simdf plot(:time, :cp, xlabel="Time (hr)", ylabel="Concentration (ug/L)", title="Concentration vs Time", linewidth=1.5, label=false, color=:purple)
+```
+
 #### Autoinduction Model
+
 In this model as the concentration increases it simulates the production of _enzyme_ which inturn affects the _clearance_ of the drug.
 
 In this model you can see **@init** block which intializes the enzyme compartment. We assume at steady state the rate of enzyme synthesis is
@@ -128,28 +142,47 @@ auto_model  = @model begin
   end
 
   @derived begin
-    Cp     = @. Central/Vc
-    Enz    = @. Enzyme
+    cp     = @. Central/Vc
+    enz    = @. Enzyme
   end
 end
 ```
+
 Parameters are as given below:
+
 ```julia
-par1 = (  tvcl   = 1,     # (L/hr)
-          tvvc   = 15,    # (L)
-          tvkin  = 0.03,  # (h⁻¹)
-          tvkout = 0.03,  # (h⁻¹)
-          tvemax = 5,     # (mg/hr)
-          tvec50 = 20,    # (mg/L)
-          Ω      = Diagonal([0.01,0.0225]))
+par_auto = (  tvcl   = 1,     # (L/hr)
+              tvvc   = 15,    # (L)
+              tvkin  = 0.03,  # (h⁻¹)
+              tvkout = 0.03,  # (h⁻¹)
+              tvemax = 5,     # (mg/hr)
+              tvec50 = 20,    # (mg/L)
+              Ω      = Diagonal([0.01,0.0225]))
 ```
+
 A single subject receives a dose of 100mg IV-Bolus every 4 hrs followed by 20 additional doses
+
 ```julia
 ev1  = DosageRegimen(100, cmt=:Central, time=0, ii=4, addl=20)
 sub1 = Subject(id=1, evs=ev1)
 ```
-Use the `simobs` function to simulate.
+
+Use the `simobs` function to simulate and convert to a dataframe
+
 ```julia
-obs1 = simobs(auto_model, sub1, par1, obstimes=0:0.1:90)
-plot(obs1)
+obs1  = simobs(auto_model, sub1, par_auto, obstimes=0:0.1:80)
+simdf = DataFrame(obs1);
+```
+
+Plot Plasma Concentration vs Time
+
+```julia
+@df simdf plot(:time, :cp, xlabel="Time (hr)", ylabel="Concentration (mg/L)", title="Plasma Concentration vs Time", label=false, linewidth=1.5)
+```
+
+Plot Enzyme vs Time
+
+```julia
+@df simdf plot(:time, :enz, xlabel="Time (hr)", ylabel="Amount (mg)", title="Enzyme vs Time", label=false, linewidth=1.5)
+
 ```
