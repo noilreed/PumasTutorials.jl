@@ -97,8 +97,7 @@ function DataFrames.DataFrame(
 
   include_covariates && _add_covariates!(df, obs.subject)
 
-  id = [obs.subject.id for i in 1:size(df, 1)]
-  insertcols!(df, 1, :id => id)
+  insertcols!(df, 1, :id => fill(obs.subject.id, size(df, 1)))
 
   return df
 end
