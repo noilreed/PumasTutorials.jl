@@ -355,7 +355,7 @@ function NCAReport(pop::NCAPopulation; pred=nothing, normalize=nothing, auctype=
       ]
   else
     report_pairs = [
-           "id"                 =>     subject_id,
+           # id is already computed when label=true.
            "dose"               =>     doseamt,
            has_ev && "tlag"     =>     tlag,
            "tmax"               =>     tmax,
