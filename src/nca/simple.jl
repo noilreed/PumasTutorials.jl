@@ -473,16 +473,32 @@ function superposition(subj::NCASubject, args...;
     addl += 1
     nii += 1
     prevconc = outconc[end]
-    currconc = prevconc + dosescaling * interpextrapconc(subj, time .+ nii*ii; method=method, kwargs...)
+    abstime = time .+ nii*ii
+    currconc = prevconc + dosescaling * interpextrapconc(subj, abstime; method=method, kwargs...)
     push!(outconc, currconc)
-    push!(outtime, outtime[end])
+    push!(outtime, abstime)
     push!(occasion, fill(addl+1, len))
     push!(outamt, outamt[end])
     currclast = currconc[findlast(!iszero, currconc)]
     abs(one(currclast) - prevclast / currclast) <= steadystatetol && break
     prevclast = currclast
   end
-  df = DataFrame(id=subject_id(subj), time=reduce(vcat, outtime), conc=reduce(vcat, outconc), amt=reduce(vcat, outamt), ii=ii, addl=addl, occasion=reduce(vcat, occasion), route=route)
+  time′ = reduce(vcat, outtime)
+  df = DataFrame(id=subject_id(subj), time=time′, conc=reduce(vcat, outconc), amt=reduce(vcat, outamt), ii=ii, addl=addl, occasion=reduce(vcat, occasion), route=route)
+  # take the part with monotone time
+  monotime_idxs = [length(time′)]
+  t1 = time′[end]
+  # we sweep from the end to take data from the most recent dose
+  for idx in reverse(eachindex(time′))
+    t = time′[idx]
+    if t < t1 # we need strict `<`
+      t1 = t
+      push!(monotime_idxs, idx)
+    end
+  end
+  df = df[reverse(monotime_idxs), :] # reverse again to get the normal order
+
+  # add group columns
   if subj.group !== nothing
     if subj.group isa Pair
       df[!, Symbol(subj.group[1])] .= subj.group[2]
