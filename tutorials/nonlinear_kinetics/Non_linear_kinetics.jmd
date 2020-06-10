@@ -1,5 +1,5 @@
 ---
-title : Concentration-dependant Kinetics
+title : Concentration/Dose Dependant Kinetics
 author : Parsshava R Mehta
 date : 2nd June 2020
 ---
@@ -16,8 +16,7 @@ In this tutorial you will learn the following concentration-dependant models
 
 * Concentration-dependant Elimination
 * Concentration-dependant Metabolite Formation
-* Concentration-dependant Absorption
-* Concentration-dependant Bioavailability
+* Dose-dependant Bioavailability
 
 In all these models you can see the Michaelis-Menten term is mentioned in the **`@vars`** block as a short
 hand notation. It is then incorporated into the differential equation in the **`@dynamics`** block
@@ -236,114 +235,16 @@ Plot AUC vs Dose and see the dose-dependant change in AUC
 @df df2 plot!(:amt, :auc, linewidth=1.5, label=false)
 ```
 
-#### Concentration-dependant Absorption
+#### Dose-dependant Bioavailability
 
-In this model the absorption of the drug is saturated at higher concentration and follows
-a Michaelis-Menten type reaction
-
-```julia
-one_compt_non_linear_abs = @model begin
-  @param begin
-    tvvc       ∈ RealDomain(lower=0)
-    tvkabs_max ∈ RealDomain(lower=0)
-    tvAabs50   ∈ RealDomain(lower=0)
-    tvcl       ∈ RealDomain(lower=0)
-    Ω          ∈ PDiagDomain(2)
-  end
-
-  @random begin
-    η         ~ MvNormal(Ω)
-  end
-
-  @pre begin
-    Vc        = tvvc * exp(η[1])
-    Kabs_max  = tvkabs_max
-    Aabs50    = tvAabs50
-    Cl        = tvcl * exp(η[2])
-  end
-
-  @vars begin  # Dose-dependant : Absorption
-    VMKM     := Kabs_max/(Aabs50+Depot)
-  end
-
-  @dynamics begin
-    Depot'    = -VMKM*Depot
-    Central'  = VMKM*Depot - (Cl/Vc)*Central
-  end
-
-  @derived begin
-    cp        = @. Central/Vc
-    nca      := @nca cp
-    cmax      = NCA.cmax(nca)
-    tmax      = NCA.tmax(nca)
-  end
-end
-```
-
-Parameters for the model are as below:
-
-```julia
-par_abs = ( tvvc       = 10,    # (L)
-            tvkabs_max = 5,     # (mg/hr)
-            tvAabs50   = 1,     # (mg)
-            tvcl       = 5,     # (L/hr)
-            Ω          = Diagonal([0.001,0.001]))
-```
-
-**Simulating a population of four subjects with different doses:**
-
-* Subject 1 receives an oral dose of 3 mg at `time=0`
-* Subject 2 receives an oral dose of 20 mg given at `time=0`
-* Subject 3 receives an oral dose of 40 mg at `time=0`
-* Subject 4 receives an oral dose of 100 mg given at `time=0`
-
-```julia
-ev1 = DosageRegimen(3, time=0, cmt=:Depot)
-sub1 = Subject(id=1, evs=ev1)
-ev2 = DosageRegimen(20, time=0, cmt=:Depot)
-sub2 = Subject(id=2, evs=ev2)
-ev3 = DosageRegimen(40, time=0, cmt=:Depot)
-sub3 = Subject(id=3, evs=ev3)
-ev4 = DosageRegimen(100, time=0, cmt=:Depot)
-sub4 = Subject(id=4, evs=ev4)
-sub = [sub1, sub2, sub3, sub4]
-```
-
-Use the `simobs` function to run the simulation
-
-```julia
-obs1 = simobs(one_compt_non_linear_abs, sub, par_abs, obstimes=0:0.1:30)
-simdf = DataFrame(obs1)
-@df simdf plot(:time, :cp, group=:id, xlabel="Time (hr)",  ylabel="Concentration (mg/L)", title="Concentration vs Time", legendtitle="Subject Id", linewidth=1.5, legend=:topright)
-```
-
-Use the Dataframes functions to `filter` and `select` the rows and colums as required for plotting
-
-```julia
-df2 = filter(x -> x.time ==0 && x.amt>0, simdf)
-df3 = select!(df2,:id,:amt,:cmax,:tmax)
-```
-
-Plot Cmax vs Dose and see the dose-dependant change in Cmax
-
-```julia
-@df df3 scatter(:amt, :cmax, group=:id, xlabel="Dose (mg)", ylabel="Cmax (mg/L)", title="Cmax vs Dose", legendtitle="Subjects", linewidth=1.5, legend=:bottomright)
-@df df2 plot!(:amt, :cmax, label=false)
-```
-
-#### Concentration-dependant Bioavailability
-
-In this model the bioavailability of the drug is saturated at higher concentration and follows
+In this model the bioavailability of the drug is saturated at higher doses and follows
 a Michaelis-Menten type reaction
 
 **Note:**
 
- 1. In this example a term for bioavailability is intoduced in the @pre block. F which is dose-dependant is
- written in Michaelis-Menten terms and intoduced in the `bioav`.
+ 1. In this example a term for bioavailability is intoduced in the @pre block. F which is dose-dependant is written in Michaelis-Menten terms and intoduced in the `bioav`.
 
- 2. The same term to calculate bioavailability is introduced in the @vars block to obtain the output for plotting.To introduce
- a covariate in the @vars block you need to pass them through @pre block. In this current example the covariate `Dose` is assigned
- a new variable `_Dose` in the @pre block and then introduced into the @vars block.
+ 2. The same term to calculate bioavailability is introduced in the @vars block to obtain the output for plotting.To introduce a covariate in the @vars block you need to pass them through @pre block. In this current example the covariate `Dose` is assigned a new variable `_Dose` in the @pre block and then introduced into the @vars block.
 
 ```julia
 one_compt_non_linear_bio = @model begin
@@ -401,8 +302,8 @@ par1 = ( tvcl      = 20,     # (L/hr)
          tvvc      = 80,     # (L)
          tvka      = 1.77,   # (h⁻¹)
          tvrelfmax = 0.504,  # Maximum Bioavailability relative to Reference Dose (20mg)
-         tvrelfd50    = 80,  # (mg)
-         Ω = Diagonal([0.0,0.0]))
+         tvrelfd50 = 80,  # (mg)
+         Ω         = Diagonal([0.001,0.001]))
 ```
 
 **Simulating a population of six subjects with different doses:**
@@ -415,25 +316,25 @@ par1 = ( tvcl      = 20,     # (L/hr)
 * Subject 6 receives an oral dose of 400 mg at `time=0`
 
 ```julia
-ev1 = DosageRegimen(20, time=0, cmt=:Depot)
+ev1  = DosageRegimen(20, time=0, cmt=:Depot)
 sub1 = Subject(id=1, evs=ev1, cvs=(Dose=20,))
-ev2 = DosageRegimen(40, time=0, cmt=:Depot)
+ev2  = DosageRegimen(40, time=0, cmt=:Depot)
 sub2 = Subject(id=2, evs=ev2, cvs=(Dose=40,))
-ev3 = DosageRegimen(80, time=0, cmt=:Depot)
+ev3  = DosageRegimen(80, time=0, cmt=:Depot)
 sub3 = Subject(id=3, evs=ev3, cvs=(Dose=80,))
-ev4 = DosageRegimen(120, time=0, cmt=:Depot)
+ev4  = DosageRegimen(120, time=0, cmt=:Depot)
 sub4 = Subject(id=4, evs=ev4, cvs=(Dose=120,))
-ev5 = DosageRegimen(240, time=0, cmt=:Depot)
+ev5  = DosageRegimen(240, time=0, cmt=:Depot)
 sub5 = Subject(id=5, evs=ev5, cvs=(Dose=240,))
-ev6 = DosageRegimen(400, time=0, cmt=:Depot)
+ev6  = DosageRegimen(400, time=0, cmt=:Depot)
 sub6 = Subject(id=6, evs=ev6, cvs=(Dose=400,))
-sub = [sub1, sub2, sub3, sub4, sub5, sub6]
+sub  = [sub1, sub2, sub3, sub4, sub5, sub6]
 ```
 
 Use the `simobs` function to run the simulation
 
 ```julia
-obs1 = simobs(one_compt_non_linear_bio, sub, par1, obstimes=0:0.1:24)
+obs1  = simobs(one_compt_non_linear_bio, sub, par1, obstimes=0:0.1:24)
 simdf = DataFrame(obs1)
 @df simdf plot(:time, :cp, group=:id, xlabel="Time (hr)",  ylabel="Concentration (mg/L)", title="Concentration vs Time", legendtitle="Subject Id", linewidth=1.5)
 ```
