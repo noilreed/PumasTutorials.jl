@@ -17,7 +17,19 @@ nounit_df = NCA.liftunits2header(df)
 @test names(nounit_df) == ["id", "time (hr)", "conc (mg L^-1)", "amt (mg)", "ii (hr)", "addl", "occasion", "route"]
 
 @test reduce(vcat, read_nca(NCA.superposition(ncapop[1]; ii=10timeu))[1].conc) == NCA.superposition(ncapop[1]; ii=10timeu).conc
-@test reduce(vcat, read_nca(NCA.superposition(ncapop[1]; ii=10timeu))[1].time) == NCA.superposition(ncapop[1]; ii=10timeu).time
+timeread = read_nca(NCA.superposition(ncapop[1]; ii=10timeu))[1].time
+ref = [
+       [0.0, 0.05, 0.35, 0.5, 0.75, 1.0, 2.0, 3.0, 4.0, 6.0, 8.0],
+       [0.0, 0.05, 0.35, 0.5, 0.75, 1.0, 2.0, 3.0, 4.0, 6.0, 8.0],
+       [0.0, 0.05, 0.35, 0.5, 0.75, 1.0, 2.0, 3.0, 4.0, 6.0, 8.0],
+       [0.0, 0.05, 0.35, 0.5, 0.75, 1.0, 2.0, 3.0, 4.0, 6.0, 8.0],
+       [0.0, 0.05, 0.35, 0.5, 0.75, 1.0, 2.0, 3.0, 4.0, 6.0, 8.0, 10.0, 12.0, 16.0, 20.0, 24.0],
+]
+@test all(i->ustrip.(timeread[i]) ≈ ref[i], eachindex(timeread))
+
+# monotone time
+@test all(subj->issorted(NCA.superposition(subj, ii=2timeu).time), ncapop)
+
 @test_nowarn NCA.auc(ncapop, method=:linuplogdown)
 @test all(ismissing, NCA.bioav(ncapop, ithdose=1)[!, 2])
 @test_logs (:warn, "No dosage information has passed. If the dataset has dosage information, you can pass the column names by `amt=:amt, route=:route`.") NCA.auc(read_nca(data, id=:ID, time=:TIME, conc=:CObs));
