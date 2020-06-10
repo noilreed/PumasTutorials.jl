@@ -431,6 +431,18 @@ end
 run_status(subj::NCASubject; kwargs...) = subj.run_status
 
 superposition(pop::NCAPopulation, args...; kwargs...) = reduce(vcat, map(subj->superposition(subj, args...; kwargs...), pop))
+"""
+superposition(data::Union{NCAPopulation,NCASubject}; ii, ndoses=5, amt=nothing, steadystatetol=3e-2, method=:linear)
+
+Superposition calculation.
+
+Arguments:
+    - ii: interdose interval
+    - ndoses: number of doses. It can be a positive integer or `Inf`.
+    - amt: dose amount. It defaults to the dose amount of the subject.
+    - steadystatetol: steady state tolerance. Superposition computation terminates when ``abs(1 - c(t-ii) / c(t)) <= steadystatetol``.
+    - method: the method for interpolation. It defaults to `:linear`.
+"""
 function superposition(subj::NCASubject, args...;
                        ii::Number, ndoses::Union{Integer,AbstractFloat}=5,
                        amt=nothing, steadystatetol::Number=3e-2, method=:linear,
