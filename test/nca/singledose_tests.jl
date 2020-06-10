@@ -28,7 +28,20 @@ ref = [
 @test all(i->ustrip.(timeread[i]) ≈ ref[i], eachindex(timeread))
 
 # monotone time
-@test all(subj->issorted(NCA.superposition(subj, ii=2timeu).time), ncapop)
+sups = map(subj->NCA.superposition(subj, ii=2timeu), ncapop)
+@test all(sup->issorted(sup.time), sups)
+
+# no ii or addl when amt=0
+@test all(sups) do sup
+  amt = sup.amt
+  all(eachindex(amt)) do i
+    isnotmissing = !(ismissing(sup.ii[i]) && ismissing(sup.addl[i]))
+    # ii and addl are missing -> non zero amt
+    #                                          -> xor
+    # ii and addl are not missing -> zero amt
+    iszero(amt[i]) ⊻ isnotmissing
+  end
+end
 
 @test_nowarn NCA.auc(ncapop, method=:linuplogdown)
 @test all(ismissing, NCA.bioav(ncapop, ithdose=1)[!, 2])

@@ -371,7 +371,7 @@ julia> first(NCA.liftunits2header(df), 3)
 liftunits2header(df::AbstractDataFrame) = liftunits2header!(copy(df))
 function liftunits2header!(df::AbstractDataFrame)
   newcolnames = map(eachcol(df), names(df)) do v, name
-    eltype(v) <: Quantity ? string(name, " (", Unitful.unit(eltype(v)), ')') : name
+    Base.nonmissingtype(eltype(v)) <: Quantity ? string(name, " (", Unitful.unit(eltype(v)), ')') : name
   end
   rename!(df, newcolnames)
   foreach(axes(df, 2)) do i

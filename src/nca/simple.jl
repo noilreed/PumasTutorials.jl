@@ -432,7 +432,7 @@ run_status(subj::NCASubject; kwargs...) = subj.run_status
 
 superposition(pop::NCAPopulation, args...; kwargs...) = reduce(vcat, map(subj->superposition(subj, args...; kwargs...), pop))
 """
-superposition(data::Union{NCAPopulation,NCASubject}; ii, ndoses=5, amt=nothing, steadystatetol=3e-2, method=:linear)
+    superposition(data::Union{NCAPopulation,NCASubject}; ii, ndoses=5, amt=nothing, steadystatetol=3e-2, method=:linear)
 
 Superposition calculation.
 
@@ -496,7 +496,11 @@ function superposition(subj::NCASubject, args...;
     prevclast = currclast
   end
   time′ = reduce(vcat, outtime)
-  df = DataFrame(id=subject_id(subj), time=time′, conc=reduce(vcat, outconc), amt=reduce(vcat, outamt), ii=ii, addl=addl, occasion=reduce(vcat, occasion), route=route)
+  amt′ = reduce(vcat, outamt)
+  ii′ = map(x->iszero(x) ? missing : ii, amt′)
+  addl′ = map(x->iszero(x) ? missing : addl, amt′)
+  df = DataFrame(id=subject_id(subj), time=time′, conc=reduce(vcat, outconc),
+                 amt=amt′, ii=ii′, addl=addl′, occasion=reduce(vcat, occasion), route=route)
   # take the part with monotone time
   monotime_idxs = [length(time′)]
   t1 = time′[end]
