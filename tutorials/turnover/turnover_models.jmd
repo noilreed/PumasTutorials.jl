@@ -1,0 +1,110 @@
+---
+title : Turnover Models
+author : Parsshava R Mehta
+date: 8th June 2020
+---
+
+Load the necessary libraries
+
+```julia
+using Pumas, Plots, DataFrames, StatsPlots
+```
+
+## Introduction
+
+In this tutorial you will learn the Turnover Model and how to calculate the ncessary parameters using the NCA function
+
+ * In this the hormone is constantly synthesized in the body with a turnover rate and is included in the @init block as the initial concentration in the `Central` compartment. The @init block is mentioned as Rate of Synthesis (Rin)/ Rate of Elimination.
+
+**Note:** The initial concentration in the central compartment are in terms of amount since the equations are in terms of amount
+
+
+```julia
+endo_comp_model = @model begin
+  @param begin
+    tvka    ∈ RealDomain(lower=0)
+    tvcl    ∈ RealDomain(lower=0)
+    tvrin   ∈ RealDomain(lower=0)
+    tvvc    ∈ RealDomain(lower=0)
+    Ω       ∈ PDiagDomain(2)
+  end
+
+  @random begin
+    η       ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Ka      = tvka *  exp(η[1])
+    Cl      = tvcl * (Wt/70)^0.75 * exp(η[2])
+    Rin     = tvrin * (Wt/70)
+    Vc      = tvvc * (Wt/70)
+  end
+
+  @covariates Wt
+
+  @init begin
+    Central = Rin/(Cl/Vc)
+  end
+
+  @dynamics begin
+    Skin'    = -Ka*Skin
+    Central' = Ka*Skin + Rin - (Cl/Vc)*Central
+  end
+
+  @derived begin
+    cp             = @. Central/Vc
+    cp_drug        = @. cp - (Rin/(Cl))
+    nca           := @nca cp_drug
+    auc            = NCA.auc(nca)
+    cmax           = NCA.cmax(nca)
+    half_life      = NCA.thalf(nca)
+    clearance      = NCA.cl(nca)
+    volume_of_dist = NCA.vz(nca)
+  end
+end
+```
+
+Parameters are as given below:
+
+```julia
+par1 = ( tvka    = 0.54,     # (h⁻¹)
+          tvcl   = 0.028,    # (L/hr/kg)
+          tvrin  = 0.78,     # (μg/hr/kg)  Rate of Synthesis
+          tvvc   = 0.102,    # (L)
+          Ω      = Diagonal([0.04,0.0225]))
+```
+
+Simulate a population of 5 subjects who receives a SC dose of 40μg at `time=0`
+
+**Note:** The weight is selected randomly between 50 and 100kgs
+
+```julia
+ev1  = DosageRegimen(40, time=0, cmt=:Skin)
+sub1 = map(i -> Subject(id=i, evs=ev1, cvs=(Wt=rand(50:100),)), 1:5)
+```
+
+Use the `simobs` function to run the simualtion
+
+```julia
+obs1  = simobs(endo_comp_model, sub1, par1, obstimes=0:0.1:40);
+```
+
+Convert the `simobs` to a Dataframe. The Plot depicts the Concentration Time Profile of the Drug + Endogenous Compound vs Time
+
+```julia
+simdf = DataFrame(obs1)
+@df simdf plot(:time, :cp, group=:id, ylims=(0,300), yticks=[0,50,100,150,200,250,300], xlabel="Time (hr)", ylabel="Conc (Drug+Endogenous Compound) (ug/L)", title="Concentration vs Time", legendtitle="Subject Id", linewidth=1.5 )
+```
+
+The Plot depicts the Concentration Time Profile of the Drug Alone vs Time
+
+```julia
+@df simdf plot(:time, :cp_drug, group=:id, ylims=(0,300), yticks=[0,50,100,150,200,250,300], xlabel="Time (hr)", ylabel="Conc (Drug Alone) (ug/L)", title="Concentration vs Time", legendtitle="Subject Id", linewidth=1.5 )
+```
+
+`Select` the output of the NCA object to a dataframe
+
+```julia
+df1 = filter(x -> x.time ==0 && x.amt >0, simdf)
+df1 = select!(df1, :id, :half_life, :clearance, :volume_of_dist, :cmax, :auc)
+```
