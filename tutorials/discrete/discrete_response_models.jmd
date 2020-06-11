@@ -26,8 +26,8 @@ represented by a `Bernoulli(p)` distribution.
 To get started, first let's load `Pumas` and read in some example data:
 
 ```julia
-using Pumas, StatsFuns
-data = read_pumas(example_nmtran_data("pain_remed"),
+using Pumas, StatsFuns, CSV
+data = read_pumas(example_data("pain_remed"),
     cvs = [:arm, :dose, :conc, :painord,:remed],event_data=false)
 ```
 
@@ -36,7 +36,6 @@ Next let's implement a model with a binary response. Here, we do not have an
 we define a `logistic` from [StatsFuns](https://github.com/JuliaStats/StatsFuns.jl#basic-functions)
 
 ```julia
-import StatsFuns.logistic
 binary_model = @model begin
     @param begin
         intercept ∈ RealDomain(init=0.001)
@@ -57,8 +56,8 @@ binary_model = @model begin
     end
 
     @derived begin
-        pain = logistic(logit)
-        dv ~ Bernoulli(logistic(logit))
+        pain = @. logistic(logit)
+        dv ~ @. Bernoulli(logistic(logit))
     end
 end
 ```
@@ -82,13 +81,25 @@ param = (
     tvslope = 0.0001,
     Ω = [1.0]
     )
-res = fit(binary_model,data,param,Pumas.LaplaceI())
+```
+
+Below you can fit the model
+
+```julia
+binary_res = fit(binary_model,data,param,Pumas.FOCE())
+coeftable(binary_res)
+```
+
+and make some inferences
+
+```julia
+infer(binary_res)  |> coeftable
 ```
 
 and simulate some outputs:
 
 ```julia
-sim = simobs(binary_model,data,res.param)
+sim = simobs(binary_model,data,coef(binary_res))
 simdf = DataFrame(sim, include_events=false)
 first(simdf,6) # Print only the first 6 rows
 ```
@@ -120,14 +131,15 @@ poisson_model = @model begin
     η ~ MvNormal(Ω)
   end
 
+ @covariates dose
+
   @pre begin
+    _dose = dose
     baseline = tvbase*exp(η[1])
   end
 
-  @covariates dose
-
   @derived begin
-    dv ~ @. Poisson(baseline*(1-dose/(dose + d50)))
+    dv ~ @. Poisson(baseline*(1-_dose/(_dose + d50)))
   end
 end
 ```
@@ -140,6 +152,169 @@ simdf = DataFrame(sim, include_events=false)
 ```
 
 Here `dv` is an integer output probabilistically dependent on the dose.
+
+Let's read the data back in to re-estimate the model parameters
+
+```julia
+poisson_pop = read_pumas(simdf, dvs=[:dv], cvs=[:dose], event_data=false)
+```
+
+```julia
+poisson_res = fit(poisson_model,poisson_pop, init_param(poisson_model),Pumas.FOCE())
+coeftable(poisson_res)
+```
+
+## Negative Binomial Example
+
+Next let's use a `NegativeBinomial` counting process in our model. We will use an internal dataset
+as an example.
+
+```julia
+pd_poisson = read_pumas(example_data("sim_poisson"), cvs = [:dose], event_data=false)
+```
+
+Now we define our model without dynamics, and directly use the dose information
+to predict the count for some observable `dv`:
+
+```julia
+negativebinomial_model = @model begin
+  @param begin
+    θ₁ ∈ RealDomain(init=3.0, lower=0.1)
+    θ₂ ∈ RealDomain(init=0.5, lower=0.1)
+    ω  ∈ RealDomain(init=1.0, lower=0.0)
+    θr  ∈ RealDomain(init=1.0, lower=0.0)
+  end
+
+  @random begin
+    η ~ Normal(0.0, ω)
+  end
+
+  @pre begin
+    baseline = θ₁*exp(η[1])
+    d50 = θ₂
+    dose_d50 = dose/(dose+d50)
+    r = θr
+  end
+
+  @covariates dose
+
+  @vars begin
+    m = baseline*(1 - dose_d50)
+    p = r/(m + r)
+  end
+
+  @derived begin
+    dv ~ @. NegativeBinomial(r, p)
+  end
+end
+
+param = init_param(negativebinomial_model)
+```
+
+and simulate runs from the model:
+
+```julia
+sim_negativebinomial = simobs(negativebinomial_model, pd_poisson, param; ensemblealg = EnsembleSerial())
+```
+
+Here `dv` is an integer output probabilistically dependent on the dose.
+
+Let's read the data back in to re-estimate the model parameters
+
+
+```julia
+pd_negativebinomial  = Subject.(sim_negativebinomial)
+```
+
+And fit the data
+
+```julia
+ngebin_res = fit(negativebinomial_model, pd_negativebinomial, param, Pumas.FOCE())
+coeftable(ngebin_res)
+```
+
+and make an inference
+
+```julia
+infer(ngebin_res)  |> coeftable
+```
+
+## Ordinal data example
+
+Next, we look at a simple example for ordinal data. Again, we will use
+an internal dataset
+
+```julia
+df = copy(CSV.read(example_data("pain_remed")))
+```
+The  dependent variable is coded 0:3 but `Categorical` distribution in julia
+starts indexing at 1
+
+```julia
+df.painord .+= 1
+```
+Now, that we made this change, lets read the data into Pumas
+
+```julia
+data = read_pumas(df,
+  dvs = [:painord],
+  cvs = [:arm, :dose, :conc, :painord,:remed],
+  event_data=false)
+```
+
+the ordinal model is below
+
+```julia
+ordinal_model = @model begin
+  @param begin
+    b₁    ∈ RealDomain(init=2.90692)
+    b₂    ∈ RealDomain(init=-2.97771, lower=-1000000, upper=1)
+    b₃    ∈ RealDomain(init=-2.7541 , lower=-1000000, upper=1)
+    slope ∈ RealDomain(init=0.01)
+    ω     ∈ RealDomain(init=sqrt(3.10532), lower = 0.001)
+  end
+
+  @random begin
+    η ~ Normal(0.0, ω)
+  end
+
+  @covariates conc
+
+  @pre begin
+    effect = slope * conc
+    #Logit of cumulative probabilities
+    lge₀ = @. b₁ + η + effect
+    lge₁ = @. lge₀ + b₂
+    lge₂ = @. lge₁ + b₃
+
+    #Probabilities of >=0 and >=1 and >=2
+    pge₀ = @. exp(lge₀) / (1.0 + exp(lge₀))
+    pge₁ = @. exp(lge₁) / (1.0 + exp(lge₁))
+    pge₂ = @. exp(lge₂) / (1.0 + exp(lge₂))
+
+    #Probabilities of Y=0,1,2,3
+    p₀ = @. 1.0 - pge₀
+    p₁ = @. pge₀ - pge₁
+    p₂ = @. pge₁ - pge₂
+    p₃ = @. pge₂
+  end
+
+  @derived begin
+    painord ~ @. Categorical(p₀, p₁, p₂, p₃)
+  end
+end
+```
+
+```julia
+ordinal_res = fit(ordinal_model, data, init_param(ordinal_model), Pumas.FOCE())
+coeftable(ordinal_res)
+```
+
+and get the paremter precision with
+
+```julia
+ordinal_res |> infer |> coeftable
+```
 
 ```julia{echo=false,skip="notebook"}
 using PumasTutorials
