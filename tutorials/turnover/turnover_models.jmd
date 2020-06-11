@@ -10,14 +10,18 @@ Load the necessary libraries
 using Pumas, Plots, DataFrames, StatsPlots
 ```
 
-## Introduction
+# Introduction
 
 In this tutorial you will learn the Turnover Model and how to calculate the ncessary parameters using the NCA function
 
- * In this the hormone is constantly synthesized in the body with a turnover rate and is included in the @init block as the initial concentration in the `Central` compartment. The @init block is mentioned as Rate of Synthesis (Rin)/ Rate of Elimination.
+ * Endogenous Compound PK Turnover Model
+ * Indirect Response Model - PK/PD Turnover
 
-**Note:** The initial concentration in the central compartment are in terms of amount since the equations are in terms of amount
+### Endogenous Compound PK Turnover Model
 
+In this example the hormone is constantly synthesized in the body with a turnover rate and is included in the @init block as the initial concentration in the `Central` compartment. The @init block is mentioned as Rate of Synthesis (Rin)/ Rate of Elimination.
+
+**Note:** The initial concentration in the central compartment are in terms of _amount_ since the equations are in terms of amount
 
 ```julia
 endo_comp_model = @model begin
@@ -69,12 +73,12 @@ Parameters are as given below:
 ```julia
 par1 = ( tvka    = 0.54,     # (h⁻¹)
           tvcl   = 0.028,    # (L/hr/kg)
-          tvrin  = 0.78,     # (μg/hr/kg)  Rate of Synthesis
-          tvvc   = 0.102,    # (L)
+          tvrin  = 0.78,     # (μg/hr/kg)  Zero-order Rate of Synthesis
+          tvvc   = 0.102,    # (L/kg)
           Ω      = Diagonal([0.04,0.0225]))
 ```
 
-Simulate a population of 5 subjects who receives a SC dose of 40μg at `time=0`
+Simulate a _population_ of 5 subjects who receives a SC dose of 40μg at `time=0`
 
 **Note:** The weight is selected randomly between 50 and 100kgs
 
@@ -89,22 +93,410 @@ Use the `simobs` function to run the simualtion
 obs1  = simobs(endo_comp_model, sub1, par1, obstimes=0:0.1:40);
 ```
 
-Convert the `simobs` to a Dataframe. The Plot depicts the Concentration Time Profile of the Drug + Endogenous Compound vs Time
+Convert the `obs1` to a Dataframe. The Plot depicts the Concentration Time Profile of the **Drug + Endogenous Compound vs Time**
 
 ```julia
 simdf = DataFrame(obs1)
 @df simdf plot(:time, :cp, group=:id, ylims=(0,300), yticks=[0,50,100,150,200,250,300], xlabel="Time (hr)", ylabel="Conc (Drug+Endogenous Compound) (ug/L)", title="Concentration vs Time", legendtitle="Subject Id", linewidth=1.5 )
 ```
 
-The Plot depicts the Concentration Time Profile of the Drug Alone vs Time
+The Plot depicts the Concentration Time Profile of the **Drug Alone vs Time**
 
 ```julia
 @df simdf plot(:time, :cp_drug, group=:id, ylims=(0,300), yticks=[0,50,100,150,200,250,300], xlabel="Time (hr)", ylabel="Conc (Drug Alone) (ug/L)", title="Concentration vs Time", legendtitle="Subject Id", linewidth=1.5 )
 ```
 
-`Select` the output of the NCA object to a dataframe
+Uisng the integrated NCA fucntion in the model we `Select` the output of the NCA object to a dataframe
 
 ```julia
 df1 = filter(x -> x.time ==0 && x.amt >0, simdf)
 df1 = select!(df1, :id, :half_life, :clearance, :volume_of_dist, :cmax, :auc)
+```
+
+### Indirect Response Model - PK/PD Turnover
+
+In the Indirect Response model there are four different possibility of drug action
+
+ * Inhibtion of the Rate of Synthesis (Kin)
+ * Inhbition of the Rate of Degradation (Kout)
+ * Stimulation of the Rate of Synthesis (Kin)
+ * Stimulation of the Rate of Degradation (Kout)
+
+
+##### Inhibition of Kin
+
+In this example, the production rate is inhibited and is mentioned in the @vars block. The `Response` compartment is initiated to a baseline values in the @init block.
+
+```julia
+inhibition_kin = @model begin
+  @param begin
+    tvcl   ∈ RealDomain(lower=0)
+    tvvc   ∈ RealDomain(lower=0)
+    tvkin  ∈ RealDomain(lower=0)
+    tvkout ∈ RealDomain(lower=0)
+    tvic50 ∈ RealDomain(lower=0)
+    tvimax ∈ RealDomain(lower=0)
+    tvγ    ∈ RealDomain(lower=0)
+    Ω      ∈ PDiagDomain(2)
+  end
+
+  @random begin
+    η     ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Cl    = tvcl*exp(η[1])
+    Vc    = tvvc*exp(η[2])
+    Kin   = tvkin
+    Kout  = tvkout
+    IC50  = tvic50
+    Imax  = tvimax
+    γ     = tvγ
+  end
+
+  @init begin
+    Response   = Kin/Kout
+  end
+
+  @vars begin
+    Inhibition := 1-(Imax*(Central/Vc)^γ/(IC50^γ+(Central/Vc)^γ))
+  end
+
+  @dynamics begin
+    Central'   = -(Cl/Vc)*Central
+    Response'  = Kin*Inhibition - Kout*Response
+  end
+
+  @derived begin
+    cp   = @. Central/Vc
+    resp = @. Response
+  end
+end
+```
+
+Parameters are as given below:
+
+```julia
+par = ( tvcl   = 2,      # (L/hr)
+        tvvc   = 10,     # (L)
+        tvkin  = 5,      # (mg/hr), Zero-order rate constant
+        tvkout = 1,      # (hr), First-order rate constant
+        tvimax = 0.7,    # (mg/hr)
+        tvic50 = 7,      # (mg/L)
+        tvγ    = 1.5,    # No units
+        Ω      = Diagonal([0.01,0.01]))
+```
+
+Simulate a population of three subjects who receive the following doses:
+
+ * Subject 1 receives a dose of 100 mg as IV-infusion for 3 hours
+ * Subject 2 receives a dose of 200 mg as IV-infusion for 3 hours
+ * Subject 3 receives a dose of 200 mg as IV-infusion for 3 hours
+
+```julia
+ev1  = DosageRegimen(100, time=0, cmt=:Central, duration=3)
+sub1 = Subject(id=100, evs=ev1)
+ev2  = DosageRegimen(200, time=0, cmt=:Central, duration=3)
+sub2 = Subject(id=200, evs=ev2)
+ev3  = DosageRegimen(300, time=0, cmt=:Central, duration=3)
+sub3 = Subject(id=300, evs=ev3)
+sub  = [sub1, sub2, sub3]
+```
+
+Use the `simobs` function to run the simulation
+
+```julia
+obs1 = simobs(inhibition_kin, sub, par, obstimes=0:0.1:40);
+```
+
+Convert `obs1` to a DataFrame. Plot a graph of **Concentration vs Time**.
+
+```julia
+simdf = DataFrame(obs1)
+@df simdf plot(:time, :cp, group=:id, xlabel="Time (hr)", ylabel="Concentration (mg/L)", title="Concentration vs Time", legendtitle="Dose", linewidth=1.5)
+```
+
+Plot a graph of **Response vs Time**
+
+```julia
+@df simdf plot(:time, :resp, group=:id, xlabel="Time (hr)", ylabel="Inhibtion of Kin", title="Response vs Time", legendtitle="Dose", linewidth=1.5)
+```
+
+##### Inhibition of Kout
+
+In this example, the degradation rate is inhibited and is mentioned in the @vars block. The `Response` compartment is initiated to a baseline values in the @init block.
+
+```julia
+inhibition_kout = @model begin
+  @param begin
+    tvcl   ∈ RealDomain(lower=0)
+    tvvc   ∈ RealDomain(lower=0)
+    tvkin  ∈ RealDomain(lower=0)
+    tvkout ∈ RealDomain(lower=0)
+    tvic50 ∈ RealDomain(lower=0)
+    tvimax ∈ RealDomain(lower=0)
+    tvγ    ∈ RealDomain(lower=0)
+    Ω      ∈ PDiagDomain(2)
+  end
+
+  @random begin
+    η     ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Cl    = tvcl*exp(η[1])
+    Vc    = tvvc*exp(η[2])
+    Kin   = tvkin
+    Kout  = tvkout
+    IC50  = tvic50
+    Imax  = tvimax
+    γ     = tvγ
+  end
+
+  @init begin
+    Response   = Kin/Kout
+  end
+
+  @vars begin
+    Inhibition := 1-(Imax*(Central/Vc)^γ/(IC50^γ+(Central/Vc)^γ))
+  end
+
+  @dynamics begin
+    Central'   = -(Cl/Vc)*Central
+    Response'  = Kin - Kout*Inhibition*Response
+  end
+
+  @derived begin
+    cp   = @. Central/Vc
+    resp = @. Response
+  end
+end
+```
+
+Parameters are as given below:
+
+```julia
+par = ( tvcl   = 2,      # (L/hr)
+        tvvc   = 10,     # (L)
+        tvkin  = 5,      # (mg/hr), Zero-order rate constant
+        tvkout = 1,      # (hr), First-order rate constant
+        tvimax = 0.7,    # (mg/hr)
+        tvic50 = 7,      # (mg/L)
+        tvγ    = 1.5,    # No units
+        Ω      = Diagonal([0.01,0.01]))
+```
+
+Simulate a population of three subjects who receive the following doses:
+
+ * Subject 1 receives a dose of 100 mg as IV-infusion for 3 hours
+ * Subject 2 receives a dose of 200 mg as IV-infusion for 3 hours
+ * Subject 3 receives a dose of 200 mg as IV-infusion for 3 hours
+
+```julia
+ev1  = DosageRegimen(100, time=0, cmt=:Central, duration=3)
+sub1 = Subject(id=100, evs=ev1)
+ev2  = DosageRegimen(200, time=0, cmt=:Central, duration=3)
+sub2 = Subject(id=200, evs=ev2)
+ev3  = DosageRegimen(300, time=0, cmt=:Central, duration=3)
+sub3 = Subject(id=300, evs=ev3)
+sub  = [sub1, sub2, sub3]
+```
+
+Use the `simobs` function to run the simulation
+
+```julia
+obs1 = simobs(inhibition_kout, sub, par, obstimes=0:0.1:40);
+```
+
+Convert `obs1` to a DataFrame. Plot a graph of **Response vs Time**
+
+```julia
+simdf = DataFrame(obs1)
+@df simdf plot(:time, :resp, group=:id, xlabel="Time (hr)", ylabel="Inhibtion of Kout", title="Response vs Time", legendtitle="Dose", linewidth=1.5)
+```
+
+##### Stimulation of Kin
+
+In this example, the production rate is stimulated and is mentioned in the @vars block. The `Response` compartment is initiated to a baseline values in the @init block.
+
+```julia
+stimulation_kin = @model begin
+  @param begin
+    tvcl   ∈ RealDomain(lower=0)
+    tvvc   ∈ RealDomain(lower=0)
+    tvkin  ∈ RealDomain(lower=0)
+    tvkout ∈ RealDomain(lower=0)
+    tvec50 ∈ RealDomain(lower=0)
+    tvemax ∈ RealDomain(lower=0)
+    tvγ    ∈ RealDomain(lower=0)
+    Ω      ∈ PDiagDomain(2)
+  end
+
+  @random begin
+    η     ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Cl    = tvcl*exp(η[1])
+    Vc    = tvvc*exp(η[2])
+    Kin   = tvkin
+    Kout  = tvkout
+    EC50  = tvec50
+    Emax  = tvemax
+    γ     = tvγ
+  end
+
+  @init begin
+    Response   = Kin/Kout
+  end
+
+  @vars begin
+    Stimulation := 1+(Emax*(Central/Vc)^γ/(EC50^γ+(Central/Vc)^γ))
+  end
+
+  @dynamics begin
+    Central'    = -(Cl/Vc)*Central
+    Response'   = Kin*Stimulation - Kout*Response
+  end
+
+  @derived begin
+    cp   = @. Central/Vc
+    resp = @. Response
+  end
+end
+```
+
+Parameters are as given below:
+
+```julia
+par = ( tvcl   = 2,      # (L/hr)
+        tvvc   = 10,     # (L)
+        tvkin  = 5,      # (mg/hr), Zero-order rate constant
+        tvkout = 1,      # (hr), First-order rate constant
+        tvemax = 0.7,    # (mg/hr)
+        tvec50 = 7,      # (mg/L)
+        tvγ    = 1.5,    # No units
+        Ω      = Diagonal([0.01,0.01]))
+```
+
+Simulate a population of three subjects who receive the following doses:
+
+ * Subject 1 receives a dose of 100 mg as IV-infusion for 3 hours
+ * Subject 2 receives a dose of 200 mg as IV-infusion for 3 hours
+ * Subject 3 receives a dose of 300 mg as IV-infusion for 3 hours
+
+```julia
+ev1  = DosageRegimen(100, time=0, cmt=:Central, duration=3)
+sub1 = Subject(id=100, evs=ev1)
+ev2  = DosageRegimen(200, time=0, cmt=:Central, duration=3)
+sub2 = Subject(id=200, evs=ev2)
+ev3  = DosageRegimen(300, time=0, cmt=:Central, duration=3)
+sub3 = Subject(id=300, evs=ev3)
+sub  = [sub1, sub2, sub3]
+```
+
+Use the `simobs` function to run the simulation
+
+```julia
+obs1  = simobs(stimulation_kin, sub, par, obstimes=0:0.1:40);
+```
+
+Convert `obs1` to a DataFrame. Plot a graph of **Response vs Time**
+
+```julia
+simdf = DataFrame(obs1)
+@df simdf plot(:time, :resp, group=:id, xlabel="Time (hr)", ylabel="Stimulation of Kin", title="Response vs Time", legendtitle="Dose", linewidth=1.5)
+```
+
+##### Stimulation of Kout
+
+In this example, the degradation rate is stimulated and is mentioned in the @vars block. The `Response` compartment is initiated to a baseline values in the @init block.
+
+```julia
+stimulation_kout = @model begin
+  @param begin
+    tvcl   ∈ RealDomain(lower=0)
+    tvvc   ∈ RealDomain(lower=0)
+    tvkin  ∈ RealDomain(lower=0)
+    tvkout ∈ RealDomain(lower=0)
+    tvec50 ∈ RealDomain(lower=0)
+    tvemax ∈ RealDomain(lower=0)
+    tvγ    ∈ RealDomain(lower=0)
+    Ω      ∈ PDiagDomain(2)
+  end
+
+  @random begin
+    η     ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Cl    = tvcl*exp(η[1])
+    Vc    = tvvc*exp(η[2])
+    Kin   = tvkin
+    Kout  = tvkout
+    EC50  = tvec50
+    Emax  = tvemax
+    γ     = tvγ
+  end
+
+  @init begin
+    Response   = Kin/Kout
+  end
+
+  @vars begin
+    Stimulation := 1+(Emax*(Central/Vc)^γ/(EC50^γ+(Central/Vc)^γ))
+  end
+
+  @dynamics begin
+    Central'    = -(Cl/Vc)*Central
+    Response'   = Kin - Kout*Stimulation*Response
+  end
+
+  @derived begin
+    cp   = @. Central/Vc
+    resp = @. Response
+  end
+end
+```
+
+Parameters are as given below:
+
+```julia
+par = ( tvcl   = 2,      # (L/hr)
+        tvvc   = 10,     # (L)
+        tvkin  = 5,      # (mg/hr), Zero-order rate constant
+        tvkout = 1,      # (hr), First-order rate constant
+        tvemax = 0.7,    # (mg/hr)
+        tvec50 = 7,      # (mg/L)
+        tvγ    = 1.5,    # No units
+        Ω      = Diagonal([0.01,0.01]))
+```
+
+Simulate a population of three subjects who receive the following doses:
+
+ * Subject 1 receives a dose of 100 mg as IV-infusion for 3 hours
+ * Subject 2 receives a dose of 200 mg as IV-infusion for 3 hours
+ * Subject 3 receives a dose of 300 mg as IV-infusion for 3 hours
+
+```julia
+ev1  = DosageRegimen(100, time=0, cmt=:Central, duration=3)
+sub1 = Subject(id=100, evs=ev1)
+ev2  = DosageRegimen(200, time=0, cmt=:Central, duration=3)
+sub2 = Subject(id=200, evs=ev2)
+ev3  = DosageRegimen(300, time=0, cmt=:Central, duration=3)
+sub3 = Subject(id=300, evs=ev3)
+sub  = [sub1, sub2, sub3]
+```
+
+Use the `simobs` function to run the simulation
+
+```julia
+obs1  = simobs(stimulation_kout, sub, par, obstimes=0:0.1:40);
+```
+
+Convert `obs1` to a DataFrame. Plot a graph of **Response vs Time**
+
+```julia
+simdf = DataFrame(obs1)
+@df simdf plot(:time, :resp, group=:id, xlabel="Time (hr)", ylabel="Stimulation of Kout", title="Response vs Time", legendtitle="Dose", linewidth=1.5)
 ```
