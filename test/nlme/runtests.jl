@@ -49,9 +49,6 @@ if group == "All" || group == "NLME_ML2"
     @time @safetestset "Bolus" begin
       include("bolus.jl")
     end
-    @time @safetestset "Information matrix" begin
-      include("information.jl")
-    end
     @time @safetestset "Missing observations" begin
       include("missings.jl")
     end
@@ -95,9 +92,6 @@ if group == "All" || group == "NLME_ML4"
     @time @safetestset "Theophylline NLME.jl" begin
       include("theop_nlme.jl")
     end
-    @time @safetestset "Medium size ODE system (HCV model)" begin
-      include("hcv.jl")
-    end
     @time @safetestset "Wang" begin
       include("wang.jl")
     end
@@ -107,8 +101,31 @@ if group == "All" || group == "NLME_ML4"
   end
 end
 
+if group == "ALL" || group == "NLME_ML5"
+  @time @safetestset "Maximum-likelihood models 5" begin
+    @time @safetestset "Information matrix" begin
+      include("information.jl")
+    end
+    @time @safetestset "Medium size ODE system (HCV model)" begin
+      include("hcv.jl")
+    end
+    @time @safetestset "Time-to-event" begin
+      include("timetoevent.jl")
+    end
+  end
+end
+
 if group == "All" || group == "NLME_Bayes"
   @time @safetestset "Bayesian models" begin
     include("bayes.jl")
   end
 end
+
+@testset "Check that all NLME test files are run" begin
+  dirfiles     = Set(filter(t -> t ∉ ("runtests.jl", "testmodels.jl"), readdir(@__DIR__())))
+  includefiles = Set(map(t -> first(match(r"include\(\"(.*\.jl)", t).captures),
+    filter(t -> occursin(r"include\(", t) && occursin(r"\.jl", t),
+      readlines(joinpath(@__DIR__(), "runtests.jl")))))
+  @test dirfiles == includefiles
+end
+

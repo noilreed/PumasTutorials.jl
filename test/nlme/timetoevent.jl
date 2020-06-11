@@ -1,8 +1,10 @@
-using Pumas, Test
+using Pumas, CSV, Test
 
 @testset "Cross-sectional time-to-event examples" begin
 
-  pd = read_pumas(example_data("tte_data1"), id=:ID, time=:TIME, dvs=[:DV], cvs=[:DOSE], evid=:EVID)
+  pd = read_pumas(example_data("tte_data1"),
+    id=:ID, time=:TIME, dvs=[:DV], cvs=[:DOSE], evid=:EVID,
+    event_data=false)
 
   tte_exponential = @model begin
 
@@ -33,7 +35,7 @@ using Pumas, Test
   ft_exponential = fit(tte_exponential, pd, param_exponential, Pumas.NaivePooled(),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(ft_exponential)) == """
-FittedPumasModelInference
+Asymptotic inference results
 
 Successful minimization:                true
 
@@ -86,7 +88,7 @@ Number of subjects:                      300
   ft_weibull = fit(tte_weibull, pd, param_weibull, Pumas.NaivePooled(),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(ft_weibull)) == """
-FittedPumasModelInference
+Asymptotic inference results
 
 Successful minimization:                true
 
@@ -140,7 +142,7 @@ p       1.3018           0.069773         [ 1.165    ;  1.4385   ]
   ft_gompertz = fit(tte_gompertz, pd, param_gompertz, Pumas.NaivePooled(),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(ft_gompertz)) == """
-FittedPumasModelInference
+Asymptotic inference results
 
 Successful minimization:                true
 
@@ -169,7 +171,8 @@ end
   df[!,:EVID] .= 0
   df = vcat(df, evd)
   pd = read_pumas(df,
-    id=:ID, dvs=[:DV], time=:TIME, evid=:EVID)
+    id=:ID, dvs=[:DV], time=:TIME, evid=:EVID,
+    event_data=false)
 
   model = @model begin
 
