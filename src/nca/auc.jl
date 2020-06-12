@@ -103,7 +103,7 @@ cleancache!(pop::NCAPopulation) = foreach(cleancache!, pop)
 
 function isaucinf(auctype, interval)
   auctype === :last && return false
-  interval === nothing ? auctype === :inf : !isfinite(interval[2])
+  interval === nothing ? auctype === :inf : isinf(interval[2])
 end
 
 function cacheauc0!(nca, auc0)
@@ -169,21 +169,19 @@ function _auc(nca::NCASubject{C,TT,T,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,V,R,RT}, 
       @warn "Requesting an AUC range starting $lo before the first measurement $(first(time)) is not allowed"
     end
     lo > last(time) && @warn "AUC start time $lo is after the maximum observed time $(last(time))"
-    # TODO: handle `auclinlog` with IV bolus.
-    #
-    # `C0` is the concentration at time zero if the route of administration is IV
-    # (intranvenous). If concentration at time zero is not measured after the IV
-    # bolus, a linear back-extrapolation is done to get the intercept which
-    # represents concentration at time zero (`C0`)
-    #
+    # interpextrapconc handles c0
     concstart = interpextrapconc(nca, lo; method=method, kwargs...)
     idx1, idx2 = let lo = lo, hi = hi
       findfirst(x->x>=lo, time),
       findlast( x->x<=hi, time)
     end
+    idx1 === nothing && (idx = 1)
+    if idx2 === nothing
+      verbose && @warn "The end of the integration interval is before tmin."
+      return missing
+    end
     # auc of the first interval
     auc = intervalauc(concstart, conc[idx1], lo, time[idx1], idx1-1, maxidx(nca), method, linear, log, ret_typ)
-    int_idxs = idx1:idx2-1
     # auc of the last interval
     if isfinite(hi)
       concend = interpextrapconc(nca, hi; method=method, kwargs...)
@@ -193,7 +191,7 @@ function _auc(nca::NCASubject{C,TT,T,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,V,R,RT}, 
       else
         auc += intervalauc(conc[idx2], concend, time[idx2], hi, idx2, maxidx(nca), method, linear, log, ret_typ)
       end
-    end
+    end # hi = inf is handled later
   else
     idx1, idx2 = firstindex(time), nca.lastidx
     # handle C0

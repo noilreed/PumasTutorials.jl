@@ -149,12 +149,15 @@ function NCASubject(conc, time;
         idxs = ithdoseidxs(time, dose, startidxs, i; check=i==1) # only check once
         conci, timei = @view(conc[idxs]), @view(time[idxs])
         check && checkconctime(conci, timei; dose=dose, kwargs...)
+        if !iszero(timei[1])
+          timei = timei .- timei[1] # convert to TAD
+        end
         if clean
           conci, timei, _, _ = cleanmissingconc(conci, timei; kwargs...)
         end
-        conc′, time′ = clean ? cleanblq(conci, timei; llq=llq, dose=dose, kwargs...)[1:2] : (conc[idxs], time[idxs])
+        conc′, time′ = clean ? cleanblq(conci, timei; llq=llq, dose=dose, kwargs...)[1:2] : (conci, timei)
         clean && append!(abstime, time′)
-        iszero(time[idxs[1]]) ? (conc′, time′) : (conc′, time′.-time[idxs[1]]) # convert to TAD
+        conc′, time′
       end
     end
     conc = map(x->x[1], ct)
@@ -177,6 +180,12 @@ function NCASubject(conc, time;
     else
       checkconctime(conc, time; dose=dose, kwargs...)
     end
+  end
+  if !isurine && !iszero(time[1])
+    if dose !== nothing
+      dose.time == time[1] || throw(ArgumentError("The first observed time is not zero or dosetime. Got time[1] = $(time[1]), dosetime=$(dose.time)."))
+    end
+    time = time .- time[1] # convert to TAD
   end
   if clean
     if isurine

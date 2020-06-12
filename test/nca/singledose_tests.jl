@@ -82,11 +82,11 @@ nca = NCASubject(conc[idx], t[idx])
 @test_logs (:warn, "`dose` is not provided. No dependent quantities will be calculated") NCAReport(nca)
 
 @test (NCA.clast(zeros(5), 1:5), NCA.tlast(zeros(5), 1:5)) === (missing, missing)
-@test (NCA.clast(1:5, 1:5), NCA.tlast(1:5, 1:5)) === (5, 5)
+@test (NCA.clast(1:5, 1:5), NCA.tlast(1:5, 1:5)) === (5, 4)
 @test (NCA.clast(conc[idx], t[idx]), NCA.tlast(conc[idx], t[idx])) === (conc[idx][end], t[idx][end])
 arr = [missing, 1, 2, 3, missing]
-@test (NCA.clast(arr, 1:5), NCA.tlast(arr, 1:5)) === (3, 4)
-@test (NCA.cmax(arr, 1:5), NCA.tmax(arr, 1:5)) === (3, 4)
+@test (NCA.clast(arr, 1:5), NCA.tlast(arr, 1:5)) === (3, 3)
+@test (NCA.cmax(arr, 1:5), NCA.tmax(arr, 1:5)) === (3, 3)
 @test (NCA.cmax(conc[idx], t[idx]), NCA.tmax(conc[idx], t[idx])) === (conc[idx][1], t[idx][1])
 @test NCA.cmax(conc[idx], t[idx], interval=(2,Inf).*timeu) === conc[idx][7]
 @test NCA.cmax(conc[idx], t[idx], interval=(24.,Inf).*timeu) === conc[idx][end]
@@ -102,10 +102,10 @@ c1 = ustrip(conc[2])
 c2 = ustrip(conc[3])
 t1 = ustrip(t[2])
 t2 = ustrip(t[3])
-@test NCA.c0(NCASubject(conc[2:5], t[2:5], dose=NCADose(0, 0.1, 0, NCA.IVBolus))) === exp(log(c1) - t1*(log(c2)-log(c1))/(t2-t1))*concu
+@test NCA.c0(NCASubject([missing; conc[2:5]], t[1:5], dose=NCADose(0, 0.1, 0, NCA.IVBolus))) === exp(log(c1) - t1*(log(c2)-log(c1))/(t2-t1))*concu
 @test NCA.c0(ncapop[1]) === ncapop[1].conc[1]
 @test NCA.c0(nca) === missing
-subj = NCASubject([10, 12.], [0.2, 0.9], dose=NCADose(0, 0.1, 0, NCA.IVBolus))
+subj = NCASubject([missing, 10, 12.], [0, 0.2, 0.9], dose=NCADose(0, 0.1, 0, NCA.IVBolus))
 @test_logs (:warn, "c0: This is an IV bolus dose, but the first two concentrations are not decreasing. If `conc[i]/conc[i+1] > 0.8` holds, the back extrapolation will be computed internally for AUC and AUMC, but will not be reported.") NCA.c0(subj)
 @test NCA.c0(subj, true, verbose=false) < 10
 
@@ -186,9 +186,9 @@ for i in 1:24
   i == 1 && @test normalizedose(missing, nca) === missing
 end
 
-@test_nowarn NCA.c0(NCASubject([0.3, 0.2], [0.1, 0.2], dose=NCADose(0, 0.1, nothing, NCA.IVBolus)))
-@test NCA.c0(NCASubject([0.3, 0.2], [0.1, 0.2], dose=NCADose(0, 0.1, nothing, NCA.EV))) === missing
-@test NCA.c0(NCASubject([0.3, 0.2], [0.1, 0.2], dose=NCADose(0, 0.1, 1, NCA.IVInfusion))) === missing
+@test_nowarn NCA.c0(NCASubject([missing, 0.3, 0.2], [0, 0.1, 0.2], dose=NCADose(0, 0.1, nothing, NCA.IVBolus)))
+@test NCA.c0(NCASubject([missing, 0.3, 0.2], [0, 0.1, 0.2], dose=NCADose(0, 0.1, nothing, NCA.EV))) === missing
+@test NCA.c0(NCASubject([missing, 0.3, 0.2], [0, 0.1, 0.2], dose=NCADose(0, 0.1, 1, NCA.IVInfusion))) === missing
 
 df = DataFrame()
 df[!,:time] = [0:20...; 20; 21:25]
@@ -201,10 +201,10 @@ df[!,:id] .= 1
 df = DataFrame()
 df[!,:id]=fill(1, 7); df.time=1:7; df.conc=[0, 0, 1, 1, 0, 1, 0]; df.blq=[1, 0, 0, 0, 1, 0, 0]
 subj = read_nca(df, verbose=false)[1]
-@test subj.time == findall(iszero, df.blq)
+@test subj.time == findall(iszero, df.blq) .- 2
 rename!(df, :blq => :_blq)
 subj = read_nca(df, verbose=false)[1]
-@test subj.time == [1; 2;findall(!iszero, df.conc);7]
+@test subj.time == [1; 2;findall(!iszero, df.conc);7] .- 1
 
 
 # check run_status
