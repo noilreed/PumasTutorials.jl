@@ -1,6 +1,7 @@
 using Test
 using Pumas
 using Random
+using StringDistances
 
 # FIXME! Find a nicer way to handle this
 _extract(A::Pumas.PDMats.PDMat) = A.mat
@@ -138,68 +139,114 @@ end
     0.03282388757574916    -0.00041459973200541107 -0.006289667479989163
    -0.00041459973200541107  2.8084159378198597e-5   0.0006126638425598551
    -0.006289667479989163    0.0006126638425598551   0.014897292696384252  ] rtol=1e-5
+
+theopmodel_analytical_fo_boot = @model begin
+    @param begin
+      θ₁ ∈ RealDomain(lower=0.1,    upper=5.0, init=2.77)
+      θ₂ ∈ RealDomain(lower=0.0008, upper=0.5, init=0.0781)
+      θ₃ ∈ RealDomain(lower=0.004,  upper=0.9, init=0.0363)
+      θ₄ ∈ RealDomain(lower=0.1,    upper=5.0, init=1.5)
+      Ω ∈ PDiagDomain(2)
+      σ²_add ∈ RealDomain(lower=0.001, init=sqrt(0.388))
+    end
+
+    @random begin
+      η ~ MvNormal(Ω)
+    end
+
+    @pre begin
+      Ka = SEX == 0 ? θ₁ + η[1] : θ₄ + η[1]
+      K  = θ₂
+      CL = θ₃*WT + η[2]
+      Vc = CL/K
+      SC = CL/K/WT
+    end
+
+    @covariates SEX WT
+
+    @vars begin
+      conc = Central / SC
+    end
+
+    @dynamics Depots1Central1
+
+    @derived begin
+      dv ~ @. Normal(conc, sqrt(σ²_add))
+    end
+  end
+
+  fo_boot_estimated_params = (θ₁ = 4.20241E+00,  #Ka MEAN ABSORPTION RATE CONSTANT for SEX = 1(1/HR)
+                         θ₂ = 7.25283E-02,  #K MEAN ELIMINATION RATE CONSTANT (1/HR)
+                         θ₃ = 3.57499E-02, #SLP  SLOPE OF CLEARANCE VS WEIGHT RELATIONSHIP (LITERS/HR/KG)
+                         θ₄ = 2.12401E+00, #Ka MEAN ABSORPTION RATE CONSTANT for SEX=0 (1/HR)
+
+                         Ω = Diagonal([1.81195E+01, 5.99850E-01]),
+                         σ²_add = 2.66533E-01)
+
+o_boot = fit(theopmodel_analytical_fo_boot, theopp, fo_boot_estimated_params, Pumas.FO(),
+  optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
+
   Random.seed!(12349)
-  bts = bootstrap(o; samples=5)
-@test sprint((io, t) -> show(io, MIME"text/plain"(), t), bts) == """
+  bts = bootstrap(o_boot; samples=5)
+@test evaluate(
+  Levenshtein(),
+  sprint((io, t) -> show(io, MIME"text/plain"(), t), bts),
+"""
 Bootstrap inference results
 
 Successful minimization:                true
 
 Likelihood approximation:           Pumas.FO
-Deviance:                          71.979975
+Deviance:                          90.837418
 Total number of observation records:     132
 Number of active observation records:    132
 Number of subjects:                       12
 
---------------------------------------------------------------------------
-           Estimate             SE                       95.0% C.I.
---------------------------------------------------------------------------
-θ₁          4.2026            0.22273           [ 4.1256   ;  4.6946    ]
-θ₂          0.072527          0.0092327         [ 0.060577 ;  0.083399  ]
-θ₃          0.03575           0.0063604         [ 0.027896 ;  0.043743  ]
-θ₄          2.124             0.33467           [ 1.957    ;  2.6748    ]
-Ω₁,₁       18.123             5.9395            [18.769    ; 32.556     ]
-Ω₂,₁       -0.011252          0.028665          [-0.033474 ;  0.031952  ]
-Ω₃,₁       -0.030697          1.9778            [-1.5527   ;  2.8283    ]
-Ω₂,₂        0.00022509        0.00013489        [ 2.488e-5 ;  0.00036611]
-Ω₃,₂        0.010458          0.0072709         [ 0.0012109;  0.018967  ]
-Ω₃,₃        0.59984           0.50304           [ 0.07539  ;  1.2498    ]
-σ²_add      0.26654           0.050357          [ 0.24575  ;  0.36047   ]
---------------------------------------------------------------------------
+-------------------------------------------------------------------
+          Estimate           SE                     95.0% C.I.
+-------------------------------------------------------------------
+θ₁         4.0491          0.32788          [ 3.9209  ;  4.719   ]
+θ₂         0.074816        0.0056641        [ 0.067547;  0.081311]
+θ₃         0.036284        0.0037303        [ 0.031046;  0.039428]
+θ₄         2.0844          0.39852          [ 1.8795  ;  2.8057  ]
+Ω₁,₁      14.836           8.5907           [15.559   ; 35.155   ]
+Ω₂,₂       0.19727         0.073349         [ 0.02916 ;  0.19475 ]
+σ²_add     0.35574         0.073106         [ 0.27094 ;  0.4524  ]
+-------------------------------------------------------------------
 Successful fits: 5 out of 5
 No stratification.
-"""
+""") < 3 # allow three characters to differ
+
 Random.seed!(102349)
-bts = bootstrap(o; samples=5, stratify_by=:SEX)
-@test sprint((io, t) -> show(io, MIME"text/plain"(), t), bts) == """
+bts = bootstrap(o_boot; samples=5, stratify_by=:SEX)
+@test evaluate(
+  Levenshtein(),
+  sprint((io, t) -> show(io, MIME"text/plain"(), t), bts),
+"""
 Bootstrap inference results
 
 Successful minimization:                true
 
 Likelihood approximation:           Pumas.FO
-Deviance:                          71.979975
+Deviance:                          90.837418
 Total number of observation records:     132
 Number of active observation records:    132
 Number of subjects:                       12
 
----------------------------------------------------------------------------
-           Estimate             SE                        95.0% C.I.
----------------------------------------------------------------------------
-θ₁          4.2026            0.372              [ 3.4137   ;  4.2865    ]
-θ₂          0.072527          0.0057351          [ 0.067688 ;  0.082293  ]
-θ₃          0.03575           0.003067           [ 0.033307 ;  0.040746  ]
-θ₄          2.124             0.34265            [ 1.6081   ;  2.4392    ]
-Ω₁,₁       18.123             6.3403             [ 6.8675   ; 20.176     ]
-Ω₂,₁       -0.011252          0.022839           [-0.036726 ;  0.021097  ]
-Ω₃,₁       -0.030697          1.8685             [-1.6103   ;  2.7368    ]
-Ω₂,₂        0.00022509        0.00010619         [ 3.3332e-5;  0.00028206]
-Ω₃,₂        0.010458          0.0072881          [ 0.0022264;  0.019884  ]
-Ω₃,₃        0.59984           0.66599            [ 0.21211  ;  1.6899    ]
-σ²_add      0.26654           0.081522           [ 0.16314  ;  0.34591   ]
----------------------------------------------------------------------------
+-------------------------------------------------------------------
+          Estimate           SE                     95.0% C.I.
+-------------------------------------------------------------------
+θ₁         4.0491          0.43092           [3.28    ;  4.2132  ]
+θ₂         0.074816        0.0062247         [0.069568;  0.08478 ]
+θ₃         0.036284        0.0028183         [0.034517;  0.041289]
+θ₄         2.0844          0.38284           [1.5091  ;  2.4241  ]
+Ω₁,₁      14.836           7.498             [4.1622  ; 20.828   ]
+Ω₂,₂       0.19727         0.1125            [0.072736;  0.3298  ]
+σ²_add     0.35574         0.10965           [0.17433 ;  0.41925 ]
+-------------------------------------------------------------------
 Successful fits: 5 out of 5
 Stratification by SEX.
-"""
+""") < 3 # allow three characters to differ
 
 
   # Verify that show runs
@@ -415,68 +462,116 @@ end
   o_empirical_bayes_df = DataFrame(o_empirical_bayes)
 
   @test_throws DimensionMismatch simobs(o.model, theopp, coef(o), empirical_bayes(o)[1:end-1])
+
+  theopmodel_solver_fo_boot = @model begin
+    @param begin
+      θ₁ ∈ RealDomain(lower=0.1,    upper=5.0, init=2.77)
+      θ₂ ∈ RealDomain(lower=0.0008, upper=0.5, init=0.0781)
+      θ₃ ∈ RealDomain(lower=0.004,  upper=0.9, init=0.0363)
+      θ₄ ∈ RealDomain(lower=0.1,    upper=5.0, init=1.5)
+      Ω  ∈ PDiagDomain(2)
+      σ²_add ∈ RealDomain(lower=0.001, init=0.388)
+    end
+
+    @random begin
+      η ~ MvNormal(Ω)
+    end
+
+    @pre begin
+      Ka = SEX == 0 ? θ₁ + η[1] : θ₄ + η[1]
+      K  = θ₂
+      CL = θ₃*WT + η[2]
+      Vc = CL/K
+      SC = CL/K/WT
+    end
+
+    @covariates SEX WT
+
+    @vars begin
+      conc = Central / SC
+      cp   = Central / Vc
+    end
+
+    @dynamics begin
+        Depot'   = -Ka*Depot
+        Central' =  Ka*Depot - (CL/Vc)*Central
+    end
+
+    @derived begin
+      dv ~ @. Normal(conc, sqrt(σ²_add))
+    end
+  end
+
+  fo_boot_estimated_params = (θ₁ = 4.20241E+00,  #Ka MEAN ABSORPTION RATE CONSTANT for SEX = 1(1/HR)
+                         θ₂ = 7.25283E-02,  #K MEAN ELIMINATION RATE CONSTANT (1/HR)
+                         θ₃ = 3.57499E-02, #SLP  SLOPE OF CLEARANCE VS WEIGHT RELATIONSHIP (LITERS/HR/KG)
+                         θ₄ = 2.12401E+00, #Ka MEAN ABSORPTION RATE CONSTANT for SEX=0 (1/HR)
+
+                         Ω = Diagonal([1.81195E+01, 5.99850E-01]),
+                         σ²_add = 2.66533E-01)
+  o_boot = @time fit(theopmodel_solver_fo_boot, theopp, fo_boot_estimated_params, Pumas.FO(),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
   Random.seed!(12349)
-  bts = bootstrap(o; samples=5)
-@test sprint((io, t) -> show(io, MIME"text/plain"(), t), bts) == """
+  bts = bootstrap(o_boot; samples=5)
+@test evaluate(
+  Levenshtein(),
+  sprint((io, t) -> show(io, MIME"text/plain"(), t), bts),
+"""
 Bootstrap inference results
 
 Successful minimization:                true
 
 Likelihood approximation:           Pumas.FO
-Deviance:                          71.979975
+Deviance:                          90.837418
 Total number of observation records:     132
 Number of active observation records:    132
 Number of subjects:                       12
 
---------------------------------------------------------------------------
-           Estimate             SE                       95.0% C.I.
---------------------------------------------------------------------------
-θ₁          4.2026            0.22273           [ 4.1256   ;  4.6946    ]
-θ₂          0.072527          0.0092327         [ 0.060577 ;  0.083399  ]
-θ₃          0.03575           0.0063604         [ 0.027896 ;  0.043743  ]
-θ₄          2.124             0.33467           [ 1.957    ;  2.6748    ]
-Ω₁,₁       18.123             5.9395            [18.769    ; 32.556     ]
-Ω₂,₁       -0.011252          0.028665          [-0.033474 ;  0.031952  ]
-Ω₃,₁       -0.030697          1.9778            [-1.5527   ;  2.8283    ]
-Ω₂,₂        0.00022509        0.00013489        [ 2.488e-5 ;  0.00036611]
-Ω₃,₂        0.010458          0.0072709         [ 0.0012109;  0.018967  ]
-Ω₃,₃        0.59984           0.50304           [ 0.07539  ;  1.2498    ]
-σ²_add      0.26654           0.050357          [ 0.24575  ;  0.36047   ]
---------------------------------------------------------------------------
+-------------------------------------------------------------------
+          Estimate           SE                     95.0% C.I.
+-------------------------------------------------------------------
+θ₁         4.0491          0.32788          [ 3.9209  ;  4.719   ]
+θ₂         0.074816        0.0056641        [ 0.067547;  0.081311]
+θ₃         0.036284        0.0037303        [ 0.031046;  0.039428]
+θ₄         2.0844          0.39852          [ 1.8795  ;  2.8057  ]
+Ω₁,₁      14.836           8.5907           [15.559   ; 35.155   ]
+Ω₂,₂       0.19727         0.073349         [ 0.02916 ;  0.19475 ]
+σ²_add     0.35574         0.073106         [ 0.27094 ;  0.4524  ]
+-------------------------------------------------------------------
 Successful fits: 5 out of 5
 No stratification.
-"""
+""") < 3 # allow three characters to differ
+
 Random.seed!(123849)
-bts = bootstrap(o; samples=5, stratify_by=:SEX)
-@test sprint((io, t) -> show(io, MIME"text/plain"(), t), bts) == """
+bts = bootstrap(o_boot; samples=5, stratify_by=:SEX)
+@test evaluate(
+  Levenshtein(),
+  sprint((io, t) -> show(io, MIME"text/plain"(), t), bts),
+"""
 Bootstrap inference results
 
 Successful minimization:                true
 
 Likelihood approximation:           Pumas.FO
-Deviance:                          71.979975
+Deviance:                          90.837418
 Total number of observation records:     132
 Number of active observation records:    132
 Number of subjects:                       12
 
--------------------------------------------------------------------------
-           Estimate             SE                       95.0% C.I.
--------------------------------------------------------------------------
-θ₁          4.2026            0.30102           [ 3.8133   ;  4.5407   ]
-θ₂          0.072527          0.009504          [ 0.066435 ;  0.090567 ]
-θ₃          0.03575           0.0066559         [ 0.030319 ;  0.046939 ]
-θ₄          2.124             0.16426           [ 2.2643   ;  2.6507   ]
-Ω₁,₁       18.123             3.8784            [13.558    ; 21.692    ]
-Ω₂,₁       -0.011252          0.036768          [-0.020454 ;  0.065244 ]
-Ω₃,₁       -0.030697          2.0168            [-0.91822  ;  3.7994   ]
-Ω₂,₂        0.00022509        0.00012755        [ 5.693e-5 ;  0.0003825]
-Ω₃,₂        0.010458          0.0086354         [ 0.0024713;  0.024282 ]
-Ω₃,₃        0.59984           0.55421           [ 0.19576  ;  1.5641   ]
-σ²_add      0.26654           0.024813          [ 0.21214  ;  0.27514  ]
--------------------------------------------------------------------------
+-------------------------------------------------------------------
+          Estimate           SE                     95.0% C.I.
+-------------------------------------------------------------------
+θ₁         4.0491          0.48558          [ 3.5885  ;  4.7155  ]
+θ₂         0.074816        0.0058439        [ 0.068367;  0.082669]
+θ₃         0.036284        0.00394          [ 0.03154 ;  0.041277]
+θ₄         2.0844          0.20047          [ 2.2468  ;  2.7553  ]
+Ω₁,₁      14.836           2.6069           [11.967   ; 17.283   ]
+Ω₂,₂       0.19727         0.069049         [ 0.11633 ;  0.27486 ]
+σ²_add     0.35574         0.043445         [ 0.24627 ;  0.34901 ]
+-------------------------------------------------------------------
 Successful fits: 5 out of 5
 Stratification by SEX.
-"""
+""") < 3 # allow three characters to differ
 
   # Verify that show runs
   io_buffer = IOBuffer()

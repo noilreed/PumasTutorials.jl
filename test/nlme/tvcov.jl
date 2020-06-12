@@ -141,13 +141,13 @@ df = identity.(df)
       )
 
     @test deviance(ft_normal) ≈ 8784.101866341049 rtol=1e-5
-    @test coef(ft_normal).tvcl     ≈ 0.15973                rtol=1e-3
+    @test coef(ft_normal).tvcl     ≈ 0.15973                rtol=1e-2
     @test coef(ft_normal).tvv      ≈ 3.7072                 rtol=1e-3
-    @test coef(ft_normal).tvka     ≈ 0.88403                rtol=1e-3
-    @test coef(ft_normal).ec50     ≈ 15.004                 rtol=1e-3
-    @test coef(ft_normal).gaeffect ≈ 10.969                 rtol=1e-3
+    @test coef(ft_normal).tvka     ≈ 0.88403                rtol=1e-2
+    @test coef(ft_normal).ec50     ≈ 15.004                 rtol=1e-2
+    @test coef(ft_normal).gaeffect ≈ 10.969                 rtol=1e-2
     @test coef(ft_normal).Ω.diag   ≈ [0.0712376, 0.0856173] rtol=1e-2
-    @test coef(ft_normal).σ_prop   ≈ 0.20155                rtol=1e-3
+    @test coef(ft_normal).σ_prop   ≈ 0.20155                rtol=1e-2
   end
 
     # Currently disable since it's too slow. Enable once evaluation of time-varying covariates is faster
