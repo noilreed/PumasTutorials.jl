@@ -20,7 +20,8 @@ mncapop = @test_nowarn read_nca(mdata, id=:ID, time=:TIME, conc=:COBS, amt=:AMT,
 @test_nowarn NCA.superposition(mncapop; ii=10timeu)
 @test reduce(vcat, read_nca(NCA.superposition(mncapop[1]; ii=10timeu))[1].conc) == NCA.superposition(mncapop[1]; ii=10timeu).conc
 
-timeread = read_nca(NCA.superposition(mncapop[1]; ii=10timeu))[1].time
+super = NCA.superposition(mncapop[1]; ii=10timeu)
+timeread = read_nca(super)[1].time
 ref = [
        [0.0, 0.05, 0.35, 0.5, 0.75, 1.0, 2.0, 3.0, 4.0, 6.0, 8.0],
        [0.0, 0.05, 0.35, 0.5, 0.75, 1.0, 2.0, 3.0, 4.0, 6.0, 8.0],
@@ -31,7 +32,7 @@ ref = [
 @test all(i->ustrip.(timeread[i]) ≈ ref[i], eachindex(timeread))
 
 # monotone time
-@test all(subj->issorted(NCA.superposition(subj, ii=2timeu).time), mncapop)
+@test all(subj->issorted(NCA.superposition(subj, ii=2timeu).abstime), mncapop)
 
 @test_throws ArgumentError NCA.interpextrapconc(mncapop[1], 22timeu, method=:linear)
 

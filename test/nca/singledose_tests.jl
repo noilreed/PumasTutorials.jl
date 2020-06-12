@@ -14,10 +14,11 @@ ncapop = @test_nowarn read_nca(data, id=:ID, time=:TIME, conc=:CObs, amt=:AMT_IV
 df = @test_nowarn NCA.superposition(ncapop; ii=10timeu)
 nounit_df = NCA.liftunits2header(df)
 @test all(x->!(eltype(x) <: Quantity), eachcol(nounit_df))
-@test names(nounit_df) == ["id", "time (hr)", "conc (mg L^-1)", "amt (mg)", "ii (hr)", "addl", "occasion", "route"]
+@test names(nounit_df) == ["id", "abstime (hr)", "time (hr)", "conc (mg L^-1)", "amt (mg)", "ii (hr)", "addl", "occasion", "route"]
 
 @test reduce(vcat, read_nca(NCA.superposition(ncapop[1]; ii=10timeu))[1].conc) == NCA.superposition(ncapop[1]; ii=10timeu).conc
-timeread = read_nca(NCA.superposition(ncapop[1]; ii=10timeu))[1].time
+super = NCA.superposition(ncapop[1]; ii=10timeu)
+timeread = read_nca(super)[1].time
 ref = [
        [0.0, 0.05, 0.35, 0.5, 0.75, 1.0, 2.0, 3.0, 4.0, 6.0, 8.0],
        [0.0, 0.05, 0.35, 0.5, 0.75, 1.0, 2.0, 3.0, 4.0, 6.0, 8.0],
@@ -29,7 +30,7 @@ ref = [
 
 # monotone time
 sups = map(subj->NCA.superposition(subj, ii=2timeu), ncapop)
-@test all(sup->issorted(sup.time), sups)
+@test all(sup->issorted(sup.abstime), sups)
 
 # no ii or addl when amt=0
 @test all(sups) do sup

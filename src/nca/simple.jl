@@ -476,6 +476,7 @@ function superposition(subj::NCASubject, args...;
     outamt[1] = amt
     outamt = [outamt]
   end
+  outtad = copy(outtime)
   dosetype = subj.dose.formulation
   route = dosetype === IVInfusion ? "inf" : dosetype === IVBolus ? "iv" : "ev"
   prevclast = outconc[end][findlast(!iszero, outconc[end])]
@@ -489,17 +490,19 @@ function superposition(subj::NCASubject, args...;
     currconc = prevconc + dosescaling * interpextrapconc(subj, abstime; method=method, kwargs...)
     push!(outconc, currconc)
     push!(outtime, abstime)
+    push!(outtad, outtad[end])
     push!(occasion, fill(addl+1, len))
     push!(outamt, outamt[end])
     currclast = currconc[findlast(!iszero, currconc)]
     abs(one(currclast) - prevclast / currclast) <= steadystatetol && break
     prevclast = currclast
   end
-  time′ = reduce(vcat, outtime)
+  time′ = reduce(vcat, outtime) # abstime
+  time = reduce(vcat, outtad)
   amt′ = reduce(vcat, outamt)
   ii′ = map(x->iszero(x) ? missing : ii, amt′)
   addl′ = map(x->iszero(x) ? missing : addl, amt′)
-  df = DataFrame(id=subject_id(subj), time=time′, conc=reduce(vcat, outconc),
+  df = DataFrame(id=subject_id(subj), abstime=time′, time=time, conc=reduce(vcat, outconc),
                  amt=amt′, ii=ii′, addl=addl′, occasion=reduce(vcat, occasion), route=route)
   # take the part with monotone time
   monotime_idxs = [length(time′)]
