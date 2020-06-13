@@ -21,16 +21,16 @@ function pre_f(params, randoms, subject)
   end
 end
 
-prob = DiscreteProblem([0.0,0.0],(0.0,72.0))
+prob = ODEProblem((du,u,p,t) -> du .= 0, [0.0,0.0],(0.0,72.0))
 
-rate1(u,p,t) = 100p.Ka*u[1]
+rate1(u,p,t) = p(t).Ka*u[1]/10
 function affect1!(integrator)
   integrator.u[1] -= 1
   integrator.u[2] += 1
 end
 jump1 = ConstantRateJump(rate1,affect1!)
 
-rate2(u,p,t) = (p.CL/p.Vc)*u[2]
+rate2(u,p,t) = 10(p(t).CL/p(t).Vc)*u[2]
 function affect2!(integrator)
   integrator.u[2] -= 1
 end
@@ -50,9 +50,10 @@ function derived_f(col, sol, obstimes, subject, param, randeffs)
 end
 
 model = Pumas.PumasModel(p,randomfx,pre_f,init_f,jump_prob,derived_f)
-
 param = init_param(model)
 randeffs = init_randeffs(model, param)
 
 data = Subject(evs = DosageRegimen([10, 20], ii = 24, addl = 2, time = [0, 12]))
-sol  = solve(model,data,param,randeffs,FunctionMap())
+sol  = solve(model,data,param,randeffs,Tsit5())
+@test mean(sol[1,:]) < 20
+@test mean(sol[2,:]) > 1

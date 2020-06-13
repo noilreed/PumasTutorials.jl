@@ -144,11 +144,28 @@ function _problem(m::PumasModel, subject, col, args...;
     _prob = PresetAnalyticalPKProblem(_build_diffeq_problem(mtmp, subject, args...;saveat=saveat, make_events=false, kwargs...),pksol)
   else
     u0  = m.init(col, tspan[1])
+    if typeof(m.prob) <: DiffEqBase.AbstractJumpProblem
+      # Remake needs to happen on the ODE/SDE/DDEProblem, so we have
+      # to remake the internal prob and rewrap
+      lowprob = remake(m.prob.prob; p=col, u0=u0, tspan=tspan)
+      topprob = JumpProblem{DiffEqBase.isinplace(lowprob),
+                  typeof(lowprob),typeof(m.prob.aggregator),
+                  typeof(m.prob.jump_callback),
+                  typeof(m.prob.discrete_jump_aggregation),
+                  typeof(m.prob.variable_jumps),
+                  typeof(m.prob.regular_jump),typeof(m.prob.massaction_jump)}(
+                               lowprob,
+                               m.prob.aggregator,m.prob.discrete_jump_aggregation,
+                               m.prob.jump_callback,m.prob.variable_jumps,
+                               m.prob.regular_jump,m.prob.massaction_jump)
+    else
+      topprob = remake(m.prob; p=col, u0=u0, tspan=tspan)
+    end
     mtmp = PumasModel(m.param,
                      m.random,
                      m.pre,
                      m.init,
-                     remake(m.prob; p=col, u0=u0, tspan=tspan),
+                     topprob,
                      m.derived,
                      m.observed)
     _prob = _build_diffeq_problem(mtmp, subject, args...;saveat=saveat,

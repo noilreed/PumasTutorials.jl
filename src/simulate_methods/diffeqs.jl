@@ -62,10 +62,28 @@ function _build_diffeq_problem(m::PumasModel, subject::Subject, args...;
   _tspan = Tt.(tspan)
 
   # Remake problem of correct type
-  remake(m.prob; f=new_f, u0=Tu0, tspan=_tspan, callback=cb, saveat=saveat,
-                 tstops = _tstops,
-                 d_discontinuities=d_discontinuities,
-                 save_first = !isnothing(saveat) && tspan[1] ∈ saveat)
+  if typeof(m.prob) <: DiffEqBase.AbstractJumpProblem
+    _prob = remake(m.prob.prob; f=new_f, u0=Tu0, tspan=_tspan,
+                   callback=cb, saveat=saveat,
+                   tstops = _tstops,
+                   d_discontinuities=d_discontinuities,
+                   save_first = !isnothing(saveat) && tspan[1] ∈ saveat)
+    return JumpProblem{DiffEqBase.isinplace(_prob),
+                typeof(_prob),typeof(m.prob.aggregator),
+                typeof(m.prob.jump_callback),
+                typeof(m.prob.discrete_jump_aggregation),
+                typeof(m.prob.variable_jumps),
+                typeof(m.prob.regular_jump),typeof(m.prob.massaction_jump)}(
+                _prob,m.prob.aggregator,m.prob.discrete_jump_aggregation,
+                             m.prob.jump_callback,m.prob.variable_jumps,
+                             m.prob.regular_jump,m.prob.massaction_jump)
+  else
+    return remake(m.prob; f=new_f, u0=Tu0, tspan=_tspan,
+                   callback=cb, saveat=saveat,
+                   tstops = _tstops,
+                   d_discontinuities=d_discontinuities,
+                   save_first = !isnothing(saveat) && tspan[1] ∈ saveat)
+  end
 end
 
 using DiffEqBase: RECOMPILE_BY_DEFAULT
@@ -370,6 +388,9 @@ function ith_subject_cb(pre,datai::Subject,u0,t0,ProbType,saveat,save_discont,co
         integrator.sol.u[end] = DiffEqBase.recursivecopy(integrator.u)
       end
     end
+
+    # Reeval continuous time Markov rates because of discontinuity
+    reset_aggregated_jumps!(integrator)
   end
   save_positions = save_discont ? (true, true) : (false, false)
 

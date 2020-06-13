@@ -4,7 +4,8 @@ using FiniteDiff, Reexport, StatsBase,
       StaticArrays, Distributed, LabelledArrays,
       TreeViews, CSV, ForwardDiff, DiffResults, Optim, PDMats,
       Missings, RecipesBase, RecursiveArrayTools, Quadrature,
-      Statistics, DiffEqSensitivity, QuantileRegressions
+      Statistics, DiffEqSensitivity, QuantileRegressions,
+      DiffEqJump
 using LinearAlgebra
 using Base.Threads # for bootstrap
 using AdvancedHMC: DiagEuclideanMetric, Hamiltonian, NUTS, Leapfrog, find_good_stepsize, StanHMCAdaptor, MassMatrixAdaptor, StepSizeAdaptor, MultinomialTS, GeneralisedNoUTurn
