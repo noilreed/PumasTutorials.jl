@@ -1,0 +1,276 @@
+---
+title : Building Dosage Regimens
+author : Parsshava R Mehta
+date : 13th June 2020
+---
+
+Load the necessary libraries
+
+```julia
+using Pumas, Plots, DataFrames, StatsPlots
+```
+#### Model Description
+
+This is a one compartment oral absorption model with **Weight and Metabolizing capacity** as covariates. isPM takes a value of either `0` which indicates is **not a poor metabolizer**  or `1` which indicates **is a poor metabolizer**.
+
+```julia
+oral_one_cmpt = @model begin
+  @param   begin
+    tvKa     ∈ RealDomain(lower=0)
+    tvCl     ∈ RealDomain(lower=0)
+    tvVc     ∈ RealDomain(lower=0)
+    pmoncl   ∈ RealDomain(lower= -0.99)
+    Ω        ∈ PDiagDomain(3)
+  end
+
+  @random begin
+    η        ~ MvNormal(Ω)
+  end
+
+  @covariates isPM wt
+
+  @pre begin
+    poor_met = isPM
+    Weight   = wt
+    Cl       = tvCl*(1 + pmoncl * poor_met) * (Weight/70)^0.75 * exp(η[1])
+    Vc       = tvVc*(wt/70) * exp(η[2])
+    Ka       = tvKa * exp(η[3])
+  end
+
+  @dynamics begin
+    Depot'   = -Ka*Depot
+    Central' =  Ka*Depot - (Cl/Vc)*Central
+  end
+
+  @derived begin
+    cp       = @. 1000*(Central/Vc)
+  end
+end
+```
+
+Parameters are as given below:
+
+```julia
+par = ( tvKa   = 0.7,    # (hr⁻¹) Absorption Rate Constant
+        tvCl   = 5.0,    # (L/hr) Clearance
+        tvVc   = 50.0,   # (L)    Volume of Distribution
+        pmoncl = -0.7,   # No units
+        Ω      = Diagonal([0.04,0.0225,0.01]))
+```
+
+1. Single subject who receives a **100 mg** dose orally at `time = 0`.
+
+ * The cmt can be explicitly stated as `cmt=:Depot` to avoid confusion
+
+```julia
+ev1  = DosageRegimen(100, time=0, cmt=1)
+s1   = Subject(id=1, evs=ev1, cvs=(isPM=1, wt=80))
+obs1 = simobs(oral_one_cmpt, s1, par, obstimes=0:0.1:120)
+df   = DataFrame(obs1)
+@df df plot(:time, :cp, xticks=[0,12,24,36,48,60,72,84,96,108,120], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+```
+
+2. Single subject who receives a **30 mg** oral dose _three times a day_ for _3 days_
+
+ * The additional number of doses is specified as `addl=8` in addition to one dose to be given at `time=0`. Hence a total of 9 doses
+ * The inter dose interval is specified as `ii=8` which indicates every 8 hours
+
+```julia
+ev2  = DosageRegimen(30, time=0, ii=8, addl=8, cmt=:Depot)
+s2   = Subject(id=1, evs=ev2, cvs=(isPM=0, wt=60))
+obs2 = simobs(oral_one_cmpt, s2, par, obstimes=0:0.1:80)
+df   = DataFrame(obs2)
+@df df plot(:time, :cp, xticks=[0,8,16,24,32,40,48,56,64,72,80], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+```
+3. A population of _two subjects_ receive **30 mg** oral dose _three times a day_ for _3 days_
+
+ * A population is built by concatenating two subjects
+ * The subject `s2` is **Not a Poor Metabolizer** and `s3` is a **Poor Metabolizer**
+
+```julia
+ev3  = DosageRegimen(30, time=0, ii=8, addl=8, cmt=1)
+s3   = Subject(id=2, evs=ev3, cvs=(isPM=1, wt=60))
+pop1 = [s2,s3]
+```
+```julia
+obs3 = simobs(oral_one_cmpt, pop1, par, obstimes=0:0.1:80)
+df   = DataFrame(obs3)
+@df df plot(:time, :cp, group=:id, xticks=[0,8,16,24,32,40,48,56,64,72,80], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+```
+
+4. A single subject who receives an `IV` loading dose of **100 mg** at `time = 0` and is started immediately with a `oral` dose of **200 mg** that is to be give _once daily_ for _4 days_.
+
+ * The IV dose is a single dose with no additional doses or inter dosing interval, thus the `addl` and `ii` is mentioned as `0`
+ * The oral dose is started alongside with the IV dose at `time=0` and the additional doses and interdosing intervals are mentioned accordingly.
+
+```julia
+ev4  = DosageRegimen([100,200], time=[0,0], cmt=[2,1], addl=[0,3], ii=[0,24])
+s4   = Subject(id=1, evs=ev4, cvs=(isPM=0, wt=80))
+obs4 = simobs(oral_one_cmpt, s4, par, obstimes=0:0.1:96)
+df   = DataFrame(obs4)
+@df df plot(:time, :cp, xticks=[0,6,12,18,24,30,36,42,48,54,60,66,72,78,84,90,96], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+```
+
+5. A single subject who received a **50 mg IV dose** at `time = 0`, followed by another **20 mg IV dose** at `time = 6`, followed by **30 mg oral dose** at `time = 12` that is given every _12 hours_ for _3 days_.
+
+ * The subject in this case is assigned a random value of either 1 or 0 for _isPM_ and similarly the weight is selected randomly between 50 and 80 kgs.
+
+```julia
+ev5  = DosageRegimen([50,20,30], time=[0,6,12], cmt=[2,2,1], addl=[0,0,5], ii=[0,0,12])
+s5   = Subject(id=1, evs=ev5, cvs=(isPM=rand([0,1]), wt=rand(50:80)))
+obs5 = simobs(oral_one_cmpt, s5, par, obstimes=0:0.1:90)
+df   = DataFrame(obs5)
+@df df plot(:time, :cp, xticks=[0,6,12,18,24,30,36,42,48,54,60,66,72,78,84,90], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+```
+
+6. A _population of 5 subjects_ receive a **30 mg oral dose** _two times a day_ for _7 days_
+
+ * In this example a population is built using the _loop_ function
+ * You have to change your simulation time `obstimes` to accommodate 7 days
+
+```julia
+ev6  = DosageRegimen(30, time=0, cmt=1, ii=12, addl=13)
+pop2 = map(i -> Subject(id=i, evs=ev6, cvs=(isPM=rand([0,1]), wt=rand(50:80))), 1:5)
+obs6 = simobs(oral_one_cmpt, pop2, par, obstimes=0:0.1:180)
+df   = DataFrame(obs6)
+@df df plot(:time, :cp, group=:id, xticks=[0,12,24,36,48,60,72,84,96,108,120,132,144,156,168,180], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+```
+
+7. A _population of 24 subjects_ receive the following doses:
+ * Category 1 - First set of 6 subjects receive **100 mg oral** single dose at `time=0`
+ * Category 2 - Second set of 6 subjects receive **100 mg IV** single dose at `time=0`
+ * Category 3 - Third set of 6 subjects receive **50 mg IV** and **50 mg oral** at `time = 0`
+ * Category 4 - Fourth set of 6 subjects receive **75 mg IV** at `time = 0` and **25 mg oral** at `time = 6`
+
+
+**Note:**
+ * Each specific Dosage Regimen is included while building the population
+ * A seperate covariate called `category` is assigned for each 6 set of patients to filter and use them specifically for plotting. It does not play any role in modeling of the data
+
+```julia
+pop3 = map(i -> Subject(id=i, evs=DosageRegimen(100, time=0, cmt=1), cvs=(isPM=rand([0,1]), wt=rand(100:150), category=1)), 1:6)
+pop4 = map(i -> Subject(id=i, evs=DosageRegimen(100, time=0, cmt=2), cvs=(isPM=rand([0,1]), wt=rand(40:80), category=2)), 7:12)
+pop5 = map(i -> Subject(id=i, evs=DosageRegimen([50,50], time=[0,0], cmt=[2,1]), cvs=(isPM=rand([0,1]), wt=rand(60:80), category=3)), 13:18)
+pop6 = map(i -> Subject(id=i, evs=DosageRegimen([75,25], time=[0,6], cmt=[2,1]), cvs=(isPM=rand([0,1]), wt=rand(80:100), category=4)), 19:24)
+pop7 = vcat(pop3, pop4, pop5, pop6)
+obs7 = simobs(oral_one_cmpt, pop7, par, obstimes=0:0.1:48)
+df   = DataFrame(obs7);
+```
+
+Filter the dataframe based on the category of patients and use it for plotting the respective **Concentration vs Time** profile
+
+Plot for six patients of **Category 1**
+
+```julia
+df1  = filter(x -> x.category == 1, df)
+@df df1 plot(:time, :cp, group=:id, xticks=[0,6,12,18,24,30,36,42,48], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+```
+
+Plot for six patients of **Category 2**
+
+```julia
+df2  = filter(x -> x.category == 2, df)
+@df df2 plot(:time, :cp, group=:id, xticks=[0,6,12,18,24,30,36,42,48], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+```
+
+Plot for six patients of **Category 3**
+
+```julia
+df3  = filter(x -> x.category == 3, df)
+@df df3 plot(:time, :cp, group=:id, xticks=[0,6,12,18,24,30,36,42,48], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+```
+
+Plot for six patients of **Category 4**
+
+```julia
+df4  = filter(x -> x.category == 4, df)
+@df df4 plot(:time, :cp, group=:id, xticks=[0,6,12,18,24,30,36,42,48], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+```
+
+8. A _population of 5 subjects_ receive a **100 mg dose as IV-Infusion** for 2 hours, _two times a day_ for _2 days_.
+
+ * The `duration` of infusion can be specified explicitly
+ (or)
+ * The rate can also be stated in place of duration as `rate=50` which means 50mg/hr (amount/duration).
+
+```julia
+ev8  = DosageRegimen(100, time=0, duration=2, cmt=:Central, ii=24, addl=3)
+pop8 = map(i -> Subject(id=i, evs=ev8, cvs=(isPM=rand([0,1]), wt=rand(50:80))), 1:5)
+obs8 = simobs(oral_one_cmpt, pop8, par, obstimes=0:0.1:120)
+df8  = DataFrame(obs8)
+@df df8 plot(:time, :cp, group=:id, xticks=[0,12,24,36,48,60,72,84,96,108,120], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+```
+
+9. A single subject receives **50 mg dose of IV-bolus** at `time=0` followed by a **30 mg IV-Infusion** for 2 hours at `time=12` for total 3 dose Q12hrs.
+
+```julia
+ev9  = DosageRegimen([50,50], time=[0,12], duration=[0,2], cmt=2, addl=[0,2], ii=[0,12])
+sub9 = Subject(id=1, evs=ev9, cvs=(isPM=0, wt=rand(50:80)))
+obs9 = simobs(oral_one_cmpt, sub9, par, obstimes=0:0.1:60)
+df9  = DataFrame(obs9)
+@df df9 plot(:time, :cp, xticks=[0,6,12,18,24,30,36,42,48,54,60], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+```
+
+10. A single subject receives an uneven doses of 50mg IV at `time=0`, 30mg oral at `time=4` , 30mg IV at `time=24` and 30mg oral at `time=30`
+
+```julia
+ev10  = DosageRegimen([50,30,30,30], time=[0,6,24,30], cmt=[2,1,2,1])
+sub10 = Subject(id=1, evs=ev10, cvs=(isPM=rand([0,1]), wt=rand(50:80)))
+obs10 = simobs(oral_one_cmpt, sub10, par, obstimes=0:0.1:60)
+df10  = DataFrame(obs10)
+@df df10 plot(:time, :cp, xticks=[0,6,12,18,24,30,36,42,48,54,60], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+```
+
+
+11. In this we will generate a dataset and use the **read_pumas** function to run the simulation
+
+Step 1: Generate a population of 10 subjects
+
+```julia
+n     = 10
+dose1 = 3.6  # mg/kg given as IV-bolus
+dose2 = 100  # mg given as fixed dose orally
+```
+
+Step 2: Randomly assign weight to the subjects with a Mean (62.5) and Standard Deviation (15.5)
+
+```julia
+bw    = Normal(62.5, 15.5)    # Normal(mean, SD)
+Wt    = rand(bw, n);
+```
+
+Step 3: Assign the probablity of beign a poor metabolizer
+
+```julia
+ppm   = 0.34  # (0=66%, 1=34%)
+PM    = rand(Binomial(1,ppm), n);
+```
+
+Step 4: Build the first dose of **3.6 mg/kg** given as IV-Bolus at `time=0` with no additional doses
+
+```julia
+df1   = DataFrame(id= 1:10, time=0, evid=1, cmt=2, dv=missing, addl=0, ii=0, isPM=PM, wt=Wt, dose=dose1)
+df1[!, :amt] .= df1.dose .* df1.wt;
+```
+
+Step 5: Build the second fixed oral dose of **100mg** given at `time=24` given for 3 days every 24 hours
+
+```julia
+df2   = DataFrame(id= 1:10, time=24, evid=1, cmt=1, dv=missing, addl=2, ii=24, isPM=PM, wt=Wt, amt=dose2, dose=missing)
+df3   = vcat(df1, df2)
+sort!(df3, [:id,:time])
+```
+
+Step 5: Read the dataset into Pumas and Simulate
+
+```julia
+data  = read_pumas(df3,cvs=[:isPM,:wt])
+obs11  = simobs(oral_one_cmpt, data, par, obstimes=0:0.1:120);
+```
+
+Step 6: Convert to a Dataframe for plotting
+
+```julia
+df11   = DataFrame(obs11)
+@df df11 plot(:time, :cp, group=:id, xticks=[0,12,24,36,48,60,72,84,96,108,120], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+```
