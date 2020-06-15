@@ -5,7 +5,7 @@ date: May 10, 2020
 ---
 
 ```julia
-using Pumas, DiffEqSensitivity, Plots
+using Pumas, Plots
 ```
 
 ## Introduction
@@ -398,7 +398,7 @@ Now, we are ready to run GSA on our model.
 We will run the Sobol method for 1000 iterations, please note that this takes a couple of hours to finish because of the complexity of the model. 
 
 ```julia
-sobol_ = Pumas.gsa(model,sub_s,p,Sobol(),[:cmax,:auc],p_range_low,p_range_high,N=1000,obstimes=0:1:300)
+sobol_ = Pumas.gsa(model,sub_s,p,Pumas.Sobol(),[:cmax,:auc],p_range_low,p_range_high,N=1000,obstimes=0:1:300)
 ```
 
 We can use scatter plot the result to visualize the result.
@@ -423,7 +423,7 @@ plot(plot_cmax, plot_auc, size = (1200,400))
 eFAST method allows the estimation of first order and total Sobol indices in a more computationaly efficient way.
 
 ```julia
-eFAST_ = Pumas.gsa(model,sub_s,p,eFAST(),[:cmax,:auc],p_range_low,p_range_high,n=1000,obstimes=0:1:300)
+eFAST_ = Pumas.gsa(model,sub_s,p,Pumas.eFAST(),[:cmax,:auc],p_range_low,p_range_high,n=1000,obstimes=0:1:300)
 ```
 
 We can use scatter plot the result to visualize the result.
