@@ -24,10 +24,14 @@ function _build_diffeq_problem(m::PumasModel, subject::Subject, args...;
   # suddenly in the model and introduce discontinuities in the derivates (such as
   # time varying covariates etc)
 
-  tstops,_cb,d_discontinuities = ith_subject_cb(col,subject,Tu0,tspan[1],typeof(prob),saveat,save_discont,continuity)
+  if make_events
+    tstops,_cb,d_discontinuities = ith_subject_cb(col,subject,Tu0,tspan[1],typeof(prob),saveat,save_discont,continuity)
+  else
+    tstops,_cb,d_discontinuities = Float64[],nothing,Float64[]
+  end
 
   cb = CallbackSet(_cb, callback)
-  Tt = promote_type(t_numtype(u0,cb), numtype(tstops), numtype(tspan))
+  Tt = promote_type(t_numtype(Tu0,cb), numtype(tstops), numtype(tspan))
   _tspan = Tt.(tspan)
   _tstops = typeof(_cb) <: DiscreteCallback ? tstops : Tt[]
 
@@ -44,22 +48,6 @@ function _build_diffeq_problem(m::PumasModel, subject::Subject, args...;
   else
     new_f = make_function(prob,fd)
   end
-
-  # figure out callbacks and convert type for tspan if necessary
-  # d_discontinuities are used to inform diffeq about the places where things change
-  # suddenly in the model and introduce discontinuities in the derivates (such as
-  # time varying covariates etc)
-
-  if make_events
-    tstops,_cb,d_discontinuities = ith_subject_cb(col,subject,Tu0,tspan[1],typeof(prob),saveat,save_discont,continuity)
-  else
-    tstops,_cb,d_discontinuities = Float64[],nothing,Float64[]
-  end
-
-  cb = CallbackSet(_cb, callback)
-
-  Tt = promote_type(t_numtype(u0,cb), numtype(tstops), numtype(tspan))
-  _tspan = Tt.(tspan)
 
   # Remake problem of correct type
   if typeof(m.prob) <: DiffEqBase.AbstractJumpProblem
