@@ -1,4 +1,4 @@
-image: "julia:1.4"
+image: "julia:1.4.1"
 
 variables:
   JULIA_DEPOT_PATH: "$CI_PROJECT_DIR/.julia/"
@@ -34,6 +34,10 @@ build:
                 Pkg.add("Coverage");
                 using Coverage;
                 Codecov.submit_local(process_folder())'
+  artifacts:
+    paths:
+      - Manifest.toml
+    expire_in: 90 days
   only:
   - master
   - tags
