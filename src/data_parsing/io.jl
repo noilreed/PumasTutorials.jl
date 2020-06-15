@@ -379,7 +379,7 @@ struct Subject{T1,T2,T3,T4,T5}
 
   function Subject(;id = "1",
                    obs = nothing,
-                   cvs = nothing,
+                   cvs::Union{Nothing, NamedTuple} = nothing,
                    cvstime = obs isa AbstractDataFrame ? obs.time : nothing,
                    evs = Event[],
                    time = obs isa AbstractDataFrame ? obs.time : nothing,
