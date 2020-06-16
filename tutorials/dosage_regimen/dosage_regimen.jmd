@@ -19,7 +19,7 @@ oral_one_cmpt = @model begin
     tvKa     ∈ RealDomain(lower=0)
     tvCl     ∈ RealDomain(lower=0)
     tvVc     ∈ RealDomain(lower=0)
-    pmoncl   ∈ RealDomain(lower= -0.99)
+    fpmcl    ∈ RealDomain(lower= -0.99)
     Ω        ∈ PDiagDomain(3)
   end
 
@@ -30,9 +30,9 @@ oral_one_cmpt = @model begin
   @covariates isPM wt
 
   @pre begin
-    poor_met = isPM
-    Weight   = wt
-    Cl       = tvCl*(1 + pmoncl * poor_met) * (Weight/70)^0.75 * exp(η[1])
+    pmcl     = fpmcl * isPM
+    wtcl     = (wt/70)^0.75
+    Cl       = tvCl*(1 + pmcl) * wtcl * exp(η[1])
     Vc       = tvVc*(wt/70) * exp(η[2])
     Ka       = tvKa * exp(η[3])
   end
@@ -54,7 +54,7 @@ Parameters are as given below:
 par = ( tvKa   = 0.7,    # (hr⁻¹) Absorption Rate Constant
         tvCl   = 5.0,    # (L/hr) Clearance
         tvVc   = 50.0,   # (L)    Volume of Distribution
-        pmoncl = -0.7,   # No units
+        fpmcl  = -0.7,   # No units, Fractional Change in Clearance
         Ω      = Diagonal([0.04,0.0225,0.01]))
 ```
 
@@ -229,7 +229,7 @@ Step 1: Generate a population of 10 subjects
 ```julia
 n     = 10
 dose1 = 3.6  # mg/kg given as IV-bolus
-dose2 = 100  # mg given as fixed dose orally
+dose2 = 100; # mg given as fixed dose orally
 ```
 
 Step 2: Randomly assign weight to the subjects with a Mean (62.5) and Standard Deviation (15.5)
@@ -258,7 +258,7 @@ Step 5: Build the second fixed oral dose of **100mg** given at `time=24` given f
 ```julia
 df2   = DataFrame(id= 1:10, time=24, evid=1, cmt=1, dv=missing, addl=2, ii=24, isPM=PM, wt=Wt, amt=dose2, dose=missing)
 df3   = vcat(df1, df2)
-sort!(df3, [:id,:time])
+sort!(df3, [:id,:time]);
 ```
 
 Step 5: Read the dataset into Pumas and Simulate
