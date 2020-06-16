@@ -1728,12 +1728,8 @@ function StatsBase.vcov(f::FittedPumasModel; rethrow_error=false)
     H, S = _observed_information(f, Val(true), f.args...; f.kwargs...)
 
     # Use generialized eigenvalue decomposition to compute inv(H)*S*inv(H)
-    F = eigen(Symmetric(H), Symmetric(S))
-    first_nonpositive = map(t -> t <= 0, F.values)
-    if first_nonpositive isa Number
-      throw(PosDefException(first_nonpositive))
-    end
-    return F.vectors*Diagonal(inv.(abs2.(F.values)))*F.vectors'
+    F = eigen(Symmetric(S), Symmetric(H))
+    return F.vectors*Diagonal(F.values)*F.vectors'
   catch err
     err = PumasFailedCovariance(err)
     if rethrow_error
