@@ -115,6 +115,7 @@ function Distributions.fit(
   args...;
   nadapts::Integer=2000,
   nsamples::Integer=10000,
+  progress = Base.is_interactive,
   kwargs...
 )
   # Extract parameter transformations with and without bounds
@@ -143,7 +144,7 @@ function Distributions.fit(
   adaptor = StanHMCAdaptor(MassMatrixAdaptor(metric), StepSizeAdaptor(0.8, prop.integrator))
 
   # Run the MCMC sampler
-  samples, stats = sample(h, prop, vparam_aug, nsamples, adaptor, nadapts; progress=Base.is_interactive)
+  samples, stats = sample(h, prop, vparam_aug, nsamples, adaptor, nadapts; progress=progress)
 
   return BayesMCMCResults(bayes, samples, stats)
 end
