@@ -25,31 +25,35 @@ In this tutorial you will learn how to write different ways of modeling the phsy
 ```julia
 single_entero = @model begin
   @param begin
-    tvvc    ∈ RealDomain(lower=0)
-    tvcl    ∈ RealDomain(lower=0)
-    tvq     ∈ RealDomain(lower=0)
-    tvvp    ∈ RealDomain(lower=0)
-    tvka    ∈ RealDomain(lower=0)
-    tvk1g   ∈ RealDomain(lower=0)
-    tvτ     ∈ RealDomain(lower=0)
-    Ω       ∈ PDiagDomain(2)
+    tvvc      ∈ RealDomain(lower=0)
+    tvcl      ∈ RealDomain(lower=0)
+    tvq       ∈ RealDomain(lower=0)
+    tvvp      ∈ RealDomain(lower=0)
+    tvka      ∈ RealDomain(lower=0)
+    tvk1g     ∈ RealDomain(lower=0)
+    tvτ       ∈ RealDomain(lower=0)
+    tvtfirst  ∈ RealDomain(lower=0)
+    tvtsecond ∈ RealDomain(lower=0)
+    Ω         ∈ PDiagDomain(2)
   end
 
   @random begin
-    η       ~ MvNormal(Ω)
+    η         ~ MvNormal(Ω)
   end
 
   @pre begin
-    Vc      = tvvc*exp(η[1])
-    Cl      = tvcl*exp(η[2])
-    Q       = tvq
-    Vp      = tvvp
-    Ka      = tvka
-    K1g     = tvk1g
-    τ       = tvτ
-    Switch1 = (t>4 && t<4+τ)*1
-    Switch2 = (t>16 && t<16+τ)*1
-    Switch  = Switch1 + Switch2
+    Vc        = tvvc*exp(η[1])
+    Cl        = tvcl*exp(η[2])
+    Q         = tvq
+    Vp        = tvvp
+    Ka        = tvka
+    K1g       = tvk1g
+    τ         = tvτ
+    Tfirst    = tvtfirst
+    Tsecond   = tvtsecond
+    Switch1   = (t>Tfirst && t<Tfirst+τ)*1
+    Switch2   = (t>Tsecond && t<Tsecond+τ)*1
+    Switch    = Switch1 + Switch2
   end
 
   @dynamics begin   # The release from the bile follows a zero-order process
@@ -69,14 +73,16 @@ end
 Parameters are as mentioned below:
 
 ```julia
-par1 = (tvvc  = 5,     # (L)
-        tvcl  = 1,     # (L/hr)
-        tvq   = 2,     # (L/hr)
-        tvvp  = 20,    # (L)
-        tvka  = 0.5,   # (hr⁻¹)
-        tvk1g = 0.25,  # (hr⁻¹)
-        tvτ   = 2,     # (hr)
-        Ω     = Diagonal([0.01,0.04]))
+par1 = (tvvc     = 5,     # (L)
+        tvcl     = 1,     # (L/hr)
+        tvq      = 2,     # (L/hr)
+        tvvp     = 20,    # (L)
+        tvka     = 0.5,   # (hr⁻¹)
+        tvk1g    = 0.25,  # (hr⁻¹)
+        tvτ      = 2,     # (hr)
+        tvtfirst = 4,     # (hr) Time of First release of bile
+        tvtsecond=16,     # (hr) Time of Second release of bile
+        Ω        = Diagonal([0.01,0.04]))
 ```
 
 A single subject receives a dose of 500mg give as an IV-bolus at `time=0`
