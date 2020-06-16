@@ -1,0 +1,255 @@
+---
+title : Error Models
+author : Parsshava R Mehta
+date : 15th June 2020
+---
+
+Load the necessary libraries
+
+```julia
+using Pumas, Plots, DataFrames, StatsPlots
+```
+
+## Introduction
+
+In this tutorial you will learn how to model
+ * Between Subject Variability
+ * Residual Unexplained Variability
+
+#### Between Subject Variability
+
+Between Subject Variability is also called as Inter-individual variability and is commonly modeled as exponential for PK parameters and addtive for PD parametrs. The variability enters the model as a component of the expression defining parameter.
+You can specify a positive-definitive covariance matrix using `PSDDomain`. You can read more about various domains in the [documentation](https://docs.pumas.ai/dev/model_components/domains/)
+
+```julia
+two_compt_bsv      = @model begin
+  @param begin
+    tvKa           ∈ RealDomain(lower=0)
+    tvVc           ∈ RealDomain(lower=0)
+    tvCl           ∈ RealDomain(lower=0)
+    tvVp           ∈ RealDomain(lower=0)
+    tvQ            ∈ RealDomain(lower=0)
+    Ω1             ∈ PDiagDomain(3)
+    Ω2             ∈ PSDDomain(2)
+  end
+
+  @random begin
+    η1             ~ MvNormal(Ω1)
+    η2             ~ MvNormal(Ω2)
+  end
+
+  @pre begin
+    Ka             = tvKa * exp(η1[1])
+    Vc             = tvVc * exp(η1[2])
+    Cl             = tvCl * exp(η2[1])
+    Vp             = tvVp * exp(η1[3])
+    Q              = tvQ * exp(η2[2])
+  end
+
+  @dynamics begin
+    Depot'         = -Ka*Depot
+    Central'       = Ka*Depot - (Cl/Vc)*Central -(Q/Vc)*Central + (Q/Vp)*Peripheral
+    Peripheral'    = (Q/Vc)*Central - (Q/Vp)*Peripheral
+  end
+
+  @derived begin
+    cp             = @. Central/Vc
+    Clearance      = @. Cl
+    Volume_Cent    = @. Vc
+    Abs_rate_const = @. Ka
+    Inter_com_clr  = @. Q
+    Volume_Peri    = @. Vp
+  end
+end
+```
+
+Parameters are as given below:
+
+```julia
+par  =  ( tvKa   = 0.5, # (hr⁻¹)
+          tvVc   = 10,  # (L)
+          tvCl   = 2,   # (L/hr)
+          tvVp   = 30,  # (L)
+          tvQ    = 12,  # (L/hr)
+          Ω1     = Diagonal([0.04, 0.00225, 0.0289]),
+          Ω2     = [0.0625 0.01;
+                    0.01 0.09])
+```
+
+A single subject receives a dose of _1000 mg_ at `time=0`. The _structural model_ is a **Two Compartment Oral Absorption Model**
+
+```julia
+ev1   = DosageRegimen(1000, time=0, cmt=:Depot)
+sub1  = map(i -> Subject(id=i, evs=ev1), 1:5)
+obs1  = simobs(two_compt_bsv, sub1, par, obstimes=0:0.1:60);
+```
+
+Plot **Concentration vs Time**
+
+```julia
+df    = DataFrame(obs1)
+@df df plot(:time, :cp, group=:id, xticks=[0,6,12,18,24,30,36,42,48,54,60], xlabel="Time (hr)", ylabel="Concentration (mg/L)", title = "Concentration vs Time", linewidth=1.5)
+```
+
+See the individual _Clearance_, _Volume of Distbution_ and _Absorption Rate Constant_ for each patient
+
+```julia
+filter!(x -> x.evid == 1, df)
+select!(df,:id, :Clearance, :Volume_Cent, :Abs_rate_const, :Inter_com_clr, :Volume_Peri)
+```
+
+
+#### Residual Unexplained Variability
+
+Residual error terms are generally added to explain the deviations from the predcited observations.
+The error elements are drawn from a distribution of mean 0 and standard deviation (σ).
+
+```julia
+one_compt_ruv = @model begin
+  @param begin
+    tvKa      ∈ RealDomain(lower=0)
+    tvV       ∈ RealDomain(lower=0)
+    tvCl      ∈ RealDomain(lower=0)
+    σ_add     ∈ RealDomain(lower=0)
+    σ_prop    ∈ RealDomain(lower=0)
+    σ_log     ∈ RealDomain(lower=0)
+    γ         ∈ RealDomain(lower=0)
+  end
+
+  @pre begin
+    Ka        = tvKa
+    V         = tvV
+    Cl        = tvCl
+  end
+
+  @dynamics begin
+    Depot'    = -Ka*Depot
+    Central'  = Ka*Depot - (Cl/V)*Central
+  end
+
+  @derived begin
+    cp        = @. Central/V
+
+    #In terms of Standard Deviation
+    dv_add    ~ @. Normal(cp, σ_add)
+    dv_prop   ~ @. Normal(cp, cp*σ_prop)
+    dv_comb   ~ @. Normal(cp, (cp*σ_prop+σ_add))
+    dv_log    ~ @. LogNormal(log(cp), σ_log)
+    dv_gamma  ~ @. Gamma(γ , cp/γ)
+
+    #In terms of Variance
+    #dv_add   ~ @. Normal(cp, sqrt(σ²_add))
+    #dv_prop  ~ @. Normal(cp, sqrt(cp^2*σ²_prop)
+    #dv_comb  ~ @. Normal(cp, (cp^2*σ²_prop+σ²_add))
+    #dv_log   ~ @. LogNormal(log(cp), sqrt(σ²_log))
+    #dv_gamma ~ @. Gamma(sqrt(γ²^2) , sqrt(cp^2/γ²^2)
+  end
+end
+```
+
+Parameters are as given below:
+
+```julia
+par1 =  ( tvKa   = 0.5, # (hr⁻¹)
+          tvV    = 10,  # (L)
+          tvCl   = 2,   # (L/hr)
+          σ_add  = 2,   # (Additive error SD)
+          σ_prop = 0.2, # (Proportional error SD)
+          σ_log  = 0.1, # (Log error SD)
+          γ      = 25)  # (Interpreted as 1/σ²_prop)
+```
+
+A single subject receives a dose of _1000 mg_ at `time=0`. The _structural model_ is a **One Compartment Oral Absorption Model**
+
+```julia
+ev1   = DosageRegimen(1000, time=0, cmt=:Depot)
+sub1  = Subject(id=1, evs=ev1)
+obs1  = simobs(one_compt_ruv, sub1, par1, obstimes=0.01:0.5:30)
+df    = DataFrame(obs1);
+```
+
+**Additive Error Model**
+
+Plot Concentration vs Time
+
+```julia
+@df df plot(:time, :cp, xlabel="Time (hr)", ylabel="Concentration (mg/L)", title = "Concentration vs Time",label="PRED", linewidth=1.5)
+@df df scatter!(:time, :dv_add, label="OBS")
+```
+
+Plot Residuals vs Time
+
+```julia
+df[!, :Res_add] = df.dv_add .- df.cp
+p = @df df scatter(:time, :Res_add, xlabel="Time (hr)", ylabel="Residual", title="Residuals vs Time", label=false)
+hline!(p, [0]; linestyle = :dash, linewidth=2, label=false)
+```
+
+
+**Proportional Error Model**
+
+Plot Concentration vs Time
+
+```julia
+@df df plot(:time, :cp, xlabel="Time (hr)", ylabel="Concentration (mg/L)", title = "Concentration vs Time",label="PRED", linewidth=1.5)
+@df df scatter!(:time, :dv_prop, label="OBS")
+```
+
+Plot Residuals vs Time
+
+```julia
+df[!, :Res_prop] = df.dv_prop .- df.cp
+p = @df df scatter(:time, :Res_prop, xlabel="Time (hr)", ylabel="Residual", title="Residuals vs Time", label=false)
+hline!(p, [0]; linestyle = :dash, linewidth=2, label=false)
+```
+
+**Combined (Additive+Proprtional) Error Model**
+
+Plot Concentration vs Time
+
+```julia
+@df df plot(:time, :cp, xlabel="Time (hr)", ylabel="Concentration (mg/L)", title = "Concentration vs Time",label="PRED", linewidth=1.5)
+@df df scatter!(:time, :dv_comb, label="OBS")
+```
+
+Plot Residuals vs Time
+
+```julia
+df[!, :Res_comb] = df.dv_comb .- df.cp
+p = @df df scatter(:time, :Res_comb, xlabel="Time (hr)", ylabel="Residual", title="Residuals vs Time",label=false)
+hline!(p, [0]; linestyle = :dash, linewidth=2, label=false)
+```
+
+**Log Tranformed Error Model**
+
+Plot Concentration vs Time
+
+```julia
+@df df plot(:time, :cp, xlabel="Time (hr)", ylabel="Concentration (mg/L)", title = "Concentration vs Time",label="PRED", linewidth=1.5)
+@df df scatter!(:time, :dv_gamma, label="OBS")
+```
+
+Plot Residuals vs Time
+
+```julia
+df[!, :Res_log] = df.dv_log .- df.cp
+p = @df df scatter(:time, :Res_log, xlabel="Time (hr)", ylabel="Residual", title="Residuals vs Time",label=false)
+hline!(p, [0]; linestyle = :dash, linewidth=2, label=false)
+```
+
+**Gamma Distribution Error Model**
+
+Plot Concentration vs Time
+
+```julia
+@df df plot(:time, :cp, xlabel="Time (hr)", ylabel="Concentration (mg/L)", title = "Concentration vs Time",label="PRED", linewidth=1.5)
+@df df scatter!(:time, :dv_gamma, label="OBS")
+```
+
+Plot Residuals vs Time
+
+```julia
+df[!, :Res_gamma] = df.dv_gamma .- df.cp
+p = @df df scatter(:time, :Res_gamma, xlabel="Time (hr)", ylabel="Residual", title="Residuals vs Time",label=false)
+hline!(p, [0]; linestyle = :dash, linewidth=2, label=false)
+```
