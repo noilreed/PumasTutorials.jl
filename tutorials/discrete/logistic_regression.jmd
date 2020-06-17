@@ -1,0 +1,116 @@
+---
+title: Logistic Regression Models
+---
+
+## Binary Response Example
+
+A binary response is an outcome which gives an output of 0 or 1 with a probability `p`.
+In Pumas, this is represented by a `Bernoulli(p)` distribution.
+
+To get started, first let's load `Pumas` and read in some example data:
+
+```julia
+using Pumas, StatsFuns, CSV
+df = CSV.read(example_data("pain_remed"))
+data = read_pumas(df, dvs=[:dv],
+    cvs = [:arm, :dose, :conc, :painord,:remed],event_data=false)
+```
+In this tutorial we will be dealing with longitudinal discrete data.
+The occurrence (or not) of an event is recorded for each hourly interval, giving
+rise to eight observations of zeros or ones per patient. Dichotomization of the
+data is such that no or mild pain equal “0” whereas moderate or severe pain equal “1”.
+
+A dose-ranging trial was conducted comparing placebo with 3 doses of a drug (5mg, 20mg and 80 mg QD).
+The maximum tolerated dose is 160 mg per day.
+
+Plasma concentrations (mg/L) of the drug were measured at 0, 0.5, 1, 1.5, 2, 2.5, 3-8 hours .
+Pain score (0=no pain, 1=mild, 2=moderate, 3=severe) were obtained at time points
+when plasma concentration was collected. A pain score of 2 or more is considered
+as no pain relief. The subjects can request for remedication if pain relief is not
+achieved after 2 hours post dose. The time to remedication is also available for subjects.
+In this trial, the subjects were followed up till the end of the study irrespective
+of the remedication request.
+
+### Intercept only model
+
+Next let's implement a model with a binary response. Here, we do not have an
+`@dynamics` portion. In our `derived`, we define a `logistic` from
+[StatsFuns](https://github.com/JuliaStats/StatsFuns.jl#basic-functions)
+
+```julia
+binary_model = @model begin
+    @param begin
+        intercept ∈ RealDomain(init=0.001)
+        tvslope ∈ RealDomain(init=0.0001)
+        Ω ∈ VectorDomain(1)
+    end
+
+    @random begin
+        η ~ MvNormal(Ω)
+    end
+
+    @covariates arm dose
+
+    @pre begin
+        rx = dose > 0 ? 1 : 0
+        slope = tvslope*rx
+        logit = intercept + slope + η[1]
+    end
+
+    @derived begin
+        pain = @. logistic(logit)
+        dv ~ @. Bernoulli(logistic(logit))
+    end
+end
+```
+
+In the code above, the `logit` expression has parameters for intercept, `intercept`
+`intercept` has an interpretation of log odds of having an event. An important point
+to note here is that the parameters in `@param` are not bounded. This is essential
+because we unbound the parameters of logistic regression to be on the real scale.
+The probability, represented by $exp(int)/(1+exp(int))$ which lies between [0,1]
+will go towards one when the estimate of `intercept` is positive and big and if
+its negative and small it will go towards zero.
+
+Note that we could have alternatively defined our `@pre` like:
+
+```{julia;eval=false}
+@pre begin
+    logit = intercept + tvslope*(dose > 0 ? 1 : 0) + η[1]
+    logit = intercept + tvslope*Int(dose > 0) + η[1]
+end
+```
+
+Now let's fit our model to the data:
+
+```julia
+param = (
+    intercept = 0.001,
+    tvslope = 0.0001,
+    Ω = [1.0]
+    )
+```
+
+Below you can fit the model
+
+```julia
+binary_res = fit(binary_model,data,param,Pumas.FOCE())
+coeftable(binary_res)
+```
+
+and make some inferences
+
+```julia
+infer(binary_res)  |> coeftable
+```
+
+and simulate some outputs:
+
+```julia
+sim = simobs(binary_model,data,coef(binary_res))
+simdf = DataFrame(sim, include_events=false)
+first(simdf,6) # Print only the first 6 rows
+```
+
+Note that now our simulation output for `dv` is true/false values pulled with
+probability given by `logit` dependent on the individual's random effects.
