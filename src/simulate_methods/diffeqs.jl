@@ -31,7 +31,7 @@ function _build_diffeq_problem(m::PumasModel, subject::Subject, args...;
   end
 
   cb = CallbackSet(_cb, callback)
-  Tt = promote_type(t_numtype(Tu0,cb), numtype(tstops), numtype(tspan))
+  Tt = promote_type(t_numtype(u0,cb), numtype(tstops), numtype(tspan))
   _tspan = Tt.(tspan)
   _tstops = typeof(_cb) <: DiscreteCallback ? tstops : Tt[]
 
