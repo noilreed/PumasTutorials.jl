@@ -22,6 +22,8 @@
     include("template_model_ev_system.jl") end
 @time @safetestset "Multiple Response Tests" begin
     include("multiresponses.jl") end
+@time @safetestset "Repeated Events Tests" begin
+    include("repeated_events_tests.jl") end
 @time @safetestset "DCP Rate Handling Tests" begin
     include("dcp_rate.jl") end
 @time @safetestset "Non-Constant Subject Type Tests" begin

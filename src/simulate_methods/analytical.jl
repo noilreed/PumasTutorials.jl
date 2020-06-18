@@ -76,7 +76,8 @@ function DiffEqBase.solve(prob::AnalyticalPKPDProblem,
   ss_dropoff_event = false
   start_val = 0
   retcode = :Success
-  local dose, t
+  dose = zero(Tu0)
+  local t
   # Now loop through the rest
   while i <= length(times)
 
@@ -108,12 +109,11 @@ function DiffEqBase.solve(prob::AnalyticalPKPDProblem,
       cur_ev.evid >= 3 && (Tu0 = zero(Tu0))
       @assert cur_ev.time == t
       if cur_ev.ss == 0
-        dose,_rate = create_dose_rate_vector(cur_ev,Tu0,rate)
-
+        dose,_rate = create_dose_rate_vector(cur_ev,t0,dose,rate)
         (t0 != t) && cur_ev.evid < 3 && (Tu0 = f(t,t0,Tu0,last_dose,col,rate))
         rate = _rate
         u[i] = Tu0
-        doses[i] += dose
+        doses[i] = dose
         last_dose = dose
         rates[i] = rate
       else # handle steady state
@@ -195,6 +195,7 @@ function DiffEqBase.solve(prob::AnalyticalPKPDProblem,
     # Don't update i for duplicate events
     t0 = t
     if ss_dropoff_event || (event_counter != length(events) && events[event_counter+1].time != t) || event_counter == length(events)
+      dose = zero(dose)
       i += 1
     end
   end
@@ -211,11 +212,15 @@ function DiffEqBase.solve(prob::AnalyticalPKPDProblem,
                                        true,0,retcode,continuity)
 end
 
-function create_dose_rate_vector(cur_ev,u0,rate)
+function create_dose_rate_vector(cur_ev,t0,dose,rate)
   if cur_ev.rate == 0
-    increment_value(zero(u0),cur_ev.amt,cur_ev.cmt),rate
-  else
-    return zero(u0),increment_value(rate,cur_ev.rate_dir*cur_ev.rate,cur_ev.cmt)
+    if cur_ev.time == t0 # add to the previous dose vector
+      increment_value(dose,cur_ev.amt,cur_ev.cmt),rate
+    else # use a new dose vector
+      increment_value(zero(dose),cur_ev.amt,cur_ev.cmt),rate
+    end
+  else # rates are always in incrementing form
+    zero(dose),increment_value(rate,cur_ev.rate_dir*cur_ev.rate,cur_ev.cmt)
   end
 end
 
