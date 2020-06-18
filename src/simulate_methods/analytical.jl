@@ -214,13 +214,9 @@ end
 
 function create_dose_rate_vector(cur_ev,t0,dose,rate)
   if cur_ev.rate == 0
-    if cur_ev.time == t0 # add to the previous dose vector
-      increment_value(dose,cur_ev.amt,cur_ev.cmt),rate
-    else # use a new dose vector
-      increment_value(zero(dose),cur_ev.amt,cur_ev.cmt),rate
-    end
+    increment_value(dose,cur_ev.amt,cur_ev.cmt),rate
   else # rates are always in incrementing form
-    zero(dose),increment_value(rate,cur_ev.rate_dir*cur_ev.rate,cur_ev.cmt)
+    dose,increment_value(rate,cur_ev.rate_dir*cur_ev.rate,cur_ev.cmt)
   end
 end
 
