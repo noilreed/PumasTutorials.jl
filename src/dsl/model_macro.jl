@@ -1,4 +1,5 @@
 const IIP_SIZE = 8
+abstract type PreFunction <: Function end
 
 islinenum(x) = x isa LineNumberNode
 function nt_expr(set, prefix=nothing)
@@ -187,22 +188,41 @@ end
 _keys(x) = x
 _keys(x::AbstractDict) = keys(x)
 
+
 # This function is called in @model to construct the function that returns
 # a function to evaluate the pre block for a subject given parameters
-function pre_obj(preexpr, prevars, params, randoms, covariates)
+function pre_obj(preexpr, prevars, cacheexpr, cachevars, params, randoms, covariates)
+  prename = gensym(:pre)
+  prefunc = gensym(:prefunc)
+  Ts = [gensym(:T) for i in 1:length(cachevars)]
   quote
+    mutable struct $prename{T1,T2,T3,$(Ts...)} <: PreFunction
+      _param::T1
+      _random::T2
+      _subject::T3
+      $(Expr(:block, [:($(esc(v))::$(Ts[i])) for (i,v) in enumerate(cachevars)]...))
+    end
+
+    function $(esc(prename))(_param,_random,_subject)
+      $(esc(cacheexpr))
+      $(esc(prename))(_param,_random,_subject,$(esc(cachevars...)))
+    end
+
+    function ($prefunc::$(esc(prename)))(t)
+      covar = $prefunc._subject.covariates(t)
+      $(Expr(:escape, :t)) = t
+      $(Expr(:block, [:($(esc(v)) = $prefunc.$v) for v in cachevars]...))
+      $(Expr(:block, [:($(esc(v)) = covar.$v) for v in _keys(covariates)]...))
+      $(Expr(:block, [:($(esc(v)) = $prefunc._param.$v) for v in _keys(params)]...))
+      $(Expr(:block, [:($(esc(v)) = $prefunc._random.$v) for v in _keys(randoms)]...))
+      $(esc(preexpr))
+      $(esc(nt_expr(prevars)))
+    end
+
     # This function is called when defining a differential equations problem
     function (_param::NamedTuple, _random::NamedTuple, _subject::Subject)
       # pre is evaluated at t. All covariates are available in `covar`.
-      function pre(t)
-        covar = _subject.covariates(t)
-        $(Expr(:escape, :t)) = t
-        $(Expr(:block, [:($(esc(v)) = covar.$v) for v in _keys(covariates)]...))
-        $(Expr(:block, [:($(esc(v)) = _param.$v) for v in _keys(params)]...))
-        $(Expr(:block, [:($(esc(v)) = _random.$v) for v in _keys(randoms)]...))
-        $(esc(preexpr))
-        $(esc(nt_expr(prevars)))
-      end
+      $(esc(prename))(_param,_random,_subject)
     end
   end
 end
@@ -606,9 +626,11 @@ macro model(expr)
   randoms = OrderedDict{Symbol, Any}()
   covariates = OrderedSet{Symbol}()
   prevars  = OrderedSet{Symbol}()
+  cachevars  = OrderedSet{Symbol}()
   ode_init  = OrderedDict{Symbol, Any}()
   odevars  = OrderedSet{Symbol}()
   preexpr = :()
+  cacheexpr = :()
   derivedvars = OrderedSet{Symbol}()
   eqs = Expr(:vect)
   derivedvars = OrderedSet{Symbol}()
@@ -619,7 +641,7 @@ macro model(expr)
   callvars  = OrderedSet{Symbol}()
   local vars, params, randoms, covariates, prevars, preexpr, odeexpr, odevars
   local ode_init, eqs, derivedexpr, derivedvars, observedvars, observedexpr
-  local isstatic, bvars, callvars
+  local isstatic, bvars, callvars, prevars, preexpr
 
   isstatic = true
   ismixed = false
@@ -636,6 +658,9 @@ macro model(expr)
       extract_randoms!(vars, randoms, ex.args[3])
     elseif ex.args[1] == Symbol("@covariates")
       extract_syms!(vars, covariates, ex.args[3:end])
+    elseif ex.args[1] == Symbol("@cache")
+      # Extracts from the same syntax as pre
+      cacheexpr = extract_pre!(vars,cachevars,ex.args[3])
     elseif ex.args[1] == Symbol("@pre")
       preexpr = extract_pre!(vars,prevars,ex.args[3])
     elseif ex.args[1] == Symbol("@vars")
@@ -677,7 +702,7 @@ macro model(expr)
     x = PumasModel(
     $(param_obj(params)),
     $(random_obj(randoms,params)),
-    $(pre_obj(preexpr,prevars,params,randoms,covariates)),
+    $(pre_obj(preexpr,prevars,cacheexpr,cachevars,params,randoms,covariates)),
     $(init_obj(ode_init,odevars,prevars,isstatic,ismixed,odeexpr)),
     $(dynamics_obj(odeexpr,prevars,odevars,callvars,bvars,eqs,isstatic)),
     $(derived_obj(derivedexpr,derivedvars,prevars,odevars,params,randoms)),

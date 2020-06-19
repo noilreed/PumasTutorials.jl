@@ -10,8 +10,12 @@ m_diffeq = @model begin
 
     @covariates ka cl v
 
+    @cache begin
+        onoff = 1.0
+    end
+
     @pre begin
-        Ka = ka
+        Ka = onoff*ka
         CL = cl
         Vc = v
     end
@@ -31,6 +35,7 @@ m_diffeq = @model begin
         dv ~ @. Normal(conc, 1e-100)
     end
 end
+
 
 subject1 = data[1]
 param = NamedTuple()
@@ -70,3 +75,15 @@ cb = DiscreteCallback(condition,affect!,save_positions=(false,true))
 sol_diffeq   = solve(m_diffeq,subject1,param,randeffs;callback=cb,saveat=72:0.1:300)
 @test called
 @test all(sol_diffeq[2,3:end] .>= 2e5)
+
+condition = function (u,t,integrator)
+    t == 73.0
+end
+
+affect! = function (integrator)
+    integrator.p.onoff = 0.0
+end
+
+cb = DiscreteCallback(condition,affect!,save_positions=(false,true))
+sol_diffeq   = solve(m_diffeq,subject1,param,randeffs;callback=cb,tstops=[73.0],saveat=72:0.1:80)
+@test sol_diffeq(73.0)[1] == sol_diffeq(80.0)[1]
