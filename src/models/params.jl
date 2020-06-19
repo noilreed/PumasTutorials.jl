@@ -94,6 +94,7 @@ end
 struct ParamSet{T}
   params::T
 end
+Base.keys(ps::ParamSet) = keys(ps.params)
 
 domains(p::ParamSet) = map(Domain, p.params)
 

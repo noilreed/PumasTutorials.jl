@@ -156,7 +156,6 @@ end
   pop_est = Subject.(simobs(model_duration["closed form"], pop_skeleton, params₀, ensemblealg=EnsembleSerial()))
 
   params = (
-    θKa       = 0.2,
     θCL       = 0.1,
     θV        = 1.0,
     θduration = 0.1,

@@ -101,7 +101,7 @@ function DiffEqBase.solve(m::PumasModel, pop::Population,
                           alg=AutoTsit5(Rosenbrock23()),
                           ensemblealg = EnsembleThreads(),
                           kwargs...)
-
+  _compare_keys(m, param)
   function solve_prob_func(prob,i,repeat)
     _randeffs = randeffs === nothing ? sample_randeffs(m, param) : randeffs
     col = m.pre(param, _randeffs, pop[i])
@@ -278,6 +278,7 @@ function simobs(m::PumasModel, pop::Population,
                 ensemblealg = EnsembleThreads(),
                 callback = nothing,
                 kwargs...)
+  _compare_keys(m, param)
   if !(randeffs isa Nothing) && length(pop) !== length(randeffs)
     throw(DimensionMismatch("The population and random effects input must have equal length, got $(length(pop)) and $(length(randeffs))."))
   end

@@ -15,6 +15,8 @@ using DataStructures: OrderedDict, OrderedSet
 using MacroTools
 using ModelingToolkit
 
+import Base: keys
+
 import MCMCChains: Chains
 
 import DiffResults: DiffResult

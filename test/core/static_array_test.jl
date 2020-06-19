@@ -49,8 +49,7 @@ end
 
 p = ParamSet((θ = VectorDomain(4, lower=zeros(4), init=ones(4)), # parameters
               Ω = PSDDomain(2),
-              Σ = RealDomain(lower=0.0, init=1.0),
-              a = ConstDomain(0.2)))
+              Σ = RealDomain(lower=0.0, init=1.0)))
 
 function rfx_f(p)
     ParamSet((η=MvNormal(p.Ω),))
@@ -101,7 +100,7 @@ subject = data[1]
 
 
 p = ParamSet((θ = VectorDomain(3, lower=zeros(3), init=ones(3)),
-              Ω = PSDDomain(2))),
+              Ω = PSDDomain(2)))
 
 function col_f2(param,randeffs,subject)
   function pre(t)

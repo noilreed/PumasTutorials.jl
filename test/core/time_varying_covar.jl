@@ -17,8 +17,7 @@ end
 ### Function-Based Interface
 
 p = ParamSet((θ = VectorDomain(4, lower=zeros(4), init=ones(4)), # parameters
-              Ω = PSDDomain(2),
-              a = ConstDomain(0.2)))
+              Ω = PSDDomain(2)))
 
 function rfx_f(p)
     ParamSet((η=MvNormal(p.Ω),))
@@ -60,12 +59,15 @@ mobj = PumasModel(p,rfx_f,col_f,init_f,prob,derived_f)
 param = (θ = [2.268,74.17,468.6,0.5876],
          Ω = [0.05 0.0;
               0.0  0.2],
-         σ = 0.1)
+              σ = 0.1)
+paramobj = (θ = [2.268,74.17,468.6,0.5876],
+         Ω = [0.05 0.0;
+              0.0  0.2])
 subject1 = data[1]
 randeffs = init_randeffs(mobj, param)
 
-sol_mobj = solve(mobj,subject1,param,randeffs)
-obs_mobj = simobs(mobj,subject1,param,randeffs)
+sol_mobj = solve(mobj,subject1,paramobj,randeffs)
+obs_mobj = simobs(mobj,subject1,paramobj,randeffs)
 
 ## DSL
 

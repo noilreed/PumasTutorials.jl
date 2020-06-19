@@ -1305,6 +1305,18 @@ function Distributions.fit(m::PumasModel, p::Population, param::NamedTuple; kwar
   throw(ArgumentError("No valid estimation method was provided."))
 end
 
+function _compare_keys(m::PumasModel, param::NamedTuple)
+  for modelkey in keys(m.param)
+    if modelkey ∉ keys(param)
+      throw(ArgumentError("Model parameter $modelkey not found in input parameters."))
+    end
+  end
+  for paramkey in keys(param)
+    if paramkey ∉ keys(m.param)
+      throw(ArgumentError("Input parameter $paramkey is not present in the model."))
+    end
+  end
+end
 function Distributions.fit(m::PumasModel,
                            population::Population,
                            param::NamedTuple,
@@ -1323,6 +1335,8 @@ function Distributions.fit(m::PumasModel,
                            omegas::Tuple = tuple(),
                            ensemblealg::DiffEqBase.EnsembleAlgorithm = EnsembleSerial(),
                            kwargs...)
+
+  _compare_keys(m, param)
 
   # Compute transform object defining the transformations from NamedTuple to Vector while applying any parameter restrictions and apply the transformations
   fixedparamset, fixedparam = _fixed_to_constant_paramset(m.param, param, constantcoef, omegas)
