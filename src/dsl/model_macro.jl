@@ -204,9 +204,10 @@ function pre_obj(preexpr, prevars, cacheexpr, cachevars, params, randoms, covari
     end
 
     function $(esc(prename))(_param,_random,_subject)
-      $(esc(cacheexpr))
-      $(esc(prename))(_param,_random,_subject,$(esc(cachevars...)))
+      #$(esc(cacheexpr))
+      $(esc(prename))(_param,_random,_subject,$(!isempty(cachevars) && esc(cachevars...)))
     end
+
 
     function ($prefunc::$(esc(prename)))(t)
       covar = $prefunc._subject.covariates(t)
