@@ -715,7 +715,7 @@ function marginal_nll_gradient!(g::AbstractVector,
 
   # Compute first order derivatives of the marginal likelihood function
   # with finite differencing to save compute time
-  g .= FiniteDiff.finite_difference_gradient(
+  g .= ForwardDiff.gradient(
     _vparam -> marginal_nll(
       model,
       subject,
