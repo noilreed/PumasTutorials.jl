@@ -3,7 +3,7 @@ addprocs(2)
 @everywhere using Pumas
 theopp = read_pumas(example_data("event_data/THEOPP"),cvs=[:SEX,:WT])
 
-theopmodel_fo_a = @model begin
+@everywhere theopmodel_fo_a = @model begin
     @param begin
       θ₁ ∈ RealDomain(lower=0.1,    upper=5.0, init=2.77)
       θ₂ ∈ RealDomain(lower=0.0008, upper=0.5, init=0.0781)
@@ -38,7 +38,7 @@ theopmodel_fo_a = @model begin
     end
 end
 
-theopmodel_fo_s = @model begin
+@everywhere theopmodel_fo_s = @model begin
     @param begin
       θ₁ ∈ RealDomain(lower=0.1,    upper=5.0, init=2.77)
       θ₂ ∈ RealDomain(lower=0.0008, upper=0.5, init=0.0781)
