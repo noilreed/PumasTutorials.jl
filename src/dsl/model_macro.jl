@@ -195,6 +195,20 @@ function pre_obj(preexpr, prevars, cacheexpr, cachevars, params, randoms, covari
   prename = gensym(:pre)
   prefunc = gensym(:prefunc)
   Ts = [gensym(:T) for i in 1:length(cachevars)]
+
+  constructor = if isempty(cachevars)
+    # Prevent stack overflow by adding a constructor only if there are
+    # cachevars
+    nothing
+  else
+    quote
+      function $(esc(prename))(_param,_random,_subject)
+        $(esc(cacheexpr))
+        $(esc(prename))(_param,_random,_subject,$(esc(cachevars...)))
+      end
+    end
+  end
+
   quote
     mutable struct $prename{T1,T2,T3,$(Ts...)} <: PreFunction
       _param::T1
@@ -203,11 +217,7 @@ function pre_obj(preexpr, prevars, cacheexpr, cachevars, params, randoms, covari
       $(Expr(:block, [:($(esc(v))::$(Ts[i])) for (i,v) in enumerate(cachevars)]...))
     end
 
-    function $(esc(prename))(_param,_random,_subject)
-      #$(esc(cacheexpr))
-      $(esc(prename))(_param,_random,_subject,$(!isempty(cachevars) && esc(cachevars...)))
-    end
-
+    $constructor
 
     function ($prefunc::$(esc(prename)))(t)
       covar = $prefunc._subject.covariates(t)
