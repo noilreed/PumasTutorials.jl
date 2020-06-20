@@ -121,7 +121,7 @@ function wresiduals(
   model::PumasModel,
   subject::Subject,
   param::NamedTuple,
-  approx::Union{FO,FOCE,FOCEI},
+  approx::Union{FO,FOCE,FOCEI, LaplaceI},
   vrandeffsorth::Union{Nothing, AbstractVector}=nothing,
   args...; kwargs...)
 
