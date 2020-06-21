@@ -1,0 +1,214 @@
+---
+title : PK/PD Model with Effect Compartment
+author : Parsshava R Mehta
+date : 21st June 2020
+---
+
+Load the necessary libraries
+
+```julia
+using Pumas, Plots, DataFrames, StatsPlots
+```
+
+## Introduction
+
+In this exercise you will learn to simultaneously model PK and PD data with an effect compartment.
+
+ * No delay in the effect against the comncentration
+ * Delay in the effect against the concentration
+
+
+#### PK-PD without delay in effect compartment
+
+In this example the effect is directly related to the concenration of the drug in the `Central` compartment
+
+```julia
+pk_pd_nodelay   = @model begin
+  @param begin
+    tvCl        ∈ RealDomain(lower=0)
+    tvVc        ∈ RealDomain(lower=0)
+    tvKa        ∈ RealDomain(lower=0)
+    tvQ         ∈ RealDomain(lower=0)
+    tvVp        ∈ RealDomain(lower=0)
+    tvKe0       ∈ RealDomain(lower=0)
+    tvEmax      ∈ RealDomain(lower=0)
+    tvEC50      ∈ RealDomain(lower=0)
+    tvγ         ∈ RealDomain(lower=0)
+    Ω1          ∈ PDiagDomain(2)
+    Ω2          ∈ PSDDomain(2)
+  end
+
+  @random begin
+    η1          ~ MvNormal(Ω1)
+    η2          ~ MvNormal(Ω2)
+  end
+
+  @covariates Wt
+
+  @pre begin
+    # PK Parameters
+    Ka          = tvKa
+    Cl          = tvCl * (Wt/70)^0.75 * exp(η1[1])
+    Vc          = tvVc * (Wt/70)
+    Q           = tvQ  * (Wt/70)^0.75
+    Vp          = tvVp * (Wt/70) * exp(η1[2])
+    Ke0         = tvKe0
+
+    ## PD Parameters
+    Emax        = tvEmax * exp(η2[1])
+    EC50        = tvEC50 * exp(η2[2])
+    γ           = tvγ
+  end
+
+  @dynamics begin
+    Depot'      = -Ka*Depot
+    Central'    = Ka*Depot - (Cl/Vc)*Central -(Q/Vc)*Central + (Q/Vp)*Peripheral
+    Peripheral' = (Q/Vc)*Central - (Q/Vp)*Peripheral
+  end
+
+  @derived begin
+    Cp          = @. Central/Vc
+    E           = @. Emax*(Cp^γ)/(EC50^γ+Cp^γ)
+  end
+end
+```
+
+Parameters are as given below:
+```julia
+par1 = (tvKa   = 0.9,    # (hr⁻¹)
+        tvVc   = 1.4,    # (L/Kg)
+        tvVp   = 2.7,    # (L/Kg)
+        tvCl   = 0.7,    # (L/hr/kg)
+        tvQ    = 0.4,    # (L/hr/kg)
+        tvKe0  = 0.2,    # (hr⁻¹)  used to delay the concentration in effect compartment
+        tvEC50 = 0.9,    # (mg/L)
+        tvγ    = 1.9,    # No units
+        tvEmax = 80,     # (mg/hr)
+        Ω1     = Diagonal([0.01,0.01]),
+        Ω2     = [0.01 0.005; 0.005 0.01])
+```
+
+A single subject receives an oral dose of 25mg at `time=0`.
+
+```julia
+ev1  = DosageRegimen(25, time=0, cmt=1)
+s1   = Subject(id=1,evs=ev1, cvs=(Wt=60,))
+obs  = simobs(pk_pd_nodelay, s1, par1, obstimes=0:0.1:30);
+```
+
+Plot of **Effect vs Concentration** to see the hystersis loop
+
+This plot explain that there are is no delay in the effect of the drug against the concentration
+
+```julia
+df1  = DataFrame(obs)
+@df df1 plot(:Cp, :E, xlabel="Concentration (mg/L", ylabel="Effect", title="No Hysteresis", label=false, linewidth=1.5)
+```
+
+Plot the **Concentration and Effect vs Time**
+
+_Note:_ In this since we want the same x-axis and a different yaxis to show the effect of the drug we use the function `twinx()`. This will help us plot a different y-axis on the right.
+
+```julia
+@df df1 plot(:time, :Cp, xticks=[0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30], yticks=[0,2,4,6,8,10],ylims=(0,10),xlabel="Time (hr)", ylabel="Concentration (mg/L)", linewidth=1.5,label= "Conc of Central Cmt")
+@df df1 plot!(twinx(), :time, :E, yticks=[0,20,40,60,80,100],ylims=(0,100),colour=:green, ylabel="Effect", label=false, linewidth=1.5)
+```
+
+#### PK-PD with delayed-effect compartment
+
+The effect compartment in this case is a **hypothetical compartment** and the concentration in the effect compartment is delayed.
+
+```julia
+pk_pd_delay     = @model begin
+  @param begin
+    tvCl        ∈ RealDomain(lower=0)
+    tvVc        ∈ RealDomain(lower=0)
+    tvKa        ∈ RealDomain(lower=0)
+    tvQ         ∈ RealDomain(lower=0)
+    tvVp        ∈ RealDomain(lower=0)
+    tvKe0       ∈ RealDomain(lower=0)
+    tvEmax      ∈ RealDomain(lower=0)
+    tvEC50      ∈ RealDomain(lower=0)
+    tvγ         ∈ RealDomain(lower=0)
+    Ω1          ∈ PDiagDomain(2)
+    Ω2          ∈ PSDDomain(2)
+  end
+
+  @random begin
+    η1          ~ MvNormal(Ω1)
+    η2          ~ MvNormal(Ω2)
+  end
+
+  @covariates Wt
+
+  @pre begin
+    # PK Parameters
+    Ka          = tvKa
+    Cl          = tvCl * (Wt/70)^0.75 * exp(η1[1])
+    Vc          = tvVc * (Wt/70)
+    Q           = tvQ  * (Wt/70)^0.75
+    Vp          = tvVp * (Wt/70) * exp(η1[2])
+    Ke0         = tvKe0
+
+    ## PD Parameters
+    Emax        = tvEmax * exp(η2[1])
+    EC50        = tvEC50 * exp(η2[2])
+    γ           = tvγ
+  end
+
+  @dynamics begin
+    Depot'      = -Ka*Depot
+    Central'    = Ka*Depot - (Cl/Vc)*Central -(Q/Vc)*Central + (Q/Vp)*Peripheral
+    Peripheral' = (Q/Vc)*Central - (Q/Vp)*Peripheral
+    ConcEffect' = Ke0*Central - Ke0*ConcEffect     # Hpothetical Compartment
+  end
+
+  @derived begin
+    Cp          = @. Central/Vc
+    Conc_eff    = @. ConcEffect/Vc
+    E           = @. Emax*(Conc_eff^γ)/(EC50^γ+Conc_eff^γ)
+  end
+end
+```
+
+Parameters are as given below:
+```julia
+par = ( tvKa   = 0.9,    # (hr⁻¹)
+        tvVc   = 1.4,    # (L/Kg)
+        tvVp   = 2.7,    # (L/Kg)
+        tvCl   = 0.7,    # (L/hr/kg)
+        tvQ    = 0.4,    # (L/hr/kg)
+        tvKe0  = 0.2,    # (hr⁻¹)  used to delay the concentration in effect compartment
+        tvEC50 = 0.9,    # (mg/L)
+        tvγ    = 1.9,    # No units
+        tvEmax = 80,     # (mg/hr)
+        Ω1     = Diagonal([0.01,0.01]),
+        Ω2     = [0.01 0.005; 0.005 0.01])
+```
+
+A single subject receives an oral dose of 25mg at `time=0`.
+
+```julia
+ev1 = DosageRegimen(25, time=0, cmt=1)
+s1  = Subject(id=1,evs=ev1, cvs=(Wt=60,))
+obs = simobs(pk_pd_delay, s1, par, obstimes=0:0.1:30);
+```
+
+Plot of **Effect vs Concentration** to see the hystersis loop
+
+This plot explain that there are two effects for a given concentration of the drug depending if the concentration is rising or falling.
+
+```julia
+df1 = DataFrame(obs)
+@df df1 plot(:Cp, :E, xlabel="Concentration (mg/L", ylabel="Effect", title="Hysteresis Loop", label=false, linewidth=1.5)
+```
+
+Plot the **Concentration and Effect vs Time**
+
+_Note:_ In this since we want the same x-axis and a different yaxis to show the effect of the drug we use the function `twinx()`. This will help us plot a different y-axis on the right.
+
+```julia
+@df df1 plot(:time, :Cp, xticks=[0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30], yticks=[0,2,4,6,8,10],ylims=(0,10),xlabel="Time (hr)", ylabel="Concentration (mg/L)", linewidth=1.5,label= "Conc of Central Cmt")
+@df df1 plot!(:time, :Conc_eff, label="Conc of Effect Cmt", linewidth=1.5)
+@df df1 plot!(twinx(), :time, :E, yticks=[0,20,40,60,80,100],ylims=(0,100),colour=:green, ylabel="Effect", label=false, linewidth=1.5)
+```
