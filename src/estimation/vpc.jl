@@ -8,6 +8,7 @@ end
 struct VPC
     simulated_quantiles::DataFrame
     popvpc::PopVPC
+    level::Float64
 end
 
 function _npqreg(yname::Symbol, xname::Symbol, df::AbstractDataFrame, τ::Real, method; xrange=nothing, bandwidth=nothing)
@@ -80,10 +81,12 @@ function _vpc(
 
     prediction_probabilities = ((1 - level)/2, 0.5, (1 + level)/2)
     sim_quantiles_v = Array{Any}(undef, reps)
+    mintime,maxtime = extrema(vcat([sub.time for sub in population]...))
+    num_timepoints = maximum([length(sub.time) for sub in population])
 
     for i in 1:reps
         # Simulate a new population
-        sim_pop = Subject.(simobs(m, population, param, ensemblealg=ensemblealg))
+        sim_pop = Subject.(simobs(m, population, param, ensemblealg=ensemblealg, obstimes = range(mintime, stop = maxtime, length = num_timepoints)))
         sim_quantiles_v[i], = _vpc(sim_pop, qreg_method; quantiles=quantiles, dv=dv, bandwidth=bandwidth, stratify_by=stratify_by, numstrats = numstrats)
     end
 
@@ -110,7 +113,7 @@ function vpc(
     numstrats= stratify_by === nothing ? nothing : [4 for i in 1:length(stratify_by)])
     _vpc_data, pop_stratified = _vpc(population, qreg_method; dv = dv, stratify_by = stratify_by, quantiles = quantiles, bandwidth = bandwidth, numstrats = numstrats)
     _vpc_simulated = _vpc(m, population, param, reps, qreg_method;dv = dv, stratify_by = stratify_by, quantiles = quantiles, level = level, ensemblealg = ensemblealg, bandwidth = bandwidth, numstrats = numstrats)
-    return VPC(_vpc_simulated, PopVPC(_vpc_data, pop_stratified, stratify_by, dv))
+    return VPC(_vpc_simulated, PopVPC(_vpc_data, pop_stratified, stratify_by, dv), level)
 end
 
 function vpc(population::Population,
@@ -165,9 +168,9 @@ vpc(fpm::FittedPumasModel, reps::Integer=499, qreg_method=IP();
             dv = dv, stratify_by = stratify_by, quantiles = quantiles, level = level, ensemblealg = ensemblealg, bandwidth = bandwidth, numstrats = numstrats)
 
 
-@recipe function f(vpc::PopVPC;scatter=true)
+@recipe function f(vpc::PopVPC;observations=true, observed_quantiles = true)
     scatterlabel = ["Observed data", "Observation quantiles"]
-    if scatter == true
+    if observations == true
         if vpc.stratify_by === nothing
             for (i,sub) in enumerate(vpc.data[1])
                 @series begin
@@ -176,6 +179,7 @@ vpc(fpm::FittedPumasModel, reps::Integer=499, qreg_method=IP();
                     markeralpha --> 0.2
                     label --> (i == 1 ? scatterlabel[1] : "")
                     legend --> :outertop
+                    title --> ""
                     sub
                 end
             end
@@ -189,118 +193,98 @@ vpc(fpm::FittedPumasModel, reps::Integer=499, qreg_method=IP();
                         markeralpha --> 0.2
                         label --> (i == 1 && pltno == 1 ? scatterlabel[1] : "")
                         legend --> :outertop
+                        title --> ""
                         sub
                     end
                 end
             end
         end
     end
-    if vpc.stratify_by === nothing
-        data_quantiles = groupby(vpc.data_quantiles, :τ)
-        for i in 1:3
-            @series begin
-                linewidth --> 2
-                label --> (i == 1 ? scatterlabel[2] : "")
-                seriescolor --> :red
-                legend --> :outertop
-                data_quantiles[i][!,:time], data_quantiles[i][!,:quantile]
-            end
-        end
-    else
-        data_quantiles = groupby(vpc.data_quantiles, vpc.stratify_by)
-        colinds = data_quantiles.cols
-        colnames = names(data_quantiles)[colinds]
-        layout --> good_layout(length(data_quantiles))
-        for (pltno,data_quantile) in enumerate(data_quantiles)
-            df_data_quantile = groupby(DataFrame(data_quantile),:τ)   
+    if observed_quantiles == true
+        if vpc.stratify_by === nothing
+            data_quantiles = groupby(vpc.data_quantiles, :τ)
             for i in 1:3
                 @series begin
-                    subplot --> pltno
-                    title --> "Stratified on " * string(["$(colnames[j]): $(data_quantile[1,colinds[j]]) " for j in 1:length(colinds)]...)
                     linewidth --> 2
-                    label --> ((i == 1 && pltno == 1) ? scatterlabel[2] : "")
+                    label --> (i == 1 ? scatterlabel[2] : "")
                     seriescolor --> :red
                     legend --> :outertop
-                    df_data_quantile[i][!,:time], df_data_quantile[i][!,:quantile]
+                    data_quantiles[i][!,:time], data_quantiles[i][!,:quantile]
+                end
+            end
+        else
+            data_quantiles = groupby(vpc.data_quantiles, vpc.stratify_by)
+            colinds = data_quantiles.cols
+            colnames = names(data_quantiles)[colinds]
+            layout --> good_layout(length(data_quantiles))
+            for (pltno,data_quantile) in enumerate(data_quantiles)
+                df_data_quantile = groupby(DataFrame(data_quantile),:τ)   
+                for i in 1:3
+                    @series begin
+                        subplot --> pltno
+                        title --> "Stratified on " * string(["$(colnames[j]): $(data_quantile[1,colinds[j]]) " for j in 1:length(colinds)]...)
+                        linewidth --> 2
+                        label --> ((i == 1 && pltno == 1) ? scatterlabel[2] : "")
+                        seriescolor --> :red
+                        legend --> :outertop
+                        df_data_quantile[i][!,:time], df_data_quantile[i][!,:quantile]
+                    end
                 end
             end
         end
     end
 end
 
-@recipe function f(vpc::VPC; plottype=:scatter)
-    if plottype == :scatter || plottype == :percentile
-        scatterlabel = ["Observed data", "Observation quantiles", "Simulated quantiles"]
-        if vpc.popvpc.stratify_by === nothing
-            sim_quantiles = groupby(vpc.simulated_quantiles, :τ)
-            for i in 1:3
-                @series begin
-                    seriescolor --> :black
-                    label --> (i == 1 ? scatterlabel[3] : "")
-                    legend --> :outertop
-                    sim_quantiles[i][!,:time],sim_quantiles[i][!,:middle]
-                end
-            end
-        else
-            sim_quantiles = groupby(vpc.simulated_quantiles, vpc.popvpc.stratify_by)
-            colinds = sim_quantiles.cols
-            colnames = names(vpc.simulated_quantiles)[colinds]
-            layout --> good_layout(length(sim_quantiles))
-            for (pltno,sim_quantile) in enumerate(sim_quantiles)
-                df_sim_quantile = groupby(sim_quantile, :τ)
-                for i in 1:3
-                    @series begin
-                        subplot --> pltno
-                        title --> "Stratified on " * string(["$(colnames[j]): $(sim_quantile[1,colinds[j]]) " for j in 1:length(colinds)]...)
-                        seriescolor --> :black
-                        legend --> :outertop
-                        label --> ((i == 1 && pltno == 1) ? scatterlabel[3] : "")
-                        df_sim_quantile[i][!,:time],df_sim_quantile[i][!,:middle]
-                    end
-                end
-            end
-        end
-        if plottype == :scatter
-            vpc.popvpc
-        else
-            scatter --> false
-            vpc.popvpc
-        end
-    elseif plottype == :interval
-        if vpc.popvpc.stratify_by === nothing
-            sim_quantiles = groupby(vpc.simulated_quantiles, :τ)
-            for i in 1:3
-                @series begin
+@recipe function f(vpc::VPC; observations = false, simquantile_medians = false, observed_quantiles = true, ci_bands = true)
+
+    scatterlabel = ["Observed data", "Observation quantiles", "Simulated quantiles", "Simulated $(vpc.level*100)% CI"]
+    if vpc.popvpc.stratify_by === nothing
+        sim_quantiles = groupby(vpc.simulated_quantiles, :τ)
+        for i in 1:3
+            @series begin
+                if ci_bands == true
                     ribbon --> [sim_quantiles[i][!,:middle] .- sim_quantiles[i][!,:lower],sim_quantiles[i][!,:upper] .- sim_quantiles[i][!,:middle]]
                     fillalpha --> 0.2
-                    seriescolor --> :black
-                    legend --> :outertop
-                    label --> (i == 1 ? "Simulated quantiles" : "")
-                    sim_quantiles[i][!,:time],sim_quantiles[i][!,:middle]
+                    label --> (i == 1 ? scatterlabel[4] : "")
                 end
+                seriescolor --> :black
+                
+                legend --> :outertop
+                if !simquantile_medians 
+                    linealpha --> 0
+                    label --> (i == 1 ? scatterlabel[3] : "")
+                end
+                sim_quantiles[i][!,:time],sim_quantiles[i][!,:middle]
             end
-        else
-            sim_quantiles = groupby(vpc.simulated_quantiles, vpc.popvpc.stratify_by)
-            colinds = sim_quantiles.cols
-            colnames = names(vpc.simulated_quantiles)[colinds]
-            layout --> good_layout(length(sim_quantiles))
-            for (pltno,sim_quantile) in enumerate(sim_quantiles)
-                df_sim_quantile = groupby(sim_quantile, :τ)
-                for i in 1:3
-                    @series begin
-                        subplot --> pltno
+        end
+    else
+        sim_quantiles = groupby(vpc.simulated_quantiles, vpc.popvpc.stratify_by)
+        colinds = sim_quantiles.cols
+        colnames = names(vpc.simulated_quantiles)[colinds]
+        layout --> good_layout(length(sim_quantiles))
+        for (pltno,sim_quantile) in enumerate(sim_quantiles)
+            df_sim_quantile = groupby(sim_quantile, :τ)
+            for i in 1:3
+                @series begin
+                    subplot --> pltno
+                    if ci_bands == true
                         ribbon --> [df_sim_quantile[i][!,:middle] .- df_sim_quantile[i][!,:lower],df_sim_quantile[i][!,:upper] .- df_sim_quantile[i][!,:middle]]
                         fillalpha --> 0.2
-                        title --> "Stratified on " * string(["$(colnames[j]): $(sim_quantile[1,colinds[j]]) " for j in 1:length(colinds)]...)
-                        seriescolor --> :black
-                        legend --> :outertop
-                        label --> ((i == 1 && pltno == 1) ? "Simulated quantiles" : "")
-                        df_sim_quantile[i][!,:time],df_sim_quantile[i][!,:middle]
+                        label --> (i == 1 ? scatterlabel[4] : "")
                     end
+                    title --> "Stratified on " * string(["$(colnames[j]): $(sim_quantile[1,colinds[j]]) " for j in 1:length(colinds)]...)
+                    seriescolor --> :black
+                    legend --> :outertop
+                    if !simquantile_medians 
+                        linealpha --> 0
+                        label --> ((i == 1 && pltno == 1) ? scatterlabel[3] : "")
+                    end
+                    df_sim_quantile[i][!,:time],df_sim_quantile[i][!,:middle]
                 end
             end
         end
-        scatter --> false
-        vpc.popvpc
     end
+    observed_quantiles --> observed_quantiles
+    observations --> observations
+    vpc.popvpc
 end
