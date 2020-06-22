@@ -85,7 +85,6 @@ end
   res = fit(model, data[1], param,
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
   trf = Pumas.totransform(model.param)
-  fits = [fit(model, dat, param, optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false)) for dat in data]
   fitone = fit(model, first(data), param,
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
@@ -138,7 +137,7 @@ pmoncl    -0.69962         0.00059607         [-0.70079; -0.69845]
   @test mean(inspect_np.dv_iwres) < 1e-6
 
   fit2s = fit(model, data, param, Pumas.TwoStage(),
-    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false), constcoef=(pmoncl=0.7,))
 
 @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fit2s) ==
 """Vector{<:FittedPumasModel} with 1000 entries

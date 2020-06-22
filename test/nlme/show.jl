@@ -3,19 +3,19 @@ using Pumas
 @testset "issue 779" begin
 mdl = @model begin
   @param begin
-    θ ∈ VectorDomain(11, init=fill(0.5, 100))
-    Ω ∈ PSDDomain(11)
+    θ ∈ VectorDomain(10, init=fill(0.5, 100))
+    ω ∈ RealDomain(lower=0.0, init= 0.1)
     σ ∈ RealDomain(lower=0.0, init=1.0)
   end
 
   @random begin
-    η ~ MvNormal(Ω)
+    η ~ Normal(0.0, ω)
   end
 
   @covariates x1 x2 x3 x4 x5 x6 x7 x8 x9
 
   @pre begin
-    m = x1*θ[1] + x2*θ[2] + x3*θ[3] + x4*θ[4] + x5*θ[5] + x6*θ[6] + x7*θ[7] + x8*θ[8] + x9*θ[9] + θ[10] + sum(η)
+    m = x1*θ[1] + x2*θ[2] + x3*θ[3] + x4*θ[4] + x5*θ[5] + x6*θ[6] + x7*θ[7] + x8*θ[8] + x9*θ[9] + θ[10] + η
   end
 
   @derived begin

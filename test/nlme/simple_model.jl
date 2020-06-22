@@ -7,7 +7,7 @@ using Pumas
   mdsl1 = @model begin
     @param begin
       θ ∈ VectorDomain(1, init=[0.5])
-      Ω ∈ PSDDomain(init=Diagonal([0.04]))
+      Ω ∈ PDiagDomain(init=[0.04])
       Σ ∈ RealDomain(lower=0.0, upper=1.0, init=0.1)
     end
 
@@ -88,4 +88,39 @@ Number of subjects:                       10
 Σ        0.1            NaN             [ NaN   ;  NaN     ]
 -------------------------------------------------------------
 """
+
+  @testset "unidentified parameter make fit throw" begin
+    # Since the data doesn't have a rate column, the rate parameter
+    # θᵣ will be completely ignored. This should trigger an exception.
+    unidentified_model = @model begin
+      @param begin
+        θ ∈ VectorDomain(1, init=[0.5])
+        θᵣ∈ VectorDomain(1, init=[0.5])
+        Ω ∈ PDiagDomain(init=[0.04])
+        Σ ∈ RealDomain(init=0.1)
+      end
+
+      @random begin
+        η ~ MvNormal(Ω)
+      end
+
+      @pre begin
+        CL = θ[1] * exp(η[1])
+        Vc = 1.0
+        rate = (Central=θᵣ,)
+      end
+
+      @vars begin
+        conc = Central / Vc
+      end
+
+      @dynamics Central1
+
+      @derived begin
+        dv ~ @. Normal(conc,conc*sqrt(Σ)+eps())
+      end
+    end
+
+    @test_throws ErrorException("gradient of θᵣ is exactly zero. This indicates that θᵣ isn't identified.") fit(unidentified_model, data, init_param(unidentified_model), Pumas.FO())
+  end
 end# testset

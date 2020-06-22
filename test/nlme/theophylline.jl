@@ -997,7 +997,7 @@ end
   o = fit(theopmodel_foce, theopp, param, Pumas.FOCE(),
     ensemblealg=EnsembleThreads(),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
-  @test_throws ArgumentError fit(theopmodel_foce, theopp, param, Pumas.FOCE(), ensemblealg=EnsembleDistributed())
+  @test_throws ArgumentError("EnsembleDistributed() not implemented for this method") fit(theopmodel_foce, theopp, param, Pumas.FOCE(), ensemblealg=EnsembleDistributed())
 
   o_simobs_1 = simobs(theopmodel_foce, theopp, coef(o), empirical_bayes(o))
   o_simobs_2 = simobs(theopmodel_foce, theopp, coef(o), fill((η₁=0, η₂=0), length(theopp)))

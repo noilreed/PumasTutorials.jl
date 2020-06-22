@@ -1317,6 +1317,62 @@ function _compare_keys(m::PumasModel, param::NamedTuple)
     end
   end
 end
+
+function _check_zero_gradient(
+  m::PumasModel,
+  population::Population,
+  vparam::AbstractVector,
+  vvrandeffsorth::AbstractVector,
+  approx::LikelihoodApproximation,
+  fixedtrf,
+  args...;
+  ensemblealg=ensemblealg,
+  kwargs...)
+
+  g = similar(vparam)
+
+  if ensemblealg isa EnsembleSerial
+    marginal_nll_gradient!(
+      g,
+      m,
+      population,
+      vparam,
+      vvrandeffsorth,
+      approx,
+      fixedtrf,
+      args...; kwargs...)
+  elseif ensemblealg isa EnsembleThreads
+    marginal_nll_gradient_threads!(
+      g,
+      m,
+      population,
+      vparam,
+      vvrandeffsorth,
+      approx,
+      fixedtrf,
+      args...; kwargs...)
+  else
+    throw(ArgumentError("$ensemblealg not implemented for this method"))
+  end
+
+  for (i, gᵢ) in enumerate(g)
+    if iszero(gᵢ)
+      j = 0
+      for (k, v) in pairs(totransform(m.param).transformations)
+        d = TransformVariables.dimension(v)
+        j += d
+        if i <= j
+          if d == 1
+            throw(ErrorException("gradient of $k is exactly zero. This indicates that $k isn't identified."))
+          else
+            throw(ErrorException("gradient element $(j-i+1) of $k is exactly zero. This indicates that $k isn't identified."))
+          end
+        end
+      end
+    end
+  end
+end
+
 function Distributions.fit(m::PumasModel,
                            population::Population,
                            param::NamedTuple,
@@ -1334,6 +1390,7 @@ function Distributions.fit(m::PumasModel,
                            constantcoef::NamedTuple = NamedTuple(),
                            omegas::Tuple = tuple(),
                            ensemblealg::DiffEqBase.EnsembleAlgorithm = EnsembleSerial(),
+                           checkidentification=true,
                            kwargs...)
 
   _compare_keys(m, param)
@@ -1366,6 +1423,12 @@ function Distributions.fit(m::PumasModel,
       return false
     end
   end
+
+  # Check identification issue by erroring on zero elements in the gradient
+  if checkidentification
+    _check_zero_gradient(m, population, vparam, vvrandeffsorth_tmp, approx, fixedtrf, args...; ensemblealg=ensemblealg, kwargs...)
+  end
+
   # Define cost function for the optimization
   cost = Optim.NLSolversBase.OnceDifferentiable(
     Optim.NLSolversBase.only_fg!() do f, g, _vparam
@@ -1423,9 +1486,6 @@ function Distributions.fit(m::PumasModel,
             fixedtrf,
             args...; kwargs...)
         end
-
-      else
-        throw(ArgumentError("$ensemblealg not implemented for this method"))
       end
 
       return nll
@@ -1442,9 +1502,8 @@ function Distributions.fit(m::PumasModel,
   for (vrandefforths, subject) in zip(vvrandeffsorth, population)
     _orth_empirical_bayes!(vrandefforths, m, subject, TransformVariables.transform(fixedtrf, opt_minimizer(o)), approx, args...; kwargs...)
   end
-  
 
-  explicit_kwargs = (; optimize_fn=optimize_fn, constantcoef=constantcoef, omegas=omegas, ensemblealg=ensemblealg)     
+  explicit_kwargs = (; optimize_fn=optimize_fn, constantcoef=constantcoef, omegas=omegas, ensemblealg=ensemblealg)
   allkwargs = merge(explicit_kwargs, kwargs)
   return FittedPumasModel(m, population, o, approx, vvrandeffsorth, args, allkwargs, fixedparamset)
 end
@@ -1462,7 +1521,7 @@ function Distributions.fit(m::PumasModel,
                            ::TwoStage,
                            args...;
                            kwargs...)
-  return map(x->fit(m, [x,], param, NaivePooled(), args...; kwargs...), population)
+  return map(x->fit(m, [x,], param, NaivePooled(), args...; checkidentification=false, kwargs...), population)
 end
 
 # error handling for fit(model, subject, param, args...; kwargs...)
