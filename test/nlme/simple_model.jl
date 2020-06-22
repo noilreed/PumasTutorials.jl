@@ -7,8 +7,8 @@ using Pumas
   mdsl1 = @model begin
     @param begin
       θ ∈ VectorDomain(1, init=[0.5])
-      Ω ∈ ConstDomain(Diagonal([0.04]))
-      Σ ∈ ConstDomain(0.1)
+      Ω ∈ PSDDomain(init=Diagonal([0.04]))
+      Σ ∈ RealDomain(lower=0.0, upper=1.0, init=0.1)
     end
 
     @random begin
@@ -34,7 +34,7 @@ using Pumas
   param = init_param(mdsl1)
 
   for (ηstar, dt) in zip([-0.114654,0.0350263,-0.024196,-0.0870518,0.0750881,0.059033,-0.114679,-0.023992,-0.0528146,-0.00185361], data)
-    @test (sqrt(param.Ω)*Pumas._orth_empirical_bayes(mdsl1, dt, param, Pumas.LaplaceI()))[1] ≈ ηstar rtol=1e-3
+    @test (sqrt(param.Ω.diag[1])*Pumas._orth_empirical_bayes(mdsl1, dt, param, Pumas.LaplaceI()))[1] ≈ ηstar rtol=1e-3
   end
 
   @test conditional_nll(mdsl1, data[1], param, (η=[0.0],)) ≈ 5.337249432459216 rtol=1e-6
@@ -45,7 +45,7 @@ using Pumas
   @test deviance(mdsl1, data, param, Pumas.LaplaceI())  ≈ 56.810343602063618 rtol=1e-6
   @test deviance(mdsl1, data, param, Pumas.LLQuad()) ≈ 56.92491372848633  rtol=1e-6 #regression test
 
-  ft = fit(mdsl1, data, param, Pumas.FOCEI(),
+  ft = fit(mdsl1, data, param, Pumas.FOCEI(); constantcoef=(Ω=Diagonal([0.04]), Σ=0.1),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 @test sprint((io, t) -> show(io, MIME"text/plain"(), t), ft) ==
 """

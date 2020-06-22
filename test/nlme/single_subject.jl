@@ -8,7 +8,7 @@ using Random
   mdsl1 = @model begin
     @param begin
       θ ∈ VectorDomain(1, init=[0.5])
-      σ ∈ ConstDomain(sqrt(0.1))
+      σ ∈ RealDomain(lower=0.001, upper=1.0, init=sqrt(0.1))
     end
 
     @pre begin
@@ -164,7 +164,7 @@ end
     @param begin
       θ ∈ VectorDomain(1, init=[0.5], lower = [0.0], upper=[20.0])
       Ω ∈ PDiagDomain(init=[0.04])
-      σ ∈ ConstDomain(sqrt(0.1))
+      σ ∈ RealDomain(lower=0.001, upper=1.0, init=sqrt(0.1))
     end
 
     @random begin
@@ -191,7 +191,7 @@ end
     @param begin
       θ ∈ VectorDomain(1, init=[0.5], lower = [0.0], upper=[20.0])
       Ω ∈ PSDDomain(init=[0.04])
-      σ ∈ ConstDomain(sqrt(0.1))
+      σ ∈ RealDomain(lower=0.001, upper=1.0, init=sqrt(0.1))
     end
 
     @random begin
@@ -217,7 +217,7 @@ end
   mdsl1_noeta = @model begin
     @param begin
       θ ∈ VectorDomain(1, init=[0.5])
-      σ ∈ ConstDomain(sqrt(0.1))
+      σ ∈ RealDomain(lower=0.001, upper=1.0, init=sqrt(0.1))
     end
 
     @pre begin
@@ -239,7 +239,7 @@ end
 
   param_noeta = init_param(mdsl1_noeta)
   fitone_noeta = fit(mdsl1_noeta, first(data), param_noeta,
-    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false), constantcoef=(σ=sqrt(0.1),))
 
 @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_noeta) ==
 """FittedPumasModel
@@ -281,7 +281,7 @@ Number of subjects:                        1
 """
 
   param = init_param(mdsl1)
-  fitone_constantcoef = fit(mdsl1, first(data), param; constantcoef=(Ω=[0.0],),
+  fitone_constantcoef = fit(mdsl1, first(data), param; constantcoef=(Ω=[0.0], σ=sqrt(0.1)),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_constantcoef) ==
 """FittedPumasModel
@@ -325,7 +325,7 @@ Number of subjects:                        1
 """
 
   fitone_omegas = fit(mdsl1, first(data), param; omegas=(:Ω,),
-    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false), constantcoef=(σ=sqrt(0.1),))
 @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_omegas) ==
 """FittedPumasModel
 
@@ -368,7 +368,7 @@ Number of subjects:                        1
 """
 
   param = init_param(mdsl1full)
-  fitone_constantcoef = fit(mdsl1full, first(data), param; constantcoef=(Ω=[0.0],),
+  fitone_constantcoef = fit(mdsl1full, first(data), param; constantcoef=(Ω=[0.0], σ=sqrt(0.1)),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_constantcoef) ==
 """FittedPumasModel
@@ -412,7 +412,7 @@ Number of subjects:                        1
 """
 
   fitone_omegas = fit(mdsl1full, first(data), param; omegas=(:Ω,),
-    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false), constantcoef=(σ=sqrt(0.1),))
 @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_omegas) ==
 """FittedPumasModel
 

@@ -19,7 +19,7 @@ mdsl = @model begin
         θ ∈ VectorDomain(4, lower=zeros(4), init=ones(4))
         Ω ∈ PSDDomain(2)
         Σ ∈ RealDomain(lower=0.0, init=1.0)
-        a ∈ ConstDomain(0.2)
+        a ∈ RealDomain(lower=0.0, upper=1.0, init=0.2)
     end
 
     @random begin
@@ -60,7 +60,7 @@ end
 p = ParamSet((θ = VectorDomain(4, lower=zeros(4), init=ones(4)), # parameters
               Ω = PSDDomain(2),
               Σ = RealDomain(lower=0.0, init=1.0),
-              a = ConstDomain(0.2)))
+              a = RealDomain(lower=0.0, upper=1.0, init=0.2)))
 
 function rfx_f(p)
     ParamSet((η=MvNormal(p.Ω),))
@@ -167,7 +167,7 @@ mdsl = @model begin
         θ ∈ VectorDomain(4, lower=zeros(4), init=ones(4))
         Ω ∈ PSDDomain(2)
         Σ ∈ RealDomain(lower=0.0, init=1.0)
-        a ∈ ConstDomain(0.2)
+        a ∈ RealDomain(lower=0.0, upper=1.0, init=0.2)
     end
 
     @random begin

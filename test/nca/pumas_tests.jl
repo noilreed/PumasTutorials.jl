@@ -82,8 +82,8 @@ ev = DosageRegimen(2000, ii=24, addl=3)
 ev1 = generate_population(ev)
 parmet = @model begin
     @param begin
-        θ = VectorDomain(5)
-        Ω = VectorDomain(4)
+        θ ∈ VectorDomain(5)
+        Ω ∈ VectorDomain(4)
     end
 
     @random begin

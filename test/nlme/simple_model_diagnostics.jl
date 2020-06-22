@@ -12,7 +12,7 @@ mdsl_additive = @model begin
   @param begin
     θ ∈ VectorDomain(1, init=[0.5])
     Ω ∈ PDiagDomain(init=[0.04])
-    σ ∈ ConstDomain(sqrt(0.1))
+    σ ∈ RealDomain(init=sqrt(0.1))
   end
 
   @random begin
@@ -39,7 +39,7 @@ mdsl_proportional = @model begin
   @param begin
     θ ∈ VectorDomain(1, init=[0.5])
     Ω ∈ PDiagDomain(init=[0.04])
-    σ ∈ ConstDomain(sqrt(0.1))
+    σ ∈ RealDomain(init=sqrt(0.1))
   end
 
   @random begin
@@ -225,7 +225,8 @@ param = (θ = [0.340689], Ω = Diagonal([0.000004]), σ = sqrt(0.0752507))
 end
 
 @testset "Information crieria" begin
-  @test aic(mdsl_proportional, data, param, Pumas.FOCEI()) ≈ 94.30968177483996 rtol=1e-6 #regression test
-  @test bic(mdsl_proportional, data, param, Pumas.FOCEI()) ≈ 96.30114632194794 rtol=1e-6 #regression test
+  # PR 1108 updated this because the number of parameters went from 2 to 3 when ConstDomain was removed
+  @test aic(mdsl_proportional, data, param, Pumas.FOCEI()) ≈ 96.30968177483996 rtol=1e-6 #regression test
+  @test bic(mdsl_proportional, data, param, Pumas.FOCEI()) ≈ 99.29687859550194 rtol=1e-6 #regression test
 end
 end

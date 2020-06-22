@@ -1,10 +1,8 @@
 using Pumas, Test
 umodel = @model begin
-  @param begin
-    k1 = 1.01u"mg"
-    θI  = 1u"hr"
-  end
   @pre begin 
+    k1 = 1.01u"mg"
+    θI = 1u"hr"
     I = θI
   end
   @init begin

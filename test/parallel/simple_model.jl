@@ -6,8 +6,8 @@ data = read_pumas(example_data("sim_data_model1"))
 mdsl1 = @model begin
     @param begin
         θ ∈ VectorDomain(1, init=[0.5])
-        Ω ∈ ConstDomain(Diagonal([0.04]))
-        Σ ∈ ConstDomain(0.1)
+        Ω ∈ PDiagDomain(init=[0.04])
+        Σ ∈ RealDomain(lower=0.01, upper=10.0, init=0.1)
     end
 
     @random begin

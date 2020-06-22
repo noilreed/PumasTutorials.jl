@@ -54,7 +54,7 @@ using Pumas, CSV
       @param begin
         θ ∈ RealDomain(init=0.5)
         Ω ∈ PSDDomain(Matrix{Float64}(fill(0.04, 1, 1)))
-        σ ∈ ConstDomain(sqrt(0.1))
+        σ ∈ RealDomain(lower=0.001, upper=10.0, init=sqrt(0.1))
       end
 
       @random begin
@@ -89,7 +89,7 @@ using Pumas, CSV
       @param begin
         θ ∈ RealDomain(init=0.5)
         Ω ∈ PSDDomain(Matrix{Float64}(fill(0.04, 1, 1)))
-        σ ∈ ConstDomain(sqrt(0.1))
+        σ ∈ RealDomain(lower=0.001, upper=10.0, init=sqrt(0.1))
       end
 
       @random begin
@@ -135,7 +135,7 @@ using Pumas, CSV
       @param begin
         θ ∈ RealDomain(init=0.5)
         Ω ∈ PSDDomain(Matrix{Float64}(fill(0.04, 1, 1)))
-        σ ∈ ConstDomain(0.1)
+        σ ∈ RealDomain(lower=0.01, upper=1.0, init=0.1)
       end
 
       @random begin

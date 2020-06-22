@@ -6,11 +6,11 @@ import TransformVariables
   p = ParamSet((θ = VectorDomain(4, lower=zeros(4), init=ones(4)), # parameters
                 Ω = PSDDomain(2),
                 Σ = RealDomain(lower=0.0, init=1.0),
-                a = ConstDomain(0.2)))
+                a = RealDomain(lower=0.0, upper=1.0, init=0.2)))
 
   t = Pumas.totransform(p)
-  @test TransformVariables.dimension(t) == 8
-  u = TransformVariables.transform(t, zeros(8))
+  @test TransformVariables.dimension(t) == 9
+  u = TransformVariables.transform(t, zeros(9))
   @test all(u.θ .> 0)
   @test u.Ω isa Pumas.PDMats.AbstractPDMat
 

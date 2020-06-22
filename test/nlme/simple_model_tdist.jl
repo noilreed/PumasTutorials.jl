@@ -11,7 +11,7 @@ tdist = @model begin
   @param begin
     θ ∈ RealDomain(init=0.5)
     Ω ∈ PSDDomain(Matrix{Float64}(fill(0.04, 1, 1)))
-    σ ∈ ConstDomain(sqrt(0.1))
+    σ ∈ RealDomain(lower=0.001, upper=1.0, init=sqrt(0.1))
   end
 
   @random begin

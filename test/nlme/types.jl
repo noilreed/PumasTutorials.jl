@@ -7,8 +7,8 @@ data = read_pumas(example_data("sim_data_model1"))
 mdsl1 = @model begin
   @param begin
     θ ∈ VectorDomain(1, init=[0.5])
-    Ω ∈ ConstDomain(Diagonal([0.04]))
-    σ ∈ ConstDomain(sqrt(0.1))
+    Ω ∈ PDiagDomain(1)
+    σ ∈ RealDomain(lower=0.001, upper=1.0, init=sqrt(0.1))
   end
 
   @random begin
@@ -33,12 +33,12 @@ end
 
 param = init_param(mdsl1)
 
-ft_no_args = fit(mdsl1, data, param, Pumas.FOCEI(),
+ft_no_args = fit(mdsl1, data, param, Pumas.FOCEI(), constantcoef=(Ω=[0.04], σ=sqrt(0.1),),
   optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 @test isempty(ft_no_args.args)
 @test keys(ft_no_args.kwargs) == (:optimize_fn, :constantcoef, :omegas, :ensemblealg)
 
-ft_alg_kwargs = fit(mdsl1, data, param, Pumas.FOCEI(); alg=Rosenbrock23(),
+ft_alg_kwargs = fit(mdsl1, data, param, Pumas.FOCEI(); alg=Rosenbrock23(), constantcoef=(Ω=[0.04], σ=sqrt(0.1),),
   optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 @test isempty(pairs(ft_alg_kwargs.args))
 kwarg_pairs = pairs(ft_alg_kwargs.kwargs)
