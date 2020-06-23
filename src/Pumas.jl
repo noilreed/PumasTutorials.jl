@@ -80,7 +80,7 @@ export infer, inspect, vpc
 export expectation, KoopmanExpectation, MonteCarloExpectation
 
 # From LinearAlgebra
-export diagm, Diagonal, I
+export diagm, Diagonal, I, cond
 
 # From Statistics
 export mean, std, var

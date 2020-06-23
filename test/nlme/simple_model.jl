@@ -88,6 +88,8 @@ Number of subjects:                       10
 Σ        0.1            NaN             [ NaN   ;  NaN     ]
 -------------------------------------------------------------
 """
+  @test cond(infer(ft)) == 1.0 # should be 1.0... basically testing that it works here
+
 
   @testset "unidentified parameter make fit throw" begin
     # Since the data doesn't have a rate column, the rate parameter

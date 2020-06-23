@@ -1,4 +1,4 @@
-using Pumas, Random
+using Pumas, Random, Test
 @testset "vcov error handling in infer" begin
 Random.seed!(964)
 # Baseline model
@@ -56,6 +56,7 @@ res = fit(model_ss, estimpop, (par=0.5, ω=1.0), Pumas.FO(),
   optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 @test occursin("Variance-covariance matrix could not be", sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(res)))
 
+@test_throws ArgumentError cond(infer(res; rethrow_error=false))
 @test_throws Pumas.PumasFailedCovariance infer(res; rethrow_error=true)
 
 # scalar/one element matrix
@@ -144,6 +145,10 @@ end
 
 res = fit(model_vm, estimpop, (par=[0.5], Ω=[1.0 0.0; 0.0 1.0]), Pumas.FO(),
   optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
+
+bts = bootstrap(res; samples = 1)
+@test_throws ArgumentError cond(bts)
+
 @test occursin("Variance-covariance matrix could not be", sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(res)))
 
 @test_throws Pumas.PumasFailedCovariance infer(res; rethrow_error=true)

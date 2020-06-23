@@ -728,3 +728,13 @@ function findinfluential(
 end
 
 findinfluential(fpm::FittedPumasModel) = findinfluential(fpm.model, fpm.data, coef(fpm), fpm.approx, fpm.args...; fpm.kwargs...)
+
+"""
+    cond(pmi::FittedPumasModelInference)
+
+Return the condition number of the variance-covariance matrix stored in `pmi`. Throw an error if `pmi` is the result of a call to `bootstrap` or if the variance-covariance calculation failed.
+
+"""
+LinearAlgebra.cond(pmi::FittedPumasModelInference{<:Any, <:Exception}) = throw(ArgumentError("It is not possible to apply cond when the vcov calculations failed."))
+LinearAlgebra.cond(pmi::FittedPumasModelInference{<:Any, <:Bootstraps}) = throw(ArgumentError("It is not possible to apply cond when inference comes from a bootstrap call."))
+LinearAlgebra.cond(pmi::FittedPumasModelInference{<:Any, <:AbstractMatrix}) = cond(pmi.vcov)
