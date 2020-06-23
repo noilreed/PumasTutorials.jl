@@ -1,0 +1,136 @@
+---
+title : Covariate Modeling
+author: Parsshava R Mehta
+date: 22nd June 2020
+---
+
+Load the necessary libraries
+
+```julia
+using Pumas, Plots, DataFrames, StatsPlots
+```
+
+## Introduction
+
+In this exercise you will learn
+
+ * Covariate Modeling
+ * Time-varying covariates
+
+A typical example of a single patients whose **Creatinine Clearance and Albumin** levels change over the study period is shown as an example.
+
+```julia
+covariate_model = @model begin
+  @param begin
+    tvCl       ∈ RealDomain(lower=0)
+    tvVc       ∈ RealDomain(lower=0)
+    tvKa       ∈ RealDomain(lower=0)
+    tvfcl      ∈ RealDomain(lower=0)
+    tvfvc      ∈ RealDomain(lower=0)
+    Ω          ∈ PDiagDomain(2)
+  end
+
+  @random begin
+    η          ~ MvNormal(Ω)
+  end
+
+  @covariates CrCl Albumin
+
+  @pre begin
+    fcl        = tvfcl                  # Fractional change in clearance
+    CrClonCl   = (CrCl/90)^fcl
+    Cl         = tvCl * CrClonCl * exp(η[1])
+    fvc        = tvfvc                  # Fractional change in volume of distribution
+    AlbonVc    = (Albumin/38)^fvc
+    Vc         = tvVc * AlbonVc
+    Ka         = tvKa * exp(η[2])
+  end
+
+  @dynamics begin
+    Depot'     = -Ka*Depot
+    Central'   = Ka*Depot -(Cl/Vc)*Central
+  end
+
+  @derived begin
+    Cp         = @. Central/Vc
+    Clearance  = @. Cl
+    Vol_distr  = @. Vc
+  end
+end
+```
+
+```julia
+par  = (  tvCl  = 8,     # (L/hr)
+          tvVc  = 90,    # (L)
+          tvKa  = 0.7,   # (hr⁻¹)
+          tvfcl = 0.9,   # No units
+          tvfvc = -0.84, # No units
+          Ω     = Diagonal([0.04,0.0225])
+        )
+```
+
+
+#### Covariate Modeling
+
+A single subject receives a dose of 200mg Q24hrs and is followed up with tests on each visit as given below:
+
+ * Visit 0 - Basline          : CrCl = 90 ml/min, Albumin = 38 g/L
+ * Visit 1 - Day 3 (72 hrs)   : CrCl = 88 ml/min, Albumin = 39 g/L
+ * Visit 2 - Day 8 (192 hrs)  : CrCl = 91 ml/min, Albumin = 37.8 g/l
+ * Visit 3 - Day 14 (336 hrs) : CrCl = 90 ml/min, Albumin = 38.5 g/L
+
+
+**Note:** Since there is not much of a difference over time, the covariate values are modeled as a single value over the entire time range
+
+```julia
+ev1   = DosageRegimen(200, time=0, cmt=1, ii=24, addl=12)
+sub2  = Subject(id=1, evs=ev1, cvs=(CrCl=90,Albumin=34))
+obs2  = simobs(covariate_model, sub2, par, obstimes=0:0.1:336);
+```
+
+Plot **Concentration vs Time**.
+
+```julia
+df1   = DataFrame(obs2, include_covariates=false)
+@df df1 plot(:time, :Cp, xlabel="Time (hr)", ylabel="Concentration (mg/L)",xticks=[0,24,48,72,96,120,144,168,192,216,240,264,288,312,336], xlims=(0,336), label=false, linewidth=1.5)
+```
+
+Plot **Clearance and Volume of Distribution vs Time**.
+
+There is no change in the parameters over time.
+
+```julia
+@df df1 plot(:time, :Clearance, xlabel="Time (hr)",grid=:off, legend=:bottomright, xticks=[0,24,48,72,96,120,144,168,192,216,240,264,288,312,336], xlims=(0,336), label="Clearance", linewidth=1.5)
+@df df1 plot!(twinx(), :time, :Vol_distr, ylims=(98,99),colour=:red, label="Volume of Distribution", legend=:topright, linewidth=1.5, xticks=[0,24,48,72,96,120,144,168,192,216,240,264,288,312,336], xlims=(0,336), grid=:off)
+```
+
+#### Time-varying Covariate Model
+
+A single subject receives a dose of 200mg Q24hrs and is followed up with tests on each visit as given below:
+
+ * Visit 0 - Basline          : CrCl = 90 ml/min, Albumin = 38 g/L
+ * Visit 1 - Day 3 (72 hrs)   : CrCl = 90 ml/min, Albumin = 38 g/L
+ * Visit 2 - Day 8 (192 hrs)  : CrCl = 60 ml/min, Albumin = 34 g/l
+ * Visit 3 - Day 14 (336 hrs) : CrCl = 30 ml/min, Albumin = 30 g/L
+
+```julia
+ev1   = DosageRegimen(200, time=0, cmt=1, ii=24, addl=12)
+sub1  = Subject(id=1, evs=ev1, cvs=(CrCl=[90,90,60,30],Albumin=[38,38,34,30]), cvstime=(CrCl=[0,72,192,336],Albumin=[0,72,192,336]))
+obs1  = simobs(covariate_model, sub1, par, obstimes=0:0.1:336);
+```
+
+Plot **Concentration vs Time**. A change in clearance anf volume of distribution of time can be noted.
+
+```julia
+df   = DataFrame(obs1, include_covariates=false)
+@df df plot(:time, :Cp, xlabel="Time (hr)", ylabel="Concentration (mg/L)",xticks=[0,24,48,72,96,120,144,168,192,216,240,264,288,312,336], xlims=(0,336), label=false, linewidth=1.5)
+```
+
+A plot of **Change in Clearance and Volume of Distribution** over time
+
+ * This plot shows that the Clearance and Volume of Distribution change over period of time and there is **interpolation** of the values from the previous time point to the current time point.
+
+```julia
+@df df plot(:time, :Clearance, xlabel="Time (hr)", grid=:off, legend=:bottomright, xticks=[0,24,48,72,96,120,144,168,192,216,240,264,288,312,336], xlims=(0,336), label="Clearance", linewidth=1.5)
+@df df plot!(twinx(), :time, :Vol_distr, colour=:red, label="Volume of Distribution", legend=:topright, linewidth=1.5, xticks=[0,24,48,72,96,120,144,168,192,216,240,264,288,312,336], xlims=(0,336), grid=:off)
+```
