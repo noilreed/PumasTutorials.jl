@@ -3,7 +3,7 @@ using Pumas, LinearAlgebra
 
 data = read_pumas(example_data("sim_data_model1"))
 #-----------------------------------------------------------------------# Test 1
-mdsl1 = @model begin
+@everywhere mdsl1 = @model begin
     @param begin
         θ ∈ VectorDomain(1, init=[0.5])
         Ω ∈ PDiagDomain(init=[0.04])
