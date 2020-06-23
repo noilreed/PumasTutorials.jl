@@ -191,8 +191,8 @@ _keys(x::AbstractDict) = keys(x)
 
 # This function is called in @model to construct the function that returns
 # a function to evaluate the pre block for a subject given parameters
-function pre_obj(preexpr, prevars, cacheexpr, cachevars, params, randoms, covariates)
-  prename = gensym(:pre)
+function pre_obj(expr, preexpr, prevars, cacheexpr, cachevars, params, randoms, covariates)
+  prename = Symbol(:PreFunction,expr)
   prefunc = gensym(:prefunc)
   Ts = [gensym(:T) for i in 1:length(cachevars)]
 
@@ -713,7 +713,7 @@ macro model(expr)
     x = PumasModel(
     $(param_obj(params)),
     $(random_obj(randoms,params)),
-    $(pre_obj(preexpr,prevars,cacheexpr,cachevars,params,randoms,covariates)),
+    $(pre_obj(expr,preexpr,prevars,cacheexpr,cachevars,params,randoms,covariates)),
     $(init_obj(ode_init,odevars,prevars,isstatic,ismixed,odeexpr)),
     $(dynamics_obj(odeexpr,prevars,odevars,callvars,bvars,eqs,isstatic)),
     $(derived_obj(derivedexpr,derivedvars,prevars,odevars,params,randoms)),
