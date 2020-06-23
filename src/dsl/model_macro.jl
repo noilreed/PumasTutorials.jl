@@ -192,7 +192,7 @@ _keys(x::AbstractDict) = keys(x)
 # This function is called in @model to construct the function that returns
 # a function to evaluate the pre block for a subject given parameters
 function pre_obj(expr, preexpr, prevars, cacheexpr, cachevars, params, randoms, covariates)
-  prename = Symbol(:PreFunction,expr)
+  prename = Symbol(:PreFunction,hash(expr))
   prefunc = gensym(:prefunc)
   Ts = [gensym(:T) for i in 1:length(cachevars)]
 
