@@ -1178,7 +1178,7 @@ sim = simobs(mbl2_analytic, subject, param, randeffs; abstol=1e-12, reltol=1e-12
 # evid = 4: indicates a dosing event where time and amounts in all compartments are reset to zero
 # mdv = 1: indicates that observations are not avaialable at this dosing record
 
-subject = read_pumas(example_data("event_data/data21"), id=:ID, dvs = [:cp])[1]
+subject = read_pumas(example_data("event_data/data21"), id=:ID, dvs = [:cp], parse_tad = false)[1]
 
 param = (θ = [
             1.5,  #Ka
@@ -1208,7 +1208,7 @@ sim = simobs(m_analytic, subject, param, randeffs; abstol=1e-12, reltol=1e-12, c
 # evid = 4: indicates a dosing event where time and amounts in all compartments are reset to zero
 # mdv = 1: indicates that observations are not avaialable at this dosing record
 
-subject = read_pumas(example_data("event_data/data22"), dvs = [:cp])[1]
+subject = read_pumas(example_data("event_data/data22"), dvs = [:cp], parse_tad = false)[1]
 
 param = (θ = [
             1.5,  #Ka

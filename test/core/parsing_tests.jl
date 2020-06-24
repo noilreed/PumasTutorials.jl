@@ -46,8 +46,8 @@ end
   data = DataFrame(id = 1, time = [0.0, 1, 2], dv = rand(3), evid = 0, amt = missing)
   @test isa(read_pumas(data), Population)
   append!(data, DataFrame(id = 1, time = 0.5, dv = rand(), evid = 0, amt=missing))
-  @test_throws Pumas.PumasDataError("Time is not monotonically increasing within subject") read_pumas(data)
-  @test_throws Pumas.PumasDataError("Time is not monotonically increasing within subject") Subject(obs=DataFrame(x=[2:3;], time=1:-1:0))
+  @test_throws Pumas.PumasDataError("Time is not monotonically increasing between reset dose events (evid=3 or evid=4)") read_pumas(data)
+  @test_throws Pumas.PumasDataError("Time is not monotonically increasing within a manually constructed subject") Subject(obs=DataFrame(x=[2:3;], time=1:-1:0))
 end
 
 @testset "event_data" begin

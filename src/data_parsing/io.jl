@@ -312,19 +312,11 @@ struct Subject{T1,T2,T3,T4,T5}
                    cvs::Vector{<:Symbol} = Symbol[],
                    dvs::Vector{<:Symbol} = Symbol[:dv],
                    event_data=true, cvs_direction=:right,
-                   covariates=nothing, covartime=nothing)
+                   covariates=nothing, covartime=nothing,
+                   parse_tad = true)
+
     ## Observations
     idx_obs = findall(iszero, df[!,evid])
-    obs_times = Missings.disallowmissing(df[!,time][idx_obs])
-    if !issorted(obs_times)
-      throw(PumasDataError("Time is not monotonically increasing within subject"))
-    end
-
-    if isa(obs_times, Unitful.Time)
-      _obs_times = convert.(Float64, getfield(uconvert.(u"hr", obs_times), :val))
-    else
-      _obs_times = float(obs_times)
-    end
 
     dv_idx_tuple = ntuple(i -> convert(AbstractVector{Union{Missing,Float64}},
                                        df[!,dvs[i]][idx_obs]),
@@ -350,8 +342,6 @@ struct Subject{T1,T2,T3,T4,T5}
     if covartime isa Nothing || covariates isa Nothing
       covartime, covariates = covariate_interpolant(cvs, df, time, _id_string; cvs_direction=cvs_direction)
     end
-    ## Events
-    idx_evt = setdiff(1:size(df, 1), idx_obs)
 
     n_amt = hasproperty(df, amt)
     n_addl = hasproperty(df, addl)
@@ -361,20 +351,36 @@ struct Subject{T1,T2,T3,T4,T5}
     n_ss = hasproperty(df, ss)
     cmtType = n_cmt ? (eltype(df[!,cmt]) <: String ? Symbol : Int) : Int
     events = Event{Float64,Float64,Float64,Float64,Float64,Float64,cmtType}[]
-    for i in idx_evt
+    obstimes = Float64[]
+    offset = 0.0
+
+    for i in 1:size(df, 1)
       t     = float(df[!,time][i])
       _evid = Int8(df[!,evid][i])
-      _amt  = n_amt ? float(df[!,amt][i])   : 0. # can be missing if evid=2
-      _addl = n_addl ? Int(df[!,addl][i])   : 0
-      _ii   = n_ii ? float(df[!,ii][i])     : zero(t)
-      __cmt  = n_cmt ? df[!,cmt][i] : 1
-      _cmt = __cmt isa String ? Symbol(__cmt) : Int(__cmt)
-      _rate = n_rate ? float(df[!,rate][i]) : _amt === nothing ? 0.0 : zero(_amt)/oneunit(t)
-      ss′   = n_ss ? Int8(df[!,ss][i])      : Int8(0)
-      build_event_list!(events, event_data, t, _evid, _amt, _addl, _ii, _cmt, _rate, ss′)
+
+      if i > 1 && t < df[i-1,time] && df[i-1,evid] != 3 && df[i-1,evid] != 4
+        throw(PumasDataError("Time is not monotonically increasing between reset dose events (evid=3 or evid=4)"))
+      end
+
+      if _evid == 0 # observation, so add the time
+        push!(obstimes,offset + t)
+      else # event
+        _amt  = n_amt ? float(df[!,amt][i])   : 0. # can be missing if evid=2
+        _addl = n_addl ? Int(df[!,addl][i])   : 0
+        _ii   = n_ii ? float(df[!,ii][i])     : zero(t)
+        __cmt  = n_cmt ? df[!,cmt][i] : 1
+        _cmt = __cmt isa String ? Symbol(__cmt) : Int(__cmt)
+        _rate = n_rate ? float(df[!,rate][i]) : _amt === nothing ? 0.0 : zero(_amt)/oneunit(t)
+        ss′   = n_ss ? Int8(df[!,ss][i])      : Int8(0)
+        build_event_list!(events, event_data, offset + t, _evid, _amt, _addl, _ii, _cmt, _rate, ss′)
+        if parse_tad && (_evid == 3 || _evid == 4)
+          offset += t # Adjust for TAD specification
+        end
+      end
     end
+
     sort!(events)
-    new{typeof(observations),typeof(covariates),typeof(events),typeof(_obs_times), typeof(covartime)}(_id_string, observations, covariates, events, _obs_times, covartime)
+    new{typeof(observations),typeof(covariates),typeof(events),typeof(obstimes), typeof(covartime)}(_id_string, observations, covariates, events, obstimes, covartime)
   end
 
   function Subject(;id = "1",
@@ -387,16 +393,20 @@ struct Subject{T1,T2,T3,T4,T5}
                    covariates = nothing,
                    covartime = nothing,
                    cvs_direction=:right)
+
+     # Check that time is well-specified (not nothing, not missing and increasing)
+     _time = isnothing(time) ? nothing : Missings.disallowmissing(time)
+
+    if !isnothing(time) && !issorted(time)
+        throw(PumasDataError("Time is not monotonically increasing within a manually constructed subject"))
+    end
+
     obs = build_observation_list(obs)
     evs = build_event_list(evs, event_data)
     if covariates isa Nothing || covartime isa Nothing
       covartime, covariates = covariate_interpolant(cvs, cvstime, id; cvs_direction=cvs_direction)
     end
-    # Check that time is well-specified (not nothing, not missing and increasing)
-    _time = isnothing(time) ? nothing : Missings.disallowmissing(time)
-    if !isnothing(_time) && !issorted(_time)
-      throw(PumasDataError("Time is not monotonically increasing within subject"))
-    end
+
 
     new{typeof(obs),typeof(covariates),typeof(evs),typeof(_time), typeof(covartime)}(string(id), obs, covariates, evs, _time, covartime)
   end
@@ -688,7 +698,8 @@ function read_pumas(df::AbstractDataFrame;
   cvs=Symbol[], dvs=Symbol[:dv],
   id=:id, time=:time, evid=nothing, amt=:amt, addl=:addl,
   ii=:ii, cmt=:cmt, rate=:rate, ss=:ss, mdv=nothing,
-  event_data=true, cvs_direction=:right, check=event_data)
+  event_data=true, cvs_direction=:right,
+  parse_tad = true, check=event_data)
 
   df = preprocess_data(df, dvs, amt, mdv, evid, event_data)
   _evid = evid===nothing ? :evid : evid
@@ -701,7 +712,7 @@ function read_pumas(df::AbstractDataFrame;
 
   __read_pumas(df, cvs, dvs,
     id, time, _evid, amt, addl, ii, cmt, rate, ss, mdv,
-    event_data, cvs_direction)
+    event_data, cvs_direction, parse_tad)
 end
 
 function __read_pumas(df::AbstractDataFrame,
@@ -710,7 +721,7 @@ function __read_pumas(df::AbstractDataFrame,
   id::Symbol, time::Union{Symbol,Nothing}, evid::Union{Symbol,Nothing}, amt::Union{Symbol,Nothing},
   addl::Union{Symbol,Nothing}, ii::Union{Symbol,Nothing}, cmt::Union{Symbol,Nothing},
   rate::Union{Symbol,Nothing}, ss::Union{Symbol,Nothing}, mdv::Union{Symbol,Nothing},
-  event_data::Bool, cvs_direction::Symbol)
+  event_data::Bool, cvs_direction::Symbol, parse_tad::Bool)
 
   if cvs isa AbstractVector{<:Integer}
     Base.depwarn("selecting covariate columns by integer indexing has been deprecated. Please specify the name of the columns instead.", :read_pumas)
@@ -722,7 +733,7 @@ function __read_pumas(df::AbstractDataFrame,
   end
 
   return [Subject(subject_df, id, time, evid, amt, addl, ii, cmt,
-                  rate, ss, cvs, dvs, event_data, cvs_direction) for subject_df in groupby(df, id)]
+                  rate, ss, cvs, dvs, event_data, cvs_direction, nothing, nothing, parse_tad) for subject_df in groupby(df, id)]
 end
 
 struct PumasDataError <: Exception  msg::AbstractString end
@@ -774,15 +785,16 @@ function check_pumas_data(df::AbstractDataFrame,
 
   colnames = propertynames(df)
   # Check if all necessary columns are present or not
-  has_id   = id   in colnames
-  has_time = time in colnames
-  has_amt  = amt  in colnames
-  has_cmt  = cmt  in colnames
-  has_evid = evid in colnames
-  has_addl = addl in colnames
-  has_ii   = ii   in colnames
-  has_ss   = ss   in colnames
-  has_rate = rate in colnames
+  has_id     = id   in colnames
+  has_time   = time in colnames
+  has_amt    = amt  in colnames
+  has_cmt    = cmt  in colnames
+  has_evid   = evid in colnames
+  has_addl   = addl in colnames
+  has_ii     = ii   in colnames
+  has_ss     = ss   in colnames
+  has_rate   = rate in colnames
+  has_evid34 = any(x->x==3 || x==4,df[:,evid])
 
   if dvs isa AbstractVector{<:Integer}
     dvs = colnames[dvs]
@@ -816,7 +828,7 @@ argument event_data=false in your read_pumas function.
   end
 
   # CASE: (id, time) pair should be unique
-  if has_time
+  if has_time && !has_evid34
     _df_onlyobs = filter(row -> row[evid] == 0, df[!, [id, time, evid]])
     if length(unique(zip(_df_onlyobs[!, id], _df_onlyobs[!, time]))) != size(_df_onlyobs, 1)
       throw(PumasDataError("($(id), $(time)) pair should be unique, if your data has multiple dvs in one column, please convert it to wide format."))

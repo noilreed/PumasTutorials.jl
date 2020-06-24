@@ -10,6 +10,7 @@ using Pumas, CSV
   allowmissing!(df)
   df_doses = DataFrame(id=unique(df.id), time=0.0, dv=missing, amt=10.0, cmt=1)
   df = vcat(df, df_doses)
+  sort!(df, [:id, :time])
 
   data = read_pumas(df)
 
