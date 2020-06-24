@@ -29,12 +29,18 @@ build:
   script:
     - julia -e 'using InteractiveUtils;
                 versioninfo()'
-    - julia --depwarn=error --project -e 'using Pkg;
-                          Pkg.test("Pumas"; coverage=true);'
-    - julia -e 'using Pkg;
-                Pkg.add("Coverage");
-                using Coverage;
-                Codecov.submit_local(process_folder())'
+    - >
+      if [ "$CI_COMMIT_BRANCH" == "master" ]; then
+        julia --depwarn=error --project -e 'using Pkg;
+          Pkg.test("Pumas"; coverage=true);'
+        julia -e 'using Pkg;
+          Pkg.add("Coverage");
+          using Coverage;
+          Codecov.submit_local(process_folder())'
+      else
+        julia --depwarn=error --project -e 'using Pkg;
+          Pkg.test("Pumas");'
+      fi
   interruptible: true
   artifacts:
     paths:
@@ -45,6 +51,7 @@ build:
   - tags
   - external
   - pushes
+
 
 test-core:
   <<: *template
