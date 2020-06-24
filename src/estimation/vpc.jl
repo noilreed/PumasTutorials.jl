@@ -149,9 +149,15 @@ end
   - `numstrats`: The number of strata to divide into based on the unique values of the covariate, takes an array with the number of strata for the corresponding covariate 
                 passed in `stratify_by`. It takes a default of `4` for each of the covariates.
 
-  While plotting the obtained `VPC` object passing `plottype` keyword argument let's you decide between `:scatter`, `:percentile` and `:interval` forms of VPC
-  plot with the default being `:scatter` type.
+  While plotting the obtained `VPC` object with `plot` the following keyword arguments allow the option to include or exclude various compnonets with `true` or `false` respectively: 
   
+  - `observations`: Scatter plot of the true observations.  
+  - `simquantile_medians`: The median quantile regression of each quantile from the simulations.
+  - `observed_quantiles`: The quantile regressions for the true observations.
+  - `ci_bands`: Shaded region between the upper and lower confidence levels of each quantile from the simulations.
+    
+  `observations` and `simquantile_medians` are set to `false` by default.
+
   For most users the method used in quantile regression is not going to be of concern, but if you see large run times switching `qreg_method` to `IP(true)` should help in improving the
   performance with a tradeoff in the accuracy of the fitting.   
 """
@@ -242,18 +248,20 @@ end
         sim_quantiles = groupby(vpc.simulated_quantiles, :τ)
         for i in 1:3
             @series begin
+                if !simquantile_medians 
+                    linealpha --> 0
+                else 
+                    label --> (i == 1 ? scatterlabel[3] : "")
+                end
+
                 if ci_bands == true
                     ribbon --> [sim_quantiles[i][!,:middle] .- sim_quantiles[i][!,:lower],sim_quantiles[i][!,:upper] .- sim_quantiles[i][!,:middle]]
                     fillalpha --> 0.2
                     label --> (i == 1 ? scatterlabel[4] : "")
                 end
+
                 seriescolor --> :black
-                
                 legend --> :outertop
-                if !simquantile_medians 
-                    linealpha --> 0
-                    label --> (i == 1 ? scatterlabel[3] : "")
-                end
                 sim_quantiles[i][!,:time],sim_quantiles[i][!,:middle]
             end
         end
@@ -267,18 +275,22 @@ end
             for i in 1:3
                 @series begin
                     subplot --> pltno
+                    
+                    if !simquantile_medians 
+                        linealpha --> 0
+                    else
+                        label --> ((i == 1 && pltno == 1) ? scatterlabel[3] : "")
+                    end
+
                     if ci_bands == true
                         ribbon --> [df_sim_quantile[i][!,:middle] .- df_sim_quantile[i][!,:lower],df_sim_quantile[i][!,:upper] .- df_sim_quantile[i][!,:middle]]
                         fillalpha --> 0.2
                         label --> (i == 1 ? scatterlabel[4] : "")
                     end
+
                     title --> "Stratified on " * string(["$(colnames[j]): $(sim_quantile[1,colinds[j]]) " for j in 1:length(colinds)]...)
                     seriescolor --> :black
                     legend --> :outertop
-                    if !simquantile_medians 
-                        linealpha --> 0
-                        label --> ((i == 1 && pltno == 1) ? scatterlabel[3] : "")
-                    end
                     df_sim_quantile[i][!,:time],df_sim_quantile[i][!,:middle]
                 end
             end
