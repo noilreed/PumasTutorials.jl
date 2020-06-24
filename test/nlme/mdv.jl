@@ -129,17 +129,17 @@ ref_laplacei = (
 
 @testset "FOCEI" for k in keys(params)
   if k == :Ω
-    @test coef(res_focei)[k].diag ≈ ref_focei[k].diag
+    @test coef(res_focei)[k].diag ≈ ref_focei[k].diag rtol=1e-3
   else
-    @test coef(res_focei)[k]      ≈ ref_focei[k]
+    @test coef(res_focei)[k]      ≈ ref_focei[k]      rtol=1e-3
   end
 end
 
 @testset "LaplaceI" for k in keys(params)
   if k == :Ω
-    @test coef(res_laplacei)[k].diag ≈ ref_laplacei[k].diag
+    @test coef(res_laplacei)[k].diag ≈ ref_laplacei[k].diag rtol=1e-3
   else
-    @test coef(res_laplacei)[k]      ≈ ref_laplacei[k]
+    @test coef(res_laplacei)[k]      ≈ ref_laplacei[k]      rtol=1e-3
   end
 end
 end
