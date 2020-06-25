@@ -3,15 +3,7 @@ using Pumas
 using Random
 using StringDistances
 
-# FIXME! Find a nicer way to handle this
-_extract(A::Pumas.PDMats.PDMat) = A.mat
-_extract(A::Pumas.PDMats.PDiagMat) = Diagonal(A.diag)
-_extract(A) = A
-
 @testset "Theophylline model" begin
-
-# Control verbosity of solver output
-verbose = false
 
 theopp = read_pumas(example_data("event_data/THEOPP"),cvs = [:SEX,:WT])
 @testset "Check that Events is fully typed when parsed" begin
@@ -257,11 +249,11 @@ Stratification by SEX.
   @test deviance(o) ≈ 71.979975297638589
 
   @testset "test estimate of $k" for k in keys(o_estimates)
-    @test _extract(getfield(o_estimates, k)) ≈ _extract(getfield(fo_estimated_params, k)) rtol=1e-3
+    @test Pumas._coef_value(getfield(o_estimates, k)) ≈ Pumas._coef_value(getfield(fo_estimated_params, k)) rtol=1e-3
   end
 
   @testset "test stderror of $k" for k in keys(o_estimates)
-    @test _extract(getfield(o_stderror, k))  ≈ _extract(getfield(fo_stderr, k))           rtol=2e-2
+    @test Pumas._coef_value(getfield(o_stderror, k))  ≈ Pumas._coef_value(getfield(fo_stderr, k))           rtol=2e-2
   end
 
   @testset "test stored empirical Bayes estimates. Subject: $i" for i in 1:length(theopp)
@@ -282,12 +274,12 @@ Stratification by SEX.
     @test pred_foce[1].approx == Pumas.FOCE()
     @test pred_focei[1].approx == Pumas.FOCEI()
 
-    @test all(dfpred[!,:pred_approx].== summary(Pumas.FO()))
-    @test all(dfpred_no_covar[!,:pred_approx].== summary(Pumas.FO()))
-    @test all(dfpred_foce[!,:pred_approx].== summary(Pumas.FOCE()))
-    @test all(dfpred_foce_no_covar[!,:pred_approx].== summary(Pumas.FOCE()))
-    @test all(dfpred_focei[!,:pred_approx].== summary(Pumas.FOCEI()))
-    @test all(dfpred_focei_no_covar[!,:pred_approx].== summary(Pumas.FOCEI()))
+    @test all(dfpred[!,:pred_approx].== Ref(Pumas.FO()))
+    @test all(dfpred_no_covar[!,:pred_approx].== Ref(Pumas.FO()))
+    @test all(dfpred_foce[!,:pred_approx].== Ref(Pumas.FOCE()))
+    @test all(dfpred_foce_no_covar[!,:pred_approx].== Ref(Pumas.FOCE()))
+    @test all(dfpred_focei[!,:pred_approx].== Ref(Pumas.FOCEI()))
+    @test all(dfpred_focei_no_covar[!,:pred_approx].== Ref(Pumas.FOCEI()))
 
     @test hasproperty(dfpred, :dv_pred)
     @test hasproperty(dfpred, :dv_ipred)
@@ -585,11 +577,11 @@ Stratification by SEX.
   @test deviance(o) ≈ 71.979975297638589 rtol=1e-6
 
   @testset "test estimate of $k" for k in keys(o_estimates)
-    @test _extract(getfield(o_estimates, k)) ≈ _extract(getfield(fo_estimated_params, k)) rtol=1e-3
+    @test Pumas._coef_value(getfield(o_estimates, k)) ≈ Pumas._coef_value(getfield(fo_estimated_params, k)) rtol=1e-3
   end
 
   @testset "test stderror of $k" for k in keys(o_estimates)
-    @test _extract(getfield(o_stderror, k))  ≈ _extract(getfield(fo_stderr, k))           rtol=2.5e-2
+    @test Pumas._coef_value(getfield(o_stderror, k))  ≈ Pumas._coef_value(getfield(fo_stderr, k))           rtol=2.5e-2
   end
 
   @testset "test stored empirical Bayes estimates. Subject: $i" for i in 1:length(theopp)
@@ -724,11 +716,11 @@ end
   @test deviance(o) ≈ 121.89849119366599 rtol=1e-7
 
   @testset "test estimate of $k" for k in keys(o_estimates)
-    @test _extract(getfield(o_estimates, k)) ≈ _extract(getfield(foce_estimated_params, k)) rtol=1e-3
+    @test Pumas._coef_value(getfield(o_estimates, k)) ≈ Pumas._coef_value(getfield(foce_estimated_params, k)) rtol=1e-3
   end
 
   @testset "test stderror of $k" for k in keys(o_estimates)
-    @test _extract(getfield(o_stderror, k))  ≈ _extract(getfield(foce_stderr, k))           rtol=1e-2
+    @test Pumas._coef_value(getfield(o_stderror, k))  ≈ Pumas._coef_value(getfield(foce_stderr, k))           rtol=1e-2
   end
 
   @testset "test stored empirical Bayes estimates. Subject: $i" for (i, ebe) in enumerate(empirical_bayes(o))
@@ -1011,11 +1003,11 @@ end
   @test deviance(o) ≈ 121.89849119366599 rtol=1e-7
 
   @testset "test estimate of $k" for k in keys(o_estimates)
-    @test _extract(getfield(o_estimates, k)) ≈ _extract(getfield(foce_estimated_params, k)) rtol=1e-3
+    @test Pumas._coef_value(getfield(o_estimates, k)) ≈ Pumas._coef_value(getfield(foce_estimated_params, k)) rtol=1e-3
   end
 
   @testset "test stderror of $k" for k in keys(o_estimates)
-    @test _extract(getfield(o_stderror, k))  ≈ _extract(getfield(foce_stderr, k))           rtol=1e-2
+    @test Pumas._coef_value(getfield(o_stderror, k))  ≈ Pumas._coef_value(getfield(foce_stderr, k))           rtol=1e-2
   end
 
   @testset "test stored empirical Bayes estimates. Subject: $i" for (i, ebe) in enumerate(empirical_bayes(o))
@@ -1300,11 +1292,11 @@ end
 
   @test deviance(o) ≈ 115.40505379554628 rtol=1e-7
   @testset "test estimate of $k" for k in keys(o_estimates)
-    @test _extract(getfield(o_estimates, k)) ≈ _extract(getfield(focei_estimated_params, k)) rtol=1e-3
+    @test Pumas._coef_value(getfield(o_estimates, k)) ≈ Pumas._coef_value(getfield(focei_estimated_params, k)) rtol=1e-3
   end
 
   @testset "test stderror of $k" for k in keys(o_estimates)
-    @test _extract(getfield(o_stderror, k))  ≈ _extract(getfield(focei_stderr, k))           rtol=1e-2
+    @test Pumas._coef_value(getfield(o_stderror, k))  ≈ Pumas._coef_value(getfield(focei_stderr, k))           rtol=1e-2
   end
 
   @testset "test stored empirical Bayes estimates. Subject: $i" for (i, ebe) in enumerate(empirical_bayes(o))
@@ -1611,11 +1603,11 @@ end
     @test deviance(o) ≈ 123.76439574418291 rtol=1e-5
 
     @testset "test estimate of $k" for k in keys(o_estimates)
-      @test _extract(getfield(o_estimates, k)) ≈ _extract(getfield(laplace_estimated_params, k)) rtol=2e-3
+      @test Pumas._coef_value(getfield(o_estimates, k)) ≈ Pumas._coef_value(getfield(laplace_estimated_params, k)) rtol=2e-3
     end
 
     @testset "test stderror of $k" for k in keys(o_estimates)
-      @test _extract(getfield(o_stderror, k))  ≈ _extract(getfield(laplace_stderr, k))           rtol=1e-2
+      @test Pumas._coef_value(getfield(o_stderror, k))  ≈ Pumas._coef_value(getfield(laplace_stderr, k))           rtol=1e-2
     end
 
     @testset "test stored empirical Bayes estimates. Subject: $i" for (i, ebe) in enumerate(empirical_bayes(o))
@@ -1748,16 +1740,16 @@ end
     @test deviance(o) ≈ 116.97275684239327 rtol=1e-5
 
     @testset "test estimate of $k" for k in keys(o_estimates)
-      @test _extract(getfield(o_estimates, k)) ≈ _extract(getfield(laplacei_estimated_params, k)) rtol=1e-3
+      @test Pumas._coef_value(getfield(o_estimates, k)) ≈ Pumas._coef_value(getfield(laplacei_estimated_params, k)) rtol=1e-3
     end
 
     @testset "test stderror of $k" for k in keys(o_estimates)
       if k != :ω²CL
-        @test _extract(getfield(o_stderror, k))  ≈ _extract(getfield(laplacei_stderr, k))           rtol=4e-2
+        @test Pumas._coef_value(getfield(o_stderror, k))  ≈ Pumas._coef_value(getfield(laplacei_stderr, k))           rtol=4e-2
       else
         # This used to match but is now 10% different from the NONMEM estimate after we have switched to
         # using standard normal random effects internally
-        @test_broken _extract(getfield(o_stderror, k))  ≈ _extract(getfield(laplacei_stderr, k))           rtol=4e-2
+        @test_broken Pumas._coef_value(getfield(o_stderror, k))  ≈ Pumas._coef_value(getfield(laplacei_stderr, k))           rtol=4e-2
       end
     end
 

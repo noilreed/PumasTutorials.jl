@@ -422,7 +422,6 @@ Base.hash(subject::Subject, h::UInt) = hash(
 Base.:(==)(subject1::Subject, subject2::Subject) = hash(subject1) == hash(subject2)
 
 function DataFrames.DataFrame(subject::Subject; include_covariates=true, include_dvs=true, include_events=true)
-
   # Build a DataFrame that holds the events
   df_events = DataFrame(build_event_list(subject.events, true))
   # Remove events with evid==-1
@@ -485,7 +484,6 @@ function DataFrames.DataFrame(subject::Subject; include_covariates=true, include
       end
     end
   end
-
   # If there are no observations, just go with df_events
   if isnothing(subject.time)
     df = df_events
@@ -494,16 +492,6 @@ function DataFrames.DataFrame(subject::Subject; include_covariates=true, include
   else
     df
   end
-
-  # If the covariates are time varying we include them explicitly as evid 0 rows.
-  # The thought here is to be able to recreate the interpolant from the DataFrame
-  # that we end up returning here.
-  if subject.covariates isa ConstantInterpolationStructArray
-    covartime = subject.covariates.t
-    df_covar = DataFrame(id = fill(subject.id, length(covartime)), time=covartime)
-    df = vcat(df, df_covar; cols=:union)
-  end
-  include_covariates && _add_covariates!(df, subject)
 
   # Sort the df according to time first, and use :base_time to ensure that events
   # come before observations (they are missing for observations, so they will come
@@ -528,11 +516,27 @@ function DataFrames.DataFrame(subject::Subject; include_covariates=true, include
     end
   end
 
+  if include_covariates
+    df = _add_covariates(df, subject)
+  end
+
   # Return df
   df
 end
 
-function _add_covariates!(df::DataFrame, subject::Subject)
+function _add_covariates(df::DataFrame, subject::Subject)
+  # If the covariates are time varying we include them explicitly as evid 0 rows.
+  # The thought here is to be able to recreate the interpolant from the DataFrame
+  # that we end up returning here.
+  if subject.covariates isa ConstantInterpolationStructArray
+    covartime = subject.covariates.t
+    __time = [t for t in covartime if t ∉ df.time]
+    df_covar = DataFrame(id = fill(subject.id, length(__time)), time=__time, evid=0, covar_debug = true)
+    df = vcat(df, df_covar; cols=:union)
+    df = sort!(df, [:id, :time])
+    df = df[!, Not(:covar_debug)]
+  end
+  
   covariates = subject.covariates.(df.time)
   if !(isa(covariates, Nothing) || isa(covariates, Tuple{})) && !isa(first(covariates), Nothing)
     if covariates isa AbstractVector
@@ -551,6 +555,7 @@ function _add_covariates!(df::DataFrame, subject::Subject)
       end
     end
   end
+  df
 end
 hascovariates(covariates) = true
 hascovariates(covariates::NoCovar) = false

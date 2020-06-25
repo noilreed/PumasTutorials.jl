@@ -93,11 +93,17 @@ function DataFrames.DataFrame(
     df = filter(i -> i.evid != -1, df)
     sort!(df, [:time, order(:evid, rev=true)])
   end
-
-  include_covariates && _add_covariates!(df, obs.subject)
+  if include_covariates
+    df = _add_covariates(df, obs.subject)
+    if "evid" ∈ names(df) && !include_events
+      df = select!(df, Not(:evid))
+    end
+    if "id" ∈ names(df)
+      df = select!(df, Not(:id))
+    end
+  end
 
   insertcols!(df, 1, :id => fill(obs.subject.id, size(df, 1)))
-
   return df
 end
 

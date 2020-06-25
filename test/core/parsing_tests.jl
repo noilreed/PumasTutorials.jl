@@ -290,5 +290,5 @@ end
   @test pop1df.WT == reduce(vcat, map(i->fill(pop1[i].covariates(0.0).WT, 4), 1:length(pop1)))
   pop2 = map(i -> Subject(id=i, evs=e3, cvs=covar3(), cvstime = (WT = range(0, 8; length=2))),2:5)
   pop2df = DataFrame(pop2)
-  @test pop2df.WT == reduce(vcat, map(i->fill(pop2[i].covariates(0.0).WT, 6), 1:length(pop2)))
+  @test pop2df.WT == reduce(vcat, map(i->fill(pop2[i].covariates(0.0).WT, 5), 1:length(pop2)))
 end

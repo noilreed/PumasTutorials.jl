@@ -2,7 +2,7 @@ const _subscriptvector = ["₀", "₁", "₂", "₃", "₄", "₅", "₆", "₇"
 
 _coef_value(var) = var
 _coef_value(var::PDMat) = var.mat
-_coef_value(var::PDiagMat) = var.diag
+_coef_value(var::PDiagMat) = Diagonal(var.diag)
 
 _to_subscript(number) = join([_subscriptvector[parse(Int32, dig)+1] for dig in string(number)])
 
@@ -135,7 +135,7 @@ end
 
 # _push_varinfo! methods
 function _push_varinfo!(_names, _vals, _se, _confint, paramname, paramval::PDMat, std, quant, bootvals=nothing)
-  mat = paramval.mat
+  mat = _coef_value(paramval)
   for j = 1:size(mat, 2)
     for i = j:size(mat, 1)
       # We set stdij to nothing in case SEs are not requested to avoid indexing
@@ -148,14 +148,14 @@ function _push_varinfo!(_names, _vals, _se, _confint, paramname, paramval::PDMat
   end
 end
 function _push_varinfo!(_names, _vals, _se, _confint, paramname, paramval::PDiagMat, std, quant, bootvals=nothing)
-  mat = paramval.diag
-    for i = 1:length(mat)
+  mat = _coef_value(paramval)
+    for i = 1:size(mat, 1)
       # We set stdii to nothing in case SEs are not requested to avoid indexing
       # into `nothing`.
-      stdii = _se == nothing ? nothing : _coef_value(std)[i]
+      stdii = _se == nothing ? nothing : _coef_value(std)[i, i]
       _name = string(paramname)*"$(_to_subscript(i)),$(_to_subscript(i))"
-      _bts = bootvals == nothing ? nothing : getindex.(bootvals, i)
-      _push_varinfo!(_names, _vals, _se, _confint, _name, mat[i], stdii, quant, _bts)
+      _bts = bootvals == nothing ? nothing : getindex.(bootvals, i, i)
+      _push_varinfo!(_names, _vals, _se, _confint, _name, mat[i, i], stdii, quant, _bts)
     end
 end
 _push_varinfo!(_names, _vals, _se, _confint, paramname, paramval::Diagonal, std, quant, bootvals=nothing) =

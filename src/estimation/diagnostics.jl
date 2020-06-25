@@ -68,13 +68,16 @@ end
 
 function DataFrames.DataFrame(vresid::Vector{<:SubjectResidual}; include_covariates=true)
   subjects = [resid.subject for resid in vresid]
-  df = select!(DataFrame(subjects; include_covariates=include_covariates, include_dvs=false), Not(:evid))
+  df = select!(DataFrame(subjects; include_covariates=false, include_dvs=false), Not(:evid))
 
   _keys = keys(first(subjects).observations)
   for name in (_keys)
-    df[!,Symbol(string(name)*"_wres")] .= vcat((resid.wres[name] for resid in vresid)...)
-    df[!,Symbol(string(name)*"_iwres")] .= vcat((resid.iwres[name] for resid in vresid)...)
-    df[!,:wres_approx] .= vcat((fill(resid.approx, length(resid.subject.time)) for resid in vresid)...)
+    df[!, Symbol(string(name)*"_wres")] .= vcat((resid.wres[name] for resid in vresid)...)
+    df[!, Symbol(string(name)*"_iwres")] .= vcat((resid.iwres[name] for resid in vresid)...)
+    df[!, :wres_approx] .= Ref(vresid[1].approx)
+  end
+  if include_covariates
+    df = mapreduce(_vresid->_add_covariates(df[df[!, :id].==_vresid.subject.id, :], _vresid.subject), vcat, vresid)
   end
   df
 end
@@ -549,12 +552,15 @@ end
 
 function DataFrames.DataFrame(vpred::Vector{<:SubjectPrediction}; include_covariates=true, include_dvs=true)
   subjects = [pred.subject for pred in vpred]
-  df = DataFrame(subjects; include_covariates=include_covariates, include_dvs=include_dvs, include_events=false)
+  df = DataFrame(subjects; include_covariates=false, include_dvs=include_dvs, include_events=false)
   _keys = keys(first(subjects).observations)
   for name in  _keys
     df[!, Symbol(string(name)*"_pred")] = vcat((pred.pred[name] for pred in vpred)...)
     df[!, Symbol(string(name)*"_ipred")] = vcat((pred.ipred[name] for pred in vpred)...)
-    df[!,:pred_approx] .= summary(vpred[1].approx)
+    df[!,:pred_approx] .= Ref(vpred[1].approx)
+  end
+  if include_covariates
+    df = mapreduce(_vpred->_add_covariates(df[df[!, :id].==_vpred.subject.id, :], _vpred.subject), vcat, vpred)
   end
   df
 end
@@ -625,7 +631,8 @@ function inspect(fpm; pred_approx=fpm.approx, wres_approx=fpm.approx)
 end
 
 function DataFrames.DataFrame(i::FittedPumasModelInspection; include_covariates=true)
-  pred_df = DataFrame(i.pred; include_covariates=include_covariates)
+  # Creat the dataframe including 
+  pred_df = DataFrame(i.pred; include_covariates=false)
   res_df = select!(select!(DataFrame(i.wres; include_covariates=false), Not(:id)), Not(:time))
   ebes = i.ebes.ebes
   ebe_keys = keys(first(ebes))
@@ -643,10 +650,11 @@ function DataFrames.DataFrame(i::FittedPumasModelInspection; include_covariates=
   end
   ebes_df = select!(select!(ebes_df, Not(:id)), Not(:time))
   df = hcat(pred_df, res_df, ebes_df)
+  if include_covariates
+    df = mapreduce(subject->_add_covariates(df[df[!, :id].==subject.id, :], subject), vcat, i.o.data)
+  end
+  df
 end
-
-
-
 
 ################################################################################
 #                              Plotting functions                              #
