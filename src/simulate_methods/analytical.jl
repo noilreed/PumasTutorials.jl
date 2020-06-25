@@ -86,11 +86,21 @@ function DiffEqBase.solve(prob::AnalyticalPKPDProblem,
     end
 
     if eltype(times) <: ForwardDiff.Dual && i > 1
-      # Used to introduce a coupling for AD, but can give some very small
-      # numerical issues. Thus we only do this when we need to.
+      # Used to introduce a coupling for AD to propogate the dual part
+      # It could be off by floating point error in the partials if
+      # times[i] - times[i-1] + times[i-1] != times[i]
       dt = times[i] - times[i-1]
       t += dt
-      times[i] = t
+      # Correct the value of the non-dual portion to have no floating
+      # point error.
+      val = ForwardDiff.value(t)
+      if typeof(val) <: ForwardDiff.Dual
+        # Nested AD case
+        t = ForwardDiff.Dual{ForwardDiff.tagtype(t)}(
+              ForwardDiff.Dual{ForwardDiff.tagtype(val)}(times[i],ForwardDiff.partials(val)),ForwardDiff.partials(t))
+      else
+        t = ForwardDiff.Dual{ForwardDif.tagtype(t)}(times[i],ForwardDiff.partials(t))
+      end
     else
       t = times[i]
     end
@@ -111,6 +121,10 @@ function DiffEqBase.solve(prob::AnalyticalPKPDProblem,
       event_counter += 1
       cur_ev = events[event_counter]
       cur_ev.evid >= 3 && (Tu0 = zero(Tu0))
+      # Ensures two things: (a) that the events are synced, so t is at
+      # the time we believe it should be, and (b) that there's no floating
+      # point error in t, which should be handled directly by the dual
+      # handling above.
       @assert cur_ev.time == t
       if cur_ev.ss == 0
         dose,_rate = create_dose_rate_vector(cur_ev,t0,dose,rate)
