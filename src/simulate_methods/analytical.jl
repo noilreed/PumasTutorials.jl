@@ -99,7 +99,7 @@ function DiffEqBase.solve(prob::AnalyticalPKPDProblem,
         t = ForwardDiff.Dual{ForwardDiff.tagtype(t)}(
               ForwardDiff.Dual{ForwardDiff.tagtype(val)}(times[i],ForwardDiff.partials(val)),ForwardDiff.partials(t))
       else
-        t = ForwardDiff.Dual{ForwardDif.tagtype(t)}(times[i],ForwardDiff.partials(t))
+        t = ForwardDiff.Dual{ForwardDiff.tagtype(t)}(times[i],ForwardDiff.partials(t))
       end
     else
       t = times[i]
