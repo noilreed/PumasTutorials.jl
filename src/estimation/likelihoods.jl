@@ -1872,3 +1872,42 @@ function empirical_bayes_dist(fpm::FittedPumasModel)
       empirical_bayes_dist(fpm.model, subject, coef(fpm), vrandeffsorth, fpm.approx, fpm.args...; fpm.kwargs...)
   end
 end
+
+#########################
+# Likelihood ratio test #
+#########################
+struct LikelihoodRatioTest{T}
+  Δdf::Int
+  statistic::T
+end
+
+"""
+    lrtest(fpm_0::FittedPumasModel, fpm_A::FittedPumasModel)::LikelihoodRatioTest
+
+Compute of the likelihood ratio test statistic of the null hypothesis
+defined by `fpm_0` against the the alternative hypothesis defined by
+`fpm_A`. The `pvalue` function be used for extracting the p-value
+based on the asymptotic `Χ²(k)` distribution of the test statistic.
+"""
+function lrtest(fpm_0::FittedPumasModel, fpm_A::FittedPumasModel)
+  df_0 = length(fpm_0.optim.minimizer)
+  df_A = length(fpm_A.optim.minimizer)
+  statistic = deviance(fpm_0) - deviance(fpm_A)
+  return LikelihoodRatioTest(df_A - df_0, statistic)
+end
+
+"""
+    pvalue(t::LikelihoodRatioTest)::Real
+
+Compute the p-value of the likelihood ratio test `t` based on the
+asymptotic `Χ²(k)` distribution of the test statistic.
+"""
+pvalue(t::LikelihoodRatioTest) = ccdf(Chisq(t.Δdf), t.statistic)
+
+function Base.show(io::IO, ::MIME"text/plain", t::LikelihoodRatioTest)
+  _pvalue = pvalue(t)
+
+  println(io, "Statistic: ", lpad(round(t.statistic, sigdigits=3), 15))
+  println(io, "Degrees of freedom: ", lpad(t.Δdf, 6))
+  print(  io, "P-value: ", lpad(round(_pvalue, digits=3), 17))
+end

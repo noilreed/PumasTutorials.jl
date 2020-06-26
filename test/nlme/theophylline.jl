@@ -91,13 +91,25 @@ end
   o = fit(theopmodel_analytical_fo, theopp, param, Pumas.FO(),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
-  ofix1 = fit(theopmodel_analytical_fo, theopp, param, Pumas.FO(); constantcoef=(θ₁=0.4,),
+  ofix1 = fit(theopmodel_analytical_fo, theopp, param, Pumas.FO(); constantcoef=(θ₁=3.5,),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
-  ofix2 = fit(theopmodel_analytical_fo, theopp, param, Pumas.FO(); constantcoef=(σ²_add=0.1,),
+  ofix2 = fit(theopmodel_analytical_fo, theopp, param, Pumas.FO(); constantcoef=(θ₁=3.5, σ²_add=0.2,),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
-  @test coef(ofix1).θ₁ == 0.4
-  @test coef(ofix2).σ²_add == 0.1
+  @test coef(ofix1).θ₁     == 3.5
+  @test coef(ofix2).θ₁     == 3.5
+  @test coef(ofix2).σ²_add == 0.2
+
+  @testset "Likelihood ratio testing" begin
+    t1 = lrtest(ofix1, o)
+    t2 = lrtest(ofix2, o)
+
+    @test pvalue(t1) ≈ 0.0203312   rtol=1e-3
+    @test t1.Δdf == 1
+
+    @test pvalue(t2) ≈ 0.000950523 rtol=1e-3
+    @test t2.Δdf == 2
+  end
 
   o_estimates = coef(o)
   o_stderror  = stderror(o)

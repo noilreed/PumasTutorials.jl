@@ -75,7 +75,7 @@ export wresiduals, empirical_bayes
 export ηshrinkage, ϵshrinkage
 export read_pumas, example_data
 export @model, @nca
-export infer, inspect, vpc
+export infer, inspect, vpc, lrtest, pvalue
 
 export expectation, KoopmanExpectation, MonteCarloExpectation
 
