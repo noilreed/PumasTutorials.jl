@@ -10,10 +10,14 @@ In Pumas, this is represented by a `Bernoulli(p)` distribution.
 To get started, first let's load `Pumas` and read in some example data:
 
 ```julia
-using Pumas, StatsFuns, CSV
+using Pumas, StatsFuns, CSV, Plots
 df = CSV.read(example_data("pain_remed"))
 data = read_pumas(df, dvs=[:dv],
     cvs = [:arm, :dose, :conc, :painord,:remed],event_data=false)
+```
+
+```julia
+scatter(df.conc,df.dv)
 ```
 In this tutorial we will be dealing with longitudinal discrete data.
 The occurrence (or not) of an event is recorded for each hourly interval, giving
@@ -58,7 +62,7 @@ binary_model = @model begin
     end
 
     @derived begin
-        pain = @. logistic(logit)
+        #pain = @. logistic(logit)
         dv ~ @. Bernoulli(logistic(logit))
     end
 end

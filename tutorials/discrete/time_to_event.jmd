@@ -1,0 +1,113 @@
+---
+title: Time to Event Models
+---
+
+```julia
+using Pumas, CSV
+```
+
+```julia
+tte1 = CSV.read("./tutorials\\/discrete\\/tte_data1.csv")
+pd = read_pumas(tte1,
+    id=:ID, time=:TIME, dvs=[:DV], cvs=[:DOSE], evid=:EVID,
+    event_data=false)
+```
+
+The model
+```julia
+tte_exponential = @model begin
+  @param begin
+    θ  ∈ RealDomain()
+    λ₀ ∈ RealDomain(lower=0)
+  end
+  @covariates DOSE
+  @pre begin
+    θeff = θ*DOSE
+    λ = λ₀*exp(θeff)
+  end
+  @dynamics begin
+    Λ' = λ
+  end
+  @derived begin
+    DV ~ @. TimeToEvent(λ, Λ)
+  end
+end
+param_exponential = (θ=-1.0, λ₀=5e-3,)
+```
+
+```julia
+tte_res = fit(tte_exponential, pd, param_exponential, Pumas.NaivePooled())
+```
+
+## Weibull Models
+
+```julia
+tte_weibull = @model begin
+    @param begin
+      θ  ∈ RealDomain()
+      λ₀ ∈ RealDomain(lower=0)
+      p  ∈ RealDomain(lower=0)
+    end
+    @covariates DOSE
+    @pre begin
+      θeff = θ*DOSE
+      _λ₀ = λ₀
+      _p  = p
+    end
+    @vars begin
+      λ = _λ₀*exp(θeff)*_p*(_λ₀*t + 1e-10)^(_p - 1)
+    end
+    @dynamics begin
+      Λ' = λ
+    end
+
+    @derived begin
+      DV ~ @. TimeToEvent(λ, Λ)
+    end
+  end
+
+param_weibull = (θ=-1.0, λ₀=5e-3, p=1.1)
+```
+
+```julia
+ft_weibull = fit(tte_weibull, pd, param_weibull, Pumas.NaivePooled())
+```
+
+## RTTE
+
+```julia
+df = CSV.read("./tutorials\\/discrete\\/rtte_data.csv")
+  # Add EVID=3 events with time .+ 1e-10 to reset the integration right after each observation
+  evd = DataFrame(ID=df.ID, DV=missing, TIME=df.TIME .+ 1e-10, EVID=3)
+  df[!,:EVID] .= 0
+  df = vcat(df, evd)
+  pd = read_pumas(df,
+    id=:ID, dvs=[:DV], time=:TIME, evid=:EVID,
+    event_data=false)
+  model = @model begin
+    @param begin
+      θ ∈ RealDomain(lower=0.0)
+      ω ∈ RealDomain(lower=0.0)
+    end
+    @random begin
+      η ~ Normal(0.0, ω)
+    end
+    @pre begin
+      λ = θ*exp(η)
+    end
+    @dynamics begin
+      Λ' = λ
+    end
+
+    @derived begin
+      DV ~ @. TimeToEvent(λ, Λ)
+    end
+  end
+
+  param = (θ=0.01, ω=sqrt(1e-08))
+
+  @test deviance(model, pd, param, Pumas.LaplaceI()) ≈ 1567.954845323044 rtol=1e-4 # regression test
+
+  ft = fit(model, pd, param, Pumas.LaplaceI(),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
+```
