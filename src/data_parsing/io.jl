@@ -423,10 +423,15 @@ Base.:(==)(subject1::Subject, subject2::Subject) = hash(subject1) == hash(subjec
 
 function DataFrames.DataFrame(subject::Subject; include_covariates=true, include_dvs=true, include_events=true)
   # Build a DataFrame that holds the events
-  df_events = DataFrame(build_event_list(subject.events, true))
-  # Remove events with evid==-1
-  df_events = df_events[df_events[!, :evid].!=-1,:]
-
+  if isempty(subject.events)
+    df_events = DataFrame(fill(Float64, 10),
+      [:amt, :time, :evid, :cmt, :rate, :duration, :ss, :ii, :base_time, :rate_dir], 0)
+    include_events = false
+  else
+    df_events = DataFrame(build_event_list(subject.events, true))
+    # Remove events with evid==-1
+    df_events = df_events[df_events[!, :evid].!=-1,:]
+  end
   # We delete rate/duration if no infusions. Else, we delete duration or rate
   # as appropriate. TODO This will actually fail if used in the context of a
   # Population where some Subjects have duration specified and others have
@@ -536,7 +541,7 @@ function _add_covariates(df::DataFrame, subject::Subject)
     df = sort!(df, [:id, :time])
     df = df[!, Not(:covar_debug)]
   end
-  
+
   covariates = subject.covariates.(df.time)
   if !(isa(covariates, Nothing) || isa(covariates, Tuple{})) && !isa(first(covariates), Nothing)
     if covariates isa AbstractVector

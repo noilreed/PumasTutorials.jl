@@ -1,5 +1,9 @@
 using Pumas, Test
+
+
 pop = map(i -> Subject(id=i, cvs=(dose=[10,20,30],), cvstime=(dose=[1,2,3],)), 1:3)
+popdf = DataFrame(pop)
+
 poisson_model = @model begin
   @param begin
     tvbase ∈ RealDomain(init=3.0, lower=0.1)
@@ -26,3 +30,8 @@ end
 
 sim = simobs(poisson_model,pop[1]; obstimes = [0,1,3,5])
 @test length(sim[:dv]) == 4
+
+
+pop = read_pumas(example_data("pain_remed"); event_data=false)
+popdf = DataFrame(pop)
+pop = read_pumas(popdf; event_data=false)
