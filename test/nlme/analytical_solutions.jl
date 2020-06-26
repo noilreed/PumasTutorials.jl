@@ -241,3 +241,154 @@ cnll_analytical = conditional_nll(model_2cp_metabolite_a, pop[1], param, (eta=0.
 cnll_diffeq = conditional_nll(model_2cp_metabolite_s, pop[1], param, (eta=0.1,))
 @test cnll_analytical ≈ cnll_diffeq
 end
+
+@testset "typos or missing vars in pre" begin
+@model begin
+  @param begin
+    θ ∈ VectorDomain(1, init=[0.5])
+    Ω ∈ PDiagDomain(init=[0.04])
+  end
+
+  @random begin
+    η ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    CL = θ[1] * exp(η[1])
+    Vc = 1.0
+  end
+end
+@test_throws ArgumentError @model begin
+  @param begin
+    θ ∈ VectorDomain(1, init=[0.5])
+    Ω ∈ PDiagDomain(init=[0.04])
+  end
+
+  @random begin
+    η ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    CL = θ[1] * exp(η[1])
+    V = 1.0
+  end
+  @dynamics Central1
+end
+@test_throws ArgumentError @model begin
+  @param begin
+    θ ∈ VectorDomain(1, init=[0.5])
+    Ω ∈ PDiagDomain(init=[0.04])
+  end
+
+  @random begin
+    η ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    CL = θ[1] * exp(η[1])
+    V = 1.0
+  end
+  @dynamics Depots1Central1
+end
+@test_throws ArgumentError @model begin
+  @param begin
+    θ ∈ VectorDomain(1, init=[0.5])
+    Ω ∈ PDiagDomain(init=[0.04])
+  end
+
+  @random begin
+    η ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    CL = θ[1] * exp(η[1])
+    V = 1.0
+  end
+  @init begin
+      Cental = 0
+      Depot = 100
+  end
+  @dynamics LinearODE
+end
+@test_throws ArgumentError @model begin
+  @param begin
+    θ ∈ VectorDomain(1, init=[0.5])
+    Ω ∈ PDiagDomain(init=[0.04])
+  end
+
+  @random begin
+    η ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    CL = θ[1] * exp(η[1])
+    V = 1.0
+  end
+  @dynamics Depots2Central1
+end
+@test_throws ArgumentError @model begin
+  @param begin
+    θ ∈ VectorDomain(1, init=[0.5])
+    Ω ∈ PDiagDomain(init=[0.04])
+  end
+
+  @random begin
+    η ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    CL = θ[1] * exp(η[1])
+    V = 1.0
+  end
+  @dynamics Central1Periph1
+end
+@test_throws ArgumentError @model begin
+  @param begin
+    θ ∈ VectorDomain(1, init=[0.5])
+    Ω ∈ PDiagDomain(init=[0.04])
+  end
+
+  @random begin
+    η ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    CL = θ[1] * exp(η[1])
+    V = 1.0
+  end
+  @dynamics Depots1Central1Periph1
+end
+@test_throws ArgumentError @model begin
+  @param begin
+    θ ∈ VectorDomain(1, init=[0.5])
+    Ω ∈ PDiagDomain(init=[0.04])
+  end
+
+  @random begin
+    η ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    CL = θ[1] * exp(η[1])
+    V = 1.0
+  end
+  @dynamics Central1Periph1Meta1
+end
+@test_throws ArgumentError @model begin
+  @param begin
+    θ ∈ VectorDomain(1, init=[0.5])
+    Ω ∈ PDiagDomain(init=[0.04])
+  end
+
+  @random begin
+    η ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    CL = θ[1] * exp(η[1])
+    V = 1.0
+  end
+  @dynamics Central1Periph1Meta1Periph1
+end
+
+end

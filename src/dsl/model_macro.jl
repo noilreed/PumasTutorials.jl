@@ -396,6 +396,11 @@ end
 
 function dynamics_obj(odename::Symbol, pre, odevars, callvars, bvars, eqs, isstatic)
   quote
+    for n ∈ _pre_req($odename)
+      if n ∉ $pre
+        throw(ArgumentError("Required parameter $n not specified in @pre for model type $($odename)."))
+      end
+    end
     ($odename isa Type && $odename <: ExplicitModel) ? $odename() : $odename
   end
 end

@@ -38,6 +38,7 @@ An analytical model for a one compartment model with dosing into `Central`. Equi
 where clearance, `CL`, and volume, `Vc`, are required to be defined in the `@pre` block.
 """
 struct Central1 <: ExplicitModel end
+_pre_req(::Type{Central1}) = (:CL, :Vc)
 (m::Central1)(args...) = _analytical_solve(m, args...)
 @inline function LinearAlgebra.eigen(::Central1, p)
   Ke = p.CL/p.Vc
@@ -62,6 +63,7 @@ An analytical model for a one compartment model with a central compartment, `Cen
 where absoption rate, `Ka`, clearance, `CL`, and volume, `Vc`, are required to be defined in the `@pre` block.
 """
 struct Depots1Central1 <: ExplicitModel end
+_pre_req(::Type{Depots1Central1}) = (:Ka, :CL, :Vc)
 (m::Depots1Central1)(args...) = _analytical_solve(m, args...)
 @inline function LinearAlgebra.eigen(::Depots1Central1, p)
     a = p.Ka
@@ -93,6 +95,8 @@ ev = DosageRegimen([100,100],cmt=[1,2])
 s1 = Subject(id=1, evs=ev)
 """
 struct Depots2Central1 <: ExplicitModel end
+_pre_req(::Type{Depots2Central1}) = (:Ka1, :Ka2, :CL, :Vc)
+
 (m::Depots2Central1)(args...) = _analytical_solve(m, args...)
 @inline function LinearAlgebra.eigen(::Depots2Central1, p)
     a = p.Ka1
@@ -129,6 +133,8 @@ An analytical model for a two-compartment model with a central compartment, `Cen
 where clearance, `CL`, and volumes, `Vc` and `Vp`, and distribution clearance, `Q`, are required to be defined in the `@pre` block.
 """
 struct Central1Periph1 <: ExplicitModel end
+_pre_req(::Type{Central1Periph1}) = (:CL, :Vc, :Q, :Vp)
+
 _V(::Central1Periph1, Λ, b, c) = @SMatrix([(Λ[1]+c)/b (Λ[2]+c)/b])
 function _Λ(::Central1Periph1, a, b, c)
   # b is from actual cmt to peri, c is back
@@ -162,6 +168,8 @@ An analytical model for a two-compartment model with a central compartment, `Cen
 where absorption rate, `Ka`, clearance, `CL`, and volumes, `Vc` and `Vp`, and distribution clearance, `Q`, are required to be defined in the `@pre` block.
 """
 struct Depots1Central1Periph1  <: ExplicitModel end
+_pre_req(::Type{Depots1Central1Periph1}) = (:Ka, :CL, :Vc, :Q, :Vp)
+
 (m::Depots1Central1Periph1 )(args...) = _analytical_solve(m, args...)
 @inline function LinearAlgebra.eigen(::Depots1Central1Periph1 , p)
   k = p.Ka
@@ -196,7 +204,9 @@ An analytical model for a two compartment model with a central compartment, `Cen
 
 where clearances (`CL` and `CLm`) and volumes (`Vc`, `Vp`, `Vm` and `Vmp`), distribution clearances (`Q` and `Qm`) and formation clearance of metabolite `CLfm` are required to be defined in the `@pre` block.
 """
-struct Central1Periph1Meta1Periph1 <: ExplicitModel end # 011?
+struct Central1Periph1Meta1Periph1 <: ExplicitModel end
+_pre_req(::Type{Central1Periph1Meta1Periph1}) = (:CL, :Vc, :Q, :Vp, :CLfm, :CLm, :Vm, :Qm, :Vmp)
+
 (m::Central1Periph1Meta1Periph1)(args...) = _analytical_solve(m, args...)
 @inline function LinearAlgebra.eigen(::Central1Periph1Meta1Periph1, p)
   a = p.CL/p.Vc
@@ -248,6 +258,8 @@ An analytical model for a two compartment model with a central compartment, `Cen
 where clearances (`CL` and `CLm`) and volumes (`Vc`, `Vp` and `Vm`), distribution clearance (`Q`), and formation clearance of metabolite `CLfm` are required to be defined in the `@pre` block.
 """
 struct Central1Periph1Meta1 <: ExplicitModel end
+_pre_req(::Type{Central1Periph1Meta1}) = (:CL, :Vc, :Q, :Vp, :CLfm, :Vm, :CLm)
+
 (m::Central1Periph1Meta1)(args...) = _analytical_solve(m, args...)
 @inline function LinearAlgebra.eigen(m::Central1Periph1Meta1, p)
   a = p.CL/p.Vc
@@ -273,6 +285,8 @@ varnames(::Type{Central1Periph1Meta1}) = (:Central, :CPeripheral, :Metabolite)
 pk_init(::Central1Periph1Meta1) = SLVector(Central=0.0, CPeripheral=0.0, Metabolite=0.0)
 
 struct LinearODE <: ExplicitModel end
+_pre_req(::Type{LinearODE}) = (:A,)
+
 _expAt(AΔt::StaticMatrix)  = exp(AΔt)
 _expAt(AΔt::StridedMatrix) = ExponentialUtilities.exp_generic(AΔt)
 function (m::LinearODE)(t, t₀, amounts, doses, pre, rates)
