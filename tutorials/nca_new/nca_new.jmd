@@ -15,27 +15,20 @@ using Pumas, Plots, CSV, DataFrames, StatsPlots, Statistics
 In this tutorial you will learn how to compute specific parameters using Non-Compartmental Analysis
 
 
-The given dataset contains a total of 200 subjects who receive an oral dose of 50μg/kg every 24hours for 5 days starting a `time=0`.
-We will compute _**Single Dose**_ and _**Multiple Dose**_ NCA parameters for patients who's Creatinine Clearance is > 90 ml/min.
-In the given dataset
- * Time = hrs
- * DV = mg/L
- * CrCl = ml/min
- * Wt = kg
- * Amt = μg/kg
+The given dataset contains a total of 107 subjects who receive an oral dose of 50mg every 24hours for 5 days starting a `time=0`.
+We will compute _**Single Dose**_ and _**Multiple Dose**_ NCA parameters
 
-**Step1:** Load the NCA dataset using the CSV.read function and convert it to a Dataframe
+In the given dataset
+ * Time  = hrs
+ * Conc  = mg/L
+ * Amt   = mg
+
+**Step1:** Load the NCA dataset using the `CSV.read` function and convert it to a Dataframe
 
 ```julia
-data = CSV.read("StudyA1Renal.csv")
+data = CSV.read("NCA_tutorial.csv")
 df1  = DataFrame(data)
 first(df1, 6)
-```
-
-**Step2:** Create a new column[:NEWAMT] and multiply the amt with weight and divide by 1000 to get individual specific dose in mg.
-
-```julia
-df1[!, :NEWAMT] = df1.AMT .* df1.WT ./1000;
 ```
 
 Plot a exploratory graph of **Concentration vs Time** and group each subject by the specific `ID` assigned.
@@ -46,12 +39,11 @@ Plot a exploratory graph of **Concentration vs Time** and group each subject by 
 
 #### Single-dose NCA
 
-Filter data for CrCl>=90 mL/min && time <= 24 hrs.
+Filter data for time <= 24 hrs to perform the Single-dose NCA
 
-_Note:_ Do not specify the Inter Dose Interval in this case
 
 ```julia
-df2 = filter(x -> x.TIME <=24 && x.CRCL > 90, df1)
+df2  = filter(x -> x.TIME <= 24 , df1)
 ```
 
 We will specify the units of time, concentration and amount which will be mapped to `read_nca`
@@ -62,7 +54,8 @@ concu = u"mg/L"
 amtu  = u"mg";
 ```
 
-Parse the dataframe to a read_nca function and map the necessary columns from the dataset
+Parse the dataframe to a `read_nca` function and map the necessary columns from the dataset
+
  * id
  * conc
  * time
@@ -73,12 +66,55 @@ Parse the dataframe to a read_nca function and map the necessary columns from th
  * group - any other grouping variables that you require in the output
 
 
-**Note:** If your datset has the specific style of headers for the column you will not need to map them seperately. They will be
+**Note:**
+
+ * If your datset has the specific style of headers for the column you _will not need_ to map them seperately. They will be
 automatically determined by PUMAS. eg: id, time, conc, amt, route, duration(if needed), ocassion(if needed), group(if needed)
 
+ * _Do not specify the Inter Dose Interval_ in this case because we are computing Single-Dose NCA parameters
+
 ```julia
-pop        = read_nca(df2, id=:ID, time=:TIME, conc=:DV, amt=:NEWAMT, route=:ROUTE, llq=0.001concu, timeu=timeu, concu=concu, amtu=amtu)
+pop        = read_nca(  df2,
+                        id    = :ID,
+                        time  = :TIME,
+                        conc  = :DV,
+                        amt   = :AMT,
+                        route = :ROUTE,
+                        llq   = 0.001concu,
+                        timeu = timeu,
+                        concu = concu,
+                        amtu  = amtu
+                      )
 report     = NCAReport(pop, sigdigits=3)
+```
+
+##### Compute Specific Parameters
+
+We will now compute the specific parameters that we require and merge all of them to a dataframe
+
+```julia
+vz        = NCA.vz(pop, sigdigits=3)  # Volume of Distribution/F, in this case since the drug is given orally
+cl        = NCA.cl(pop, sigdigits=3)  # Clearance/F, in this case since the drug is given orally
+lambdaz   = NCA.lambdaz(pop, threshold=3, sigdigits=3)  # Terminal Elimination Rate Constant, threshold=3 specifies the max no. of time point used for calculation
+lambdaz_1 = NCA.lambdaz(pop, slopetimes=[8,12,16].*timeu, sigdigits=3) # slopetimes in this case specifies the exact time point you want for the calculation
+thalf     = NCA.thalf(pop[4], sigdigits=3) # Half-life calculation for 4th individual
+cmax_d    = NCA.cmax(pop, normalize=true, sigdigits=3) # Dose Normalized Cmax
+mrt       = NCA.mrt(pop, sigdigits=3) # Mean residence time
+aumc      = NCA.aumc(pop, method=:linlog, sigdigits=3) # AUMC calculation, using :linlog method
+rename!(lambdaz_1, Dict(:lambdaz => "lambdaz_specf")) #since we have two lambdaz calculation rename one column to merge in a dataframe
+df_1      = join(vz,cl,lambdaz, lambdaz_1,cmax_d,mrt,aumc, on=[:id], kind=:inner, makeunique=true)
+```
+
+##### Calculate AUC at specific intervals
+
+Calculation of **AUC** at _specific time_ intervals and merge to the final report dataframe
+
+```julia
+auc0_12   = NCA.auc(pop, interval=(0,12).*timeu, method=:linuplogdown, sigdigits=3) #various other methods are :linear, :linlog
+rename!(auc0_12, Dict(:auc => "auc0_12"))
+auc12_24  = NCA.auc(pop, interval=(12,24).*timeu, method=:linuplogdown, sigdigits=3)
+rename!(auc12_24, Dict(:auc => "auc12_24"))
+final     = join(report, auc0_12, auc12_24, on = [:id], kind=:inner, makeunique=true)
 ```
 
 You can select the colums that you wish to see in the output
@@ -86,7 +122,7 @@ You can select the colums that you wish to see in the output
 **Note:** Since this drug is given orally the parameters returned by NCA are **apparent** Volume of Distribution (Vz/F) and Clearance (Cl/F) where F is the bioavailability.
 
 ```julia
-df3        = select(report, :doseamt, :lambda_z, :half_life, :cmax, :tmax, :auclast, :aucinf_obs, :vz_f_obs, :cl_f_obs, :aumcinf_obs)
+df3       = select(final, :doseamt, :lambda_z, :half_life, :cmax, :tmax, :auclast, :aucinf_obs, :vz_f_obs, :cl_f_obs, :aumcinf_obs, :auc0_12, :auc12_24)
 ```
 
 Compute the Statistics of the selected variables that you require
@@ -97,18 +133,24 @@ Stat_report = describe(df3)
 
 #### Multiple-dose NCA
 
-Filter data for CrCl>=90 mL/min.
+In the case of multiple-dose NCA the extra parameters which are calculated based on the dosing interval (τ) will be included in the output.
 
 ```julia
-df4        = filter(x -> x.CRCL > 90, df1)
-```
-
-In the case of multiple-dose NCA the extra parameters which are calculated with based on the dosing interval (τ) will be included in the output.
-
-```julia
-pop1       = read_nca(df4, id=:ID, time=:TIME, conc=:DV, amt=:NEWAMT, route=:ROUTE, ii=:II, llq=0.001concu, timeu=timeu, concu=concu, amtu=amtu)
+pop1       = read_nca( df1,
+                       id    = :ID,
+                       time  = :TIME,
+                       conc  = :DV,
+                       amt   = :AMT,
+                       route = :ROUTE,
+                       ii    = :II,        # please specify II for Multiple-dose NCA
+                       llq   = 0.001concu,
+                       timeu = timeu,
+                       concu = concu,
+                       amtu  = amtu)
 report1    = NCAReport(pop1, sigdigits=3)
 ```
+
+Similar to the Single-NCA you can compute individual parameters and merge them to the final report
 
 You can select the colums that you wish to see in the output
 
@@ -122,48 +164,22 @@ Compute the Statistics of the selected variables that you require
 Stat_report1 = describe(df5)
 ```
 
-#### Compute Specific NCA Parameters
+#### Documentation
 
-We can also compute individual NCA parameters and specifiy the type of calculation as required. For others you can refer [NCA Documentation](https://docs.pumas.ai/dev/basics/nca/)
-
- * `method = :linear, :linuplogdown, :linlog`. If not specified the Default method is `:linear`.
-
-```julia
-auc_single  = NCA.auc(pop, method=:linuplogdown)
-select!(auc_single, :auc)
-rename!(auc_single, Dict(:auc => "auc_single"))
-```
-
-```julia
-auc_multiple = NCA.auc(pop1, method=:linuplogdown)
-select!(auc_multiple, :auc)
-rename!(auc_multiple, Dict(:auc => "auc_multiple"))
-```
-
-```julia
-df6     = hcat(auc_single,auc_multiple)
-stats   = describe(df6)
-```
-
-To calculate individual NCA parameters
-Few Examples are given below:
-
-```julia
-vz      = NCA.vz(pop)                    # Volume of Distribution/F, in this case since the drug is given orally
-cl      = NCA.cl(pop)                    # Clearance/F, in this case since the drug is given orally
-lambdaz = NCA.lambdaz(pop)               # Terminal Elimination Rate Constant
-thalf   = NCA.thalf(pop[4])              # Half-life calculation for 4th individual
-cmax_d  = NCA.cmax(pop, normalize=true)  # Dose Normalized Cmax
-mrt     = NCA.mrt(pop)                   # Mean residence time
-aumc    = NCA.aumc(pop, method=:linlog)  # AUMC calculation, using :linlog method
-accu    = NCA.accumulationindex(pop1);   # Accumulation Index for Multiple doses
-```
+Please refer to the [NCA Documentation](https://docs.pumas.ai/dev/basics/nca/) for any further help.
 
 #### Save NCA Report
 
 The NCA report can be saved as a CSV file for further analysis
 
 ```julia
-CSV.write("NCA_Single.csv", report)
-CSV.write("NCA_Multiple.csv", report1)
+CSV.write("NCA_Single.csv", final)      # Single-NCA final report
+CSV.write("NCA_Multiple.csv", report1)  # Multiple-NCA final report
+```
+
+
+#### Nonparametric Superpositioning
+
+```julia
+
 ```
