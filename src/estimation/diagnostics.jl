@@ -401,7 +401,7 @@ end
 """
     ηshrinkage(fpm::FittedPumasModel)
 
-Calculate the η-shrinkage.  
+Calculate the η-shrinkage.
 
 Takes the result of a `fit` as the only input argument. A named tuple of the random effects and corresponding η-shrinkage values is output.
 """
@@ -410,35 +410,18 @@ Takes the result of a `fit` as the only input argument. A named tuple of the ran
 function ϵshrinkage(m::PumasModel,
                     data::Population,
                     param::NamedTuple,
-                    approx::FOCEI,
+                    approx::Union{FO,FOCE,FOCEI,LaplaceI},
                     vvrandeffsorth::Union{Nothing, AbstractVector}=nothing,
                     args...;
                     kwargs...)
 
   if vvrandeffsorth isa Nothing
-    vvrandeffsorth = [_orth_empirical_bayes(m, subject, param, FOCEI(), args...; kwargs...) for subject in data]
-  end
-
-  _keys_dv = keys(first(data).observations)
-  _icwresi = [iwresiduals(m, subject, param, FOCEI(), vvrandeffsorth) for (subject, vvrandeffsorth) in zip(data, vvrandeffsorth)]
-  map(name -> 1 - std(vec(VectorOfArray(getproperty.(_icwresi, name))), corrected = false), NamedTuple{_keys_dv}(_keys_dv))
-end
-
-function ϵshrinkage(m::PumasModel,
-                    data::Population,
-                    param::NamedTuple,
-                    approx::FOCE,
-                    vvrandeffsorth::Union{Nothing, AbstractVector}=nothing,
-                    args...;
-                    kwargs...)
-
-  if vvrandeffsorth isa Nothing
-    vvrandeffsorth = [_orth_empirical_bayes(m, subject, param, FOCE(), args...; kwargs...) for subject in data]
+    vvrandeffsorth = [_orth_empirical_bayes(m, subject, param, LaplaceI(), args...; kwargs...) for subject in data]
   end
 
   _keys_dv = keys(first(data).observations)
   _icwres = [iwresiduals(m, subject, param, FOCE(), vvrandeffsorth) for (subject, vvrandeffsorth) in zip(data, vvrandeffsorth)]
-  map(name -> 1 - std(vec(VectorOfArray(getproperty.(_icwres, name))), corrected = false), NamedTuple{_keys_dv}(_keys_dv))
+  map(name -> 1 - std(skipmissing(Iterators.flatten(getproperty.(_icwres, name))), corrected = false), NamedTuple{_keys_dv}(_keys_dv))
 end
 
 """
@@ -446,8 +429,7 @@ end
 
 Calculate the ϵ-shrinkage.
 
-Takes the result of a `fit` as the only input argument. Available only with the FOCEI and FOCE approximation methods for 
-marginal likelihood calculation. A named tuple of derived variables and corresponding ϵ-shrinkage values is output.
+Takes the result of a `fit` as the only input argument. A named tuple of derived variables and corresponding ϵ-shrinkage values is output.
 """
 ϵshrinkage(fpm::FittedPumasModel) = ϵshrinkage(fpm.model, fpm.data, coef(fpm), fpm.approx, ; fpm.kwargs...)
 
@@ -469,13 +451,16 @@ Calculate the Akaike information criterion (AIC) of the fitted Pumas model `fpm`
 StatsBase.aic(fpm::FittedPumasModel) = aic(fpm.model, fpm.data, coef(fpm), fpm.approx; fpm.kwargs...)
 
 function StatsBase.bic(m::PumasModel,
-                       data::Population,
+                       population::Population,
                        param::NamedTuple,
                        approx::LikelihoodApproximation,
                        args...;
                        kwargs...)
+
   numparam = TransformVariables.dimension(totransform(m.param))
-  2*marginal_nll(m, data, param, approx, args...; kwargs...) + numparam*log(sum(t -> length(t.time), data))
+  nll = marginal_nll(m, population, param, approx, args...; kwargs...)
+  n = sum(subject -> sum(dv -> sum(!ismissing, dv), subject.observations), population)
+  return 2*nll + numparam*log(n)
 end
 
 """

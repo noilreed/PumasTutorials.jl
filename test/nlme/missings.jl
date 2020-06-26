@@ -111,13 +111,14 @@ using Pumas, Test
         optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
       @test deviance(ft) == deviance(ft_missing)
 
-      if _approx isa Union{Pumas.FO, Pumas.FOCE, Pumas.FOCEI}
-        res         = wresiduals(ft)
-        res_missing = wresiduals(ft_missing)
-        @test all(map(((rᵢ, rmᵢ),) -> rᵢ.wres.dv ≈ filter(!ismissing, rmᵢ.wres.dv), zip(res, res_missing)))
-      else
-        @test_broken wresiduals(ft)
-      end
+      res         = wresiduals(ft)
+      res_missing = wresiduals(ft_missing)
+      @test all(map(((rᵢ, rmᵢ),) -> rᵢ.wres.dv ≈ filter(!ismissing, rmᵢ.wres.dv), zip(res, res_missing)))
+
+      @test ϵshrinkage(ft).dv ≈ ϵshrinkage(ft_missing).dv
+      @test ηshrinkage(ft).η  ≈ ηshrinkage(ft_missing).η
+      @test aic(ft)           ≈ aic(ft_missing)
+      @test bic(ft)           ≈ bic(ft_missing)
     end
   end
 end
