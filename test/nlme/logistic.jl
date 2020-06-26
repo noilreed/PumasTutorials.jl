@@ -73,8 +73,8 @@ end
     end
 
     @vars begin
-      μ = Central / Vc
-      p = logistic(μ/10 + η)
+      μ := Central / Vc
+      p := logistic(μ/10 + η)
     end
 
     @dynamics Central1
@@ -95,7 +95,7 @@ end
     )
 
   n = 5
-  pop_skeleton = [Subject(id=i, evs=dr, time=t, obs=(y=Float64[],)) for i in 1:n]
+  pop_skeleton = [Subject(id=i, evs=dr, time=t) for i in 1:n]
 
   # simobs for a population is currently broken if the random effect isn't passed and used after the ODE solve.
   @test_broken simobs(mdl, pop_skeleton, par_init)

@@ -87,8 +87,8 @@ if !haskey(TESTMODELS, "HCV")
     # be available in our simulated data, but only `dv` has a distribution
     # here (~ read "ditributed as").
     @derived begin
-      conc   = @. A/exp(logVd)
-      log10W = @. log10(W)
+      conc   := @. A/exp(logVd)
+      log10W := @. log10(W)
       yPK ~ @. Normal(A/exp(logVd), sqrt(σ²PK))
       yPD ~ @. Normal(log10W, sqrt(σ²PD))
     end
@@ -118,7 +118,7 @@ if !haskey(TESTMODELS, "HCV")
 
   t = [0.25, 0.5, 1.0, 2.0, 3.0, 4.0, 6.99, 10.0, 13.99, 20.99, 28.0]
 
-  _pop = map(i -> Subject(id=i, obs=(yPK=[], yPD=[]), evs=dr, time=t), 1:3)
+  _pop = map(i -> Subject(id=i, evs=dr, time=t), 1:3)
 
   # Simulate data for estimation (fix seed for reproducibility)
   Random.seed!(123)

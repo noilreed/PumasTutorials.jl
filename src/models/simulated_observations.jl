@@ -14,7 +14,7 @@ end
 
 # Convert to Subject
 function Subject(simsubject::SimulatedObservations)
-  dvnames = keys(simsubject.subject.observations)
+  dvnames = simsubject.subject.observations === nothing ? keys(simsubject.observed) : keys(simsubject.subject.observations)
   covariates = simsubject.subject.covariates
   covartime = simsubject.subject.covartime
   subject = Subject(;

@@ -85,7 +85,7 @@ params = (tvcl     = 5.0,
           Ω        = Diagonal([0.05, 0.05]),
           σ        = 0.12)
 
-pop = [Subject(id=i, evs=DosageRegimen(100, cmt=1, time=0), obs=(dv1=Float64[],dv2=Float64[])) for i = 1:1000]
+pop = [Subject(id=i, evs=DosageRegimen(100, cmt=1, time=0)) for i = 1:1000]
 sims = simobs(model, pop, params,obstimes = [0,0.1,0.2,0.3,0.4,0.5,1.0,1.5,2.5,4.0,5.0], ensemblealg = EnsembleSerial())
 
 reread_df = DataFrame(sims)
