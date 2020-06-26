@@ -23,10 +23,11 @@ function _build_diffeq_problem(m::PumasModel, subject::Subject, args...;
   # d_discontinuities are used to inform diffeq about the places where things change
   # suddenly in the model and introduce discontinuities in the derivates (such as
   # time varying covariates etc)
-
   if make_events
     tstops,_cb,d_discontinuities = ith_subject_cb(col,subject,Tu0,tspan[1],typeof(prob),saveat,save_discont,continuity)
   else
+    # This branch is only taken in mixed PKPD models where the events have been
+    # processed as part of the analytical solution
     tstops,_cb,d_discontinuities = Float64[],nothing,Float64[]
   end
 
@@ -94,7 +95,9 @@ function build_pkpd_problem(_prob::DiffEqBase.AbstractJumpProblem,set_parameters
 end
 
 function ith_subject_cb(pre,datai::Subject,u0,t0,ProbType,saveat,save_discont,continuity)
-  isempty(datai.events) && return Float64[], nothing, Float64[]
+  if isempty(datai.events)
+    return Float64[], nothing, Float64[]
+  end
   ss_abstol = 1e-12 # TODO: Make an option
   ss_reltol = 1e-12 # TODO: Make an option
   ss_max_iters = 1000

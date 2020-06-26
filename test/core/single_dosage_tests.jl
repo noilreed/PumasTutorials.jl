@@ -126,3 +126,14 @@ sol_diffeq = simobs(m_diffeq, data, param, ensemblealg = EnsembleSerial())
 sol_diffeq = simobs(m_diffeq, data, param, ensemblealg = EnsembleThreads())
 sol_diffeq = simobs(m_diffeq, data, param, ensemblealg = EnsembleSplitThreads())
 sol_diffeq = simobs(m_diffeq, data, param, ensemblealg = EnsembleDistributed())
+
+@testset "placebo subject (without events)" begin
+  placebo_subject = deepcopy(subject1)
+  placebo_subject.observations.dv .= missing
+  empty!(placebo_subject.events)
+
+  s_diffeq   = solve(m_diffeq, placebo_subject, param, randeffs)
+  s_analytic = solve(m_analytic, placebo_subject, param, randeffs)
+
+  @test s_diffeq(10.0)[:Central] == s_analytic(10.0)[:Central]
+end

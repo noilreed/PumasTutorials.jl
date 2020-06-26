@@ -46,7 +46,7 @@ function _build_analytical_problem(
   events = adjust_event(subject.events,col,u0)
   times = sorted_approx_unique(events)
 
-  prob = AnalyticalPKPDProblem{false}(f, Tu0, Ttspan,  events, times, col)
+  prob = AnalyticalPKPDProblem{false}(f, Tu0, Ttspan, events, times, col)
 end
 
 function DiffEqBase.solve(prob::AnalyticalPKPDProblem,
@@ -61,25 +61,29 @@ function DiffEqBase.solve(prob::AnalyticalPKPDProblem,
   doses = zeros(typeof(Tu0), length(times))
   rates = Vector{typeof(Tu0)}(undef, length(times))
 
-  t0 = times[1]
   rate = zero(Tu0)
   last_dose = zero(Tu0)
   i = 1
-  ss_time = -one(t0)
-  ss_overlap_duration = -one(t0)
+  ss_time = -one(eltype(times))
+  ss_overlap_duration = -one(eltype(times))
   ss_rate_multiplier = -1.0
   post_ss_counter = -1
-  event_counter = i-1
+  event_counter = i - 1
   ss_rate = zero(rate)
-  ss_ii = zero(t0)
+  ss_ii = zero(eltype(times))
   ss_cmt = 0
   ss_dropoff_event = false
   start_val = 0
   retcode = :Success
   dose = zero(Tu0)
-  local t
+  local t, t0
   # Now loop through the rest
   while i <= length(times)
+
+    # Initialize t0 inside the while loop since times might be empty
+    if i == 1
+      t0 = first(times)
+    end
 
     if eltype(times) <: ForwardDiff.Dual && i > 1
       # Used to introduce a coupling for AD, but can give some very small

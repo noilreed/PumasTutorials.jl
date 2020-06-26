@@ -141,7 +141,10 @@ function _problem(m::PumasModel, subject, col, args...;
                      remake(m.prob.prob2; p=_col, u0=u0, tspan=tspan),
                      m.derived,
                      m.observed)
-    _prob = PresetAnalyticalPKProblem(_build_diffeq_problem(mtmp, subject, args...;saveat=saveat, make_events=false, kwargs...),pksol)
+    _prob = PresetAnalyticalPKProblem(
+      _build_diffeq_problem(mtmp, subject, args...;
+        saveat=saveat, make_events=false, kwargs...),
+      pksol)
   else
     u0  = m.init(col, tspan[1])
     if typeof(m.prob) <: DiffEqBase.AbstractJumpProblem
@@ -168,9 +171,7 @@ function _problem(m::PumasModel, subject, col, args...;
                      topprob,
                      m.derived,
                      m.observed)
-    _prob = _build_diffeq_problem(mtmp, subject, args...;saveat=saveat,
-                                  make_events=!isempty(subject.events) && !isnothing(subject.events),
-                                  kwargs...)
+    _prob = _build_diffeq_problem(mtmp, subject, args...; saveat=saveat, kwargs...)
   end
   _prob
 end
