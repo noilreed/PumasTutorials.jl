@@ -17,7 +17,7 @@ function read_nca(df; group=nothing, kwargs...)
   pop = if group === nothing
     ___read_nca(df; kwargs...)
   else
-    dfs = groupby(df, group)
+    dfs = groupby(df, group, sort=true)
     groupnum = length(dfs)
     dfpops = combine(dfs, ungroup=false) do df
       if group isa AbstractArray && length(group) > 1
@@ -41,7 +41,7 @@ end
 
 function ___read_nca(df; id=:id, time=:time, conc=:conc, occasion=:occasion,
                      start_time=:start_time, end_time=:end_time, volume=:volume,
-                     amt=:amt, route=:route,#= rate=nothing,=# duration=:duration, blq=:blq,
+                     amt=:amt, route=:route, duration=:duration, blq=:blq,
                      ii=:ii, ss=:ss, group=nothing, concu=true, timeu=true, amtu=true, volumeu=true,
                      verbose=true, kwargs...)
   local ids, times, concs, amts
@@ -156,8 +156,14 @@ function ___read_nca(df; id=:id, time=:time, conc=:conc, occasion=:occasion,
           sss[i] == 1 ? true :
           throw(ArgumentError("ss can only be 0 or 1"))
       end
-      duration′ = duration === nothing ? nothing : df[!,duration][dose_idx]*timeu
-      doses = NCADose.(dose_time*timeu, amts[dose_idx]*amtu, duration′, route′, ii*timeu, ss)
+      duration′ = if duration === nothing
+        nothing
+      else
+        durations = df[!,duration]
+        map(idx->durations[idx]*timeu, dose_idx)
+      end
+      amt′ = map(idx->amts[idx]*amtu, dose_idx)
+      doses = NCADose.(dose_time*timeu, amt′, duration′, route′, ii*timeu, ss)
     else
       doses = nothing
     end
