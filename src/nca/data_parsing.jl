@@ -179,7 +179,6 @@ function ___read_nca(df; id=:id, time=:time, conc=:conc, occasion=:occasion,
   end
   # Use broadcast to tighten ncas element type
   pop = identity.(ncas)
-  checkncapop(pop)
   return pop
 end
 

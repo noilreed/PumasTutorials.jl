@@ -132,7 +132,7 @@ data2 = CSV.read(IOBuffer("""
   """))
 for df in (data1, data2)
   df[!,:route] .= "ev"
-  @test_throws AssertionError read_nca(df, timeu=timeu, concu=concu, amtu=amtu);
+  @test_nowarn NCAReport(read_nca(df, timeu=timeu, concu=concu, amtu=amtu), verbose=false)
 end
 
 df = DataFrame()

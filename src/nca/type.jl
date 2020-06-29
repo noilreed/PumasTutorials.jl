@@ -267,19 +267,6 @@ function Base.show(io::IO, n::NCASubject)
 end
 
 const NCAPopulation{T} = AbstractVector{T} where T <: NCASubject
-@noinline dosenumerror() = throw(AssertionError("All subjects in a population must have the same number of doses. Please consider padding your data if you are sure that there are no errors in it."))
-function checkncapop(pop::NCAPopulation)
-  E = eltype(pop)
-  isconcretetype(E) || dosenumerror()
-  if ismultidose(pop)
-    ndose = length(pop[1].dose)
-    for subj in pop
-      length(subj.dose) == ndose && continue
-      dosenumerror()
-    end
-  end
-  return nothing
-end
 
 Base.show(io::IO, pop::NCAPopulation) = show(io, MIME"text/plain"(), pop)
 function Base.show(io::IO, ::MIME"text/plain", pop::NCAPopulation)

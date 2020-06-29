@@ -151,7 +151,7 @@ function _auc(nca::NCASubject{C,TT,T,tEltype,AUC,AUMC,D,Z,F,N,I,P,ID,G,V,R,RT}, 
   _clast = clast(nca; verbose=verbose, kwargs...)
   _tlast = tlast(nca)
   # type assert `auc`
-  auc::ret_typ = zero(ret_typ)
+  auc = zero(ret_typ)
   if _clast === missing
     cacheauc!(nca, auc, interval, method, isauc)
     if all(x->x<=nca.llq, conc)

@@ -40,30 +40,36 @@ for f in [:lambdaz, :lambdazr2, :lambdazadjr2, :lambdazr, :lambdazintercept, :la
         param = $f == mat ? vcat(_sol, fill(missing, length(subj.dose)-1)) : # make `f` as long as the other ones
                             $f(subj, args...; verbose=verbose, kwargs...)
       end
-      sol = collect(Base.Iterators.flatten(sol′))
+      sol = mapreduce(x->x isa AbstractArray ? x : [x], vcat, sol′)
     else
       sol = map(subj->$f(subj, args...; verbose=verbose, kwargs...), pop)
     end
     typeof(sol) === Any && (sol = map(identity, sol))
     df = DataFrame()
     if label
-      _repeat(x, n) = n == 1 ? x : repeat(x, inner=n)
+      _repeat(xs, ndoses) = mapreduce(vcat, zip(xs, ndoses)) do (x, ndose)
+        if x isa AbstractArray
+          repeat(x, ndose)
+        else
+          fill(x, ndose)
+        end
+      end
       firstsubj = first(pop)
-      ndose = ismulti ? length(firstsubj.dose) : 1
+      ndoses = map(subj->subj.dose isa Union{Nothing,NCADose} ? 1 : length(subj.dose), pop)
       id′ = map(subj->subj.id, pop)
-      df.id = _repeat(id′, ndose)
-      ismulti && (df.occasion = repeat(1:ndose, outer=length(pop)))
+      df.id = _repeat(id′, ndoses)
+      ismulti && (df.occasion = mapreduce(ndose->1:ndose, vcat, ndoses))
       if firstsubj.group !== nothing
         ngroup = firstsubj.group isa AbstractArray ? length(firstsubj.group) : 1
         if ngroup == 1
           grouplabel = Symbol(firstsubj.group.first)
           groupnames = map(subj->subj.group.second, pop)
-          setproperty!(df, grouplabel, _repeat(groupnames, ndose))
+          setproperty!(df, grouplabel, _repeat(groupnames, ndoses))
         else # multi-group
           for i in 1:ngroup
             grouplabel = Symbol(firstsubj.group[i].first)
             groupnames = map(subj->subj.group[i].second, pop)
-            setproperty!(df, grouplabel, _repeat(groupnames, ndose))
+            setproperty!(df, grouplabel, _repeat(groupnames, ndoses))
           end
         end
       end
