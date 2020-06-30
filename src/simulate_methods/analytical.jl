@@ -97,9 +97,10 @@ function DiffEqBase.solve(prob::AnalyticalPKPDProblem,
       if typeof(val) <: ForwardDiff.Dual
         # Nested AD case
         t = ForwardDiff.Dual{ForwardDiff.tagtype(t)}(
-              ForwardDiff.Dual{ForwardDiff.tagtype(val)}(times[i],ForwardDiff.partials(val)),ForwardDiff.partials(t))
+              ForwardDiff.Dual{ForwardDiff.tagtype(val)}(
+              ForwardDiff.value(ForwardDiff.value(times[i])),ForwardDiff.partials(val)),ForwardDiff.partials(t))
       else
-        t = ForwardDiff.Dual{ForwardDiff.tagtype(t)}(times[i],ForwardDiff.partials(t))
+        t = ForwardDiff.Dual{ForwardDiff.tagtype(t)}(ForwardDiff.value(times[i]),ForwardDiff.partials(t))
       end
     else
       t = times[i]
