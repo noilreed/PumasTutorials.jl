@@ -95,13 +95,10 @@ end
     )
 
   n = 5
-  pop_skeleton = [Subject(id=i, evs=dr, time=t) for i in 1:n]
 
-  # simobs for a population is currently broken if the random effect isn't passed and used after the ODE solve.
-  @test_broken simobs(mdl, pop_skeleton, par_init)
-  # Hence we simulate with a comprehension
+  pop_skeleton = [Subject(id=i, evs=dr, time=t) for i in 1:n]
   Random.seed!(123)
-  pop_sim = simobs(mdl, pop_skeleton, par_init, [sample_randeffs(mdl, par_init) for i in 1:n], ensemblealg=EnsembleSerial())
+  pop_sim = simobs(mdl, pop_skeleton, par_init, ensemblealg=EnsembleSerial())
 
   pop_est = Subject.(pop_sim)
 

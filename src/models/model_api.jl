@@ -271,22 +271,64 @@ function simobs(m::PumasModel, subject::Subject,
   SimulatedObservations(subject,obstimes,obs)
 end
 
+struct RepeatedVector{T} <: AbstractVector{T}
+    arr::AbstractVector{T}
+    n::Int
+end
+Base.size(A::RepeatedVector) = (length(A.arr)*A.n,)
+Base.@propagate_inbounds Base.getindex(A::RepeatedVector,i) = A.arr[mod1(i,length(A.arr))]
+
+function simobs(m::PumasModel, subject::Subject,
+                param::AbstractVector,
+                randeffs = [sample_randeffs(m, param) for i in 1:length(param)],
+                args...;
+                kwargs...)
+  if !(randeffs isa Nothing) && length(param) !== length(randeffs)
+    throw(DimensionMismatch("The fixed and random effects input must have equal length, got $(length(param)) and $(length(randeffs))."))
+  end
+  _simobs(m,RepeatedVector([subject],length(param)),param,randeffs,args...;kwargs...)
+end
+
 function simobs(m::PumasModel, pop::Population,
-                param = init_param(m),
+                param::NamedTuple = init_param(m),
+                randeffs = [sample_randeffs(m, param) for i in 1:length(pop)],
+                args...;
+                kwargs...)
+  if !(randeffs isa Nothing) && length(pop) !== length(randeffs)
+    throw(DimensionMismatch("The population and random effects input must have equal length, got $(length(pop)) and $(length(randeffs))."))
+  end
+  _simobs(m,pop,RepeatedVector([param],length(pop)),randeffs,args...;kwargs...)
+end
+
+function simobs(m::PumasModel, pop::Population,
+                param::AbstractVector,
+                randeffs = [sample_randeffs(m, param) for i in 1:(length(pop)*length(param))],
+                args...;
+                kwargs...)
+  out = _simobs(m,RepeatedVector(pop,length(param)),RepeatedVector(param,length(pop)),randeffs,args...;kwargs...)
+  n = length(pop)
+  # Chop up into arrays of each population matching parameter i
+  [out[((i-1)*n + 1):i*n] for i in 1:length(param)]
+end
+
+function _simobs(m::PumasModel, pop::Population,
+                param::AbstractVector,
                 randeffs=nothing,
                 args...;
                 alg=AutoTsit5(Rosenbrock23()),
                 ensemblealg = EnsembleThreads(),
                 callback = nothing,
                 kwargs...)
-  _compare_keys(m, param)
   if !(randeffs isa Nothing) && length(pop) !== length(randeffs)
     throw(DimensionMismatch("The population and random effects input must have equal length, got $(length(pop)) and $(length(randeffs))."))
   end
+  _compare_keys(m, first(param))
+
+  _param = [_rand(param[i]) for i in 1:length(param)]
+  _randeffs = randeffs === nothing ? [sample_randeffs(m, _param[i]) for i in 1:length(param)] : randeffs
+
   function simobs_prob_func(prob,i,repeat)
-    _param = _rand(param)
-    _randeffs = randeffs === nothing ? sample_randeffs(m, _param) : randeffs[i]
-    col = m.pre(_param, _randeffs, pop[i])
+    col = m.pre(_param[i], _randeffs[i], pop[i])
     obstimes = :obstimes ∈ keys(kwargs) ? kwargs[:obstimes] : observationtimes(pop[i])
     saveat = :saveat ∈ keys(kwargs) ? kwargs[:saveat] : obstimes
     _problem(m,pop[i],col,args...; saveat=saveat, callback=callback, kwargs...)
@@ -296,8 +338,7 @@ function simobs(m::PumasModel, pop::Population,
     col = sol.prob.p
     obstimes = :obstimes ∈ keys(kwargs) ? kwargs[:obstimes] : observationtimes(pop[i])
     saveat = :saveat ∈ keys(kwargs) ? kwargs[:saveat] : obstimes
-    _randeffs = randeffs === nothing ? nothing : randeffs[i]
-    derived = m.derived(col, sol, obstimes, pop[i], param, _randeffs)
+    derived = m.derived(col, sol, obstimes, pop[i], _param[i], _randeffs[i])
     obs = m.observed(col,sol,obstimes,map(_rand,derived),pop[i])
     SimulatedObservations(pop[i],obstimes,obs),false
   end
@@ -306,6 +347,7 @@ function simobs(m::PumasModel, pop::Population,
                          output_func = simobs_output_func)
   solve(prob,alg,ensemblealg,args...;trajectories = length(pop),kwargs...).u
 end
+
 """
     pre(m::PumasModel, subject::Subject, param, randeffs)
 

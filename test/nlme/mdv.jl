@@ -104,42 +104,42 @@ res_laplacei = fit(model, reread, params, Pumas.LaplaceI(),
   optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
 ref_focei = (
-  tvcl = 6.715592442065195,
-  tvmetacl = 6.0900313123527665,
-  tvv = 10.050299214318207,
-  tvvp = 9.974386611168296,
-  tvq = 6.971669524314598,
-  tvt = 5.361734303081132,
-  tvvmeta = 5.356045290063821,
-  Ω = Pumas.PDMats.PDiagMat{Float64,Array{Float64,1}}(2, [0.027967176123167337, 0.052792034715620786], [35.75620204185091, 18.94225152310917]),
-  σ = 0.12054933413657265)
+  tvcl     =  5.51061,
+  tvmetacl =  7.44617,
+  tvv      =  9.9675,
+  tvvp     = 10.0517,
+  tvq      =  6.99332,
+  tvt      =  6.55763,
+  tvvmeta  =  6.5788,
+  Ω        = [0.045283, 0.050151],
+  σ        =  0.12053)
 
 
 ref_laplacei = (
-  tvcl = 7.847462662716163,
-  tvmetacl = 4.796813332826394,
-  tvv = 10.053015800094743,
-  tvvp = 9.986110551249347,
-  tvq = 6.977868238727858,
-  tvt = 4.21406331637431,
-  tvvmeta = 4.202633969615397,
-  Ω = Pumas.PDMats.PDiagMat{Float64,Array{Float64,1}}(2, [0.020404412904399264, 0.0528569006856447], [49.00900627159904, 18.919005598668935]),
-  σ = 0.1204816293521871)
+  tvcl     =  6.257,
+  tvmetacl =  6.59377,
+  tvv      =  9.97027,
+  tvvp     = 10.0635,
+  tvq      =  6.99926,
+  tvt      =  5.79465,
+  tvvmeta  =  5.80381,
+  Ω        = [0.0350107, 0.0502259],
+  σ        =  0.120456)
 
 
 @testset "FOCEI" for k in keys(params)
   if k == :Ω
-    @test coef(res_focei)[k].diag ≈ ref_focei[k].diag rtol=1e-3
+    @test coef(res_focei)[k].diag ≈ ref_focei[k] rtol=1e-3
   else
-    @test coef(res_focei)[k]      ≈ ref_focei[k]      rtol=1e-3
+    @test coef(res_focei)[k]      ≈ ref_focei[k] rtol=1e-3
   end
 end
 
 @testset "LaplaceI" for k in keys(params)
   if k == :Ω
-    @test coef(res_laplacei)[k].diag ≈ ref_laplacei[k].diag rtol=1e-3
+    @test coef(res_laplacei)[k].diag ≈ ref_laplacei[k] rtol=1e-3
   else
-    @test coef(res_laplacei)[k]      ≈ ref_laplacei[k]      rtol=1e-3
+    @test coef(res_laplacei)[k]      ≈ ref_laplacei[k] rtol=1e-3
   end
 end
 end

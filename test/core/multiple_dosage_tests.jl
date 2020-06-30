@@ -40,7 +40,7 @@ m_analytic = @model begin
         CL = cl
         Vc  = v
     end
-    @dynamics Depots1Central1 
+    @dynamics Depots1Central1
 
     # we approximate the error by computing the conditional_nll
     @derived begin
@@ -58,6 +58,38 @@ sol_analytic = solve(m_analytic,subject1,param,randeffs)
 
 @test sol_diffeq(95.99) ≈ sol_analytic(95.99) rtol=1e-4
 @test sol_diffeq(217.0) ≈ sol_analytic(217.0) rtol=1e-3 # TODO: why is this so large?
+
+sol_diffeq   = simobs(m_diffeq,subject1,repeat([param],10))
+sol_analytic = simobs(m_analytic,subject1,repeat([param],10))
+@test length(sol_diffeq) == 10
+@test length(sol_analytic) == 10
+@test eltype(sol_diffeq) <: Pumas.SimulatedObservations
+@test eltype(sol_analytic) <: Pumas.SimulatedObservations
+
+sol_diffeq   = simobs(m_diffeq,repeat([subject1],10),param)
+sol_analytic = simobs(m_analytic,repeat([subject1],10),param)
+@test length(sol_diffeq) == 10
+@test length(sol_analytic) == 10
+@test eltype(sol_diffeq) <: Pumas.SimulatedObservations
+@test eltype(sol_analytic) <: Pumas.SimulatedObservations
+
+sol_diffeq   = simobs(m_diffeq,repeat([subject1],10),repeat([param],7))
+sol_analytic = simobs(m_analytic,repeat([subject1],10),repeat([param],7))
+@test length(sol_diffeq) == 7
+@test length(sol_analytic) == 7
+@test length(sol_diffeq[1]) == 10
+@test length(sol_analytic[1]) == 10
+@test eltype(sol_diffeq) <: Vector{<:Pumas.SimulatedObservations}
+@test eltype(sol_analytic) <: Vector{<:Pumas.SimulatedObservations}
+
+sol_diffeq   = simobs(m_diffeq,repeat([subject1],10),repeat([param],7),repeat([randeffs],70))
+sol_analytic = simobs(m_analytic,repeat([subject1],10),repeat([param],7),repeat([randeffs],70))
+@test length(sol_diffeq) == 7
+@test length(sol_analytic) == 7
+@test length(sol_diffeq[1]) == 10
+@test length(sol_analytic[1]) == 10
+@test eltype(sol_diffeq) <: Vector{<:Pumas.SimulatedObservations}
+@test eltype(sol_analytic) <: Vector{<:Pumas.SimulatedObservations}
 
 sim_diffeq = begin
     Random.seed!(1)

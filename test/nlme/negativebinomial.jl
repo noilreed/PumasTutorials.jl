@@ -56,7 +56,7 @@ FittedPumasModel
 Successful minimization:                true
 
 Likelihood approximation:         Pumas.FOCE
-Deviance:                          4192.9675
+Deviance:                          3898.5692
 Total number of observation records:    1800
 Number of active observation records:   1800
 Number of subjects:                       20
@@ -64,10 +64,10 @@ Number of subjects:                       20
 ----------------
        Estimate
 ----------------
-θ₁      3.4486
-θ₂      0.5289
-ω       1.0304
-θr      0.94599
+θ₁      3.1875
+θ₂      0.56983
+ω       0.80668
+θr      0.97207
 ----------------
 """
 
@@ -77,7 +77,7 @@ Asymptotic inference results
 Successful minimization:                true
 
 Likelihood approximation:         Pumas.FOCE
-Deviance:                          4192.9675
+Deviance:                          3898.5692
 Total number of observation records:    1800
 Number of active observation records:   1800
 Number of subjects:                       20
@@ -85,24 +85,24 @@ Number of subjects:                       20
 ---------------------------------------------------------
       Estimate          SE                  95.0% C.I.
 ---------------------------------------------------------
-θ₁     3.4486         0.83798         [1.8062 ; 5.091  ]
-θ₂     0.5289         0.079274        [0.37353; 0.68428]
-ω      1.0304         0.13949         [0.75699; 1.3038 ]
-θr     0.94599        0.058929        [0.83049; 1.0615 ]
+θ₁     3.1875         0.59367         [2.0239 ; 4.351  ]
+θ₂     0.56983        0.088667        [0.39605; 0.74362]
+ω      0.80668        0.11065         [0.5898 ; 1.0236 ]
+θr     0.97207        0.070796        [0.83332; 1.1108 ]
 ---------------------------------------------------------
 """
 
   # LaplaceI
   fitLaplaceI = fit(negativebinomial_model, pd_negativebinomial, param, Pumas.LaplaceI())
 
-    @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitLaplaceI) ==
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitLaplaceI) ==
 """
 FittedPumasModel
 
 Successful minimization:                true
 
 Likelihood approximation:     Pumas.LaplaceI
-Deviance:                          4192.9461
+Deviance:                          3898.5679
 Total number of observation records:    1800
 Number of active observation records:   1800
 Number of subjects:                       20
@@ -110,32 +110,32 @@ Number of subjects:                       20
 ----------------
        Estimate
 ----------------
-θ₁      3.4714
-θ₂      0.52769
-ω       1.0304
-θr      0.94599
+θ₁      3.2076
+θ₂      0.56847
+ω       0.80664
+θr      0.97205
 ----------------
 """
 
-      @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(fitLaplaceI)) == """
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(fitLaplaceI)) == """
 Asymptotic inference results
 
 Successful minimization:                true
 
 Likelihood approximation:     Pumas.LaplaceI
-Deviance:                          4192.9461
+Deviance:                          3898.5679
 Total number of observation records:    1800
 Number of active observation records:   1800
 Number of subjects:                       20
 
----------------------------------------------------------
-      Estimate          SE                  95.0% C.I.
----------------------------------------------------------
-θ₁     3.4714         0.8436          [1.8179 ; 5.1248 ]
-θ₂     0.52769        0.079102        [0.37265; 0.68273]
-ω      1.0304         0.13948         [0.75699; 1.3037 ]
-θr     0.94599        0.058925        [0.83049; 1.0615 ]
----------------------------------------------------------
+-------------------------------------------------------
+      Estimate          SE                95.0% C.I.
+-------------------------------------------------------
+θ₁     3.2076         0.59737        [2.0367; 4.3784 ]
+θ₂     0.56847        0.088508       [0.395 ; 0.74194]
+ω      0.80664        0.11064        [0.5898; 1.0235 ]
+θr     0.97205        0.070795       [0.8333; 1.1108 ]
+-------------------------------------------------------
 """
 
   # FO/FOCEI not supported for
