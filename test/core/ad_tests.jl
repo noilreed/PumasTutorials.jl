@@ -449,7 +449,7 @@ end
     end
   end
 
-  data = CSV.read(example_data("event_data/data14"))
+  data = DataFrame(CSV.File(example_data("event_data/data14")))
   data[!,:rate] .= -2
   subject = read_pumas(data, dvs = [:cp])[1]
 

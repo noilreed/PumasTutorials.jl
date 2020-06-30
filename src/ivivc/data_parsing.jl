@@ -6,7 +6,7 @@
 Parse a `DataFrame` object or a CSV file to `InVivoData`
 which holds an array of `InVivoForm`s.
 """
-read_vivo(file::AbstractString; kwargs...) = read_vivo(CSV.read(file); kwargs...)
+read_vivo(file::AbstractString; kwargs...) = read_vivo(DataFrame(CSV.File(file)); kwargs...)
 
 function read_vivo(df; group=nothing, kwargs...)
   pop = if group === nothing
@@ -62,7 +62,7 @@ end
 
 
 # Uir Data
-read_uir(file::AbstractString; kwargs...) = read_uir(CSV.read(file); kwargs...)
+read_uir(file::AbstractString; kwargs...) = read_uir(DataFrame(CSV.File(file)); kwargs...)
 
 function read_uir(df, kwargs...)
   ___read_uir(df, kwargs...)
@@ -95,7 +95,7 @@ end
 Parse a `DataFrame` object or a CSV file to `InVitroData`
 which holds an array of `InVitroForm`s.
 """
-read_vitro(file::AbstractString; kwargs...) = read_vitro(CSV.read(file); kwargs...)
+read_vitro(file::AbstractString; kwargs...) = read_vitro(DataFrame(CSV.File(file)); kwargs...)
 
 function read_vitro(df; group=nothing, kwargs...)
   pop = if group === nothing

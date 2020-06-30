@@ -2,8 +2,8 @@ using Pumas.NCA, Test, CSV
 using Pumas
 
 multiple_doses_file = Pumas.example_data("nca_test_data/dapa_IV_ORAL")
-mdata = copy(CSV.read(multiple_doses_file))
-msol = CSV.read(Pumas.example_data("nca_test_data/dapa_IV_ORAL_sol"))
+mdata = copy(DataFrame(CSV.File(multiple_doses_file)))
+msol = DataFrame(CSV.File(Pumas.example_data("nca_test_data/dapa_IV_ORAL_sol")))
 
 timeu = u"hr"
 concu = u"mg/L"
@@ -92,7 +92,7 @@ mncapop2 = @test_nowarn read_nca(mdata2, id=:ID, time=:TIME, conc=:COBS, amt=:AM
 @test NCA.lambdaz(mncapop2, verbose=false)[end, end] === missing
 @test NCA.run_status(mncapop2)[end, end] === :NotEnoughDataAfterCmax
 
-data1 = CSV.read(IOBuffer("""
+data1 = DataFrame(CSV.File(IOBuffer("""
   id,time,tad,conc,amt,occasion,formulation
   1,0.0,0,0.755,0.705,1,oral
   1,1.0,1,0.55,0,1,oral
@@ -111,8 +111,8 @@ data1 = CSV.read(IOBuffer("""
   3,12.0,0,0.941,0.656,2,oral
   3,13.0,1,0.204,0,2,oral
   3,14.0,2,0.0302,0,2,oral
-  """))
-data2 = CSV.read(IOBuffer("""
+  """)))
+data2 = DataFrame(CSV.File(IOBuffer("""
   id,time,tad,conc,amt,occasion,formulation
   1,0.0,0,0.755,0.705,1,oral
   1,1.0,1,0.55,0,1,oral
@@ -129,7 +129,7 @@ data2 = CSV.read(IOBuffer("""
   3,12.0,0,0.941,0.656,2,oral
   3,13.0,1,0.204,0,2,oral
   3,14.0,2,0.0302,0,2,oral
-  """))
+  """)))
 for df in (data1, data2)
   df[!,:route] .= "ev"
   @test_nowarn NCAReport(read_nca(df, timeu=timeu, concu=concu, amtu=amtu), verbose=false)

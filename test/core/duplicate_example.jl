@@ -19,7 +19,7 @@ for (rootpath, dirs, files) in walkdir(dir)
     for file in files
         if lowercase(file[end-2:end]) == "csv"
             fullpath = joinpath(rootpath, file)
-            data = Matrix(CSV.read(fullpath))
+            data = Matrix(DataFrame(CSV.File(fullpath)))
             locate_duplicate(data, fullpath)
         end
     end

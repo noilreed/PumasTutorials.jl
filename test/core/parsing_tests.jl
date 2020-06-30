@@ -36,7 +36,7 @@ using Pumas, Test, CSV, Random
 end
 
 @testset "Time Variant Covariates" begin
-  df = CSV.read(example_data("time_varying_covariates"))
+  df = DataFrame(CSV.File(example_data("time_varying_covariates")))
   df[!,:amt] .= missing
   data = read_pumas(df, cvs = [:weight, :dih])
   @test data[1].covariates(0).dih == 2

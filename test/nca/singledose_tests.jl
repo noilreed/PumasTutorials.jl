@@ -2,7 +2,7 @@ using Pumas.NCA, Test, CSV
 using Pumas
 
 file = Pumas.example_data("nca_test_data/dapa_IV")
-data = copy(CSV.read(file))
+data = copy(DataFrame(CSV.File(file)))
 rawdata = data
 
 timeu = u"hr"
@@ -68,7 +68,7 @@ conc = Float64.(data[!, :CObs])*concu
 t = Float64.(data[!, :TIME])*timeu
 doses = Float64.(data[!, :AMT_IV])[1:16:end]*u"mg"
 
-data = CSV.read(Pumas.example_data("nca_test_data/dapa_IV_sol"))
+data = DataFrame(CSV.File(Pumas.example_data("nca_test_data/dapa_IV_sol")))
 
 correct_auc = Float64.(data[!, :AUCINF_obs])*concu*timeu
 correct_auc_last = Float64.(data[!, :AUClast])*concu*timeu

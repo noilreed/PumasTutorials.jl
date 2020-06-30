@@ -3,7 +3,7 @@ using Pumas
 using CSV
 
 @testset "Ordinal regression model" begin
-  df = copy(CSV.read(example_data("pain_remed")))
+  df = copy(DataFrame(CSV.File(example_data("pain_remed"))))
   # The variable is coded 0:3 but Categorical starts at 1
   df.painord .+= 1
 

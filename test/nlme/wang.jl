@@ -3,7 +3,7 @@ using Pumas, CSV
 
 @testset "Models from the Wang paper" begin
 
-  df   = CSV.read(example_data("wang"), copycols=true)
+  df   = DataFrame(CSV.File(example_data("wang")), copycols=true)
   # Add initial events following Wang's model
   df[!,:amt] .= missing
   df[!,:cmt] .= missing
@@ -119,7 +119,7 @@ using Pumas, CSV
     # Hence we test by log transforming the model
 
     # First we load a new verison of data and log transform dv
-    _df = CSV.read(example_data("wang"))
+    _df = DataFrame(CSV.File(example_data("wang")))
     _df[!,:dv] = log.(_df[!,:dv])
     _df[!,:amt] .= missing
     _df[!,:cmt] .= missing

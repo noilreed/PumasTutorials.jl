@@ -165,7 +165,7 @@ end
 
 @testset "Repeated time-to-event example" begin
 
-  df = CSV.read(example_data("rtte_data"))
+  df = DataFrame(CSV.File(example_data("rtte_data")))
   df[!,:TAD] = combine(i -> [first(i.TIME); diff(i.TIME)], groupby(df, [:ID])).x1
   # Add EVID=3 events with TAD .+ 1e-10 to reset the integration right after each observation
   evd = DataFrame(ID=df.ID, DV=missing, TIME=df.TIME, TAD=df.TAD .+ 1e-10, EVID=3)

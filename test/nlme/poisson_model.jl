@@ -2,7 +2,7 @@ using Pumas, Test, CSV
 
 @testset "Poisson model" begin
 
-  df = CSV.read(example_data("sim_poisson"))
+  df = DataFrame(CSV.File(example_data("sim_poisson")))
   pd = read_pumas(df, cvs = [:dose], event_data=false)
 
   poisson_model = @model begin

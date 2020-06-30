@@ -702,7 +702,7 @@ Import NMTRAN-formatted data.
 - `event_data` toggles assertions applicable to event data
 """
 function read_pumas(filepath::AbstractString; kwargs...)
-  read_pumas(CSV.read(filepath, missingstrings=["", ".", "NA"]) ; kwargs...)
+  read_pumas(DataFrame(CSV.File(filepath, missingstrings=["", ".", "NA"])); kwargs...)
 end
 function read_pumas(df::AbstractDataFrame;
   cvs=Symbol[], dvs=Symbol[:dv],

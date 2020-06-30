@@ -1,7 +1,7 @@
 using Pumas, Quadrature, Test, CSV, Random
 
 # Read the data
-df = CSV.read(example_data("data1"))
+df = DataFrame(CSV.File(example_data("data1")))
 df[!, :cmt] .= 1
 data = read_pumas(df, cvs = [:sex,:wt,:etn])
 

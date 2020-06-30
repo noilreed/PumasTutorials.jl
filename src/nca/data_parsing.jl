@@ -12,7 +12,7 @@ efficient NCA calculation.
 !!! remark
     Concentrations at dosing rows are NOT ignored in `read_nca`.
 """
-read_nca(file::AbstractString; kwargs...) = read_nca(CSV.read(file); kwargs...)
+read_nca(file::AbstractString; kwargs...) = read_nca(DataFrame(CSV.File(file)); kwargs...)
 function read_nca(df; group=nothing, kwargs...)
   pop = if group === nothing
     ___read_nca(df; kwargs...)

@@ -49,16 +49,16 @@ using CSV
 using Pumas.IVIVC: ___read_vitro, ___read_uir, ___read_vivo
 
 file = Pumas.example_data("ivivc_test_data/vitro_data")
-df = CSV.read(file)
+df = DataFrame(CSV.File(file))
 rename!(df, :conc => :concc)
 data = @test_throws ArgumentError ___read_vitro(df)
 
 file = Pumas.example_data("ivivc_test_data/vivo_data")
-df = CSV.read(file)
+df = DataFrame(CSV.File(file))
 rename!(df, :id => :idd)
 data = @test_throws ArgumentError ___read_vivo(df)
 
 file = Pumas.example_data("ivivc_test_data/uir_data")
-df = CSV.read(file)
+df = DataFrame(CSV.File(file))
 rename!(df, :dose => :does)
 data = @test_throws ArgumentError ___read_uir(df)

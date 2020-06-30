@@ -3,7 +3,7 @@ using CSV
 
 @testset "BOV" begin
 ################ Data importing ##########################
-pkdata = CSV.read(example_data("event_data/bov1"), missingstring=".")
+pkdata = DataFrame(CSV.File(example_data("event_data/bov1"), missingstring="."))
 pkdata[!,:OCC] .= pkdata.OCC1 .+ 2 .* pkdata.OCC2 .+ 3 .* pkdata.OCC3
 
 ################### data mapping ########################

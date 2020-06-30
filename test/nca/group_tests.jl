@@ -2,7 +2,7 @@ using Pumas.NCA, Test, CSV
 using Pumas
 
 file = Pumas.example_data("nca_test_data/masked_sort_data")
-df = CSV.read(file, missingstring="NA")
+df = DataFrame(CSV.File(file, missingstring="NA"))
 df[!,:ii] .= 12
 df[!,:amt] .= 0.0
 df.amt[1:23:end] .= 0.1
