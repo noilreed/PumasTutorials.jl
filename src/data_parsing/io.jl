@@ -90,7 +90,96 @@ end
 
 """
     DosageRegimen
+
 Lazy representation of a series of Events.
+
+# Fields
+
+- `data::DataFrame`: The tabular representation of a series of `Event`s.
+
+- Signature
+
+```
+evts = DosageRegimen(amt::Numeric;
+                     time::Numeric = 0,
+                     cmt::Union{Numeric,Symbol} = 1,
+                     evid::Numeric = 1,
+                     ii::Numeric = zero.(time),
+                     addl::Numeric = 0,
+                     rate::Numeric = zero.(amt)./oneunit.(time),
+                     duration::Numeric = zero(amt)./oneunit.(time),
+                     ss::Numeric = 0)
+```
+
+- Examples
+
+```jldoctest
+julia> DosageRegimen(100, ii = 24, addl = 6)
+DosageRegimen
+│ Row │ time    │ cmt   │ amt     │ evid │ ii      │ addl  │ rate    │ duration │ ss   │
+│     │ Float64 │ Int64 │ Float64 │ Int8 │ Float64 │ Int64 │ Float64 │ Float64  │ Int8 │
+├─────┼─────────┼───────┼─────────┼──────┼─────────┼───────┼─────────┼──────────┼──────┤
+│ 1   │ 0.0     │ 1     │ 100.0   │ 1    │ 24.0    │ 6     │ 0.0     │ 0.0      │ 0    │
+
+julia> DosageRegimen(50,  ii = 12, addl = 13)
+DosageRegimen
+│ Row │ time    │ cmt   │ amt     │ evid │ ii      │ addl  │ rate    │ duration │ ss   │
+│     │ Float64 │ Int64 │ Float64 │ Int8 │ Float64 │ Int64 │ Float64 │ Float64  │ Int8 │
+├─────┼─────────┼───────┼─────────┼──────┼─────────┼───────┼─────────┼──────────┼──────┤
+│ 1   │ 0.0     │ 1     │ 50.0    │ 1    │ 12.0    │ 13    │ 0.0     │ 0.0      │ 0    │
+
+julia> DosageRegimen(200, ii = 24, addl = 2)
+DosageRegimen
+│ Row │ time    │ cmt   │ amt     │ evid │ ii      │ addl  │ rate    │ duration │ ss   │
+│     │ Float64 │ Int64 │ Float64 │ Int8 │ Float64 │ Int64 │ Float64 │ Float64  │ Int8 │
+├─────┼─────────┼───────┼─────────┼──────┼─────────┼───────┼─────────┼──────────┼──────┤
+│ 1   │ 0.0     │ 1     │ 200.0   │ 1    │ 24.0    │ 2     │ 0.0     │ 0.0      │ 0    │
+```
+
+## From various `DosageRegimen`s
+
+- Signature
+
+evs = DosageRegimen(regimen1::DosageRegimen,
+                    regimen2::DosageRegimen;
+                    offset = nothing)
+
+`offset` specifies if `regimen2` should start after an offset following the end of the last event in `regimen1`.
+
+- Examples
+
+```jldoctest
+julia> e1 = DosageRegimen(100, ii = 24, addl = 6)
+DosageRegimen
+│ Row │ time    │ cmt   │ amt     │ evid │ ii      │ addl  │ rate    │ duration │ ss   │
+│     │ Float64 │ Int64 │ Float64 │ Int8 │ Float64 │ Int64 │ Float64 │ Float64  │ Int8 │
+├─────┼─────────┼───────┼─────────┼──────┼─────────┼───────┼─────────┼──────────┼──────┤
+│ 1   │ 0.0     │ 1     │ 100.0   │ 1    │ 24.0    │ 6     │ 0.0     │ 0.0      │ 0    │
+
+julia> e2 = DosageRegimen(50, ii = 12, addl = 13)
+DosageRegimen
+│ Row │ time    │ cmt   │ amt     │ evid │ ii      │ addl  │ rate    │ duration │ ss   │
+│     │ Float64 │ Int64 │ Float64 │ Int8 │ Float64 │ Int64 │ Float64 │ Float64  │ Int8 │
+├─────┼─────────┼───────┼─────────┼──────┼─────────┼───────┼─────────┼──────────┼──────┤
+│ 1   │ 0.0     │ 1     │ 50.0    │ 1    │ 12.0    │ 13    │ 0.0     │ 0.0      │ 0    │
+
+julia> evs = DosageRegimen(e1, e2)
+DosageRegimen
+│ Row │ time    │ cmt   │ amt     │ evid │ ii      │ addl  │ rate    │ duration │ ss   │
+│     │ Float64 │ Int64 │ Float64 │ Int8 │ Float64 │ Int64 │ Float64 │ Float64  │ Int8 │
+├─────┼─────────┼───────┼─────────┼──────┼─────────┼───────┼─────────┼──────────┼──────┤
+│ 1   │ 0.0     │ 1     │ 100.0   │ 1    │ 24.0    │ 6     │ 0.0     │ 0.0      │ 0    │
+│ 2   │ 0.0     │ 1     │ 50.0    │ 1    │ 12.0    │ 13    │ 0.0     │ 0.0      │ 0    │
+
+julia> DosageRegimen(e1, e2, offset = 10)
+DosageRegimen
+│ Row │ time    │ cmt   │ amt     │ evid │ ii      │ addl  │ rate    │ duration │ ss   │
+│     │ Float64 │ Int64 │ Float64 │ Int8 │ Float64 │ Int64 │ Float64 │ Float64  │ Int8 │
+├─────┼─────────┼───────┼─────────┼──────┼─────────┼───────┼─────────┼──────────┼──────┤
+│ 1   │ 0.0     │ 1     │ 100.0   │ 1    │ 24.0    │ 6     │ 0.0     │ 0.0      │ 0    │
+│ 2   │ 178.0   │ 1     │ 50.0    │ 1    │ 12.0    │ 13    │ 0.0     │ 0.0      │ 0    │
+
+```
 """
 mutable struct DosageRegimen
   data::DataFrame
@@ -167,10 +256,10 @@ mutable struct DosageRegimen
   DosageRegimen(regimens::DosageRegimen...) = reduce(DosageRegimen, regimens)
 end
 """
-  DataFrame(evs::DosageRegimen, expand::Bool = false)
+    DataFrame(evs::DosageRegimen, expand::Bool = false)
 
-  Create a DataFrame with the information in the dosage regimen.
-  If expand, creates a DataFrame with the information in the event list (expanded form).
+Create a DataFrame with the information in the dosage regimen.
+If expand, creates a DataFrame with the information in the event list (expanded form).
 """
 function DataFrames.DataFrame(evs::DosageRegimen, expand::Bool = false)
   if !expand
