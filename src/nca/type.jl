@@ -148,16 +148,18 @@ function NCASubject(conc, time;
       map(1:length(dose)) do i
         idxs = ithdoseidxs(time, dose, startidxs, i; check=i==1) # only check once
         conci, timei = @view(conc[idxs]), @view(time[idxs])
+        check && checkconctime(conci, timei; dose=dose, kwargs...)
         if !iszero(timei[1])
           timei = timei .- timei[1] # convert to TAD
         end
         if clean
           conci, timei, _, _ = cleanmissingconc(conci, timei; kwargs...)
+          conci, timei = cleanblq(conci, timei; llq=llq, dose=dose, kwargs...)[1:2]
+          # we need to check twice because cleanning changes the data
+          check && checkconctime(conci, timei; dose=dose, kwargs...)
+          append!(abstime, timei)
         end
-        conc′, time′ = clean ? cleanblq(conci, timei; llq=llq, dose=dose, kwargs...)[1:2] : (conci, timei)
-        clean && append!(abstime, time′)
-        check && checkconctime(conc′, time′; dose=dose, kwargs...)
-        conc′, time′
+        conci, timei
       end
     end
     conc = map(x->x[1], ct)
@@ -194,6 +196,15 @@ function NCASubject(conc, time;
     else
       conc, time, _, _ = cleanmissingconc(conc, time; kwargs...)
       conc, time, _, _ = cleanblq(conc, time; llq=llq, dose=dose, kwargs...)
+    end
+    # we need to check twice because cleanning changes the data
+    if check
+      if isurine
+        checkconctime(conc, start_time; dose=dose, kwargs...)
+        checkconctime(conc, end_time;   dose=dose, kwargs...)
+      else
+        checkconctime(conc, time; dose=dose, kwargs...)
+      end
     end
   end
   if isurine
