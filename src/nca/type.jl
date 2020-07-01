@@ -148,7 +148,6 @@ function NCASubject(conc, time;
       map(1:length(dose)) do i
         idxs = ithdoseidxs(time, dose, startidxs, i; check=i==1) # only check once
         conci, timei = @view(conc[idxs]), @view(time[idxs])
-        check && checkconctime(conci, timei; dose=dose, kwargs...)
         if !iszero(timei[1])
           timei = timei .- timei[1] # convert to TAD
         end
@@ -157,6 +156,7 @@ function NCASubject(conc, time;
         end
         conc′, time′ = clean ? cleanblq(conci, timei; llq=llq, dose=dose, kwargs...)[1:2] : (conci, timei)
         clean && append!(abstime, time′)
+        check && checkconctime(conc′, time′; dose=dose, kwargs...)
         conc′, time′
       end
     end
