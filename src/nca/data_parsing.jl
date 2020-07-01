@@ -125,7 +125,13 @@ function ___read_nca(df; id=:id, time=:time, conc=:conc, occasion=:occasion,
     idx = loid:hiid
     if hasdose
       dose_idx = findall(x->x !== missing && x > zero(x), @view amts[idx])
-      isempty(dose_idx) && throw(ArgumentError("Dose information is provided, but there is no valid dosage. All `amt` are non-positive or `missing`."))
+      if isempty(dose_idx)
+        msg = "ID: $id. Dose information is provided, but there is no valid dosage. All `amt` are non-positive or `missing`."
+        if group !== nothing
+          msg *= " Error at $group."
+        end
+        throw(ArgumentError(msg))
+      end
       length(dose_idx) > 1 && occasion === nothing && error("`occasion` must be provided for multiple dosing data")
       dose_idx = idx[dose_idx] # translate to the global index
       # We want to use time instead of an integer index here, because later we
@@ -175,6 +181,7 @@ function ___read_nca(df; id=:id, time=:time, conc=:conc, occasion=:occasion,
                            concblq=blq===nothing ? nothing : :keep, kwargs...)
     catch
       @info "ID $id errored"
+      group !== nothing && @info "$group errored"
       rethrow()
     end
   end
