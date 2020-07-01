@@ -125,6 +125,7 @@ function ___read_nca(df; id=:id, time=:time, conc=:conc, occasion=:occasion,
     idx = loid:hiid
     if hasdose
       dose_idx = findall(x->x !== missing && x > zero(x), @view amts[idx])
+      isempty(dose_idx) && throw(ArgumentError("Dose information is provided, but there is no valid dosage. All `amt` are non-positive or `missing`."))
       length(dose_idx) > 1 && occasion === nothing && error("`occasion` must be provided for multiple dosing data")
       dose_idx = idx[dose_idx] # translate to the global index
       # We want to use time instead of an integer index here, because later we
