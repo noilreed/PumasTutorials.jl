@@ -184,30 +184,31 @@ function _derived(model::PumasModel,
                   kwargs...)
   rtrf = totransform(model.random(param))
   randeffs = TransformVariables.transform(rtrf, vrandeffs)
-  dist = _derived(model, subject, param, randeffs, args...; kwargs...)
+  return _derived(model, subject, param, randeffs, args...; kwargs...)
 end
 
 """
 This internal function is just so that the calculation of derived doesn't need
 to be repeated in the other API functions
 """
-@inline function _derived(m::PumasModel,
-                          subject::Subject,
-                          param::NamedTuple,
-                          randeffs::NamedTuple,
-                          args...;
-                          # This is the only entry point to the ODE solver for
-                          # the estimation code so estimation-specific defaults
-                          # are set here, but are overriden in other cases.
-                          # Super messy and should get cleaned.
-                          reltol=DEFAULT_ESTIMATION_RELTOL,
-                          abstol=DEFAULT_ESTIMATION_ABSTOL,
-                          alg = AutoVern7(Rodas5(autodiff=false)),
-                          # Estimation only uses subject.time for the
-                          # observation time series
-                          obstimes = nothing,
-                          callback = nothing,
-                          kwargs...)
+@inline function _derived(
+  m::PumasModel,
+  subject::Subject,
+  param::NamedTuple,
+  randeffs::NamedTuple,
+  args...;
+  # This is the only entry point to the ODE solver for
+  # the estimation code so estimation-specific defaults
+  # are set here, but are overriden in other cases.
+  # Super messy and should get cleaned.
+  reltol=DEFAULT_ESTIMATION_RELTOL,
+  abstol=DEFAULT_ESTIMATION_ABSTOL,
+  alg = AutoVern7(Rodas5(autodiff=false)),
+  # Estimation only uses subject.time for the
+  # observation time series
+  obstimes = nothing,
+  callback = nothing,
+  kwargs...)
 
   obstimes = obstimes === nothing ? subject.time : obstimes
   # collate that arguments
@@ -232,7 +233,72 @@ to be repeated in the other API functions
     # extract distributions
     dist = m.derived(collated, sol, obstimes, subject, param, randeffs)
   end
-  dist
+
+  return dist
+end
+
+function _derived(
+  m::PumasModel,
+  pop::Population,
+  param::NamedTuple,
+  randeffs::AbstractVector=[sample_randeffs(m, param) for i in 1:length(pop)],
+  args...;
+  # This is the only entry point to the ODE solver for
+  # the estimation code so estimation-specific defaults
+  # are set here, but are overriden in other cases.
+  # Super messy and should get cleaned.
+  reltol=DEFAULT_ESTIMATION_RELTOL,
+  abstol=DEFAULT_ESTIMATION_ABSTOL,
+  alg = AutoVern7(Rodas5(autodiff=false)),
+  # Estimation only uses subject.time for the
+  # observation time series
+  obstimes = nothing,
+  callback = nothing,
+  kwargs...)
+
+  if !(randeffs isa Nothing) && length(pop) !== length(randeffs)
+    throw(DimensionMismatch("The population and random effects input must have equal length, got $(length(pop)) and $(length(randeffs))."))
+  end
+
+  if obstimes === nothing
+    throw(ArgumentError("obstimes argument needs to be passed"))
+  end
+
+  return _simobs(m,
+    pop, RepeatedVector([param], length(pop)), randeffs, args...;
+    reltol=reltol, abstol=abstol, alg=alg,
+    obstimes=obstimes, callback=callback,
+    isfor_derived=true, kwargs...)
+end
+
+function _derived(
+  m::PumasModel,
+  subject::Subject,
+  param::AbstractVector,
+  randeffs::AbstractVector=[sample_randeffs(m, param) for i in 1:length(param)],
+  args...;
+  # This is the only entry point to the ODE solver for
+  # the estimation code so estimation-specific defaults
+  # are set here, but are overriden in other cases.
+  # Super messy and should get cleaned.
+  reltol=DEFAULT_ESTIMATION_RELTOL,
+  abstol=DEFAULT_ESTIMATION_ABSTOL,
+  alg = AutoVern7(Rodas5(autodiff=false)),
+  # Estimation only uses subject.time for the
+  # observation time series
+  obstimes = subject.time,
+  callback = nothing,
+  kwargs...)
+
+  if !(randeffs isa Nothing) && length(param) !== length(randeffs)
+    throw(DimensionMismatch("The fixed and random effects input must have equal length, got $(length(param)) and $(length(randeffs))."))
+  end
+
+  return _simobs(m,
+    RepeatedVector([subject], length(param)), param, randeffs, args...;
+    reltol=reltol, abstol=abstol, alg=alg,
+    obstimes=obstimes, callback=callback,
+    isfor_derived=true, kwargs...)
 end
 
 #=
@@ -261,14 +327,15 @@ function simobs(m::PumasModel, subject::Subject,
                 args...;
                 obstimes::AbstractArray=observationtimes(subject),
                 callback = nothing,
-                saveat=obstimes,kwargs...)
+                saveat=obstimes,
+                kwargs...)
   col = m.pre(_rand(param), randeffs, subject)
   prob = _problem(m, subject, col, args...; saveat=saveat, callback=callback, kwargs...)
   alg = m.prob isa ExplicitModel ? nothing : alg=AutoTsit5(Rosenbrock23())
   sol = prob !== nothing ? solve(prob, args...; alg=alg, kwargs...) : nothing
-  derived = m.derived(col,sol,obstimes,subject,param,randeffs)
-  obs = m.observed(col,sol,obstimes,map(_rand,derived),subject)
-  SimulatedObservations(subject,obstimes,obs)
+  derived = m.derived(col, sol, obstimes, subject, param, randeffs)
+  obs = m.observed(col, sol, obstimes, map(_rand, derived), subject)
+  return SimulatedObservations(subject, obstimes, obs)
 end
 
 struct RepeatedVector{T} <: AbstractVector{T}
@@ -286,7 +353,7 @@ function simobs(m::PumasModel, subject::Subject,
   if !(randeffs isa Nothing) && length(param) !== length(randeffs)
     throw(DimensionMismatch("The fixed and random effects input must have equal length, got $(length(param)) and $(length(randeffs))."))
   end
-  _simobs(m,RepeatedVector([subject],length(param)),param,randeffs,args...;kwargs...)
+  return _simobs(m, RepeatedVector([subject], length(param)), param, randeffs, args...; kwargs...)
 end
 
 function simobs(m::PumasModel, pop::Population,
@@ -297,7 +364,7 @@ function simobs(m::PumasModel, pop::Population,
   if !(randeffs isa Nothing) && length(pop) !== length(randeffs)
     throw(DimensionMismatch("The population and random effects input must have equal length, got $(length(pop)) and $(length(randeffs))."))
   end
-  _simobs(m,pop,RepeatedVector([param],length(pop)),randeffs,args...;kwargs...)
+  return _simobs(m,pop,RepeatedVector([param],length(pop)),randeffs,args...;kwargs...)
 end
 
 function simobs(m::PumasModel, pop::Population,
@@ -305,20 +372,27 @@ function simobs(m::PumasModel, pop::Population,
                 randeffs = [sample_randeffs(m, param) for i in 1:(length(pop)*length(param))],
                 args...;
                 kwargs...)
-  out = _simobs(m,RepeatedVector(pop,length(param)),RepeatedVector(param,length(pop)),randeffs,args...;kwargs...)
+
+  out = _simobs(m,
+    RepeatedVector(pop,length(param)),
+    RepeatedVector(param,length(pop)),
+    randeffs,
+    args...;kwargs...)
+
   n = length(pop)
   # Chop up into arrays of each population matching parameter i
-  [out[((i-1)*n + 1):i*n] for i in 1:length(param)]
+  return [out[((i - 1)*n + 1):i*n] for i in 1:length(param)]
 end
 
 function _simobs(m::PumasModel, pop::Population,
-                param::AbstractVector,
-                randeffs=nothing,
-                args...;
-                alg=AutoTsit5(Rosenbrock23()),
-                ensemblealg = EnsembleThreads(),
-                callback = nothing,
-                kwargs...)
+                 param::AbstractVector,
+                 randeffs=nothing,
+                 args...;
+                 alg=AutoTsit5(Rosenbrock23()),
+                 ensemblealg = EnsembleSerial(),
+                 callback = nothing,
+                 isfor_derived = false,
+                 kwargs...)
   if !(randeffs isa Nothing) && length(pop) !== length(randeffs)
     throw(DimensionMismatch("The population and random effects input must have equal length, got $(length(pop)) and $(length(randeffs))."))
   end
@@ -327,25 +401,37 @@ function _simobs(m::PumasModel, pop::Population,
   _param = [_rand(param[i]) for i in 1:length(param)]
   _randeffs = randeffs === nothing ? [sample_randeffs(m, _param[i]) for i in 1:length(param)] : randeffs
 
-  function simobs_prob_func(prob,i,repeat)
+  function simobs_prob_func(prob, i, repeat)
     col = m.pre(_param[i], _randeffs[i], pop[i])
     obstimes = :obstimes ∈ keys(kwargs) ? kwargs[:obstimes] : observationtimes(pop[i])
     saveat = :saveat ∈ keys(kwargs) ? kwargs[:saveat] : obstimes
-    _problem(m,pop[i],col,args...; saveat=saveat, callback=callback, kwargs...)
+    _problem(m, pop[i], col, args...; saveat=saveat, callback=callback, kwargs...)
   end
 
-  function simobs_output_func(sol,i)
+  function simobs_output_func(sol, i)
     col = sol.prob.p
     obstimes = :obstimes ∈ keys(kwargs) ? kwargs[:obstimes] : observationtimes(pop[i])
     saveat = :saveat ∈ keys(kwargs) ? kwargs[:saveat] : obstimes
-    derived = m.derived(col, sol, obstimes, pop[i], _param[i], _randeffs[i])
-    obs = m.observed(col,sol,obstimes,map(_rand,derived),pop[i])
-    SimulatedObservations(pop[i],obstimes,obs),false
+
+    if isfor_derived
+      if (sol.retcode != :Success && sol.retcode != :Terminated) ||
+        # FIXME! Make this uniform across the two solution types
+        # FIXME! obstimes can be empty
+        any(x->any(isnan, x), sol isa PKPDAnalyticalSolution ? sol(obstimes[end]) : sol.u[end])
+        # FIXME! Do we need to make this type stable?
+          return map(x->nothing, subject.observations), false # create a named tuple of nothing with the observed names ( should this be all of derived?)
+      end
+      return m.derived(col, sol, obstimes, pop[i], param[i], _randeffs[i]), false
+    else
+      derived = m.derived(col, sol, obstimes, pop[i], param[i], _randeffs[i])
+      obs = m.observed(col, sol, obstimes, map(_rand, derived), pop[i])
+      return SimulatedObservations(pop[i], obstimes, obs), false
+    end
   end
 
-  prob = EnsembleProblem(m.prob,prob_func = simobs_prob_func,
+  prob = EnsembleProblem(m.prob; prob_func = simobs_prob_func,
                          output_func = simobs_output_func)
-  solve(prob,alg,ensemblealg,args...;trajectories = length(pop),kwargs...).u
+  return solve(prob, alg, ensemblealg,args...; trajectories = length(pop),kwargs...).u
 end
 
 """

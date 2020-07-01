@@ -30,7 +30,8 @@ function npde(
   end
 
   _names = keys(subject.observations)
-  sims = [simobs(m, subject, param; kwargs...).observed for i in 1:nsim]
+  sims = getproperty.(simobs(m, RepeatedVector([subject],nsim), param; kwargs...),:observed)
+
 
   return map(NamedTuple{_names}(_names)) do name
     y        = subject.observations[name]
@@ -53,7 +54,7 @@ end
 """
     npde(fpm::FittedPumasModel; nsim::Integer)
 
-Calculate the normalised prediction distribution errors (NPDE). 
+Calculate the normalised prediction distribution errors (NPDE).
 """
 npde(fpm::FittedPumasModel; nsim=nothing) = [npde(fpm.model, subject, coef(fpm); nsim=nsim, fpm.kwargs...) for subject in fpm.data]
 
@@ -182,10 +183,10 @@ end
 """
     wresiduals(fpm::FittedPumasModel, approx::LikelihoodApproximation=fpm.approx; nsim=nothing)
 
-Calculate the individual and population weighted residual. 
+Calculate the individual and population weighted residual.
 
-Takes a `fit` result, an approximation method for the marginal likelihood calculation which defaults to the method used in the `fit` and the number of 
-simulations with the keyword argument `nsim`. If `nsim` is specified only the Expected Simulation based Individual Weighted Residuals (EIWRES) is included 
+Takes a `fit` result, an approximation method for the marginal likelihood calculation which defaults to the method used in the `fit` and the number of
+simulations with the keyword argument `nsim`. If `nsim` is specified only the Expected Simulation based Individual Weighted Residuals (EIWRES) is included
 in the output as individual residual and population residual is not computed. Using the `FO` approximation method corresponds to the WRES and while `FOCE(I)` corresponds to CWRES.
 The output is a `SubjectResidual` object that stores the population (`wres`) and individual (`iwres`) residuals along with the `subject` and approximation method (`approx`).
 """
@@ -270,9 +271,10 @@ function epredict(
     throw(ArgumentError("the number of simulations argument (nsim) must be positive"))
   end
 
-  sims = [simobs(m, subject, param, args...; kwargs...).observed for i in 1:nsim]
+  sims = simobs(m, RepeatedVector([subject], nsim), param; kwargs...)
+
   _dv_keys = keys(subject.observations)
-  return map(name -> mean(getproperty.(sims, name)), NamedTuple{_dv_keys}(_dv_keys))
+  return map(name -> mean(getproperty.(getproperty.(sims, :observed), name)), NamedTuple{_dv_keys}(_dv_keys))
 end
 
 # FIXME! Make it parallel over subjects
@@ -316,15 +318,17 @@ function eiwres(m::PumasModel,
                 nsim::Integer,
                 args...;
                 kwargs...)
-  dist = _derived(m, subject, param, sample_randeffs(m, param), args...; kwargs...)
+
+  dist = _derived(m, RepeatedVector([subject], nsim), param, args...;
+    obstimes=subject.time, kwargs...)
+
   _keys_dv = keys(subject.observations)
   return map(NamedTuple{_keys_dv}(_keys_dv)) do name
-    dv = dist[name]
+    dv = dist[1][name]
     obsdv = subject.observations[name]
     sims_sum = (obsdv .- mean.(dv))./std.(dv)
     for i in 2:nsim
-      dist = _derived(m, subject, param, sample_randeffs(m, param), args...; kwargs...)
-      dv = dist[name]
+      dv = dist[i][name]
       sims_sum .+= (obsdv .- mean.(dv))./std.(dv)
     end
     return sims_sum ./ nsim
@@ -399,7 +403,8 @@ end
 
 Calculate the ϵ-shrinkage.
 
-Takes the result of a `fit` as the only input argument. A named tuple of derived variables and corresponding ϵ-shrinkage values is output.
+Takes the result of a `fit` as the only input argument. Available only with the FOCEI and FOCE approximation methods for
+marginal likelihood calculation. A named tuple of derived variables and corresponding ϵ-shrinkage values is output.
 """
 ϵshrinkage(fpm::FittedPumasModel) = ϵshrinkage(fpm.model, fpm.data, coef(fpm), fpm.approx, ; fpm.kwargs...)
 
