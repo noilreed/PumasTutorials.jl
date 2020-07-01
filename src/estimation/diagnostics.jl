@@ -746,3 +746,45 @@ Return the condition number of the variance-covariance matrix stored in `pmi`. T
 LinearAlgebra.cond(pmi::FittedPumasModelInference{<:Any, <:Exception}) = throw(ArgumentError("It is not possible to apply cond when the vcov calculations failed."))
 LinearAlgebra.cond(pmi::FittedPumasModelInference{<:Any, <:Bootstraps}) = throw(ArgumentError("It is not possible to apply cond when inference comes from a bootstrap call."))
 LinearAlgebra.cond(pmi::FittedPumasModelInference{<:Any, <:AbstractMatrix}) = cond(pmi.vcov)
+
+
+# probs of Bernoulli is annoying, so create our own __probs
+__probs(x) = probs(x)
+__probs(x::Bernoulli) = pdf.(x, support(x))
+
+"""
+   probstable(fpm::FittedPumasModel)
+
+Return a DataFrame with outcome probabilities of all discrete dependent variables.
+"""
+function probstable(fpm::FittedPumasModel)
+  probstable(fpm.model, fpm.data, coef(fpm), fpm.vvrandeffsorth)
+end
+function probstable(model::PumasModel, population::Population, param::NamedTuple, vvrandeffsorth=nothing)
+  if vvrandeffsorth isa Nothing
+    if length(model.random(param).params) > 0
+      randeffs = init_randeffs(model, param)
+    else
+      randeffs = NamedTuple()
+    end
+    randeffs = fill(randeffs, length(population))
+  else
+    rtrf = totransform(model.random(param))
+    randeffs = TransformVariables.transform.(Ref(rtrf), vvrandeffsorth)
+  end
+  reduce(vcat, probstable.(Ref(model), population, Ref(param), randeffs))
+end
+function probstable(model::PumasModel, subject::Subject, param::NamedTuple, randeffs::NamedTuple)
+  probs_derived = _derived(model, subject, param, randeffs)
+  df = DataFrame(id = fill(subject.id, size(subject.time, 1)), time = subject.time)
+  for (name, val) in pairs(probs_derived)
+    if all(x -> x isa Categorical || x isa Bernoulli, val)
+      # the output can be a singleton but then map won't work
+      _probs = map(__probs, val)
+      _probsmat = reduce(hcat, _probs)'
+      subject_probs_df = DataFrame(_probsmat, [Symbol("$(name)_prob$i") for i in 1:size(_probsmat, 2)])
+      df = hcat(df, subject_probs_df)
+    end
+  end
+  df
+end

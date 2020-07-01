@@ -571,7 +571,7 @@ function derived_obj(derivedexpr, derivedvars, pre, odevars, params, randoms)
       # that we want to use v at all obstime (in the denominator of the fraction
       # for cp that depends also on Central at obstimes, though this is unpacked
       # from the solution, not pre)
-      if _subject.covariates isa ConstantCovar
+      if _subject.covariates isa ConstantCovar && !isa(_sol, Nothing)
         $(var_def(:(_pre(0.0)), pre))
       else
         $(timed_var_def(:_pre, pre, :_obstimes))

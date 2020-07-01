@@ -41,8 +41,12 @@ using Pumas, Test, Random
     approx in (Pumas.FO(), Pumas.FOCE(), Pumas.FOCEI(), Pumas.LaplaceI())
 
     if approx ∈ (Pumas.FOCE(), Pumas.LaplaceI())
-      _param = coef(fit(mdsl, data, param, approx,
-        optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false)))
+      ft = fit(mdsl, data, param, approx,
+        optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
+      _param = coef(ft)
+    
+      _ptable = probstable(ft)
+      @test names(_ptable) == ["id", "time", "dv_prob1", "dv_prob2"]
 
       # Test values computed with MixedModels.jl
       @test _param.θ₁                ≈ -1.3085393956990727 rtol=1e-3
@@ -104,6 +108,10 @@ end
 
   ft = fit(mdl, pop_est, par_init, Pumas.FOCE(),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
+
+  _ptable = probstable(ft)
+  @test names(_ptable) == ["id", "time", "y_prob1", "y_prob2"]
+
   @test deviance(ft) ≈ -185.4010155627602 rtol=1e-6
 
 end
