@@ -154,10 +154,12 @@ function NCASubject(conc, time;
         end
         if clean
           conci, timei, _, _ = cleanmissingconc(conci, timei; kwargs...)
+          conci, timei = cleanblq(conci, timei; llq=llq, dose=dose, kwargs...)[1:2]
+          # we need to check twice because cleanning changes the data
+          check && checkconctime(conci, timei; dose=dose, kwargs...)
+          append!(abstime, timei)
         end
-        conc′, time′ = clean ? cleanblq(conci, timei; llq=llq, dose=dose, kwargs...)[1:2] : (conci, timei)
-        clean && append!(abstime, time′)
-        conc′, time′
+        conci, timei
       end
     end
     conc = map(x->x[1], ct)
@@ -194,6 +196,15 @@ function NCASubject(conc, time;
     else
       conc, time, _, _ = cleanmissingconc(conc, time; kwargs...)
       conc, time, _, _ = cleanblq(conc, time; llq=llq, dose=dose, kwargs...)
+    end
+    # we need to check twice because cleanning changes the data
+    if check
+      if isurine
+        checkconctime(conc, start_time; dose=dose, kwargs...)
+        checkconctime(conc, end_time;   dose=dose, kwargs...)
+      else
+        checkconctime(conc, time; dose=dose, kwargs...)
+      end
     end
   end
   if isurine

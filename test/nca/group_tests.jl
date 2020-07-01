@@ -31,3 +31,10 @@ aucs = @test_nowarn NCA.auc(data3)
 # test ii
 df[!,:ii] .= [0.1 * i for i in df.ID]
 pop = @test_nowarn read_nca(df, id=:ID, time=:TIME, conc=:TCONC, group=[:PERIOD, :METABOLITE], verbose=false)
+
+example_nca = DataFrame(id=repeat([1], inner=12),
+                        time=repeat(0:5, 2), amt=[1, repeat([missing],11)...],
+                        conc = rand(12),
+                        group=repeat(["a","b"], inner=6), route="iv")
+@test_throws ArgumentError read_nca(example_nca, id=:id, time=:time,
+                conc=:conc, amt=:amt,route=:route, group=:group)
