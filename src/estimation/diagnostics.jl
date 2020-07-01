@@ -223,23 +223,22 @@ function _predict(
   return map(d -> mean.(d), NamedTuple{keys(subject.observations)}(dist))
 end
 
-## CPRED like
+## CPRED(I) like
 function _predict(
   m::PumasModel,
   subject::Subject,
   param::NamedTuple,
-  approx::FOCE,
+  approx::Union{FOCE, FOCEI, LaplaceI},
   vrandeffsorth::Union{Nothing, AbstractVector}=nothing,
   args...; kwargs...)
 
   if vrandeffsorth isa Nothing
-    vrandeffsorth = _orth_empirical_bayes(m, subject, param, FOCE(), args...; kwargs...)
+    vrandeffsorth = _orth_empirical_bayes(m, subject, param, approx, args...; kwargs...)
   end
 
   randeffstransform = totransform(m.random(param))
   randeffs = TransformVariables.transform(randeffstransform, vrandeffsorth)
   dist = _derived(m, subject, param, randeffs, args...; kwargs...)
-
 
   _dv_keys = keys(subject.observations)
   return map(NamedTuple{_dv_keys}(_dv_keys)) do name
@@ -247,35 +246,6 @@ function _predict(
       _vrandeffs -> begin
         _randeffs = TransformVariables.transform(randeffstransform, _vrandeffs)
         return mean.(_derived(m, subject, param, _randeffs, args...; kwargs...)[name])
-      end,
-      vrandeffsorth
-    )
-    return mean.(dist[name]) .- F*vrandeffsorth
-  end
-end
-
-## CPREDI like
-function _predict(
-  m::PumasModel,
-  subject::Subject,
-  param::NamedTuple,
-  approx::Union{FOCEI, LaplaceI},
-  vrandeffsorth::Union{Nothing, AbstractVector}=nothing,
-  args...; kwargs...)
-
-  if vrandeffsorth isa Nothing
-    vrandeffsorth = _orth_empirical_bayes(m, subject, param, FOCEI(), args...; kwargs...)
-  end
-
-  randeffstransform = totransform(m.random(param))
-  randeffs = TransformVariables.transform(randeffstransform, vrandeffsorth)
-  dist = _derived(m, subject, param, randeffs, args...; kwargs...)
-  _dv_keys = keys(subject.observations)
-  return map(NamedTuple{_dv_keys}(_dv_keys)) do name
-    F = ForwardDiff.jacobian(
-      _vrandeffs -> begin
-        _randeffs = TransformVariables.transform(randeffstransform, _vrandeffs)
-        mean.(_derived(m, subject, param, _randeffs, args...; kwargs...)[name])
       end,
       vrandeffsorth
     )
@@ -478,20 +448,41 @@ struct SubjectPrediction{T1, T2, T3, T4}
   approx::T4
 end
 
+# For users it's often more convenient to input the ebes on the original
+# scale. Provide a method that applies the inverse transform
+function StatsBase.predict(
+  model::PumasModel,
+  subjects::Population,
+  param::NamedTuple,
+  approx::LikelihoodApproximation,
+  args...;
+  kwargs...)
+
+  map(subject -> predict(model, subject, param, approx, args...; kwargs...), subjects)
+end
+
 function StatsBase.predict(
   model::PumasModel,
   subject::Subject,
   param::NamedTuple,
   approx::LikelihoodApproximation,
-  vvrandeffsorth::AbstractVector=_orth_empirical_bayes(model, subject, param, approx),
+  randeffs::Union{AbstractVector, NamedTuple}=_orth_empirical_bayes(model, subject, param, approx),
   args...; kwargs...
   )
+
+  if randeffs isa NamedTuple
+    randeffstransform = totransform(model.random(param))
+    vvrandeffsorth = TransformVariables.inverse(randeffstransform, randeffs)
+  else
+    vvrandeffsorth = randeffs
+  end
 
   ipred = _ipredict(model, subject, param, approx, vvrandeffsorth, args...; kwargs...)
   if approx isa NaivePooled
     pred = ipred
   else
-    pred = _predict(model, subject, param, approx, vvrandeffsorth, args...; kwargs...)
+    zero_etas = _orth_empirical_bayes(model, subject, param, FO())
+    pred = _predict(model, subject, param, approx, zero_etas, args...; kwargs...)
   end
   SubjectPrediction(pred, ipred, subject, approx)
 end
@@ -500,9 +491,22 @@ StatsBase.predict(fpm::FittedPumasModel, approx::LikelihoodApproximation; kwargs
 
 function StatsBase.predict(
   fpm::FittedPumasModel,
-  subjects::Population=fpm.data,
-  approx::LikelihoodApproximation=fpm.approx;
+  subjects::Union{Nothing, Population}=nothing,
+  approx::LikelihoodApproximation=fpm.approx,
+  randeffs::Union{Nothing, AbstractVector, AbstractVector{<:NamedTuple}}=nothing;
   nsim=nothing, useEBEs=true, obstimes=nothing)
+
+  # We use nothing to indicate that the data embedded in fpm should be used.
+  # The reason why we don't just have fpm.data as the default positional argument
+  # is that it is then impossible to distinguish between the case where a new
+  # population was input, and the case where the calling signature is just
+  # predict(fpm). In the latter case we want to use the ebes from fpm as the default.
+  if subjects isa Nothing
+    newdata = false
+    subjects = fpm.data
+  else
+    newdata = true
+  end
 
   if !useEBEs
     error("Sampling from the omega distribution is not yet implemented.")
@@ -511,13 +515,24 @@ function StatsBase.predict(
     error("Using simulated subjects is not yet implemented.")
   end
 
-  _estimate_bayes = approx == fpm.approx ? false : true
+  # If nothing
+  if randeffs isa Nothing
+    vvrandeffsorth = fpm.vvrandeffsorth
+    if newdata || approx !== fpm.approx
+      _estimate_bayes = true
+    else
+      _estimate_bayes = false
+    end
+  elseif randeffs isa AbstractVector
+    vvrandeffsorth = randeffs
+    _estimate_bayes = false
+  end
 
   if _estimate_bayes
     # re-estimate under approx
     return map(subject -> predict(fpm, subject, approx; obstimes=obstimes), subjects)
   else
-    return map(i -> predict(fpm.model, subjects[i], coef(fpm), approx, fpm.vvrandeffsorth[i], fpm.args...; obstimes=obstimes, fpm.kwargs...), 1:length(subjects))
+    return map(i -> predict(fpm.model, subjects[i], coef(fpm), approx, vvrandeffsorth[i], fpm.args...; obstimes=obstimes, fpm.kwargs...), 1:length(subjects))
   end
 end
 

@@ -1187,20 +1187,16 @@ function _update_ebes_and_evaluate_marginal_nll!(
   kwargs...
 )
 
-  # If not FO or NaivePooled then compute EBE based on the estimates from last
-  # iteration stored in vvrandeffs and store the retult in vvrandeffs_tmp
-  if !(approx isa FO || approx isa NaivePooled)
-    copyto!(vrandeffsorth_tmp, vrandeffsorth)
-    _orth_empirical_bayes!(
-      vrandeffsorth_tmp,
-      m,
-      subject,
-      param,
-      approx,
-      args...;
-      kwargs...
-    )
-  end
+  copyto!(vrandeffsorth_tmp, vrandeffsorth)
+  _orth_empirical_bayes!(
+    vrandeffsorth_tmp,
+    m,
+    subject,
+    param,
+    approx,
+    args...;
+    kwargs...
+  )
 
   return marginal_nll(
     m,

@@ -154,5 +154,10 @@ using Test, Pumas, Random, StaticArrays
       @test_throws ArgumentError Pumas.epredict(ft_focei)
       @test_throws ArgumentError Pumas.epredict(ft_focei, nsim=0)
     end
+
+    pred1 = predict(ft_focei)
+    pred2 = predict(ft_focei.model, ft_focei.data, coef(ft_focei), Pumas.FOCEI())
+    @test sum(sum(pred1[i].pred.dv.-pred2[i].pred.dv for i = 1:length(theopp_nlme))) == 0
+    @test abs(sum(sum(pred1[i].ipred.dv.-pred2[i].ipred.dv for i = 1:length(theopp_nlme)))) < 1e-4
   end
 end
