@@ -170,7 +170,7 @@ function Chains(b::BayesMCMCResults)
     _push_varinfo!(names, vals, nothing, nothing, name, val, nothing, nothing)
   end
 
-  # Reeturn a Chains object for nice printing of the results
+  # Return a Chains object for nice printing of the results
   return Chains(samples_transid, names)
 end
 

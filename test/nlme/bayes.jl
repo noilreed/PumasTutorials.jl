@@ -78,13 +78,13 @@ theopp = read_pumas(example_data("event_data/THEOPP"),cvs = [:WT,:SEX])
 
   # Check that the parameters are not interchanged
   c = Pumas.Chains(b)
-  @test mean(c.value[:, "Ω₁,₁", 1]) ≈ m.Ω[1]
-  @test mean(c.value[:, "θ₁"  , 1]) ≈ m.θ[1]
-  @test mean(c.value[:, "θ₂"  , 1]) ≈ m.θ[2]
-  @test mean(c.value[:, "θ₃"  , 1]) ≈ m.θ[3]
-  @test mean(c.value[:, "θ₄"  , 1]) ≈ m.θ[4]
-  @test mean(c.value[:, "θ₅"  , 1]) ≈ m.θ[5]
-  @test mean(c.value[:, "σ²"  , 1]) ≈ m.σ²
+  @test mean(c["Ω₁,₁"]) ≈ m.Ω[1]
+  @test mean(c["θ₁"]) ≈ m.θ[1]
+  @test mean(c["θ₂"]) ≈ m.θ[2]
+  @test mean(c["θ₃"]) ≈ m.θ[3]
+  @test mean(c["θ₄"]) ≈ m.θ[4]
+  @test mean(c["θ₅"]) ≈ m.θ[5]
+  @test mean(c["σ²"]) ≈ m.σ²
 
 # The MCMC sampler is very sensitive to rounding so we can't enable the test below
 #   @test sprint((io, o) -> show(io, MIME"text/plain"(), o), b) == """
