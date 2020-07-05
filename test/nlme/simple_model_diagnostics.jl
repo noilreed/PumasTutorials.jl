@@ -89,13 +89,13 @@ end
   @test Pumas.epredict(mdsl_proportional, dt, param, nsim=10000).dv ≈ [10.030280335946054, 6.020891201534397] rtol=1e-6
 end
 
-@testset "_predict(::FO) (PRED)" for
+@testset "__predict(::FO) (PRED)" for
   (sub_pred, dt) in zip(fill([10.0000000, 6.06530660], length(data)), data)
 
-  @test Pumas._predict(mdsl_proportional, dt, param, Pumas.FO()).dv ≈ sub_pred rtol=1e-6
+  @test Pumas.__predict(mdsl_proportional, dt, param, zeros(1), Pumas.FO()).dv ≈ sub_pred rtol=1e-6
 end
 
-@testset "wresiduals(::FO) (WRES)" for
+@testset "__wresiduals(::FO) (WRES)" for
   (sub_wres, dt) in zip([[ 0.180566054, 1.74797817 ],
                          [-1.35845124 ,-0.274456699],
                          [ 0.310535666, 0.611240923],
@@ -107,10 +107,10 @@ end
                          [-1.38172560 , 0.984121759],
                          [ 0.905043866, 0.302785305]], data)
 
-  @test wresiduals(mdsl_proportional, dt, param, Pumas.FO()).dv ≈ sub_wres
+  @test Pumas.__wresiduals(mdsl_proportional, dt, param, zeros(1), Pumas.FO()).dv ≈ sub_wres
 end
 
-@testset "wresiduals(::FOCE), (CWRES)" begin
+@testset "__wresiduals(::FOCE), (CWRES)" begin
   for (sub_cwres, dt) in zip([[  1.8056605439561435, 6.35847069362139   ],
                               [-13.584512372551321 , -0.7859197550457881],
                               [  3.105356662285346 , 1.925994243881485  ],
@@ -122,12 +122,13 @@ end
                               [-13.817256008339715 , 3.249017333791544  ],
                               [  9.050438663401902 , 0.9200622059620783]], data)
 
-    @test wresiduals(mdsl_additive, dt, param, Pumas.FOCE()).dv ≈ sub_cwres
+    @test Pumas.__wresiduals(mdsl_additive, dt, param,
+      Pumas._orth_empirical_bayes(mdsl_additive, dt, param, Pumas.FOCE()), Pumas.FOCE()).dv ≈ sub_cwres
   end
-  @test_throws ArgumentError wresiduals(mdsl_proportional, data[1], param, Pumas.FOCE())
+  @test_throws ArgumentError Pumas.__wresiduals(mdsl_proportional, data[1], param, zeros(1), Pumas.FOCE())
 end
 
-@testset "wresiduals(::FOCEI), (CWRESI)" for
+@testset "__wresiduals(::FOCEI), (CWRESI)" for
   (sub_cwresi, dt) in zip([[ 0.180566054, 1.6665779  ],
                            [-1.35845124 ,-0.278938663],
                            [ 0.310535666, 0.605059261],
@@ -139,10 +140,11 @@ end
                            [-1.3817256  , 0.962485383],
                            [ 0.905043866, 0.302554671]], data)
 
-  @test wresiduals(mdsl_proportional, dt, param, Pumas.FOCEI()).dv ≈ sub_cwresi rtol=1e-6
+  @test Pumas.__wresiduals(mdsl_proportional, dt, param,
+    Pumas._orth_empirical_bayes(mdsl_proportional, dt, param, Pumas.FOCEI()), Pumas.FOCEI()).dv ≈ sub_cwresi rtol=1e-6
 end
 
-@testset "iwresiduals(::FO) (IWRES)" for
+@testset "__iwresiduals(::FO) (IWRES)" for
   (sub_iwres, dt) in zip([[ 0.180566054, 1.83329497 ],
                           [-1.35845124 ,-0.287852614],
                           [ 0.310535666, 0.641074888],
@@ -154,10 +156,10 @@ end
                           [-1.38172560 , 1.03215561 ],
                           [ 0.905043866, 0.317563907]], data)
 
-  @test Pumas.iwresiduals(mdsl_proportional, dt, param, Pumas.FO()).dv ≈ sub_iwres
+  @test Pumas.__iwresiduals(mdsl_proportional, dt, param, zeros(1), Pumas.FO()).dv ≈ sub_iwres
 end
 
-@testset "iwresiduals(::FOCE) (ICWRES)" begin
+@testset "__iwresiduals(::FOCE) (ICWRES)" begin
   for (sub_icwres, dt) in zip([
     [  1.8056605439561437,  4.4147744872867865],
     [-13.584512372551323 , -0.3448880160816745],
@@ -169,13 +171,14 @@ end
     [ -1.690869864892035 , 1.0193403639202951 ],
     [-13.817256008339715 , 1.8980127284645392 ],
     [  9.050438663401902 , 0.4545489978903738 ]], data)
-    @test Pumas.iwresiduals(mdsl_additive, dt, param, Pumas.FOCE()).dv ≈ sub_icwres rtol=1e-6
+    @test Pumas.__iwresiduals(mdsl_additive, dt, param,
+      Pumas._orth_empirical_bayes(mdsl_additive, dt, param, Pumas.FOCE()), Pumas.FOCE()).dv ≈ sub_icwres rtol=1e-6
   end
 
-  @test_throws ArgumentError Pumas.iwresiduals(mdsl_proportional, data[1], param, Pumas.FOCE()).dv
+  @test_throws ArgumentError Pumas.__iwresiduals(mdsl_proportional, data[1], param, zeros(1), Pumas.FOCE()).dv
 end
 
-@testset "iwresiduals(::FOCEI) (ICWRESI)" for
+@testset "__iwresiduals(::FOCEI) (ICWRESI)" for
   (sub_icwresi, dt) in zip([[ 0.180566054, 1.56991766 ],
                             [-1.35845124 ,-0.236161082],
                             [ 0.310535666, 0.595884676],
@@ -187,7 +190,8 @@ end
                             [-1.38172560 , 0.925641802],
                             [ 0.905043866, 0.314343255]], data)
 
-  @test Pumas.iwresiduals(mdsl_proportional, dt, param, Pumas.FOCEI()).dv ≈ sub_icwresi rtol=1e-5
+  @test Pumas.__iwresiduals(mdsl_proportional, dt, param,
+    Pumas._orth_empirical_bayes(mdsl_proportional, dt, param, Pumas.FOCEI()), Pumas.FOCEI()).dv ≈ sub_icwresi rtol=1e-5
 end
 
 @testset "Expected individual residuals" begin
@@ -211,8 +215,12 @@ end
 param = (θ = [0.340689], Ω = Diagonal([0.000004]), σ = sqrt(0.0752507))
 
 @testset "Shrinkage" begin
-  @test ηshrinkage(mdsl_proportional, data, param, Pumas.FOCEI()).η ≈ [0.997574] rtol=1e-6
-  ϵshrinkage(mdsl_proportional, data, param, Pumas.FOCEI())
+  _vvrandeffsorth = [Pumas._orth_empirical_bayes(mdsl_proportional, subject, param, Pumas.FOCEI()) for subject in data]
+
+  @test Pumas._ηshrinkage(mdsl_proportional, data, param, _vvrandeffsorth).η ≈ [0.997574] rtol=1e-6
+
+  Pumas._ϵshrinkage(mdsl_proportional, data, param,
+    _vvrandeffsorth)
 end
 
 @testset "Information crieria" begin

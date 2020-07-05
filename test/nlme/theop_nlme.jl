@@ -8,9 +8,10 @@ using Test, Pumas, Random, StaticArrays
   models["closed_form"] = @model begin
     @param begin
       θ ∈ VectorDomain(3,init=[3.24467E+01, 8.72879E-02, 1.49072E+00], lower=zeros(3))
-      Ω ∈ PSDDomain(init=Matrix{Float64}([ 1.93973E-02  1.20854E-02  5.69131E-02
-                                           1.20854E-02  2.02375E-02 -6.47803E-03
-                                           5.69131E-02 -6.47803E-03  4.34671E-01]))
+      Ω ∈ PSDDomain(init=Matrix{Float64}([
+        1.93973E-02  1.20854E-02  5.69131E-02
+        1.20854E-02  2.02375E-02 -6.47803E-03
+        5.69131E-02 -6.47803E-03  4.34671E-01]))
       Σ ∈ PDiagDomain(init=[1.70385E-02, 8.28498E-02])
     end
 
@@ -137,9 +138,8 @@ using Test, Pumas, Random, StaticArrays
 
     param = init_param(model)
 
-    @test DataFrame(predict(ft_focei, Pumas.FO())).dv_ipred[1:3] ≈ [0.0, 3.0330238705656996,5.488490667058586] rtol=1e-4
-    @test_throws ArgumentError DataFrame(predict(ft_focei, Pumas.FOCE()))
-    @test DataFrame(predict(ft_focei, Pumas.FOCEI())).dv_ipred[1:3] ≈ [0.0, 3.379491771652512, 6.260411022764525] rtol=1e-4
+    @test DataFrame(predict(ft_focei)).dv_ipred[1:3] ≈ [0.0, 3.379491664355948, 6.260410839825305] rtol=1e-4
+    @test DataFrame(predict(ft_focei)).dv_pred[1:3] ≈ [0.0, 3.0330237813961167, 5.488490519472397] rtol=1e-4
 
     @testset "NPDEs" begin
       Random.seed!(123)
@@ -177,9 +177,11 @@ using Test, Pumas, Random, StaticArrays
       @test_throws ArgumentError Pumas.epredict(ft_focei, nsim=0)
     end
 
-    pred1 = predict(ft_focei)
-    pred2 = predict(ft_focei.model, ft_focei.data, coef(ft_focei), Pumas.FOCEI())
-    @test sum(sum(pred1[i].pred.dv.-pred2[i].pred.dv for i = 1:length(theopp_nlme))) == 0
-    @test abs(sum(sum(pred1[i].ipred.dv.-pred2[i].ipred.dv for i = 1:length(theopp_nlme)))) < 1e-4
+    pred1  = predict(ft_focei)
+    predFO = [Pumas.__predict(ft_focei.model, subject, coef(ft_focei), vrandeffsorth, Pumas.FO()) for (subject, vrandeffsorth) in zip(ft_focei.data, ft_focei.vvrandeffsorth)]
+    predFOCEI = [Pumas.__ipredict(ft_focei.model, subject, coef(ft_focei), vrandeffsorth) for (subject, vrandeffsorth) in zip(ft_focei.data, ft_focei.vvrandeffsorth)]
+
+    @test sum(sum(pred1[i].pred.dv - predFO[i].dv for i = 1:length(theopp_nlme))) == 0
+    @test abs(sum(sum(pred1[i].ipred.dv.-predFOCEI[i].dv for i = 1:length(theopp_nlme)))) < 1e-4
   end
 end

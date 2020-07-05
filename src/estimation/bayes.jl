@@ -49,7 +49,7 @@ function logdensity(b::BayesLogDensity, v::AbstractVector)
   ℓ_rfx = sum(enumerate(b.data)) do (i, subject)
     # compute the random effect density and likelihood
     vrandeffsorth = @view v[(m + (i - 1)*n) .+ (1:n)]
-    return -Pumas.penalized_conditional_nll(b.model, subject, param, vrandeffsorth, b.args...; b.kwargs...)
+    return -Pumas._penalized_conditional_nll(b.model, subject, param, vrandeffsorth, b.args...; b.kwargs...)
   end
   ℓ = ℓ_param + ℓ_rfx
   return isnan(ℓ) ? -Inf : ℓ
@@ -83,7 +83,7 @@ function logdensitygrad(b::BayesLogDensity, v::AbstractVector)
     function L_rfx(u)
       param = TransformVariables.transform(t_param, @view u[1:m])
       vrandeffsorth = @view u[m .+ (1:n)]
-      return -Pumas.penalized_conditional_nll(b.model, subject, param, vrandeffsorth, b.args...; b.kwargs...)
+      return -Pumas._penalized_conditional_nll(b.model, subject, param, vrandeffsorth, b.args...; b.kwargs...)
     end
     copyto!(b.buffer, m + 1, v, m + (i - 1)*n + 1, n)
 

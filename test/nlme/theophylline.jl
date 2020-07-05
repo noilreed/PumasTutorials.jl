@@ -117,17 +117,75 @@ end
   o_infer = infer(o)
   o_inspect = inspect(o)
   o_inspect_df = DataFrame(o_inspect)
+
+  @testset "pred and ipred values" begin
+    @test o_inspect.pred[1].pred.dv ≈ [
+      0.0000E+00
+      5.2474E+00
+      7.2064E+00
+      7.5764E+00
+      7.1662E+00
+      6.2906E+00
+      5.7329E+00
+      4.9841E+00
+      4.3048E+00
+      3.4455E+00
+      1.4171E+00] rtol=1e-3
+
+    @test o_inspect.pred[1].ipred.dv ≈ [
+      0.0000E+00
+      3.8823E+00
+      6.8137E+00
+      9.0294E+00
+      9.7418E+00
+      9.0996E+00
+      8.4991E+00
+      7.6549E+00
+      6.8599E+00
+      5.8070E+00
+      2.9865E+00] rtol=1e-3
+  end
+
   o_wresiduals = wresiduals(o)
   o_wresiduals_df = DataFrame(o_wresiduals)
+
+  @testset "wres and iwres values" begin
+    @test o_wresiduals[1].wres.dv ≈ [
+       1.4334E+00
+      -5.3196E-01
+      -9.8157E-01
+       2.2707E+00
+       6.2871E-01
+       2.2985E-01
+       9.4063E-01
+       7.9470E-01
+       1.1602E+00
+       1.2969E+00
+       1.4068E+00] rtol=1e-3
+
+    @test o_wresiduals[1].iwres.dv ≈ [
+       7.4000E-01
+      -2.4074E+00
+      -6.3643E-01
+       2.9236E+00
+       2.4938E+00
+       2.2894E+00
+       2.6271E+00
+       2.4859E+00
+       2.5852E+00
+       2.4945E+00
+       1.8629E+00] ./ sqrt(coef(o).σ²_add) rtol=1e-3
+  end
+
   o_predict = predict(o)
-  @test predict(o, theopp[3]).pred.dv ≈ predict(o)[3].pred.dv
-  @test predict(o, theopp[3]).ipred.dv ≈ predict(o)[3].ipred.dv
-  @test predict(o, theopp)[3].pred.dv ≈ predict(o)[3].pred.dv
-  @test predict(o, theopp)[3].ipred.dv ≈ predict(o)[3].ipred.dv
-  @test predict(o_inspect, theopp[3]).pred.dv ≈ predict(o_inspect)[3].pred.dv
-  @test predict(o_inspect, theopp[3]).ipred.dv ≈ predict(o_inspect)[3].ipred.dv
-  @test predict(o_inspect, theopp)[3].pred.dv ≈ predict(o_inspect)[3].pred.dv
-  @test predict(o_inspect, theopp)[3].ipred.dv ≈ predict(o_inspect)[3].ipred.dv
+  @test predict(o, theopp[3]).pred.dv  ≈ predict(o)[3].pred.dv  rtol=1e-6
+  @test predict(o, theopp[3]).ipred.dv ≈ predict(o)[3].ipred.dv rtol=1e-6
+  @test predict(o, theopp)[3].pred.dv  ≈ predict(o)[3].pred.dv  rtol=1e-6
+  @test predict(o, theopp)[3].ipred.dv ≈ predict(o)[3].ipred.dv rtol=1e-6
+  @test predict(o_inspect, theopp[3]).pred.dv  ≈ predict(o_inspect)[3].pred.dv  rtol=1e-6
+  @test predict(o_inspect, theopp[3]).ipred.dv ≈ predict(o_inspect)[3].ipred.dv rtol=1e-6
+  @test predict(o_inspect, theopp)[3].pred.dv  ≈ predict(o_inspect)[3].pred.dv  rtol=1e-6
+  @test predict(o_inspect, theopp)[3].ipred.dv ≈ predict(o_inspect)[3].ipred.dv rtol=1e-6
 
   # test predictions work at specific times using obstimes
   theopp3 = theopp[3]
@@ -140,11 +198,11 @@ end
 
   @test empirical_bayes(o)[1].η ≈ [-2.41894177806061, -0.01824682682564875, -1.2477915226281944] rtol=1e-5
   @test Pumas.empirical_bayes_dist(o)[1].η.Σ.mat ≈ [
-    0.03282388757574916    -0.00041459973200541107 -0.006289667479989163
-   -0.00041459973200541107  2.8084159378198597e-5   0.0006126638425598551
-   -0.006289667479989163    0.0006126638425598551   0.014897292696384252  ] rtol=1e-5
+    0.04191240027331727    -0.0005213271878493498  -0.00783161530656272
+   -0.0005213271878493498   2.8816456219305453e-5   0.0006170954194010443
+   -0.00783161530656272     0.0006170954194010443   0.014798499862467913  ] rtol=1e-5
 
-theopmodel_analytical_fo_boot = @model begin
+  theopmodel_analytical_fo_boot = @model begin
     @param begin
       θ₁ ∈ RealDomain(lower=0.1,    upper=5.0, init=2.77)
       θ₂ ∈ RealDomain(lower=0.0008, upper=0.5, init=0.0781)
@@ -187,14 +245,14 @@ theopmodel_analytical_fo_boot = @model begin
                          Ω = Diagonal([1.81195E+01, 5.99850E-01]),
                          σ²_add = 2.66533E-01)
 
-o_boot = fit(theopmodel_analytical_fo_boot, theopp, fo_boot_estimated_params, Pumas.FO(),
-  optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
+  o_boot = fit(theopmodel_analytical_fo_boot, theopp, fo_boot_estimated_params, Pumas.FO(),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
   Random.seed!(12349)
   bts = bootstrap(o_boot; samples=5)
-@test evaluate(
-  Levenshtein(),
-  sprint((io, t) -> show(io, MIME"text/plain"(), t), bts),
+  @test evaluate(
+    Levenshtein(),
+    sprint((io, t) -> show(io, MIME"text/plain"(), t), bts),
 """
 Bootstrap inference results
 
@@ -221,11 +279,11 @@ Successful fits: 5 out of 5
 No stratification.
 """) < 3 # allow three characters to differ
 
-Random.seed!(102349)
-bts = bootstrap(o_boot; samples=5, stratify_by=:SEX)
-@test evaluate(
-  Levenshtein(),
-  sprint((io, t) -> show(io, MIME"text/plain"(), t), bts),
+  Random.seed!(102349)
+  bts = bootstrap(o_boot; samples=5, stratify_by=:SEX)
+  @test evaluate(
+    Levenshtein(),
+    sprint((io, t) -> show(io, MIME"text/plain"(), t), bts),
 """
 Bootstrap inference results
 
@@ -268,30 +326,28 @@ Stratification by SEX.
     @test Pumas._coef_value(getfield(o_stderror, k))  ≈ Pumas._coef_value(getfield(fo_stderr, k))           rtol=2e-2
   end
 
+  ref_vvrandeffsorth = [
+   -0.5682051861819626   -1.3372176639386903  -0.9691315718003072
+   -0.47948430790462326  0.8766764713072429   -0.818609462146082
+   -0.39288312522268715  0.3298034075040787   -0.10297681157423169
+   -0.6905536899223552   0.2560789980796394   -0.74516589536839
+   -0.6279645528759731   0.5935019292828454   -0.2736758012301075
+   -0.7010777740846206   1.0804460516058096    0.5846562848602825
+   -0.3218285869820194   0.974899415474036     0.19955799574815897
+   -0.15855240449478777  0.7793071742500507    0.10318921572166276
+    1.3260924641543188   0.30361985422754845  -2.4620207787348223
+   -0.3305047566367379   -0.1581414119799655  -0.3888404291603696
+    0.4212431589411555   1.4005507767210812    0.6941426685678447
+   -0.26795217436569013  0.712896943264522    -1.3233948827801814]
+
   @testset "test stored empirical Bayes estimates. Subject: $i" for i in 1:length(theopp)
-    @test o.vvrandeffsorth[i] == zeros(3)
+    @test o.vvrandeffsorth[i] ≈ ref_vvrandeffsorth[i,:] rtol=1e-3
   end
 
   pred = predict(o)
-  pred_foce = predict(o, Pumas.FOCE())
-  pred_focei = predict(o, Pumas.FOCEI())
   dfpred = DataFrame(pred)
   dfpred_no_covar = DataFrame(pred; include_covariates=false)
-  dfpred_foce = DataFrame(pred_foce)
-  dfpred_foce_no_covar = DataFrame(pred_foce; include_covariates=false)
-  dfpred_focei = DataFrame(pred_focei)
-  dfpred_focei_no_covar = DataFrame(pred_focei; include_covariates=false)
   @testset "test predict" begin
-    @test pred[1].approx == Pumas.FO()
-    @test pred_foce[1].approx == Pumas.FOCE()
-    @test pred_focei[1].approx == Pumas.FOCEI()
-
-    @test all(dfpred[!,:pred_approx].== Ref(Pumas.FO()))
-    @test all(dfpred_no_covar[!,:pred_approx].== Ref(Pumas.FO()))
-    @test all(dfpred_foce[!,:pred_approx].== Ref(Pumas.FOCE()))
-    @test all(dfpred_foce_no_covar[!,:pred_approx].== Ref(Pumas.FOCE()))
-    @test all(dfpred_focei[!,:pred_approx].== Ref(Pumas.FOCEI()))
-    @test all(dfpred_focei_no_covar[!,:pred_approx].== Ref(Pumas.FOCEI()))
 
     @test hasproperty(dfpred, :dv_pred)
     @test hasproperty(dfpred, :dv_ipred)
@@ -302,23 +358,6 @@ Stratification by SEX.
     @test !(hasproperty(dfpred_no_covar, :SEX))
     @test !(hasproperty(dfpred_no_covar, :WT))
 
-    @test hasproperty(dfpred_foce, :dv_pred)
-    @test hasproperty(dfpred_foce, :dv_ipred)
-    @test hasproperty(dfpred_foce, :SEX)
-    @test hasproperty(dfpred_foce, :WT)
-    @test hasproperty(dfpred_foce_no_covar, :dv_pred)
-    @test hasproperty(dfpred_foce_no_covar, :dv_ipred)
-    @test !(hasproperty(dfpred_foce_no_covar, :SEX))
-    @test !(hasproperty(dfpred_foce_no_covar, :WT))
-
-    @test hasproperty(dfpred_focei, :dv_pred)
-    @test hasproperty(dfpred_focei, :dv_ipred)
-    @test hasproperty(dfpred_focei, :SEX)
-    @test hasproperty(dfpred_focei, :WT)
-    @test hasproperty(dfpred_focei_no_covar, :dv_pred)
-    @test hasproperty(dfpred_focei_no_covar, :dv_ipred)
-    @test !(hasproperty(dfpred_focei_no_covar, :SEX))
-    @test !(hasproperty(dfpred_focei_no_covar, :WT))
   end
 
   wres = wresiduals(o)
@@ -426,7 +465,7 @@ end
     σ²_add = 0.388
     )
 
-  @test deviance(theopmodel_solver_fo, theopp, param, Pumas.FO(),reltol=1e-6,abstol=1e-8) ≈ 137.16573310096661
+  @test deviance(theopmodel_solver_fo, theopp, param, Pumas.FO(), reltol=1e-6, abstol=1e-8) ≈ 137.16573310096661
 
   fo_estimated_params = (θ₁ = 4.20241E+00,  #Ka MEAN ABSORPTION RATE CONSTANT for SEX = 1(1/HR)
                          θ₂ = 7.25283E-02,  #K MEAN ELIMINATION RATE CONSTANT (1/HR)
@@ -458,6 +497,35 @@ end
   o_infer = infer(o)
   o_inspect = inspect(o)
   o_inspect_df = DataFrame(o_inspect)
+
+  @testset "pred and ipred values" begin
+    @test o_inspect.pred[1].pred.dv ≈ [
+      0.0000E+00
+      5.2474E+00
+      7.2064E+00
+      7.5764E+00
+      7.1662E+00
+      6.2906E+00
+      5.7329E+00
+      4.9841E+00
+      4.3048E+00
+      3.4455E+00
+      1.4171E+00] rtol=1e-3
+
+    @test o_inspect.pred[1].ipred.dv ≈ [
+      0.0000E+00
+      3.8823E+00
+      6.8137E+00
+      9.0294E+00
+      9.7418E+00
+      9.0996E+00
+      8.4991E+00
+      7.6549E+00
+      6.8599E+00
+      5.8070E+00
+      2.9865E+00] rtol=1e-3
+  end
+
   o_wresiduals = wresiduals(o)
   o_wresiduals_df = DataFrame(o_wresiduals)
   o_predict = predict(o)
@@ -517,9 +585,9 @@ end
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
   Random.seed!(12349)
   bts = bootstrap(o_boot; samples=5)
-@test evaluate(
-  Levenshtein(),
-  sprint((io, t) -> show(io, MIME"text/plain"(), t), bts),
+  @test evaluate(
+    Levenshtein(),
+    sprint((io, t) -> show(io, MIME"text/plain"(), t), bts),
 """
 Bootstrap inference results
 
@@ -546,11 +614,11 @@ Successful fits: 5 out of 5
 No stratification.
 """) < 3 # allow three characters to differ
 
-Random.seed!(123849)
-bts = bootstrap(o_boot; samples=5, stratify_by=:SEX)
-@test evaluate(
-  Levenshtein(),
-  sprint((io, t) -> show(io, MIME"text/plain"(), t), bts),
+  Random.seed!(123849)
+  bts = bootstrap(o_boot; samples=5, stratify_by=:SEX)
+  @test evaluate(
+    Levenshtein(),
+    sprint((io, t) -> show(io, MIME"text/plain"(), t), bts),
 """
 Bootstrap inference results
 
@@ -596,8 +664,22 @@ Stratification by SEX.
     @test Pumas._coef_value(getfield(o_stderror, k))  ≈ Pumas._coef_value(getfield(fo_stderr, k))           rtol=2.5e-2
   end
 
+  ref_vvrandeffsorth = [
+   -0.5682051861819626   -1.3372176639386903  -0.9691315718003072
+   -0.47948430790462326  0.8766764713072429   -0.818609462146082
+   -0.39288312522268715  0.3298034075040787   -0.10297681157423169
+   -0.6905536899223552   0.2560789980796394   -0.74516589536839
+   -0.6279645528759731   0.5935019292828454   -0.2736758012301075
+   -0.7010777740846206   1.0804460516058096    0.5846562848602825
+   -0.3218285869820194   0.974899415474036     0.19955799574815897
+   -0.15855240449478777  0.7793071742500507    0.10318921572166276
+    1.3260924641543188   0.30361985422754845  -2.4620207787348223
+   -0.3305047566367379   -0.1581414119799655  -0.3888404291603696
+    0.4212431589411555   1.4005507767210812    0.6941426685678447
+   -0.26795217436569013  0.712896943264522    -1.3233948827801814]
+
   @testset "test stored empirical Bayes estimates. Subject: $i" for i in 1:length(theopp)
-    @test o.vvrandeffsorth[i] == zeros(3)
+    @test o.vvrandeffsorth[i] ≈ ref_vvrandeffsorth[i,:] rtol=1e-3
   end
 
   # Test that the types work on both stiff and non-stiff solver methods
@@ -722,6 +804,62 @@ end
   @test hasproperty(o_inspect_df, Symbol("η_1"))
   @test hasproperty(o_inspect_df, Symbol("η_2"))
 
+  @testset "pred and ipred" begin
+    @test o_inspect.pred[1].pred.dv ≈ [
+      0.0000E+00
+      2.9378E+00
+      5.1917E+00
+      6.9075E+00
+      7.3811E+00
+      6.5833E+00
+      5.9170E+00
+      5.0242E+00
+      4.2324E+00
+      3.2613E+00
+      1.1527E+00] rtol=1e-3
+
+    @test o_inspect.pred[1].ipred.dv ≈ [
+      0.0000E+00
+      3.6523E+00
+      6.6791E+00
+      9.2923E+00
+      1.0360E+01
+      9.4842E+00
+      8.5512E+00
+      7.2665E+00
+      6.1218E+00
+      4.7172E+00
+      1.6672E+00] rtol=1e-3
+  end
+
+  @testset "wres and iwres" begin
+    @test o_inspect.wres[1].wres.dv ≈ [
+      1.0321E+00
+     -1.1341E+00
+     -2.9602E-02
+      2.0879E+00
+     -2.6382E-01
+     -4.4147E-01
+      4.9434E-01
+      9.3596E-01
+      1.6213E+00
+      2.1292E+00
+      2.3991E+00] rtol=1e-3
+
+    @test o_inspect.wres[1].iwres.dv ≈ [
+       1.0321E+00
+      -1.1330E+00
+      -1.5213E-01
+       1.6844E+00
+      -9.7655E-01
+      -1.2610E+00
+      -2.6672E-01
+       2.8387E-01
+       1.0715E+00
+       1.7055E+00
+       2.2494E+00] rtol=1e-3
+  end
+
   bts = bootstrap(o; samples=5)
   bts = bootstrap(o; samples=5, stratify_by=:SEX)
 
@@ -760,78 +898,86 @@ end
       -2.888481106982974e23] rtol=1e-3
   end
 
-  @test Pumas._predict(  theopmodel_foce, theopp[1], param, Pumas.FOCE()).dv ≈ [
-    0.0
-    4.9049755499300955
-    7.779812894972983
-    8.664908079363599
-    7.34893115201493
-    5.402130960948489
-    4.744864876005044
-    4.0473577932698825
-    3.4538453107724867
-    2.717339295201133
-    1.0438615786511665] rtol=1e-6
-  @test Pumas._predict( theopmodel_foce, theopp[1], param, Pumas.FOCEI()).dv ≈ [
-    0.0
-    4.9049755499300955
-    7.779812894972983
-    8.664908079363599
-    7.34893115201493
-    5.402130960948489
-    4.744864876005044
-    4.0473577932698825
-    3.4538453107724867
-    2.717339295201133
-    1.0438615786511665] rtol=1e-6
-  @test Pumas._predict(   theopmodel_foce, theopp[1], param, Pumas.FO()).dv ≈ [
-    0.0
-    4.275044896193946
-    6.67731216398507
-    7.754622724333498
-    7.568031859501575
-    6.604016774252041
-    5.975950613840706
-    5.139785095454612
-    4.389649021685277
-    3.4538248683011945
-    1.3267830785309427] rtol=1e-6
-  @test wresiduals(   theopmodel_foce, theopp[1], param, Pumas.FO()).dv ≈ [
+  @test Pumas.__predict(theopmodel_foce, theopp[1], param,
+    Pumas._orth_empirical_bayes(theopmodel_foce, theopp[1], param, Pumas.FOCE()), Pumas.FOCE()).dv ≈ [
+      0.0
+      4.9049755499300955
+      7.779812894972983
+      8.664908079363599
+      7.34893115201493
+      5.402130960948489
+      4.744864876005044
+      4.0473577932698825
+      3.4538453107724867
+      2.717339295201133
+      1.0438615786511665] rtol=1e-6
+  @test Pumas.__predict(theopmodel_foce, theopp[1], param,
+    Pumas._orth_empirical_bayes(theopmodel_foce, theopp[1], param, Pumas.FOCEI()), Pumas.FOCEI()).dv ≈ [
+      0.0
+      4.9049755499300955
+      7.779812894972983
+      8.664908079363599
+      7.34893115201493
+      5.402130960948489
+      4.744864876005044
+      4.0473577932698825
+      3.4538453107724867
+      2.717339295201133
+      1.0438615786511665] rtol=1e-6
+  @test Pumas.__predict(theopmodel_foce, theopp[1], param,
+    Pumas._orth_empirical_bayes(theopmodel_foce, theopp[1], param, Pumas.FO()), Pumas.FO()).dv ≈ [
+      0.0
+      4.275044896193946
+      6.67731216398507
+      7.754622724333498
+      7.568031859501575
+      6.604016774252041
+      5.975950613840706
+      5.139785095454612
+      4.389649021685277
+      3.4538248683011945
+      1.3267830785309427] rtol=1e-6
+
+  @test Pumas.__wresiduals(theopmodel_foce, theopp[1], param, zeros(2), Pumas.FO()).dv ≈ [
+       1.1879984032756807
+      -0.9543968058544029
+      -0.378687683071395
+       1.6058962167513389
+      -0.6130955348201564
+      -0.48521290263808836
+       0.5152381614052046
+       0.8921553276475701
+       1.5810624197739367
+       2.076994851221875
+       2.400317305490107] rtol=1e-6
+  @test Pumas.__wresiduals(theopmodel_foce, theopp[1], param,
+    Pumas._orth_empirical_bayes(theopmodel_foce, theopp[1], param, Pumas.FOCE()), Pumas.FOCE()).dv ≈ [
      1.1879984032756807
-    -0.5121540697427261
-     1.177641761770986
-     1.8748275064478963
-    -1.0811008285733203
-    -0.4855189971946874
-     0.5270429165085201
-     0.7926973976555282
-     1.38286211294743
-     1.8217361795780522
-     2.2749279342557145] rtol=1e-6
-  @test wresiduals(  theopmodel_foce, theopp[1], param, Pumas.FOCE()).dv ≈ [
-     1.1879984032756807
-    -0.40449239905538514
-     1.4078834621663032
-     1.7442967882790288
-    -1.7930916166374602
-    -0.7377491261762943
-     0.41236539881072987
-     0.6557677791850915
-     1.229426426138302
-     1.6689875690147757
-     2.207038336508923] rtol=1e-6
-  @test wresiduals( theopmodel_foce, theopp[1], param, Pumas.FOCEI()).dv ≈ [ 1.1879984032756807
-   -0.40449239905538514
-    1.4078834621663032
-    1.7442967882790288
-   -1.7930916166374602
-   -0.7377491261762943
-    0.41236539881072987
-    0.6557677791850915
-    1.229426426138302
-    1.6689875690147757
-    2.207038336508923] rtol=1e-6
-  @test Pumas.iwresiduals(  theopmodel_foce, theopp[1], param, Pumas.FO()).dv ≈ [
+    -1.586194689383344
+    -0.44773988947845444
+     1.9913323078636922
+    -0.6357429220845938
+    -0.8668182051169805
+     0.1437141298746456
+     0.5695863568236839
+     1.3055177308675556
+     1.860197486620478
+     2.31703491195212] rtol=1e-6
+  @test Pumas.__wresiduals(theopmodel_foce, theopp[1], param,
+    Pumas._orth_empirical_bayes(theopmodel_foce, theopp[1], param, Pumas.FOCEI()), Pumas.FOCEI()).dv ≈ [
+      1.1879984032756807
+     -1.5861946893833379
+     -0.4477398894784781
+      1.9913323078637075
+     -0.6357429220845787
+     -0.8668182051169665
+      0.14371412987466936
+      0.5695863568236897
+      1.3055177308675963
+      1.860197486620485
+      2.3170349119516986] rtol=1e-6
+
+  @test Pumas.__iwresiduals(theopmodel_foce, theopp[1], param, zeros(2), Pumas.FO()).dv ≈ [
      1.1879984032756807
     -2.303825736901788
     -0.1722792965761087
@@ -843,7 +989,8 @@ end
      4.014071580900914
      3.9913136307052524
      3.1357007891301087] rtol=1e-6
-  @test Pumas.iwresiduals( theopmodel_foce, theopp[1], param, Pumas.FOCE()).dv ≈ [
+  @test Pumas.__iwresiduals(theopmodel_foce, theopp[1], param,
+    Pumas._orth_empirical_bayes(theopmodel_foce, theopp[1], param, Pumas.FOCE()), Pumas.FOCE()).dv ≈ [
      1.1879984032756807
     -1.3784646740678743
     -0.24469855308692548
@@ -855,7 +1002,8 @@ end
      0.9017172486653547
      1.5424519077826466
      2.194973069154764] rtol=1e-6
-  @test Pumas.iwresiduals(theopmodel_foce, theopp[1], param, Pumas.FOCEI()).dv ≈ [
+  @test Pumas.__iwresiduals(theopmodel_foce, theopp[1], param,
+    Pumas._orth_empirical_bayes(theopmodel_foce, theopp[1], param, Pumas.FOCEI()), Pumas.FOCEI()).dv ≈ [
      1.1879984032756807
     -1.3784646740678743
     -0.24469855308692548
@@ -867,18 +1015,7 @@ end
      0.9017172486653547
      1.5424519077826466
      2.194973069154764] rtol=1e-6
-  @test wresiduals(theopmodel_foce, theopp[1], param, Pumas.FOCE()).dv ≈ [
-     1.1879984032756807
-    -0.40449239905538514
-     1.4078834621663032
-     1.7442967882790288
-    -1.7930916166374602
-    -0.7377491261762943
-     0.41236539881072987
-     0.6557677791850915
-     1.229426426138302
-     1.6689875690147757
-     2.207038336508923] rtol=1e-6
+
   @testset "Expected individual residuals" begin
     # The way the random effects enter the model allows for unstable
     # solutions. The first order approximated residuals will not hit
@@ -899,296 +1036,7 @@ end
        4.352720287029761e60] rtol = 1e-6
   end
 end
-@testset "run3.mod FOCE without interaction, individual omega and additive error" begin
-  theopmodel_foce = @model begin
-    @param begin
-      θ₁ ∈ RealDomain(lower=0.1,    upper=5.0, init=2.77)
-      θ₂ ∈ RealDomain(lower=0.0008, upper=0.5, init=0.0781)
-      θ₃ ∈ RealDomain(lower=0.004,  upper=0.9, init=0.0363)
-      θ₄ ∈ RealDomain(lower=0.1,    upper=5.0, init=1.5)
-      Ω₁ ∈ RealDomain(lower=0.0001, init=5.55)
-      Ω₂ ∈ RealDomain(lower=0.0001, init=0.515)
-      σ²_add ∈ RealDomain(lower=0.001, init=0.388)
-    end
 
-    @random begin
-      η₁ ~ Normal(0, sqrt(Ω₁))
-      η₂ ~ Normal(0, sqrt(Ω₂))
-    end
-
-    @pre begin
-      Ka = SEX == 0 ? θ₁ + η₁ : θ₄ + η₁
-      K  = θ₂
-      CL = θ₃*WT + η₂
-      Vc  = CL/K
-      SC = CL/K/WT
-    end
-
-    @covariates SEX WT
-
-    @vars begin
-      conc = Central / SC
-    end
-
-    @dynamics Depots1Central1
-
-    @derived begin
-      dv ~ @. Normal(conc, sqrt(σ²_add))
-    end
-  end
-
-  param = (θ₁ = 2.77,  #Ka MEAN ABSORPTION RATE CONSTANT for SEX = 1(1/HR)
-        θ₂ = 0.0781,  #K MEAN ELIMINATION RATE CONSTANT (1/HR)
-        θ₃ = 0.0363, #SLP  SLOPE OF CLEARANCE VS WEIGHT RELATIONSHIP (LITERS/HR/KG)
-        θ₄ = 1.5, #Ka MEAN ABSORPTION RATE CONSTANT for SEX=0 (1/HR)
-
-        Ω₁ = 5.55,
-        Ω₂ = 0.515,
-        σ²_add = 0.388
-       )
-
-  @test deviance(theopmodel_foce, theopp, param, Pumas.FOCE()) ≈ 138.90111320972699 rtol=1e-6
-
-  foce_estimated_params = (
-    θ₁ = 1.67977E+00, #Ka MEAN ABSORPTION RATE CONSTANT for SEX = 1(1/HR)
-    θ₂ = 8.49011E-02, #K MEAN ELIMINATION RATE CONSTANT (1/HR)
-    θ₃ = 3.93898E-02, #SLP  SLOPE OF CLEARANCE VS WEIGHT RELATIONSHIP (LITERS/HR/KG)
-    θ₄ = 2.10668E+00,  #Ka MEAN ABSORPTION RATE CONSTANT for SEX=0 (1/HR)
-
-    Ω₁  = 1.62087E+00,
-    Ω₂  = 2.26449E-01,
-    σ²_add = 5.14069E-01)
-
-  foce_stderr = (
-    θ₁ = 1.84E-01,
-    θ₂ = 5.43E-03,
-    θ₃ = 3.42E-03,
-    θ₄ = 9.56E-01,
-
-    Ω₁  = 1.61E+00,
-    Ω₂  = 7.70E-02,
-    σ²_add = 1.34E-01)
-
-  foce_ebes = [-2.66223E-01 -9.45749E-01
-                4.53194E-01  3.03170E-02
-                6.31423E-01  7.48592E-02
-               -4.72536E-01 -1.80373E-01
-               -1.75904E-01  1.64858E-01
-               -4.31006E-01  4.74851E-01
-               -1.33960E+00  4.29688E-01
-               -6.61193E-01  3.15429E-01
-                2.83927E+00 -6.59448E-01
-               -1.46862E+00 -2.44162E-01
-                1.47205E+00  6.97115E-01
-               -1.12971E+00 -1.24210E-01]
-
-  foce_ebes_cov = [2.96349E-02  6.43970E-03 6.43970E-03 5.95626E-03
-                   1.13840E-01  1.97067E-02 1.97067E-02 1.53632E-02
-                   1.37480E-01  2.07479E-02 2.07479E-02 1.42631E-02
-                   2.91965E-02  9.78836E-03 9.78836E-03 1.35007E-02
-                   3.48071E-02  7.73824E-03 7.73824E-03 7.30707E-03
-                   5.87655E-02  2.22284E-02 2.22284E-02 3.92463E-02
-                   1.58693E-02  9.82976E-03 9.82976E-03 2.39503E-02
-                   5.74869E-02  1.64986E-02 1.64986E-02 2.20832E-02
-                   8.51151E-01  3.17941E-02 3.17941E-02 1.25183E-02
-                   4.95454E-03  3.20247E-03 3.20247E-03 6.51142E-03
-                   4.08289E-01  3.73648E-02 3.73648E-02 2.03508E-02
-                   1.46012E-02  5.21247E-03 5.21247E-03 7.67609E-03]
-
-  # Elapsed estimation time in seconds:     0.27
-  # Elapsed covariance time in seconds:     0.19
-
-  o = fit(theopmodel_foce, theopp, param, Pumas.FOCE(),
-    ensemblealg=EnsembleThreads(),
-    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
-  @test_throws ArgumentError("EnsembleDistributed() not implemented for this method") fit(theopmodel_foce, theopp, param, Pumas.FOCE(), ensemblealg=EnsembleDistributed())
-
-  o_simobs_1 = simobs(theopmodel_foce, theopp, coef(o), empirical_bayes(o))
-  o_simobs_2 = simobs(theopmodel_foce, theopp, coef(o), fill((η₁=0, η₂=0), length(theopp)))
-  o_simobs = simobs(o)
-
-  o_estimates = coef(o)
-  o_stderror  = stderror(o)
-
-  o_inspect  = inspect(o)
-  o_inspect_df = DataFrame(o_inspect)
-  @test deviance(o) ≈ 121.89849119366599 rtol=1e-7
-
-  @testset "test estimate of $k" for k in keys(o_estimates)
-    @test Pumas._coef_value(getfield(o_estimates, k)) ≈ Pumas._coef_value(getfield(foce_estimated_params, k)) rtol=1e-3
-  end
-
-  @testset "test stderror of $k" for k in keys(o_estimates)
-    @test Pumas._coef_value(getfield(o_stderror, k))  ≈ Pumas._coef_value(getfield(foce_stderr, k))           rtol=1e-2
-  end
-
-  @testset "test stored empirical Bayes estimates. Subject: $i" for (i, ebe) in enumerate(empirical_bayes(o))
-    @test ebe.η₁ ≈ foce_ebes[i,1] rtol=1e-2
-    @test ebe.η₂ ≈ foce_ebes[i,2] rtol=1e-2
-  end
-
-  # Need to estimate this in NONMEM to get a reference
-  #ebe_cov = Pumas.empirical_bayes_dist(o)
-  #@testset "test covariance of empirical Bayes estimates. Subject: $i" for i in 1:length(theopp)
-  #  @test ebe_cov[i].η₁.σ^2 ≈ foce_ebes_cov[i,1] atol=1e-2
-  #  @test ebe_cov[i].η₂.σ^2 ≈ foce_ebes_cov[i,2] atol=1e-2
-  #end
-
-  @testset "epredict" begin
-    Random.seed!(123)
-    @test Pumas.epredict(o, nsim=1000)[1].dv ≈ [
-       0.03761697618854709
-       2.7502461967919047
-       4.20628388397651
-       4.526758087822066
-      -0.8941077441380554
-    -280.2973007310522
-   -5035.998995947119
- -436852.25357510126
-      -4.9652646676499546e7
-      -6.900173564897664e10
-      -2.9012768663242746e23] rtol=1e-2
-  end
-
-  @test Pumas._predict(  theopmodel_foce, theopp[1], param, Pumas.FOCE()).dv ≈ [
-    0.0
-    4.9049755499300955
-    7.779812894972983
-    8.664908079363599
-    7.34893115201493
-    5.402130960948489
-    4.744864876005044
-    4.0473577932698825
-    3.4538453107724867
-    2.717339295201133
-    1.0438615786511665] rtol=1e-6
-  @test Pumas._predict( theopmodel_foce, theopp[1], param, Pumas.FOCEI()).dv ≈ [
-    0.0
-    4.9049755499300955
-    7.779812894972983
-    8.664908079363599
-    7.34893115201493
-    5.402130960948489
-    4.744864876005044
-    4.0473577932698825
-    3.4538453107724867
-    2.717339295201133
-    1.0438615786511665] rtol=1e-6
-  @test Pumas._predict(   theopmodel_foce, theopp[1], param, Pumas.FO()).dv ≈ [
-    0.0
-    4.275044896193946
-    6.67731216398507
-    7.754622724333498
-    7.568031859501575
-    6.604016774252041
-    5.975950613840706
-    5.139785095454612
-    4.389649021685277
-    3.4538248683011945
-    1.3267830785309427] rtol=1e-6
-  @test wresiduals(   theopmodel_foce, theopp[1], param, Pumas.FO()).dv ≈ [
-     1.1879984032756807
-    -0.5121540697427261
-     1.177641761770986
-     1.8748275064478963
-    -1.0811008285733203
-    -0.4855189971946874
-     0.5270429165085201
-     0.7926973976555282
-     1.38286211294743
-     1.8217361795780522
-     2.2749279342557145] rtol=1e-6
-  @test wresiduals(  theopmodel_foce, theopp[1], param, Pumas.FOCE()).dv ≈ [
-     1.1879984032756807
-    -0.40449239905538514
-     1.4078834621663032
-     1.7442967882790288
-    -1.7930916166374602
-    -0.7377491261762943
-     0.41236539881072987
-     0.6557677791850915
-     1.229426426138302
-     1.6689875690147757
-     2.207038336508923] rtol=1e-6
-  @test wresiduals( theopmodel_foce, theopp[1], param, Pumas.FOCEI()).dv ≈ [ 1.1879984032756807
-   -0.40449239905538514
-    1.4078834621663032
-    1.7442967882790288
-   -1.7930916166374602
-   -0.7377491261762943
-    0.41236539881072987
-    0.6557677791850915
-    1.229426426138302
-    1.6689875690147757
-    2.207038336508923] rtol=1e-6
-  @test Pumas.iwresiduals(  theopmodel_foce, theopp[1], param, Pumas.FO()).dv ≈ [
-     1.1879984032756807
-    -2.303825736901788
-    -0.1722792965761087
-     4.407437594433976
-     3.358452446778005
-     3.172249887956898
-     3.827360627145415
-     3.740934575525829
-     4.014071580900914
-     3.9913136307052524
-     3.1357007891301087] rtol=1e-6
-  @test Pumas.iwresiduals( theopmodel_foce, theopp[1], param, Pumas.FOCE()).dv ≈ [
-     1.1879984032756807
-    -1.3784646740678743
-    -0.24469855308692548
-     1.9520535480092391
-    -1.0273947656943232
-    -1.4358103741729111
-    -0.3983711793143639
-     0.09734551444138731
-     0.9017172486653547
-     1.5424519077826466
-     2.194973069154764] rtol=1e-6
-  @test Pumas.iwresiduals(theopmodel_foce, theopp[1], param, Pumas.FOCEI()).dv ≈ [
-     1.1879984032756807
-    -1.3784646740678743
-    -0.24469855308692548
-     1.9520535480092391
-    -1.0273947656943232
-    -1.4358103741729111
-    -0.3983711793143639
-     0.09734551444138731
-     0.9017172486653547
-     1.5424519077826466
-     2.194973069154764] rtol=1e-6
-  @test wresiduals(theopmodel_foce, theopp[1], param, Pumas.FOCE()).dv ≈ [
-     1.1879984032756807
-    -0.40449239905538514
-     1.4078834621663032
-     1.7442967882790288
-    -1.7930916166374602
-    -0.7377491261762943
-     0.41236539881072987
-     0.6557677791850915
-     1.229426426138302
-     1.6689875690147757
-     2.207038336508923] rtol=1e-6
-  @testset "Expected individual residuals" begin
-    # The way the random effects enter the model allows for unstable
-    # solutions. The first order approximated residuals will not hit
-    # the unstable areas but when the random effect is fully integrated
-    # out, the unstable solutions will greatly affect the residuals
-    Random.seed!(123)
-    @test Pumas.eiwres(theopmodel_foce, theopp[1], param, 10000).dv ≈
-      [1.1879984032754523
-      -1.323115211913782
-       3.6933475238777507
-      24.023503148347146
-    1008.3634654704074
-       2.1733344199526347e7
-       3.843290423027412e10
-       3.524337763526852e15
-       5.97837210704398e20
-       5.649407093090004e28
-       4.352720287029761e60] rtol = 1e-6
-  end
-end
 
 @testset "run4.mod FOCEI, diagonal omega and additive + proportional error" begin
   theopmodel_focei = @model begin
@@ -1296,6 +1144,63 @@ end
   o_stderror  = stderror(o)
 
   o_infer = infer(o)
+  o_inspect = inspect(o)
+
+  @testset "pred and ipred" begin
+    @test o_inspect.pred[1].pred.dv ≈ [
+      0.0000E+00
+      2.7959E+00
+      4.9979E+00
+      6.7474E+00
+      7.3054E+00
+      6.5611E+00
+      5.8993E+00
+      5.0068E+00
+      4.2152E+00
+      3.2449E+00
+      1.1425E+00] rtol=1e-3
+
+    @test o_inspect.pred[1].ipred.dv ≈ [
+      0.0000E+00
+      3.3465E+00
+      6.2938E+00
+      9.1005E+00
+      1.0569E+01
+      9.9834E+00
+      9.0483E+00
+      7.6989E+00
+      6.4837E+00
+      4.9914E+00
+      1.7574E+00] rtol=1e-3
+  end
+
+  @testset "wres and iwres" begin
+    @test o_inspect.wres[1].wres.dv ≈ [
+       1.6155E+00
+      -1.0847E+00
+       2.1301E-01
+       1.5320E+00
+      -4.7623E-02
+      -1.8505E-01
+       3.7848E-01
+       6.8623E-01
+       1.3065E+00
+       2.0103E+00
+       3.3299E+00] rtol=1e-3
+
+    @test o_inspect.wres[1].iwres.dv ≈ [
+       1.6155E+00
+      -8.7259E-01
+       3.4020E-01
+       1.3052E+00
+      -7.4821E-01
+      -1.2120E+00
+      -6.4496E-01
+      -2.4364E-01
+       4.9028E-01
+       1.3516E+00
+       3.0768E+00] rtol=1e-3
+  end
 
   # Verify that show runs
   io_buffer = IOBuffer()
@@ -1336,20 +1241,8 @@ end
       -6.030273659041295e22] rtol=1e-3
   end
 
-  @test_throws ArgumentError Pumas._predict(  theopmodel_focei, theopp[1], param, Pumas.FOCE()).dv
-  @test Pumas._predict( theopmodel_focei, theopp[1], param, Pumas.FOCEI()).dv ≈ [
-    0.0
-    5.068341459357763
-    8.443563123891462
-   10.037122038452848
-    8.944352418175603
-    6.402624012061738
-    5.482260711623049
-    4.611559621549391
-    3.9247518752173303
-    3.0865429675088953
-    1.185669082816525] rtol=1e-6
-  @test Pumas._predict(   theopmodel_focei, theopp[1], param, Pumas.FO()).dv ≈ [
+  @test_throws ArgumentError Pumas.__predict(  theopmodel_focei, theopp[1], param, zeros(2), Pumas.FOCE()).dv
+  @test Pumas.__predict(theopmodel_focei, theopp[1], param, zeros(2), Pumas.FO()).dv ≈ [
     0.0
     4.275044896193946
     6.67731216398507
@@ -1361,32 +1254,48 @@ end
     4.389649021685277
     3.4538248683011945
     1.3267830785309427]
-  @test wresiduals(   theopmodel_focei, theopp[1], param, Pumas.FO()).dv ≈ [
+  @test Pumas.__predict(theopmodel_focei, theopp[1], param,
+    Pumas._orth_empirical_bayes(theopmodel_focei, theopp[1], param, Pumas.FOCEI()), Pumas.FOCEI()).dv ≈ [
+      0.0
+      5.068341459357763
+      8.443563123891462
+     10.037122038452848
+      8.944352418175603
+      6.402624012061738
+      5.482260711623049
+      4.611559621549391
+      3.9247518752173303
+      3.0865429675088953
+      1.185669082816525] rtol=1e-6
+
+  @test Pumas.__wresiduals(theopmodel_focei, theopp[1], param, zeros(2), Pumas.FO()).dv ≈ [
      1.1879984032756807
-    -0.39299505013030017
-     0.16842737988346182
-     0.6720210050845926
-     0.406187009843474
-     0.3813592513772635
-     0.5047498527549048
-     0.5421470902094254
-     0.6842313630989655
-     0.866326879877313
-     1.667259055010247]
-  @test_throws ArgumentError wresiduals(  theopmodel_focei, theopp[1], param, Pumas.FOCE())
-  @test wresiduals( theopmodel_focei, theopp[1], param, Pumas.FOCEI()).dv ≈ [
-   1.1879984032756807
-  -0.4660532896569592
-   0.30402244275648965
-   0.6449237449945702
-   0.3044150909651889
-   0.33203669572444244
-   0.4203515581077581
-   0.4278768983990183
-   0.5204742127712235
-   0.6506387271130077
-   1.3748928119024197] rtol=1e-6
-  @test Pumas.iwresiduals(  theopmodel_focei, theopp[1], param, Pumas.FO()).dv ≈ [ 1.1879984032756807
+    -0.5399084616269617
+    -0.11117723141023551
+     0.45928450797708753
+     0.26621412406935935
+     0.28121085837689813
+     0.4473208866789923
+     0.5242518011071142
+     0.7076552241287248
+     0.930052249555352
+     1.7281576976471564]
+  @test_throws ArgumentError Pumas.__wresiduals(theopmodel_focei, theopp[1], param, zeros(2), Pumas.FOCE())
+  @test Pumas.__wresiduals(theopmodel_focei, theopp[1], param,
+    Pumas._orth_empirical_bayes(theopmodel_focei, theopp[1], param, Pumas.FOCEI()), Pumas.FOCEI()).dv ≈ [
+      1.1879984032756807
+     -0.6140230497092456
+     -0.1626242424449466
+      0.306646155126752
+      0.08252053658014159
+      0.20209156659184052
+      0.36437122347517237
+      0.4309818277089627
+      0.5739064984433875
+      0.7462189258526601
+      1.4570286207947225] rtol=1e-6
+  @test Pumas.__iwresiduals(theopmodel_focei, theopp[1], param, zeros(2), Pumas.FO()).dv ≈ [
+    1.1879984032756807
    -0.5922659254289279
    -0.028925269913169835
     0.6395285872285701
@@ -1397,19 +1306,21 @@ end
     1.006709008521727
     1.2482988777536315
     2.0406927145826876]
-  @test_throws ArgumentError Pumas.iwresiduals( theopmodel_focei, theopp[1], param, Pumas.FOCE())
-  @test Pumas.iwresiduals(theopmodel_focei, theopp[1], param, Pumas.FOCEI()).dv ≈ [1.1879984032756807
-    0.06960158205526236
-    0.5083448884321163
-    0.7692001749717815
-    0.23983260753879304
-    0.10697777173751535
-    0.23456187417479818
-    0.30756958787462435
-    0.47263581944050936
-    0.680189149628738
-    1.4895796376772368] rtol=1e-6
-  @test_throws ArgumentError wresiduals(  theopmodel_focei, theopp[1], param, Pumas.FOCE())
+  @test_throws ArgumentError Pumas.__iwresiduals(theopmodel_focei, theopp[1], param, zeros(2), Pumas.FOCE())
+  @test Pumas.__iwresiduals(theopmodel_focei, theopp[1], param,
+    Pumas._orth_empirical_bayes(theopmodel_focei, theopp[1], param, Pumas.FOCEI()), Pumas.FOCEI()).dv ≈ [
+      1.1879984032756807
+      0.06960158205526236
+      0.5083448884321163
+      0.7692001749717815
+      0.23983260753879304
+      0.10697777173751535
+      0.23456187417479818
+      0.30756958787462435
+      0.47263581944050936
+      0.680189149628738
+      1.4895796376772368] rtol=1e-6
+
   @testset "Expected individual residuals" begin
     Random.seed!(123)
     @test Pumas.eiwres( theopmodel_focei, theopp[1], param, 10000).dv ≈
@@ -1597,39 +1508,93 @@ end
 
   @test deviance(theopmodel_laplace, theopp, laplace_estimated_params, Pumas.LaplaceI()) ≈ 123.76439574418291 atol=1e-3
 
-  @testset "Test optimization" begin
-    o = fit(theopmodel_laplace, theopp, param, Pumas.LaplaceI(),
-      optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
+  o = fit(theopmodel_laplace, theopp, param, Pumas.LaplaceI(),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
-    o_estimates = coef(o)
-    o_stderror  = stderror(o)
+  o_estimates = coef(o)
+  o_stderror  = stderror(o)
 
-    o_infer = infer(o)
-    o_inspect = inspect(o)
+  o_infer = infer(o)
+  o_inspect = inspect(o)
 
-    # Verify that show runs
-    io_buffer = IOBuffer()
-    show(io_buffer, o)
-    show(io_buffer, o_infer)
+  @testset "pred and ipred" begin
+    @test o_inspect.pred[1].pred.dv ≈ [
+      0.0000E+00
+      2.9566E+00
+      5.2183E+00
+      6.9310E+00
+      7.3931E+00
+      6.5831E+00
+      5.9122E+00
+      5.0146E+00
+      4.2196E+00
+      3.2458E+00
+      1.1394E+00] rtol=1e-3
 
-    @test deviance(o) ≈ 123.76439574418291 rtol=1e-5
+    @test o_inspect.pred[1].ipred.dv ≈ [
+      0.0000E+00
+      3.6483E+00
+      6.6759E+00
+      9.2952E+00
+      1.0370E+01
+      9.4904E+00
+      8.5517E+00
+      7.2593E+00
+      6.1089E+00
+      4.6992E+00
+      1.6496E+00] rtol=1e-3
+  end
 
-    @testset "test estimate of $k" for k in keys(o_estimates)
-      @test Pumas._coef_value(getfield(o_estimates, k)) ≈ Pumas._coef_value(getfield(laplace_estimated_params, k)) rtol=2e-3
-    end
+  @testset "wres and iwres" begin
+    @test o_inspect.wres[1].wres.dv ≈ [
+       1.0317E+00
+      -1.1328E+00
+      -3.2047E-02
+       2.0779E+00
+      -2.7640E-01
+      -4.4521E-01
+       4.9814E-01
+       9.4912E-01
+       1.6410E+00
+       2.1546E+00
+       2.4221E+00] rtol=1e-3
 
-    @testset "test stderror of $k" for k in keys(o_estimates)
-      @test Pumas._coef_value(getfield(o_stderror, k))  ≈ Pumas._coef_value(getfield(laplace_stderr, k))           rtol=1e-2
-    end
+    @test o_inspect.wres[1].iwres.dv ≈ [
+       1.0317E+00
+      -1.1269E+00
+      -1.4765E-01
+       1.6797E+00
+      -9.8914E-01
+      -1.2692E+00
+      -2.6730E-01
+       2.9374E-01
+       1.0890E+00
+       1.7299E+00
+       2.2730E+00] rtol=1e-3
+  end
 
-    @testset "test stored empirical Bayes estimates. Subject: $i" for (i, ebe) in enumerate(empirical_bayes(o))
-      @test ebe.η ≈ laplace_ebes[i,:] rtol=3e-3
-    end
+  # Verify that show runs
+  io_buffer = IOBuffer()
+  show(io_buffer, o)
+  show(io_buffer, o_infer)
 
-    ebe_cov = Pumas.empirical_bayes_dist(o)
-    @testset "test covariance of empirical Bayes estimates. Subject: $i" for i in 1:length(theopp)
-        @test ebe_cov[i].η.Σ.mat[:] ≈ laplace_ebes_cov[i,:] atol=1e-3
-    end
+  @test deviance(o) ≈ 123.76439574418291 rtol=1e-5
+
+  @testset "test estimate of $k" for k in keys(o_estimates)
+    @test Pumas._coef_value(getfield(o_estimates, k)) ≈ Pumas._coef_value(getfield(laplace_estimated_params, k)) rtol=2e-3
+  end
+
+  @testset "test stderror of $k" for k in keys(o_estimates)
+    @test Pumas._coef_value(getfield(o_stderror, k))  ≈ Pumas._coef_value(getfield(laplace_stderr, k))           rtol=1e-2
+  end
+
+  @testset "test stored empirical Bayes estimates. Subject: $i" for (i, ebe) in enumerate(empirical_bayes(o))
+    @test ebe.η ≈ laplace_ebes[i,:] rtol=3e-3
+  end
+
+  ebe_cov = Pumas.empirical_bayes_dist(o)
+  @testset "test covariance of empirical Bayes estimates. Subject: $i" for i in 1:length(theopp)
+    @test ebe_cov[i].η.Σ.mat[:] ≈ laplace_ebes_cov[i,:] atol=1e-3
   end
 end
 
@@ -1742,42 +1707,99 @@ end
   # Elapsed estimation time in seconds:     0.30
   # Elapsed covariance time in seconds:     0.32
 
-  @testset "Test optimization" begin
-    o = fit(theopmodel_laplacei, theopp, param, Pumas.LaplaceI(),
-      optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
+  o = fit(theopmodel_laplacei, theopp, param, Pumas.LaplaceI(),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
-    o_estimates = coef(o)
-    o_stderror  = stderror(o)
+  o_estimates = coef(o)
+  o_stderror  = stderror(o)
+  o_infer     = infer(o)
+  o_inspect   = inspect(o)
 
-    @test deviance(o) ≈ 116.97275684239327 rtol=1e-5
+  @testset "pred and ipred" begin
+    @test o_inspect.pred[1].pred.dv ≈ [
+      0.0000E+00
+      2.8344E+00
+      5.0530E+00
+      6.7980E+00
+      7.3353E+00
+      6.5722E+00
+      5.9054E+00
+      5.0084E+00
+      4.2135E+00
+      3.2401E+00
+      1.1359E+00] rtol=1e-3
 
-    @testset "test estimate of $k" for k in keys(o_estimates)
-      @test Pumas._coef_value(getfield(o_estimates, k)) ≈ Pumas._coef_value(getfield(laplacei_estimated_params, k)) rtol=1e-3
+    @test o_inspect.pred[1].ipred.dv ≈ [
+      0.0000E+00
+      3.3186E+00
+      6.2599E+00
+      9.0894E+00
+      1.0605E+01
+      1.0053E+01
+      9.1148E+00
+      7.7529E+00
+      6.5249E+00
+      5.0177E+00
+      1.7591E+00] rtol=1e-3
+  end
+
+  @testset "wres and iwres" begin
+    @test o_inspect.wres[1].wres.dv ≈ [
+       1.7065E+00
+      -1.0811E+00
+       2.1346E-01
+       1.4735E+00
+      -5.5547E-02
+      -1.7192E-01
+       3.7413E-01
+       6.7387E-01
+       1.2815E+00
+       1.9912E+00
+       3.4632E+00] rtol=1e-3
+
+    @test o_inspect.wres[1].iwres.dv ≈ [
+       1.7065E+00
+      -8.3815E-01
+       3.7627E-01
+       1.2753E+00
+      -7.4744E-01
+      -1.2210E+00
+      -6.8079E-01
+      -2.9154E-01
+       4.2983E-01
+       1.2996E+00
+       3.1935E+00] rtol=1e-3
+  end
+
+  @test deviance(o) ≈ 116.97275684239327 rtol=1e-5
+
+  @testset "test estimate of $k" for k in keys(o_estimates)
+    @test Pumas._coef_value(getfield(o_estimates, k)) ≈ Pumas._coef_value(getfield(laplacei_estimated_params, k)) rtol=1e-3
+  end
+
+  @testset "test stderror of $k" for k in keys(o_estimates)
+    if k != :ω²CL
+      @test Pumas._coef_value(getfield(o_stderror, k))  ≈ Pumas._coef_value(getfield(laplacei_stderr, k))           rtol=4e-2
+    else
+      # This used to match but is now 10% different from the NONMEM estimate after we have switched to
+      # using standard normal random effects internally
+      @test_broken Pumas._coef_value(getfield(o_stderror, k))  ≈ Pumas._coef_value(getfield(laplacei_stderr, k))           rtol=4e-2
     end
+  end
 
-    @testset "test stderror of $k" for k in keys(o_estimates)
-      if k != :ω²CL
-        @test Pumas._coef_value(getfield(o_stderror, k))  ≈ Pumas._coef_value(getfield(laplacei_stderr, k))           rtol=4e-2
-      else
-        # This used to match but is now 10% different from the NONMEM estimate after we have switched to
-        # using standard normal random effects internally
-        @test_broken Pumas._coef_value(getfield(o_stderror, k))  ≈ Pumas._coef_value(getfield(laplacei_stderr, k))           rtol=4e-2
-      end
-    end
+  @testset "test stored empirical Bayes estimates. Subject: $i" for (i, ebe) in enumerate(empirical_bayes(o))
+    @test ebe.ηKa ≈ laplacei_ebes[i,1] rtol=1e-2
+    @test ebe.ηCL ≈ laplacei_ebes[i,2] rtol=1e-2
+  end
 
-    @testset "test stored empirical Bayes estimates. Subject: $i" for (i, ebe) in enumerate(empirical_bayes(o))
-      @test [ebe...] ≈ laplacei_ebes[i,:] rtol=1e-3
-    end
+  ebe_cov = Pumas.empirical_bayes_dist(o)
+  @testset "test covariance of empirical Bayes estimates. Subject: $i" for i in 1:length(theopp)
+    @test ebe_cov[i].ηKa.σ^2 ≈ first(laplacei_ebes_cov[i,:]) rtol=1e-3
+    @test ebe_cov[i].ηCL.σ^2 ≈ last( laplacei_ebes_cov[i,:]) rtol=1e-3
+  end
 
-    ebe_cov = Pumas.empirical_bayes_dist(o)
-    @testset "test covariance of empirical Bayes estimates. Subject: $i" for i in 1:length(theopp)
-      @test ebe_cov[i].ηKa.σ^2 ≈ first(laplacei_ebes_cov[i,:]) rtol=1e-3
-      @test ebe_cov[i].ηCL.σ^2 ≈ last( laplacei_ebes_cov[i,:]) rtol=1e-3
-    end
-
-    @testset "Cubature based estimation deviance test" begin
-      @test deviance(theopmodel_laplacei, theopp, param, Pumas.LLQuad(), iabstol=0, ireltol=0, imaxiters=typemax(Int)) ≈ 281.1606964897779 rtol=1e-6
-    end
+  @testset "Cubature based estimation deviance test" begin
+    @test deviance(theopmodel_laplacei, theopp, param, Pumas.LLQuad(), iabstol=0, ireltol=0, imaxiters=typemax(Int)) ≈ 281.1606964897779 rtol=1e-6
   end
 end
 end

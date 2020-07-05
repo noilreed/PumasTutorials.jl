@@ -235,7 +235,6 @@ end
     end
   end
 
-
   param_noeta = init_param(mdsl1_noeta)
   fitone_noeta = fit(mdsl1_noeta, first(data), param_noeta,
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false), constantcoef=(σ=sqrt(0.1),))

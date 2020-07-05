@@ -52,7 +52,7 @@ include("testmodels.jl")
         model,
         d,
         param,
-        Pumas._orth_empirical_bayes(model, d, param, Pumas.FO()),
+        zeros(3),
         Pumas.FO()
       ) for d in data)) ≈ 50.6766056254067 rtol=1e-6
 

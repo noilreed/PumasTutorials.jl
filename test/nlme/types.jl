@@ -161,7 +161,7 @@ end
           optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false)))
       res = fit(model[_model], data, param, _approx,
         optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
-      @test Pumas.∂²l∂η²(model[_model], first(data), param, first(res.vvrandeffsorth), _approx) isa Tuple
+      @test Pumas._∂²l∂η²(model[_model], first(data), param, first(res.vvrandeffsorth), _approx) isa Tuple
     end
   end
 end # begin

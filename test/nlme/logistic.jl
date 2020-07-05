@@ -44,7 +44,7 @@ using Pumas, Test, Random
       ft = fit(mdsl, data, param, approx,
         optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
       _param = coef(ft)
-    
+
       _ptable = probstable(ft)
       @test names(_ptable) == ["id", "time", "dv_prob1", "dv_prob2"]
 

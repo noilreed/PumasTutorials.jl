@@ -99,13 +99,13 @@ export gsa
 # For ordinary users, procompilation will mostly happen after updates and new installation but
 # will also happen sometimes when the user switches environment.
 function print_license()
-    printstyled("Important Note:", bold=true)
-    print("""
-Pumas.jl is a proprietary package. It is free to use for non-commercial
-academic teaching and research purposes. For commercial users, license fees apply. Further, 
-Pumas may not be used under any license agreement for patient management services in a hospital or clinical settings.
-Please refer to End User License Agreement (https://juliacomputing.com/eula) for details. Please
-contact sales@juliacomputing.com for purchase.
+    printstyled("Important Note: ", bold=true)
+    print(   """Pumas.jl is a proprietary package. It is free to use for non-commercial
+academic teaching and research purposes. For commercial users, license fees apply.
+Further, Pumas may not be used under any license agreement for patient management
+services in a hospital or clinical settings. Please refer to End User License Agreement
+(https://juliacomputing.com/eula) for details. Please contact sales@juliacomputing.com
+for purchase.
 """)
 end
 print_license()
