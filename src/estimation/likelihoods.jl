@@ -115,6 +115,113 @@ end
 _lpdf(D::TimeToEvent, d::Number) = d*log(D.λ) - D.Λ
 
 
+# Simulate observations from a time-to-event model, i.e. one with a TimeToEvent
+# dependent variable. The idea is to compute `nT` values of survival probability
+# from t=minT to maxT and then interpolate with a cubic spline to get a smooth
+# survival funtion. Given a survival funtion, we can simulate from the
+# distribution by using inverse cdf sampling. Instead of sampling a uniform
+# variate to use with the survival probability, we sample an exponential and
+# compare to the cumulative hazard which isi equivalent. The Roots package is
+# then used for computing the root.
+function simobstte(
+  model::PumasModel,
+  subject::Subject,
+  param::NamedTuple,
+  randeffs::NamedTuple;
+  minT=0.0,
+  maxT=nothing,
+  nT=10,
+  repeated=false,
+  kwargs...)
+
+  if maxT === nothing
+    throw(ArgumentError("no maxT argument provided"))
+  end
+
+  if minT >= maxT
+    throw(ArgumentError("maxT must be larger than minT"))
+  end
+
+  startT = minT
+  _times  = Float64[]
+  # We always need to set a starting event to specify where in the integration should start from.
+  _events = [Event(0.0, minT, 3, 0)]
+  _death  = Float64[]
+
+  if length(keys(subject.observations)) == 1
+    dvname = first(keys(subject.observations))
+  else
+    throw(ArgumentError("simulation of time-to-event models only supported for models with a single dependent variable."))
+  end
+
+  # Use a loop to handle repeated time-to-event. This will only run once
+  # in the simple time-to-event case.
+  while true
+    # Create a range on length nT from the current starting value startT until the
+    # right censoring time maxT
+    _obstimes = range(startT, stop=maxT, length=nT)
+
+    # Simulate the ten samples from the model over the time period (startT, maxT)
+    _obs = simobs(model, subject, param, randeffs;
+      obstimes=_obstimes, tspan=(startT, maxT), kwargs...)
+
+    # Draw an exponential variate. Notice that for R ~ Uniform(0,1) then
+    # F(t) <= R <=> 1 - S(t) <= R <=> exp(-Λ(t)) >= 1 - R <=> Λ(t) <= -log(1 - R)
+    # and -log(1 - R) is exponentially distributed.
+    # FIXME! take an RNG object
+    _r = randexp()
+
+    # Build a cubic cpline based on the nT simulated values of the cumulative hazard
+    cs = DataInterpolations.CubicSpline(getfield.(_obs.observed[dvname], :Λ), _obstimes)
+
+    # Find the root Λ(t) == _r
+    if _obs.observed[dvname][end].Λ > _r
+      tᵢ = Roots.find_zero(t -> cs(t) - _r, (startT, maxT))
+      censored = false
+    else
+      tᵢ = maxT
+      censored = true
+    end
+
+    # Save either the time of the event or the right censoring time
+    push!(_times, tᵢ)
+
+    # Compute the "death" indicator
+    push!(_death, Int(!censored))
+
+    # Break out if not repeated time to event and we haven't yet exceeded the right censoring time
+    if !repeated || censored
+      break
+    else
+      # If another event is simulated then we reset the "systen" right after the event
+      # by registering a reset event in the event system.
+      push!(_events, Event(0.0, nextfloat(tᵢ), 3, 0))
+      startT = tᵢ
+    end
+  end
+
+  # FIXME! Which name should we use fo the dv?
+  return Subject(
+    id=subject.id,
+    obs=NamedTuple{(dvname,)}((_death,)),
+    covariates=subject.covariates,
+    event_data=true,
+    evs=_events,
+    time=_times,
+    covartime=subject.covartime)
+end
+
+simobstte(
+  model::PumasModel,
+  population::Population,
+  param::NamedTuple,
+  vrandeffs::Vector{<:NamedTuple};
+  maxT=nothing,
+  simN::Integer=100,
+  repeated=false,
+  kwargs...) = [simobstte(model, subject, param, randeffs;
+    maxT=maxT, simN=simN, repeated=repeated, kwargs...) for (subject, randeffs) in zip(population, vrandeffs)]
+
 """
     conditional_nll(m::PumasModel, subject::Subject, param, randeffs, args...; kwargs...)
 

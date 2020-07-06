@@ -7,6 +7,7 @@ using FiniteDiff, Reexport, StatsBase,
       Statistics, DiffEqSensitivity, QuantileRegressions,
       DiffEqJump
 using LinearAlgebra
+using Random: randexp
 using Base.Threads # for bootstrap
 using AdvancedHMC: DiagEuclideanMetric, Hamiltonian, NUTS, Leapfrog, find_good_stepsize, StanHMCAdaptor, MassMatrixAdaptor, StepSizeAdaptor, MultinomialTS, GeneralisedNoUTurn
 using StatsFuns: logistic
@@ -21,7 +22,7 @@ import MCMCChains: Chains
 
 import DiffResults: DiffResult
 
-import DataInterpolations, ExponentialUtilities
+import DataInterpolations, ExponentialUtilities, Roots
 
 @reexport using OrdinaryDiffEq, Unitful
 @reexport using Distributions, DataFrames

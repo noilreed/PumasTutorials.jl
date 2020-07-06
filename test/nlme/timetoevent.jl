@@ -161,6 +161,27 @@ p       0.002232         0.00047099        [ 0.0013089;  0.0031551]
 --------------------------------------------------------------------
 """
 
+  @testset "simulate and estiate (round trip)" begin
+
+    pd_sim = Pumas.simobstte(
+      tte_exponential,
+      pd,
+      param_exponential,
+      [NamedTuple() for i in 1:length(pd)],
+      maxT=500.0,
+      repeated=false)
+
+    ft_sim = fit(
+      tte_exponential,
+      pd_sim,
+      param_exponential,
+      Pumas.NaivePooled(),
+      optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
+
+    @test coef(ft_sim).θ  ≈ param_exponential.θ  rtol=0.3
+    @test coef(ft_sim).λ₀ ≈ param_exponential.λ₀ rtol=0.3
+  end
+
 end
 
 @testset "Repeated time-to-event example" begin
@@ -209,4 +230,26 @@ end
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
   @test 2*Pumas.marginal_nll(ft) ≈ 2145.45032178054 rtol=1e-3 # From NONMEM
   @test coef(ft).θ               ≈ 1.1412e-02       rtol=1e-2 # From NONMEM
+
+  @testset "simulate and estiate (round trip)" begin
+
+    pd_sim = Pumas.simobstte(
+      model,
+      pd,
+      param,
+      [(η=randn(),) for i in 1:length(pd)],
+      maxT=288.0,
+      repeated=true);
+
+    ft_sim = fit(
+      model,
+      pd_sim,
+      param,
+      Pumas.LaplaceI(),
+      optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
+
+    @test coef(ft_sim).θ ≈ param.θ rtol=0.3
+    @test coef(ft_sim).ω ≈ param.ω rtol=0.3
+
+  end
 end
