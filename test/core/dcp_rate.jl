@@ -6,7 +6,7 @@ choose_covariates() = (isPM = rand(["yes", "no"]),
                        Wt = rand(55:80))
 
 function generate_population(events,nsubs=24)
-  pop = Population(map(i -> Subject(id=i,evs=events,cvs=choose_covariates()),1:nsubs))
+  pop = Population(map(i -> Subject(id=i, events=events, covariates=choose_covariates()),1:nsubs))
   return pop
 end
 
@@ -157,8 +157,8 @@ biolag_params = (
   Ω = Diagonal([0.05, 0.05]),
   σ = 0.02)
 
-s1 = Subject(id=1, evs=DosageRegimen(100, cmt=1, time=0))
-s2 = Subject(id=2, evs=DosageRegimen(100, cmt=2, time=0))
+s1 = Subject(id=1, events=DosageRegimen(100, cmt=1, time=0))
+s2 = Subject(id=2, events=DosageRegimen(100, cmt=2, time=0))
 pop = Population([s1,s2])
 sims = simobs(model, pop, biolag_params,obstimes = [0,2.5,5,10,15,30], ensemblealg = EnsembleSerial())
 

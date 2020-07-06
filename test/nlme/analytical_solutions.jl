@@ -99,7 +99,7 @@ end
 npop = 5
 t = [1.0, 2.0, 4.0]
 dr = DosageRegimen(300000, duration=1)
-skeleton_pop = [Subject(id=i, evs=dr) for i in 1:npop]
+skeleton_pop = [Subject(id=i, events=dr) for i in 1:npop]
 
 param = (
   θ_CL_parent =  3.0,
@@ -215,7 +215,7 @@ end
 npop = 5
 t = [1.0, 2.0, 4.0]
 dr = DosageRegimen(300000, duration=1)
-skeleton_pop = [Subject(id=i, evs=dr) for i in 1:npop]
+skeleton_pop = [Subject(id=i, events=dr) for i in 1:npop]
 
 param = (
   θ_CL_parent =  3.0,

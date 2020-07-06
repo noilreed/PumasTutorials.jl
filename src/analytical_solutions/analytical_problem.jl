@@ -8,7 +8,7 @@ Fields:
  * `u0`: initial conditions
  * `tspan`: time points that define the intervals in which the problem is defined
  * `events`: events such as dose, reset events, etc
- * `times`: event times
+ * `time`: event times
  * `p`: a function that returns pre block evaluated at a time point
  * `bioav`: bioavailability in each compartment
  * `kwargs`: stores the provided keyword arguments
@@ -18,18 +18,19 @@ struct AnalyticalPKPDProblem{uType,tType,isinplace,F,EV,T,P,B,K} <: DiffEqBase.A
   u0::uType
   tspan::Tuple{tType,tType}
   events::EV
-  times::T
+  time::T
   p::P
   bioav::B
   kwargs::K
-  DiffEqBase.@add_kwonly function AnalyticalPKPDProblem{iip}(f,u0,tspan,
-                                      events, times,
-                                      p=DiffEqBase.NullParameters(),
-                                      bioav = 1f0;
-                                      kwargs...) where {iip}
-    new{typeof(u0),promote_type(map(typeof,tspan)...),iip,
-    typeof(f),typeof(events),typeof(times),typeof(p),typeof(bioav),
-    typeof(kwargs)}(f,u0,tspan,events,times,p,bioav,kwargs)
+  DiffEqBase.@add_kwonly function AnalyticalPKPDProblem{iip}(
+    f, u0, tspan, events, time,
+    p = DiffEqBase.NullParameters(),
+    bioav = 1f0;
+    kwargs...) where {iip}
+
+    new{typeof(u0), promote_type(map(typeof,tspan)...), iip,
+    typeof(f), typeof(events), typeof(time), typeof(p), typeof(bioav),
+    typeof(kwargs)}(f, u0, tspan, events, time, p, bioav, kwargs)
   end
 end
 

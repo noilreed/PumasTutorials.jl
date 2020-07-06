@@ -63,14 +63,14 @@ include("testmodels.jl")
 
 end
 
-@testset "Multiple dvs. (The HCV model)" begin
+@testset "Multiple dependent variables. (The HCV model)" begin
 
   t = [0.0, 0.25, 0.5, 1.0, 2.0, 3.0, 4.0, 7.0, 10.0, 14.0, 21.0, 28.0]
   _sub = Subject(
     id=1,
-    evs=DosageRegimen(180.0, ii=7.0, addl=3, duration=1.0),
+    events=DosageRegimen(180.0, ii=7.0, addl=3, duration=1.0),
     time=t,
-    obs=(yPK=zeros(length(t)), yPD=zeros(length(t))))
+    observations=(yPK=zeros(length(t)), yPD=zeros(length(t))))
 
   @test logdet(Pumas._expected_information_fd(
     TESTMODELS["HCV"]["model"],

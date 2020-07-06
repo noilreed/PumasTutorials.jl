@@ -3,7 +3,7 @@ using Pumas, Quadrature, Test, CSV, Random
 # Read the data
 df = DataFrame(CSV.File(example_data("data1")))
 df[!, :cmt] .= 1
-data = read_pumas(df, cvs = [:sex,:wt,:etn])
+data = read_pumas(df, covariates = [:sex,:wt,:etn])
 
 # Definition using diffeqs
 m_diffeq = @model begin

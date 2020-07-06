@@ -23,7 +23,7 @@ end
 param = (θCl=0.1, θV=1.0, θKa=0.11)
 
 ev = DosageRegimen(100, cmt=[1,2], ii=12, addl=1)
-sub = Subject(id=1, evs=ev)
+sub = Subject(id=1, events=ev)
 simsub = simobs(model, sub, param, obstimes=1:1:30)
 
 analytic = (exp(12*[-param.θKa 0; param.θKa -param.θCl/param.θV]) + I)*[100, 100]
@@ -89,13 +89,13 @@ doses_RRD = DosageRegimen(doses_R2, doses_R, doses_D)
 doses_RDR = DosageRegimen(doses_R, doses_D, doses_R2)
 
 dose = doses_RRD
-pop     = Population(map(i -> Subject(id=i, evs=dose),1:15))
+pop     = Population(map(i -> Subject(id=i, events=dose),1:15))
 _simobs = simobs(model732, pop, NamedTuple())
 _simobs_diffeq = simobs(model732_diffeq, pop, NamedTuple(),abstol=1e-12,reltol=1e-12)
 @test all(i->_simobs[i][:cp] ≈ _simobs_diffeq[i][:cp],1:length(pop))
 
 dose = doses_RDR
-pop     = Population(map(i -> Subject(id=i, evs=dose),1:15))
+pop     = Population(map(i -> Subject(id=i, events=dose),1:15))
 _simobs = simobs(model732, pop, NamedTuple())
 _simobs_diffeq = simobs(model732_diffeq, pop, NamedTuple(),abstol=1e-12,reltol=1e-12)
 @test all(i->_simobs[i][:cp] ≈ _simobs_diffeq[i][:cp],1:length(pop))

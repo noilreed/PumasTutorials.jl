@@ -23,7 +23,7 @@ end
 dr = DosageRegimen(293)
 
 _time = [0.1,0.2,0.3,0.4,0.44]
-pop = map(i->Subject(id=i, evs=dr, time=_time), 1:13)
+pop = map(i->Subject(id=i, events=dr, time=_time), 1:13)
 
 popsim = simobs(model0, pop, (par=0.5,), ensemblealg = EnsembleSerial())
 

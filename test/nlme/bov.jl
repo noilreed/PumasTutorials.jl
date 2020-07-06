@@ -9,25 +9,26 @@ pkdata[!,:OCC] .= pkdata.OCC1 .+ 2 .* pkdata.OCC2 .+ 3 .* pkdata.OCC3
 ################### data mapping ########################
 #read_pumas
 data_PK_left = read_pumas(pkdata,
-                    cvs =   [:CRCL, :OCC],
-                    dvs =   [:DV],
-                    id  =   :ID,
-                    amt =   :AMT,
-                    rate =   :RATE,
-                    time =   :TIME,
-                    evid =   :EVID,
-                    cmt = :CMT,
-                    cvs_direction=:left)
+  covariates   = [:CRCL, :OCC],
+  observations = [:DV],
+  id           =  :ID,
+  amt          =  :AMT,
+  rate         =  :RATE,
+  time         =  :TIME,
+  evid         =  :EVID,
+  cmt          =  :CMT,
+  covariates_direction=:left)
+
 data_PK = read_pumas(pkdata,
-                    cvs =   [:CRCL, :OCC],
-                    dvs =   [:DV],
-                    id  =   :ID,
-                    amt =   :AMT,
-                    rate =   :RATE,
-                    time =   :TIME,
-                    evid =   :EVID,
-                    cmt = :CMT,
-                    cvs_direction=:right)
+  covariates   = [:CRCL, :OCC],
+  observations = [:DV],
+  id           =  :ID,
+  amt          =  :AMT,
+  rate         =  :RATE,
+  time         =  :TIME,
+  evid         =  :EVID,
+  cmt          =  :CMT,
+  covariates_direction=:right)
 
 # we have observations at 1.267 and 1.283, so they should disagree about
 # the value of OCC > 1.267, so we evaluate at prevfloat(1.283) and 1.283

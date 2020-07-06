@@ -7,7 +7,7 @@ choose_covariates() = (isPM = rand([1, 0]),
                        Wt = rand(55:80))
 
 function generate_population(events,nsubs=4)
-  pop = Population(map(i -> Subject(id=i,evs=events,cvs=choose_covariates()),1:nsubs))
+  pop = Population(map(i -> Subject(id=i, events=events, covariates=choose_covariates()), 1:nsubs))
   return pop
 end
 

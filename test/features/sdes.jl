@@ -54,8 +54,8 @@ model = Pumas.PumasModel(p,randomfx,pre_f,init_f,prob,derived_f,observed_f)
 param = init_param(model)
 randeffs = init_randeffs(model, param)
 
-data = Subject(evs = DosageRegimen([10, 20], ii = 24, addl = 2, time = [0, 12]))
+data = Subject(events = DosageRegimen([10, 20], ii = 24, addl = 2, time = [0, 12]))
 sol  = solve(model,data,param,randeffs,alg=SRIW1(),tspan=(0.0,90.0))
 
-data = Subject(evs = DosageRegimen([10, 20], ii = 24, addl = 2, ss = 1:2, time = [0, 12], cmt = 2))
+data = Subject(events = DosageRegimen([10, 20], ii = 24, addl = 2, ss = 1:2, time = [0, 12], cmt = 2))
 sol  = solve(model,data,param,randeffs,alg=SRIW1())

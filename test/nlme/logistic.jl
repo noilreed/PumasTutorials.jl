@@ -3,7 +3,7 @@ using Pumas, Test, Random
 @testset "Logistic regression example" begin
 
   data = read_pumas(joinpath(dirname(pathof(Pumas)), "..", "examples", "pain_remed.csv"),
-    cvs = [:arm, :dose, :conc, :painord];
+    covariates = [:arm, :dose, :conc, :painord];
     time=:time, event_data=false)
 
   mdsl = @model begin
@@ -100,7 +100,7 @@ end
 
   n = 5
 
-  pop_skeleton = [Subject(id=i, evs=dr, time=t) for i in 1:n]
+  pop_skeleton = [Subject(id=i, events=dr, time=t) for i in 1:n]
   Random.seed!(123)
   pop_sim = simobs(mdl, pop_skeleton, par_init, ensemblealg=EnsembleSerial())
 

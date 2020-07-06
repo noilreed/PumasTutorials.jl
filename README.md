@@ -64,7 +64,7 @@ Develop a simple dosing regimen for a subject
 
 ```julia
 ev = DosageRegimen(100, time=0, addl=4, ii=24)
-s1 = Subject(id=1,  evs=ev, cvs=(isPM=1, wt=70))
+s1 = Subject(id=1, events=ev, covariates=(isPM=1, wt=70))
 ```
 
 Simulate a plasma concentration time profile
@@ -88,7 +88,7 @@ Generate a population of subjects
 ```julia
 choose_covariates() = (isPM = rand([1, 0]),
               wt = rand(55:80))
-pop_with_covariates = Population(map(i -> Subject(id=i, evs=ev, cvs=choose_covariates()),1:10))
+pop_with_covariates = Population(map(i -> Subject(id=i, events=ev, covariates=choose_covariates()),1:10))
 ```
 
 Simulate into the population
@@ -113,7 +113,7 @@ first(simdf, 6)
 Read the data in to Pumas
 
 ```julia
-data = read_pumas(simdf, time=:time,cvs=[:isPM, :wt])
+data = read_pumas(simdf, time=:time, covariates=[:isPM, :wt])
 ```
 
 Evaluating the results of a model fit goes through an `fit` --> `infer` --> `inspect` --> `validate` cycle
@@ -208,7 +208,7 @@ You can then pass these optimized parameters into a `simobs` call and pass the s
 
 ```julia
 ev_sd_high_dose = DosageRegimen(200, time=0, addl=4, ii=48)
-s2 = Subject(id=1,  evs=ev_sd_high_dose, cvs=(isPM=1, wt=70))
+s2 = Subject(id=1, events=ev_sd_high_dose, covariates=(isPM=1, wt=70))
 ```
 
 ```julia

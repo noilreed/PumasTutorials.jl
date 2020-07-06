@@ -74,13 +74,13 @@ end
 
   choose_covariates() = (isPM = rand([1, 0]), wt = rand(55:80))
 
-  pop_with_covariates = Population(map(i -> Subject(id=i, evs=ev, cvs=choose_covariates()), 1:1000))
+  pop_with_covariates = Population(map(i -> Subject(id=i, events=ev, covariates=choose_covariates()), 1:1000))
 
   obs = simobs(model, pop_with_covariates, param, obstimes=0:1:120, ensemblealg=EnsembleSerial())
 
   simdf = DataFrame(obs)
 
-  data = read_pumas(simdf, time=:time, cvs=[:isPM, :wt])
+  data = read_pumas(simdf, time=:time, covariates=[:isPM, :wt])
 
   res = fit(model, data[1], param,
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))

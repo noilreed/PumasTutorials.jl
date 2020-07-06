@@ -1,9 +1,9 @@
 using Pumas, StaticArrays, Test
 
-cvs = [:ka, :cl, :v]
-dvs = [:dv]
+covariates = [:ka, :cl, :v]
+observations = [:dv]
 data = read_pumas(example_data("oral1_1cpt_KAVCL_MD_data"),
-                      cvs = cvs, dvs = dvs)
+  covariates = covariates, observations = observations)
 
 
 for subject in data
@@ -108,7 +108,7 @@ end
 sol_dsl = solve(m_diffeq,subject1,param,randeffs)
 obs_dsl = simobs(m_diffeq,subject1,param,randeffs)
 
-@test obs_dsl.observed.conc ≈ obs_mobj.observed.conc
+@test obs_dsl.observations.conc ≈ obs_mobj.observations.conc
 
 ## Time-varying DCP
 
@@ -150,7 +150,7 @@ end
 sol_dsl2 = solve(m_diffeq2,subject1,param,randeffs)
 obs_dsl2 = simobs(m_diffeq2,subject1,param,randeffs)
 
-@test !(obs_dsl.observed.conc ≈ obs_dsl2.observed.conc)
+@test !(obs_dsl.observations.conc ≈ obs_dsl2.observations.conc)
 
 ############################
 ## Time-varying covariates from data
@@ -163,9 +163,12 @@ tv_subject = read_pumas(example_data("time_varying_covariates"),
 
 
 
-tv_subject = Subject(evs = DosageRegimen([10, 20], ii = 24, addl = 2, time = [0, 12], cmt = 2),
-                  cvs = (wt=[70,75,80,85,90,92,70,80],), cvstime = 0:12:7*12,
-                  time = 0:15:(15*7))
+tv_subject = Subject(
+  events = DosageRegimen([10, 20], ii = 24, addl = 2,
+    time = [0, 12], cmt = 2),
+    covariates = (wt=[70,75,80,85,90,92,70,80],),
+    covariates_time = 0:12:7*12,
+    time = 0:15:(15*7))
 
 m_tv = @model begin
     @param begin

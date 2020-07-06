@@ -381,7 +381,7 @@ p = (Fup = 0.42, fumic = 0.711, WEIGHT = 73, MPPGL = 30.3, MPPGI = 0,
 
 #Weight = 73 kg, regimen = 4mg/kg q12h IV
 regimen = DosageRegimen(292, time = 0, addl=13, ii=12, cmt=14, rate = 292, ss = 1)
-sub1 = Subject(id=1,evs=regimen)
+sub1 = Subject(id=1, events=regimen)
 prob = ODEProblem(pbpk_f_iip,nothing,nothing,nothing)
 
 function derived_f(col,sol,obstimes,subject,  param, randeffs)
@@ -392,10 +392,10 @@ pbpk_iip = PumasModel(pset,rfx_f,col_f,init_f_iip,prob,derived_f)
 
 regimen_s = DosageRegimen(200, time = 0, rate=2, addl=12, ii=6, cmt=1, ss = 1)
 
-sub_s = Subject(id=1,evs=regimen_s)
+sub_s = Subject(id=1, events=regimen_s)
 
 function generate_population(events,nsubs=4)
-      pop = Population(map(i -> Subject(id=i,evs=events),1:nsubs))
+      pop = Population(map(i -> Subject(id=i, events=events),1:nsubs))
     return pop
 end
 

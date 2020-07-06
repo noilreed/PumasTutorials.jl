@@ -7,9 +7,10 @@ using Pumas, Test, CSV
   df = DataFrame(CSV.File(example_data("event_data/CS1_IV1EST_PAR")))
   df[!,:dv] .= ifelse.(df[!,:AMT] .> 0, missing, df[!, :CONC])
   df[!,:CMT] .= 1
-  data = read_pumas(df, cvs = [:AGE, :WT, :SCR, :CLCR], dvs = [:dv],
-                        id=:ID, time=:TIME, amt=:AMT, evid=:MDV, cmt=:CMT)
-
+  data = read_pumas(df,
+    covariates = [:AGE, :WT, :SCR, :CLCR],
+    observations = [:dv],
+    id=:ID, time=:TIME, amt=:AMT, evid=:MDV, cmt=:CMT)
 
   @testset "proportional error model" begin
     mdl_proportional = Dict()

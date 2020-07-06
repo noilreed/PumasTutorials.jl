@@ -30,7 +30,7 @@ df = identity.(df)
 
 @testset "Model with time varying covariates" begin
 
-  pd = read_pumas(df, dvs=[:dv], cvs=[:pnad,:gawk,:wtkg])
+  pd = read_pumas(df, observations=[:dv], covariates=[:pnad,:gawk,:wtkg])
 
   tvcov_model_normal = @model begin
     @param begin
@@ -128,7 +128,7 @@ df = identity.(df)
   sim_df = DataFrame(obs)
   est_df = sim_df |>
     @mutate(cmt = ifelse(ismissing(_.cmt), 2, _.cmt)) |> DataFrame
-  tvcov_pd = read_pumas(est_df, dvs = [:dv], cvs = [:pnad,:gawk,:wtkg])
+  tvcov_pd = read_pumas(est_df, observations = [:dv], covariates = [:pnad,:gawk,:wtkg])
 
   @testset "Fit proportional (normal) error model" begin
     ft_normal = fit(

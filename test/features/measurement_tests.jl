@@ -1,7 +1,7 @@
 using Pumas, Measurements, LabelledArrays
 using Random, Test
 
-data = read_pumas(example_data("data1"), cvs = [:sex,:wt,:etn])
+data = read_pumas(example_data("data1"), covariates = [:sex,:wt,:etn])
 subject = data[1]
 
 @testset "Static Vector" begin

@@ -1,7 +1,7 @@
 using Pumas, Test
 
 
-pop = map(i -> Subject(id=i, cvs=(dose=[10,20,30],), cvstime=(dose=[1,2,3],)), 1:3)
+pop = map(i -> Subject(id=i, covariates=(dose=[10,20,30],), covariates_time=(dose=[1,2,3],)), 1:3)
 popdf = DataFrame(pop)
 
 poisson_model = @model begin

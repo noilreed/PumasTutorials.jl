@@ -2,7 +2,7 @@ using Pumas, Test, CSV, Random
 
 # Read the data
 data = read_pumas(example_data("data1"),
-                  cvs = [:sex,:wt,:etn])
+                  covariates = [:sex,:wt,:etn])
 
 # Cut off the `t=0` pre-dose observation as it throws conditional_nll calculations
 # off the scale (variance of the simulated distribution is too small).

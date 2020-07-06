@@ -31,11 +31,11 @@ function discrete_count(count_vals, df::AbstractDataFrame)
     DataFrame(proportions, colnames)
 end
 
-function discretize_cvs(population, cvname::Symbol, numstrat)
-    cvs = vcat([[getproperty(subject.covariates.u, cvname) for j in 1:length(subject.time)] for subject in population]...)
-    unqcvs = unique(cvs)
-    if length(unqcvs) > numstrat
-        boundvals = [quantile(unqcvs,i/numstrat) for i in 1:numstrat]
+function discretize_covariates(population, cvname::Symbol, numstrat)
+    covariates = vcat([[getproperty(subject.covariates.u, cvname) for j in 1:length(subject.time)] for subject in population]...)
+    unqcovariates = unique(covariates)
+    if length(unqcovariates) > numstrat
+        boundvals = [quantile(unqcovariates,i/numstrat) for i in 1:numstrat]
         f_ = function(el)
             for i in 1:numstrat
                 if el <= boundvals[i]
@@ -43,13 +43,13 @@ function discretize_cvs(population, cvname::Symbol, numstrat)
                 end
             end
         end
-        cvs = map(f_, cvs)
+        covariates = map(f_, covariates)
     end
-    return cvs
+    return covariates
 end
 
 function _vpc(
-    population::Population,  
+    population::Population,
     vpctype::DiscreteVPC;
     dv::Symbol,
     idv::Symbol,
@@ -66,24 +66,24 @@ function _vpc(
     df.dv  = df[!,dv]
     if isa(stratify_by, Array{Symbol})
         for (numstrat,cvname) in zip(numstrats,stratify_by)
-            df[!,cvname] .= discretize_cvs(population, cvname, numstrat)
+            df[!,cvname] .= discretize_covariates(population, cvname, numstrat)
         end
     end
 
     # filter out missing obs
     df = filter(i -> !ismissing(i.dv), df)
-    
+
     count_vals = unique(df[!,:dv])
-    if vpctype.idvdiscrete 
+    if vpctype.idvdiscrete
         data_quantiles = combine(t -> discrete_count(count_vals, t), groupby(df, stratify_by === nothing ? [idv] : [stratify_by, idv]))
-    else 
+    else
         error("Continuous idv with discrete dv not supported")
     end
-    return data_quantiles, [read_pumas(DataFrame(df), id = :id, dvs = [:dv], event_data=false) for df in groupby(df, stratify_by === nothing ? [] : stratify_by)]
+    return data_quantiles, [read_pumas(DataFrame(df), id = :id, observations = [:dv], event_data=false) for df in groupby(df, stratify_by === nothing ? [] : stratify_by)]
 end
 
 function _vpc(
-    population::Population,  
+    population::Population,
     qreg_method,
     vpctype::ContinuousVPC;
     dv::Symbol,
@@ -102,7 +102,7 @@ function _vpc(
     df.dv  = df[!,dv]
     if isa(stratify_by, Array{Symbol})
         for (numstrat,cvname) in zip(numstrats,stratify_by)
-            df[!,cvname] .= discretize_cvs(population, cvname, numstrat)
+            df[!,cvname] .= discretize_covariates(population, cvname, numstrat)
         end
     end
 
@@ -113,11 +113,11 @@ function _vpc(
         return combine(t -> _npqreg(:dv, :idv, t, τ, qreg_method; xrange=sort(unique(t.idv)), bandwidth=bandwidth), groupby(df, stratify_by === nothing ? [] : stratify_by))
     end
 
-    return data_quantiles, [read_pumas(DataFrame(df), id = :id, dvs = [:dv], event_data=false) for df in groupby(df, stratify_by === nothing ? [] : stratify_by)]
+    return data_quantiles, [read_pumas(DataFrame(df), id = :id, observations = [:dv], event_data=false) for df in groupby(df, stratify_by === nothing ? [] : stratify_by)]
 end
 
 function quantile_discrete(df::AbstractDataFrame, quantiles, names_)
-    quantiles_disc_sim = [[quantile(df[!,name], quantiles)...] for name in names_] 
+    quantiles_disc_sim = [[quantile(df[!,name], quantiles)...] for name in names_]
     return hcat(DataFrame(idv = [df.idv[1] for i in 1:3], τ = [quantiles...]), DataFrame(quantiles_disc_sim, names_))
 end
 
@@ -125,7 +125,7 @@ function _vpc(
     m::PumasModel,
     population::Population,
     param::NamedTuple,
-    reps::Integer, 
+    reps::Integer,
     qreg_method,
     vpctype::VPCType;
     dv::Symbol,
@@ -169,10 +169,10 @@ function vpc(
     m::PumasModel,
     population::Population,
     param::NamedTuple,
-    reps::Integer=499, 
+    reps::Integer=499,
     qreg_method=IP(),
     vpctype::VPCType = ContinuousVPC();
-    dv::Symbol = keys(population[1].observations)[1], 
+    dv::Symbol = keys(population[1].observations)[1],
     stratify_by = nothing,
     quantiles::NTuple{3,Float64}=(0.1, 0.5, 0.9),
     level::Real=0.95,
@@ -208,11 +208,11 @@ function vpc(
 end
 
 """
- vpc(fpm::FittedPumasModel, 
-        reps::Integer = 499, 
+ vpc(fpm::FittedPumasModel,
+        reps::Integer = 499,
         qreg_method = IP(),
         vpctype::VPCType = ContinuousVPC();
-        dv::Symbol = keys(fpm.data[1].observations)[1], 
+        dv::Symbol = keys(fpm.data[1].observations)[1],
         stratify_by = nothing,
         quantiles::NTuple{3,Float64}=(0.1, 0.5, 0.9),
         level::Real=0.95,
@@ -220,38 +220,38 @@ end
         bandwidth=2,
         numstrats=stratify_by === nothing ? nothing : [4 for i in 1:length(stratify_by)])
 
- Computes the quantiles for VPC for a `FittedPumasModel` with simulated prediction intervals around the empirical quantiles based on `reps` simulated populations. 
- 
+ Computes the quantiles for VPC for a `FittedPumasModel` with simulated prediction intervals around the empirical quantiles based on `reps` simulated populations.
+
  The following keyword arguments are supported:
-  - `quantiles::NTuple{3,Float64}`: A three-tuple of the quantiles for which the quantiles will be computed. The default is `(0.1, 0.5, 0.9)` which computes the 
+  - `quantiles::NTuple{3,Float64}`: A three-tuple of the quantiles for which the quantiles will be computed. The default is `(0.1, 0.5, 0.9)` which computes the
                                     10th, 50th and 90th percentile.
   - `level::Real`: Probability level to use for the simulated prediction intervals. The default is `0.95`.
-  - `dv::Symbol`: The name of the dependent variable to use for the VPCs. The default is the first dependent variable in the dataset. 
-  - `stratify_by`: The covariates to be used for stratification. Takes an array of the `Symbol`s of the stratification covariates. 
+  - `dv::Symbol`: The name of the dependent variable to use for the VPCs. The default is the first dependent variable in the dataset.
+  - `stratify_by`: The covariates to be used for stratification. Takes an array of the `Symbol`s of the stratification covariates.
   - `ensemblealg`: This is passed to the `simobs` call while the `reps` simulations. For more description check the docs for `simobs`.
   - `bandwidth`: The kernel bandwidth in the quantile regression. If you are seeing `NaN`s or an error, increasing the bandwidth should help in most cases.
                 With higher values of the `bandwidth` you will get more smoothened plots of the quantiles so it's a good idea to check with your data the right `bandwidth`.
-  - `numstrats`: The number of strata to divide into based on the unique values of the covariate, takes an array with the number of strata for the corresponding covariate 
+  - `numstrats`: The number of strata to divide into based on the unique values of the covariate, takes an array with the number of strata for the corresponding covariate
                 passed in `stratify_by`. It takes a default of `4` for each of the covariates.
 
-  While plotting the obtained `VPC` object with `plot` the following keyword arguments allow the option to include or exclude various compnonets with `true` or `false` respectively: 
-  
-  - `observations`: Scatter plot of the true observations.  
+  While plotting the obtained `VPC` object with `plot` the following keyword arguments allow the option to include or exclude various compnonets with `true` or `false` respectively:
+
+  - `observations`: Scatter plot of the true observations.
   - `simquantile_medians`: The median quantile regression of each quantile from the simulations.
   - `observed_quantiles`: The quantile regressions for the true observations.
   - `ci_bands`: Shaded region between the upper and lower confidence levels of each quantile from the simulations.
-    
+
   `observations` and `simquantile_medians` are set to `false` by default.
 
   For most users the method used in quantile regression is not going to be of concern, but if you see large run times switching `qreg_method` to `IP(true)` should help in improving the
-  performance with a tradeoff in the accuracy of the fitting.   
+  performance with a tradeoff in the accuracy of the fitting.
 """
 
-vpc(fpm::FittedPumasModel, 
-    reps::Integer=499, 
+vpc(fpm::FittedPumasModel,
+    reps::Integer=499,
     qreg_method=IP(),
     vpctype::VPCType= ContinuousVPC();
-    dv::Symbol = keys(fpm.data[1].observations)[1], 
+    dv::Symbol = keys(fpm.data[1].observations)[1],
     stratify_by = nothing,
     quantiles::NTuple{3,Float64}=(0.1, 0.5, 0.9),
     level::Real=0.95,
@@ -259,9 +259,9 @@ vpc(fpm::FittedPumasModel,
     bandwidth=2,
     numstrats= stratify_by === nothing ? nothing : [4 for i in 1:length(stratify_by)],
     idv = :time
-    ) = vpc(fpm.model, fpm.data, coef(fpm), reps, qreg_method, vpctype; 
-            dv = dv, stratify_by = stratify_by, quantiles = quantiles, 
-            level = level, ensemblealg = ensemblealg, bandwidth = bandwidth, 
+    ) = vpc(fpm.model, fpm.data, coef(fpm), reps, qreg_method, vpctype;
+            dv = dv, stratify_by = stratify_by, quantiles = quantiles,
+            level = level, ensemblealg = ensemblealg, bandwidth = bandwidth,
             numstrats = numstrats, idv = idv)
 
 
@@ -315,7 +315,7 @@ vpc(fpm::FittedPumasModel,
             colnames = names(data_quantiles)[colinds]
             layout --> good_layout(length(data_quantiles))
             for (pltno,data_quantile) in enumerate(data_quantiles)
-                df_data_quantile = groupby(DataFrame(data_quantile),:τ)   
+                df_data_quantile = groupby(DataFrame(data_quantile),:τ)
                 for i in 1:3
                     @series begin
                         subplot --> pltno
@@ -339,9 +339,9 @@ end
         sim_quantiles = groupby(vpc.simulated_quantiles, :τ)
         for i in 1:3
             @series begin
-                if !simquantile_medians 
+                if !simquantile_medians
                     linealpha --> 0
-                else 
+                else
                     label --> (i == 1 ? scatterlabel[3] : "")
                 end
 
@@ -366,8 +366,8 @@ end
             for i in 1:3
                 @series begin
                     subplot --> pltno
-                    
-                    if !simquantile_medians 
+
+                    if !simquantile_medians
                         linealpha --> 0
                     else
                         label --> ((i == 1 && pltno == 1) ? scatterlabel[3] : "")

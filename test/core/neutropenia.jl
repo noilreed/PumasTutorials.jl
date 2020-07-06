@@ -100,8 +100,8 @@ data = DataFrame(time = append!([0.083, 0.167, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0,
                                 1.65627, 1.52832, 1.71787, 1.66199, 1.79697])) |>
     (data -> unstack(data, :variable, :value))
 
-subject = Subject(obs = data,
-                  evs = DosageRegimen(8e4, addl = 14, ii = 12))
+subject = Subject(observations = data,
+                  events = DosageRegimen(8e4, addl = 14, ii = 12))
 
 param = Pumas.init_param(m_neut)
 

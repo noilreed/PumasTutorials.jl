@@ -9,8 +9,8 @@ using CSV
 
   # Read the data# Read the data
   data = read_pumas(df,
-    dvs = [:painord],
-    cvs = [:arm, :dose, :conc, :painord,:remed],
+    observations = [:painord],
+    covariates = [:arm, :dose, :conc, :painord,:remed],
     event_data=false)
 
   ordinal_model = @model begin
@@ -80,9 +80,9 @@ using CSV
 
   # Read the data# Read the data
   data_mixed = read_pumas(df,
-    dvs = [:painord, :dv],
-    cvs = [:arm, :dose, :conc, :painord,:remed],
-    event_data=false)
+    observations = [:painord, :dv],
+    covariates   = [:arm, :dose, :conc, :painord,:remed],
+    event_data   = false)
 
   mixed_model = @model begin
     @param begin

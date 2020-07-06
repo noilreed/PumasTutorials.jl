@@ -50,10 +50,10 @@ model = Pumas.PumasModel(p,randomfx,pre_f,init_f,jump_prob,derived_f)
 param = init_param(model)
 randeffs = init_randeffs(model, param)
 
-data = Subject(evs = DosageRegimen([10, 20], ii = 24, addl = 2, time = [0, 12]))
+data = Subject(events = DosageRegimen([10, 20], ii = 24, addl = 2, time = [0, 12]))
 sol  = solve(model,data,param,randeffs,Tsit5())
 
-#data = Subject(evs = DosageRegimen([10, 20], ii = 24, addl = 2, ss = 1:2, time = [0, 12], cmt = 2))
+#data = Subject(events = DosageRegimen([10, 20], ii = 24, addl = 2, ss = 1:2, time = [0, 12], cmt = 2))
 #sol  = simulate(pkpd,θ,η,data,Tsit5())
 
 using Plots

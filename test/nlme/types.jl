@@ -50,10 +50,10 @@ end
 @testset "dv names" begin
   df = DataFrame(read_pumas(example_data("sim_data_model1")))
   df[!, :dv_conc] = df.dv
-  data = read_pumas(df; dvs=[:dv_conc])
+  data = read_pumas(df; observations=[:dv_conc])
   df_missing = DataFrame(read_pumas(example_data("sim_data_model1")))
   df_missing[!, :dv_conc] = df_missing.dv
-  data_missing = read_pumas(df_missing; dvs=[:dv_conc])
+  data_missing = read_pumas(df_missing; observations=[:dv_conc])
   # Make a missing observation
   push!(data_missing[1].observations.dv_conc, missing)
   push!(data_missing[1].time, 2)
@@ -166,11 +166,11 @@ end
   end
 end # begin
 
-@testset "two independent dvs" begin
-  theopp = read_pumas(example_data("event_data/THEOPP"), cvs = [:SEX,:WT])
+@testset "two independent dependent variables" begin
+  theopp = read_pumas(example_data("event_data/THEOPP"), covariates = [:SEX,:WT])
   theopp_df = DataFrame(theopp)
   theopp_df[!,:dv2] = theopp_df[!,:dv]
-  theoppnew = read_pumas(theopp_df; dvs=[:dv, :dv2], cvs=[:SEX, :WT])
+  theoppnew = read_pumas(theopp_df; observations=[:dv, :dv2], covariates=[:SEX, :WT])
   theopmodel_solver_fo = @model begin
     @param begin
       θ₁ ∈ RealDomain(lower=0.1,    upper=5.0, init=2.77)

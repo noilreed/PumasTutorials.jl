@@ -34,7 +34,7 @@ df = DataFrame(
     amt  = [100,missing,missing,100,missing,100,missing],
     cmt  = ones(Int,7),
 )
-sub = read_pumas(df,dvs=[:cp])
+sub = read_pumas(df, observations=[:cp])
 @test sub[1].time == [0,6,18,30]
 simsub = simobs(model, sub, param, obstimes=0:1:30)
 @test simsub[1][:cpDepot][7] ≈ analytic

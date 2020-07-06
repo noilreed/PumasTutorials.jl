@@ -1,30 +1,27 @@
 struct SimulatedObservations{S,T,T2}
   subject::S
-  times::T
-  observed::T2
+  time::T
+  observations::T2
 end
 
 # indexing
 @inline function Base.getindex(obs::SimulatedObservations, I...)
-  return obs.observed[I...]
+  return obs.observations[I...]
 end
 @inline function Base.setindex!(obs::SimulatedObservations, x, I...)
-  obs.observed[I...] = x
+  obs.observations[I...] = x
 end
 
 # Convert to Subject
 function Subject(simsubject::SimulatedObservations)
-  dvnames = simsubject.subject.observations === nothing ? keys(simsubject.observed) : keys(simsubject.subject.observations)
+  dvnames = simsubject.subject.observations === nothing ? keys(simsubject.observations) : keys(simsubject.subject.observations)
   covariates = simsubject.subject.covariates
-  covartime = simsubject.subject.covartime
-  subject = Subject(;
-    id         = simsubject.subject.id,
-    obs        = NamedTuple{dvnames}(map(k -> simsubject.observed[k], dvnames)),
-    evs        = simsubject.subject.events,
-    time       = simsubject.times,
-    event_data = !isnothing(simsubject.subject.events),
-    covariates = covariates,
-    covartime = covartime)
+  subject = Subject(
+    simsubject.subject.id,
+    NamedTuple{dvnames}(map(k -> simsubject.observations[k], dvnames)),
+    covariates,
+    simsubject.subject.events,
+    simsubject.time)
   return subject
 end
 
@@ -34,13 +31,13 @@ function DataFrames.DataFrame(
   include_events=!isempty(obs.subject.events),
   include_covariates=true)
 
-  nrows = length(obs.times)
+  nrows = length(obs.time)
   events = obs.subject.events
   nev = events isa Array ? length(events) : 0
   evtimes = map(ev->ev.time, events)
-  times = obs.times
-  ntime = length(obs.times)
-  observed = obs.observed
+  times = obs.time
+  ntime = length(obs.time)
+  observed = obs.observations
   df = DataFrame(time=deepcopy(times))
 
   for k in keys(observed)
@@ -57,7 +54,7 @@ function DataFrames.DataFrame(
     end
     df[!,k] .= deepcopy(var)
   end
-  obs_columns = [keys(obs.observed)...]
+  obs_columns = [keys(obs.observations)...]
 
   # Allow all dv columns to be missing
   for cols in obs_columns
@@ -77,8 +74,8 @@ function DataFrames.DataFrame(
     ## time, the values of the derived variables set to missing.
     ## Otherwise they are set to `missing`.
     for ev in events
-      ind = searchsortedlast(obs.times, ev.time)
-      if ind != 0 && obs.times[ind] == ev.time
+      ind = searchsortedlast(obs.time, ev.time)
+      if ind != 0 && obs.time[ind] == ev.time
         ev_row = vcat(ev.time, fill(missing, length(obs_columns))...,
                       ev.amt, ev.evid, ev.cmt, ev.rate)
         push!(df, ev_row)
@@ -108,10 +105,10 @@ function DataFrames.DataFrame(
 end
 
 @recipe function f(obs::SimulatedObservations; obsnames=nothing)
-  t = obs.times
+  t = obs.time
   names = Symbol[]
   plot_vars = []
-  for (n,v) in pairs(obs.observed)
+  for (n,v) in pairs(obs.observations)
     if obsnames !== nothing
       !(n in obsnames) && continue
     end

@@ -56,7 +56,7 @@ function DiffEqBase.solve(prob::AnalyticalPKPDProblem,
   Ttspan = prob.tspan
   col = prob.p
   events = prob.events
-  times = prob.times
+  times = prob.time
   u = Vector{typeof(Tu0)}(undef, length(times))
   doses = zeros(typeof(Tu0), length(times))
   rates = Vector{typeof(Tu0)}(undef, length(times))

@@ -1,9 +1,9 @@
 using Pumas, Test, Random
 
 # Load data
-cvs = [:ka, :cl, :v]
-dvs = [:dv]
-data = read_pumas(example_data("oral1_1cpt_KAVCL_MD_data"), cvs = cvs, dvs = dvs)
+covariates = [:ka, :cl, :v]
+observations = [:dv]
+data = read_pumas(example_data("oral1_1cpt_KAVCL_MD_data"), covariates = covariates, observations = observations)
 
 m_diffeq = @model begin
 
@@ -101,6 +101,6 @@ sim_analytic = begin
 end
 @test sim_diffeq ≈ sim_analytic rtol=1e-3
 
-pop = Population(map(i -> Subject(id=i, time=i:20, covariates=subject1.covariates, covartime=subject1.covartime),1:3))
-s = simobs(m_diffeq,pop,param,fill(randeffs, length(pop));ensemblealg = EnsembleSerial())
-@test map(x->x.times, s) == map(x->x.time, pop)
+pop = Population(map(i -> Subject(id=i, time=i:20, covariates=subject1.covariates.u, covariates_time=0.0), 1:3))
+s = simobs(m_diffeq, pop, param, fill(randeffs, length(pop)); ensemblealg = EnsembleSerial())
+@test map(x -> x.time, s) == map(x -> x.time, pop)

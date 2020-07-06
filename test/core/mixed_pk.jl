@@ -2,7 +2,7 @@ using Pumas, Test, Random, LabelledArrays, StaticArrays
 
 # Read the data# Read the data
 data = read_pumas(example_data("data1"),
-                      cvs = [:sex,:wt,:etn])
+                      covariates = [:sex,:wt,:etn])
 # Cut off the `t=0` pre-dose observation as it throws conditional_nll calculations
 # off the scale (variance of the simulated distribution is too small).
 for subject in data
@@ -23,10 +23,10 @@ end
 
 function col_f(param,randeffs,subject)
   function pre(t)
-    cvs = subject.covariates(t)
+    covariates = subject.covariates(t)
     (Ka = param.θ[1],  # pre
-    CL = param.θ[2] * ((cvs.wt/70)^0.75) *
-         (param.θ[4]^cvs.sex) * exp(randeffs.η[1]),
+    CL = param.θ[2] * ((covariates.wt/70)^0.75) *
+         (param.θ[4]^covariates.sex) * exp(randeffs.η[1]),
     Vc  = param.θ[3] * exp(randeffs.η[2]))
   end
 end

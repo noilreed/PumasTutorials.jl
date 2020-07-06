@@ -256,22 +256,22 @@ mutable struct DosageRegimen
   DosageRegimen(regimens::DosageRegimen...) = reduce(DosageRegimen, regimens)
 end
 """
-    DataFrame(evs::DosageRegimen, expand::Bool = false)
+    DataFrame(events::DosageRegimen, expand::Bool = false)
 
 Create a DataFrame with the information in the dosage regimen.
 If expand, creates a DataFrame with the information in the event list (expanded form).
 """
-function DataFrames.DataFrame(evs::DosageRegimen, expand::Bool = false)
+function DataFrames.DataFrame(events::DosageRegimen, expand::Bool = false)
   if !expand
-    return evs.data
+    return events.data
   else
-    evs = build_event_list(evs, true)
+    events = build_event_list(events, true)
     output = DataFrame(fill(Float64, 10),
       [:amt, :time, :evid, :cmt, :rate, :duration, :ss, :ii, :base_time, :rate_dir],
-      length(evs)
+      length(events)
     )
     for col ∈ [:amt, :time, :evid, :cmt, :rate, :duration, :ss, :ii, :base_time, :rate_dir]
-      output[!,col] .= getproperty.(evs, col)
+      output[!,col] .= getproperty.(events, col)
     end
     sort!(output, [:time])
     return output
@@ -322,7 +322,7 @@ end
 build_observation_list(obs::NamedTuple) = obs
 build_observation_list(obs::Nothing) = obs
 
-build_event_list(evs::AbstractVector{<:Event}, event_data::Bool) = evs
+build_event_list(events::AbstractVector{<:Event}, event_data::Bool) = events
 function build_event_list!(events, event_data, t, evid, amt, addl, ii, cmt, rate, ss)
   @assert evid ∈ 0:4 "evid must be in 0:4"
   # Dose-related data items
@@ -389,116 +389,132 @@ Fields:
 - `events`: a vector of `Event`s.
 - `time`: a vector of time stamps for the observations
 """
-struct Subject{T1,T2,T3,T4,T5}
+struct Subject{T1,T2,T3,T4}
   id::String
   observations::T1
   covariates::T2
   events::T3
   time::T4
-  covartime::T5
-  function Subject(df::AbstractDataFrame,
-                   id, time, evid, amt, addl, ii, cmt, rate, ss,
-                   cvs::Vector{<:Symbol} = Symbol[],
-                   dvs::Vector{<:Symbol} = Symbol[:dv],
-                   event_data=true, cvs_direction=:right,
-                   covariates=nothing, covartime=nothing,
-                   parse_tad = true)
+end
 
-    ## Observations
-    idx_obs = findall(iszero, df[!,evid])
+function Subject(
+  df::AbstractDataFrame,
+  id, time, evid, amt, addl, ii, cmt, rate, ss,
+  covariates::Vector{<:Symbol} = Symbol[],
+  observations::Vector{<:Symbol} = Symbol[:dv],
+  event_data=true,
+  covariates_direction=:right,
+  parse_tad = true)
 
-    dv_idx_tuple = ntuple(i -> convert(AbstractVector{Union{Missing,Float64}},
-                                       df[!,dvs[i]][idx_obs]),
-                                       length(dvs))
-    observations = NamedTuple{tuple(dvs...),typeof(dv_idx_tuple)}(dv_idx_tuple)
+  ## Observations
+  idx_obs = findall(iszero, df[!,evid])
 
-    # cmt handling should be reversed: it should give it the appropriate name given cmt
-    # obs_cmts = :cmt ∈ colnames ? df[:cmt][idx_obs] : nothing
+  dv_idx_tuple = ntuple(i -> convert(AbstractVector{Union{Missing,Float64}},
+    df[!,observations[i]][idx_obs]), length(observations))
+  observations = NamedTuple{tuple(observations...),typeof(dv_idx_tuple)}(dv_idx_tuple)
 
-    #==
-      Covariates
-      We first build individual time/covar pairs. If there are no time varying
-      covariates, we return no-ops. Else, we build individual interpolations,
-      interpolate to the total covariate time grid, and then we build a multi-
-      valued interpolant. The idea is to only do searchsorted once. We also
-      use the union of covar times to specify d_discontinuities for diffeq
-      based solvers, and to split up the analytical solution.
-    ==#
+  # cmt handling should be reversed: it should give it the appropriate name given cmt
+  # obs_cmts = :cmt ∈ colnames ? df[:cmt][idx_obs] : nothing
 
-    # build individual interpolants and use them to create a batch interpolant
-    ## Pass the ID to covariate_interpolant to make error message more informative
-    _id_string = string(first(df[!,id]))
-    if covartime isa Nothing || covariates isa Nothing
-      covartime, covariates = covariate_interpolant(cvs, df, time, _id_string; cvs_direction=cvs_direction)
+  #==
+  Covariates
+  We first build individual time/covar pairs. If there are no time varying
+  covariates, we return no-ops. Else, we build individual interpolations,
+  interpolate to the total covariate time grid, and then we build a multi-
+  valued interpolant. The idea is to only do searchsorted once. We also
+  use the union of covar times to specify d_discontinuities for diffeq
+  based solvers, and to split up the analytical solution.
+  ==#
+
+  # build individual interpolants and use them to create a batch interpolant
+  ## Pass the ID to covariates_interpolant to make error message more informative
+  _id_string = string(first(df[!,id]))
+  covartime, covariates_interpolation = covariates_interpolant(covariates, df, time, _id_string; covariates_direction=covariates_direction)
+
+  n_amt = hasproperty(df, amt)
+  n_addl = hasproperty(df, addl)
+  n_ii = hasproperty(df, ii)
+  n_cmt = hasproperty(df, cmt)
+  n_rate = hasproperty(df, rate)
+  n_ss = hasproperty(df, ss)
+  cmtType = n_cmt ? (eltype(df[!,cmt]) <: String ? Symbol : Int) : Int
+  events = Event{Float64,Float64,Float64,Float64,Float64,Float64,cmtType}[]
+  obstimes = Float64[]
+  offset = 0.0
+
+  for i in 1:size(df, 1)
+    t     = float(df[!,time][i])
+    _evid = Int8(df[!,evid][i])
+
+    if i > 1 && t < df[i-1,time] && df[i-1,evid] != 3 && df[i-1,evid] != 4
+      throw(PumasDataError("Time is not monotonically increasing between reset dose events (evid=3 or evid=4)"))
     end
 
-    n_amt = hasproperty(df, amt)
-    n_addl = hasproperty(df, addl)
-    n_ii = hasproperty(df, ii)
-    n_cmt = hasproperty(df, cmt)
-    n_rate = hasproperty(df, rate)
-    n_ss = hasproperty(df, ss)
-    cmtType = n_cmt ? (eltype(df[!,cmt]) <: String ? Symbol : Int) : Int
-    events = Event{Float64,Float64,Float64,Float64,Float64,Float64,cmtType}[]
-    obstimes = Float64[]
-    offset = 0.0
-
-    for i in 1:size(df, 1)
-      t     = float(df[!,time][i])
-      _evid = Int8(df[!,evid][i])
-
-      if i > 1 && t < df[i-1,time] && df[i-1,evid] != 3 && df[i-1,evid] != 4
-        throw(PumasDataError("Time is not monotonically increasing between reset dose events (evid=3 or evid=4)"))
-      end
-
-      if _evid == 0 # observation, so add the time
-        push!(obstimes,offset + t)
-      else # event
-        _amt  = n_amt ? float(df[!,amt][i])   : 0. # can be missing if evid=2
-        _addl = n_addl ? Int(df[!,addl][i])   : 0
-        _ii   = n_ii ? float(df[!,ii][i])     : zero(t)
-        __cmt  = n_cmt ? df[!,cmt][i] : 1
-        _cmt = __cmt isa String ? Symbol(__cmt) : Int(__cmt)
-        _rate = n_rate ? float(df[!,rate][i]) : _amt === nothing ? 0.0 : zero(_amt)/oneunit(t)
-        ss′   = n_ss ? Int8(df[!,ss][i])      : Int8(0)
-        build_event_list!(events, event_data, offset + t, _evid, _amt, _addl, _ii, _cmt, _rate, ss′)
-        if parse_tad && (_evid == 3 || _evid == 4)
-          offset += t # Adjust for TAD specification
-        end
+    if _evid == 0 # observation, so add the time
+      push!(obstimes,offset + t)
+    else # event
+      _amt  = n_amt ? float(df[!,amt][i])   : 0. # can be missing if evid=2
+      _addl = n_addl ? Int(df[!,addl][i])   : 0
+      _ii   = n_ii ? float(df[!,ii][i])     : zero(t)
+      __cmt  = n_cmt ? df[!,cmt][i] : 1
+      _cmt = __cmt isa String ? Symbol(__cmt) : Int(__cmt)
+      _rate = n_rate ? float(df[!,rate][i]) : _amt === nothing ? 0.0 : zero(_amt)/oneunit(t)
+      ss′   = n_ss ? Int8(df[!,ss][i])      : Int8(0)
+      build_event_list!(events, event_data, offset + t, _evid, _amt, _addl, _ii, _cmt, _rate, ss′)
+      if parse_tad && (_evid == 3 || _evid == 4)
+        offset += t # Adjust for TAD specification
       end
     end
-
-    sort!(events)
-    new{typeof(observations),typeof(covariates),typeof(events),typeof(obstimes), typeof(covartime)}(_id_string, observations, covariates, events, obstimes, covartime)
   end
 
-  function Subject(;id = "1",
-                   obs = nothing,
-                   cvs::Union{Nothing, NamedTuple} = nothing,
-                   cvstime = obs isa AbstractDataFrame ? obs.time : nothing,
-                   evs = Event[],
-                   time = obs isa AbstractDataFrame ? obs.time : nothing,
-                   event_data = true,
-                   covariates = nothing,
-                   covartime = nothing,
-                   cvs_direction=:right)
+  sort!(events)
+  return Subject{
+    typeof(observations),
+    typeof(covariates_interpolation),
+    typeof(events),
+    typeof(obstimes)}(
+      _id_string,
+      observations,
+      covariates_interpolation,
+      events,
+      obstimes)
+end
 
-     # Check that time is well-specified (not nothing, not missing and increasing)
-     _time = isnothing(time) ? nothing : Missings.disallowmissing(time)
+function Subject(;
+  id = "1",
+  observations = nothing,
+  events = Event[],
+  time = observations isa AbstractDataFrame ? observations.time : nothing,
+  event_data = true,
+  covariates::Union{Nothing, NamedTuple} = nothing,
+  covariates_time = observations isa AbstractDataFrame ? observations.time : nothing,
+  covariates_direction=:right)
 
-    if !isnothing(time) && !issorted(time)
-        throw(PumasDataError("Time is not monotonically increasing within a manually constructed subject"))
-    end
+  # Check that time is well-specified (not nothing, not missing and increasing)
+  _time = isnothing(time) ? nothing : Missings.disallowmissing(time)
 
-    obs = build_observation_list(obs)
-    evs = build_event_list(evs, event_data)
-    if covariates isa Nothing || covartime isa Nothing
-      covartime, covariates = covariate_interpolant(cvs, cvstime, id; cvs_direction=cvs_direction)
-    end
-
-
-    new{typeof(obs),typeof(covariates),typeof(evs),typeof(_time), typeof(covartime)}(string(id), obs, covariates, evs, _time, covartime)
+  if !isnothing(time) && !issorted(time)
+    throw(PumasDataError("Time is not monotonically increasing within a manually constructed subject"))
   end
+
+  obs = build_observation_list(observations)
+  events = build_event_list(events, event_data)
+
+  covartime, covariates_interpolation = covariates_interpolant(
+    covariates, covariates_time,
+    id;
+    covariates_direction=covariates_direction)
+
+  return Subject{
+    typeof(obs),
+    typeof(covariates_interpolation),
+    typeof(events),
+    typeof(_time)}(
+      string(id),
+      obs,
+      covariates_interpolation,
+      events,
+      _time)
 end
 
 Base.hash(subject::Subject, h::UInt) = hash(
@@ -510,7 +526,7 @@ Base.hash(subject::Subject, h::UInt) = hash(
 
 Base.:(==)(subject1::Subject, subject2::Subject) = hash(subject1) == hash(subject2)
 
-function DataFrames.DataFrame(subject::Subject; include_covariates=true, include_dvs=true, include_events=true)
+function DataFrames.DataFrame(subject::Subject; include_covariates=true, include_observations=true, include_events=true)
   # Build a DataFrame that holds the events
   if isempty(subject.events)
     df_events = DataFrame(fill(Float64, 10),
@@ -537,15 +553,15 @@ function DataFrames.DataFrame(subject::Subject; include_covariates=true, include
     select!(df_events, Not(:rate))
   end
   # Generate the name for the dependent variable in a manner consistent with
-  # multiple dvs etc
+  # multiple observations etc
   if isnothing(subject.time)
     df_events = hcat(DataFrame(id = fill(subject.id, length(df_events.evid))), df_events)
   else
     df = DataFrame(id = fill(subject.id, length(subject.time)), time=subject.time)
     df[!, :evid] .= 0
-    # Only include the dv columns if include_dvs is specified and there are
+    # Only include the dv columns if include_observations is specified and there are
     # observations.
-    if include_dvs && !isnothing(subject.observations)
+    if include_observations && !isnothing(subject.observations)
       # Loop over all dv's
       for (dv_name, dv_vals) in pairs(subject.observations)
         df[!, dv_name] .= dv_vals
@@ -553,7 +569,7 @@ function DataFrames.DataFrame(subject::Subject; include_covariates=true, include
     end
     # Now, create columns in df_events with missings for the column names in
     # df but not in df_events
-    if include_dvs
+    if include_observations
       for df_name in Symbol.(names(df))
         if df_name == :id
           df_events[!, df_name] .= subject.id
@@ -581,7 +597,7 @@ function DataFrames.DataFrame(subject::Subject; include_covariates=true, include
   # If there are no observations, just go with df_events
   if isnothing(subject.time)
     df = df_events
-  elseif include_dvs && include_events
+  elseif include_observations && include_events
     df = vcat(df, df_events)
   else
     df
@@ -590,10 +606,10 @@ function DataFrames.DataFrame(subject::Subject; include_covariates=true, include
   # Sort the df according to time first, and use :base_time to ensure that events
   # come before observations (they are missing for observations, so they will come
   # last).
-  sort_bys = include_dvs && include_events ? [:time, :base_time] : [:time,]
+  sort_bys = include_observations && include_events ? [:time, :base_time] : [:time,]
   sort!(df, sort_bys)
   # Find the amount (amt) column, and insert dose and tad columns after it
-  if include_dvs && include_events
+  if include_observations && include_events
     amt_pos = findfirst(isequal(:amt), Symbol.(names(df)))
     insertcols!(df, amt_pos+1, :dose => 0.0)
     insertcols!(df, amt_pos+2, :tad => 0.0)
@@ -659,8 +675,8 @@ Base.summary(::Subject) = "Subject"
 function Base.show(io::IO, subject::Subject)
   println(io, summary(subject))
   println(io, string("  ID: $(subject.id)"))
-  evs = subject.events
-  isnothing(evs) || println(io, "  Events: ", length(subject.events))
+  events = subject.events
+  isnothing(events) || println(io, "  Events: ", length(subject.events))
   obs = subject.observations
   observables = propertynames(obs)
   if !isempty(observables)
@@ -706,8 +722,8 @@ A `Population` is an `AbstractVector` of `Subject`s.
 const Population{T} = AbstractVector{T} where T<:Subject
 Population(obj::Population...) = reduce(vcat, obj)::Population
 
-function DataFrames.DataFrame(pop::Population; include_covariates=true, include_dvs=true, include_events=true)
-  vcat((DataFrame(subject; include_covariates=include_covariates, include_dvs=include_dvs, include_events=include_events) for subject in pop)...)
+function DataFrames.DataFrame(pop::Population; include_covariates=true, include_observations=true, include_events=true)
+  vcat((DataFrame(subject; include_covariates=include_covariates, include_observations=include_observations, include_events=include_events) for subject in pop)...)
 end
 
 ### Display
@@ -779,60 +795,70 @@ Base.convert(::Type{NCAPopulation}, population::Population; name=:dv, kwargs...)
 
 """
     read_pumas(filepath::String, args...; kwargs...)
-    read_pumas(data, cvs=Symbol[], dvs=Symbol[:dv];
+    read_pumas(data, covariates=Symbol[], observations=Symbol[:dv];
                    id=:id, time=:time, evid=:evid, amt=:amt, addl=:addl,
                    ii=:ii, cmt=:cmt, rate=:rate, ss=:ss,
                    event_data = true)
 
 Import NMTRAN-formatted data.
 
-- `cvs` covariates specified by either names or column numbers
-- `dvs` dependent variables specified by either names or column numbers
+- `covariates` covariates specified by either names or column numbers
+- `observations` dependent variables specified by either names or column numbers
 - `event_data` toggles assertions applicable to event data
 """
 function read_pumas(filepath::AbstractString; kwargs...)
   read_pumas(DataFrame(CSV.File(filepath, missingstrings=["", ".", "NA"])); kwargs...)
 end
 function read_pumas(df::AbstractDataFrame;
-  cvs=Symbol[], dvs=Symbol[:dv],
+  covariates=Symbol[], observations=Symbol[:dv],
   id=:id, time=:time, evid=nothing, amt=:amt, addl=:addl,
   ii=:ii, cmt=:cmt, rate=:rate, ss=:ss, mdv=nothing,
-  event_data=true, cvs_direction=:right,
+  event_data=true, covariates_direction=:right,
   parse_tad = true, check=event_data)
 
-  df = preprocess_data(df, dvs, amt, mdv, evid, event_data)
+  df = preprocess_data(df, observations, amt, mdv, evid, event_data)
   _evid = evid===nothing ? :evid : evid
 
   if check
-    check_pumas_data(df, cvs, dvs,
+    check_pumas_data(df, covariates, observations,
       id, time, _evid, amt, addl, ii, cmt, rate, ss, mdv,
       event_data)
   end
 
-  __read_pumas(df, cvs, dvs,
+  __read_pumas(df, covariates, observations,
     id, time, _evid, amt, addl, ii, cmt, rate, ss, mdv,
-    event_data, cvs_direction, parse_tad)
+    event_data, covariates_direction, parse_tad)
 end
 
-function __read_pumas(df::AbstractDataFrame,
-  cvs::Vector{Symbol},
-  dvs::Vector{Symbol},
-  id::Symbol, time::Union{Symbol,Nothing}, evid::Union{Symbol,Nothing}, amt::Union{Symbol,Nothing},
-  addl::Union{Symbol,Nothing}, ii::Union{Symbol,Nothing}, cmt::Union{Symbol,Nothing},
-  rate::Union{Symbol,Nothing}, ss::Union{Symbol,Nothing}, mdv::Union{Symbol,Nothing},
-  event_data::Bool, cvs_direction::Symbol, parse_tad::Bool)
+function __read_pumas(
+  df::AbstractDataFrame,
+  covariates::Vector{Symbol},
+  observations::Vector{Symbol},
+  id::Symbol,
+  time::Union{Symbol,Nothing},
+  evid::Union{Symbol,Nothing},
+  amt::Union{Symbol,Nothing},
+  addl::Union{Symbol,Nothing},
+  ii::Union{Symbol,Nothing},
+  cmt::Union{Symbol,Nothing},
+  rate::Union{Symbol,Nothing},
+  ss::Union{Symbol,Nothing},
+  mdv::Union{Symbol,Nothing},
+  event_data::Bool,
+  covariates_direction::Symbol,
+  parse_tad::Bool)
 
-  if cvs isa AbstractVector{<:Integer}
+  if covariates isa AbstractVector{<:Integer}
     Base.depwarn("selecting covariate columns by integer indexing has been deprecated. Please specify the name of the columns instead.", :read_pumas)
-    cvs = Symbol.(names(df)[cvs])
+    covariates = Symbol.(names(df)[covariates])
   end
-  if dvs isa AbstractVector{<:Integer}
+  if observations isa AbstractVector{<:Integer}
     Base.depwarn("selecting dependent variable columns by integer indexing has been deprecated. Please specify the name of the columns instead.", :read_pumas)
-    dvs = Symbol.(names(df)[dvs])
+    observations = Symbol.(names(df)[observations])
   end
 
   return [Subject(subject_df, id, time, evid, amt, addl, ii, cmt,
-                  rate, ss, cvs, dvs, event_data, cvs_direction, nothing, nothing, parse_tad) for subject_df in groupby(df, id)]
+                  rate, ss, covariates, observations, event_data, covariates_direction, parse_tad) for subject_df in groupby(df, id)]
 end
 
 struct PumasDataError <: Exception  msg::AbstractString end
@@ -840,7 +866,7 @@ Base.showerror(io::IO, e::PumasDataError) = print(io, "PumasDataError: ", e.msg)
 
 
 function preprocess_data(df::AbstractDataFrame,
-  dvs::Vector{Symbol},
+  observations::Vector{Symbol},
   amt::Symbol,
   mdv::Union{Symbol,Nothing},
   evid::Union{Symbol,Nothing},
@@ -864,9 +890,9 @@ Your dataset has dose event but it hasn't an evid column. We are adding 1 for do
   # but internally we encode missing values with missing directly in the dv columns.
   if mdv !== nothing || hasproperty(df, :mdv)
     mdv = mdv === nothing ? :mdv : mdv
-    allowmissing!(df, dvs)
+    allowmissing!(df, observations)
     mdv = isone.(df[!,mdv])
-    for dv in dvs
+    for dv in observations
       df[!, dv] .= ifelse.(mdv, missing, df[!, dv])
     end
   end
@@ -875,8 +901,8 @@ Your dataset has dose event but it hasn't an evid column. We are adding 1 for do
 end
 
 function check_pumas_data(df::AbstractDataFrame,
-  cvs::Vector{Symbol},
-  dvs::Vector{Symbol},
+  covariates::Vector{Symbol},
+  observations::Vector{Symbol},
   id::Symbol, time::Union{Symbol,Nothing}, evid::Union{Symbol,Nothing}, amt::Union{Symbol,Nothing},
   addl::Union{Symbol,Nothing}, ii::Union{Symbol,Nothing}, cmt::Union{Symbol,Nothing},
   rate::Union{Symbol,Nothing}, ss::Union{Symbol,Nothing}, mdv::Union{Symbol,Nothing},
@@ -895,12 +921,12 @@ function check_pumas_data(df::AbstractDataFrame,
   has_rate   = rate in colnames
   has_evid34 = any(x->x==3 || x==4,df[:,evid])
 
-  if dvs isa AbstractVector{<:Integer}
-    dvs = colnames[dvs]
+  if observations isa AbstractVector{<:Integer}
+    observations = colnames[observations]
   end
-  has_dvs = true
-  for dv in dvs
-    has_dvs &= dv in colnames
+  has_observations = true
+  for dv in observations
+    has_observations &= dv in colnames
   end
   # CASE : no event identifier (evid) with event_data = true  # top most check
   if !has_evid && event_data
@@ -911,13 +937,13 @@ argument event_data=false in your read_pumas function.
 """))
   end
   if event_data
-    if !has_dvs
-      throw(PumasDataError("Column(s) in dvs arg is(are) not present in the data file"))
+    if !has_observations
+      throw(PumasDataError("Column(s) in observations arg is(are) not present in the data file"))
     end
     ok = has_id && has_time && has_amt
     if !ok
       @info "The CSV file has keys: $colnames"
-      throw(PumasDataError("The CSV file must have: `id, time, amt, and dvs` when `event_data` is `true`" ))
+      throw(PumasDataError("The CSV file must have: `id, time, amt, and observations` when `event_data` is `true`" ))
     end
   else
     if !has_id
@@ -930,12 +956,12 @@ argument event_data=false in your read_pumas function.
   if has_time && !has_evid34
     _df_onlyobs = filter(row -> row[evid] == 0, df[!, [id, time, evid]])
     if length(unique(zip(_df_onlyobs[!, id], _df_onlyobs[!, time]))) != size(_df_onlyobs, 1)
-      throw(PumasDataError("($(id), $(time)) pair should be unique, if your data has multiple dvs in one column, please convert it to wide format."))
+      throw(PumasDataError("($(id), $(time)) pair should be unique, if your data has multiple observations in one column, please convert it to wide format."))
     end
   end
 
-  # CASE : non-numeric/string observations in dvs
-  for dv in dvs
+  # CASE : non-numeric/string observations in observations
+  for dv in observations
     check_non_numeric(df, id, dv; allow_missings=true)
   end
 
@@ -984,7 +1010,7 @@ argument event_data=false in your read_pumas function.
      end
 
     # CASE : observations (dv) at time of dose
-    for dv in dvs
+    for dv in observations
       _dv = row[dv]
       if _evid == 1 && !(_dv isa Missing)
         throw(PumasDataError("[Subject $(id): $(_id), row = $(idx), col = $(dv)] an observation is present at the time of dose in column $(dv). It is recommended and required in Pumas to have a blank record (`missing`) at the time of time of dosing, i.e. when `amt` is positive."))

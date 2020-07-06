@@ -11,7 +11,7 @@ end
 
 @testset "Derivatives w.r.t regular parameters" begin
   data = read_pumas(example_data("data1"),
-                    cvs = [:sex,:wt,:etn])
+                    covariates = [:sex,:wt,:etn])
   subject = data[1]
   # Cut off the `t=0` pre-dose observation as it throws conditional_nll calculations
   # off the scale (variance of the simulated distribution is too small).
@@ -193,7 +193,7 @@ end
     end
   end
 
-  subject = Subject(evs=DosageRegimen(100))#read_pumas(example_data("event_data/data2"), dvs = [:cp])[1]
+  subject = Subject(events=DosageRegimen(100))#read_pumas(example_data("event_data/data2"), observations = [:cp])[1]
 
   θ₀ = [1.5, 1.0, 30.0, 5.0]
   param = (θ = θ₀,)
@@ -227,7 +227,7 @@ end
   grad_AD = AD_hessian(test_fun, θ₀)
   @test grad_FD ≈ grad_AD atol=1e-4
 
-  subject = read_pumas(example_data("event_data/data2"), dvs = [:cp])[1]
+  subject = read_pumas(example_data("event_data/data2"), observations = [:cp])[1]
 
   θ₀ = [1.5, 1.0, 30.0, 5.0]
   param = (θ = θ₀,)
@@ -261,7 +261,7 @@ end
   grad_AD = AD_hessian(test_fun, θ₀)
   @test grad_FD ≈ grad_AD atol=1e-4
 
-  subject = Subject(evs=DosageRegimen(100,rate=2,ss=1,ii=12,cmt=2))
+  subject = Subject(events=DosageRegimen(100,rate=2,ss=1,ii=12,cmt=2))
 
   θ₀ = [1.5, 1.0, 30.0, 5.0]
   param = (θ = θ₀,)
@@ -338,7 +338,7 @@ end
     end
   end
 
-  subject = read_pumas(example_data("event_data/data14"), dvs = [:cp])[1]
+  subject = read_pumas(example_data("event_data/data14"), observations = [:cp])[1]
 
   θ₀ = [1.5, 1.0, 30.0, 5.0]
   param = (θ = θ₀,)
@@ -372,7 +372,7 @@ end
   grad_AD = AD_hessian(test_fun, θ₀)
   @test grad_FD ≈ grad_AD atol=1e-4
 
-  subject = Subject(evs=DosageRegimen(100,rate=-2,ss=1,ii=12,cmt=2))
+  subject = Subject(events=DosageRegimen(100,rate=-2,ss=1,ii=12,cmt=2))
 
   θ₀ = [1.5, 1.0, 30.0, 5.0]
   param = (θ = θ₀,)
@@ -451,7 +451,7 @@ end
 
   data = DataFrame(CSV.File(example_data("event_data/data14")))
   data[!,:rate] .= -2
-  subject = read_pumas(data, dvs = [:cp])[1]
+  subject = read_pumas(data, observations = [:cp])[1]
 
   θ₀ = [1.5, 1.0, 30.0, 5.0]
   param = (θ = θ₀,)
@@ -485,7 +485,7 @@ end
   grad_AD = AD_hessian(test_fun, θ₀)
   @test grad_FD ≈ grad_AD atol=1e-3
 
-  subject = Subject(evs=DosageRegimen(100,rate=-2,ss=1,ii=12,cmt=2))
+  subject = Subject(events=DosageRegimen(100,rate=-2,ss=1,ii=12,cmt=2))
 
   θ₀ = [1.5, 1.0, 30.0, 5.0]
   param = (θ = θ₀,)
@@ -562,7 +562,7 @@ end
     end
   end
 
-  subject = Subject(evs=DosageRegimen(100))
+  subject = Subject(events=DosageRegimen(100))
 
   θ₀ = [1.5, 1.0, 30.0, 0.412]
   param = (θ = θ₀,)
@@ -596,7 +596,7 @@ end
   grad_AD = AD_hessian(test_fun, θ₀)
   @test grad_FD ≈ grad_AD atol=1e-4
 
-  subject = Subject(evs=DosageRegimen(100,rate=1))
+  subject = Subject(events=DosageRegimen(100,rate=1))
 
   θ₀ = [1.5, 1.0, 30.0, 0.412]
   param = (θ = θ₀,)
@@ -630,7 +630,7 @@ end
   grad_AD = AD_hessian(test_fun, θ₀)
   @test grad_FD ≈ grad_AD atol=1e-4
 
-  subject = Subject(evs=DosageRegimen(100,ss=1,rate=10.0,ii=12,cmt=2))
+  subject = Subject(events=DosageRegimen(100,ss=1,rate=10.0,ii=12,cmt=2))
   θ₀ = [1.5, 1.0, 30.0, 0.412]
   param = (θ = θ₀,)
   randeffs = (η = [0.0,0.0],)
@@ -663,7 +663,7 @@ end
   grad_AD = AD_hessian(test_fun, θ₀)
   @test grad_FD ≈ grad_AD atol=1e-4
 
-  subject = Subject(evs=DosageRegimen(100,rate=2,ss=1,ii=12,cmt=2))
+  subject = Subject(events=DosageRegimen(100,rate=2,ss=1,ii=12,cmt=2))
   θ₀ = [1.5, 1.0, 30.0, 0.412]
   param = (θ = θ₀,)
   randeffs = (η = [0.0,0.0],)

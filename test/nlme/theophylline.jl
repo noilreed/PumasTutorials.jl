@@ -5,7 +5,7 @@ using StringDistances
 
 @testset "Theophylline model" begin
 
-theopp = read_pumas(example_data("event_data/THEOPP"),cvs = [:SEX,:WT])
+theopp = read_pumas(example_data("event_data/THEOPP"), covariates = [:SEX,:WT])
 @testset "Check that Events is fully typed when parsed" begin
   @test theopp[1].events isa Vector{Pumas.Event{Float64,Float64,Float64,Float64,Float64,Float64,Int}}
 end

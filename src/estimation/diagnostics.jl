@@ -68,12 +68,12 @@ end
 
 function DataFrames.DataFrame(
   vpred::Vector{<:SubjectPrediction};
-  include_covariates=true, include_dvs=true)
+  include_covariates=true, include_observations=true)
 
   subjects = [pred.subject for pred in vpred]
   df = DataFrame(subjects;
     include_covariates=false,
-    include_dvs=include_dvs,
+    include_observations=include_observations,
     include_events=false)
 
   _keys = keys(first(subjects).observations)
@@ -192,7 +192,7 @@ function epredict(
   sims = simobs(m, RepeatedVector([subject], nsim), param; kwargs...)
 
   _dv_keys = keys(subject.observations)
-  return map(name -> mean(getproperty.(getproperty.(sims, :observed), name)), NamedTuple{_dv_keys}(_dv_keys))
+  return map(name -> mean(getproperty.(getproperty.(sims, :observations), name)), NamedTuple{_dv_keys}(_dv_keys))
 end
 
 # FIXME! Make it parallel over subjects
@@ -273,7 +273,7 @@ function DataFrames.DataFrame(
   include_covariates=true)
 
   subjects = [resid.subject for resid in vresid]
-  df = select!(DataFrame(subjects; include_covariates=false, include_dvs=false), Not(:evid))
+  df = select!(DataFrame(subjects; include_covariates=false, include_observations=false), Not(:evid))
 
   _keys = keys(first(subjects).observations)
   for name in (_keys)
@@ -551,7 +551,7 @@ function npde(
   end
 
   _names = keys(subject.observations)
-  sims = getproperty.(simobs(m, RepeatedVector([subject],nsim), param; kwargs...),:observed)
+  sims = getproperty.(simobs(m, RepeatedVector([subject],nsim), param; kwargs...), :observations)
 
   return map(NamedTuple{_names}(_names)) do name
     y        = subject.observations[name]
@@ -753,7 +753,7 @@ function DataFrames.DataFrame(i::FittedPumasModelInspection; include_covariates=
   ebes = i.ebes.ebes
   ebe_keys = keys(first(ebes))
   ebe_types = map(typeof, first(ebes))
-  ebes_df = select!(DataFrame(i.o.data; include_covariates=false, include_dvs=false), Not(:evid))
+  ebes_df = select!(DataFrame(i.o.data; include_covariates=false, include_observations=false), Not(:evid))
   for k ∈ ebe_keys
     ebe_type = ebe_types[k]
     if ebe_type <: Number
@@ -883,11 +883,11 @@ function _icoef(
   else
     __pre = map(t -> (id=subject.id, _pre(t)...), obstimes)
 
-    return covariate_interpolant(
+    return covariates_interpolant(
       StructArrays.fieldarrays(StructArray(__pre)),
       obstimes,
       subject.id;
-      cvs_direction=:right)[2]
+      covariates_direction=:right)[2]
   end
 end
 

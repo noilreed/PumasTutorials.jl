@@ -53,7 +53,7 @@ model = Pumas.PumasModel(p,randomfx,pre_f,init_f,jump_prob,derived_f)
 param = init_param(model)
 randeffs = init_randeffs(model, param)
 
-data = Subject(evs = DosageRegimen([10, 20], ii = 24, addl = 2, time = [0, 12]))
+data = Subject(events = DosageRegimen([10, 20], ii = 24, addl = 2, time = [0, 12]))
 sol  = solve(model,data,param,randeffs,Tsit5())
 @test mean(sol[1,:]) < 20
 @test mean(sol[2,:]) > 1

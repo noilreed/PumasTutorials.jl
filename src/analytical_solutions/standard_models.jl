@@ -92,7 +92,7 @@ where absorption rates, `Ka1` and `Ka2`, clearance, `CL`, and volume, `Vc`, are 
 When using this model during simulation or estimation, it is preferred to have 2 dosing rows for each subject in the dataset, where the first dose goes into `cmt =1` (or `cmt = Depot1`) and the second dose goes into `cmt=2` (or `cmt=Depot2`). Central compartment gets `cmt=3` or (`cmt = Central`). e.g.
 
 ev = DosageRegimen([100,100],cmt=[1,2])
-s1 = Subject(id=1, evs=ev)
+s1 = Subject(id=1, events=ev)
 """
 struct Depots2Central1 <: ExplicitModel end
 _pre_req(::Type{Depots2Central1}) = (:Ka1, :Ka2, :CL, :Vc)

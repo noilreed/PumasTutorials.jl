@@ -103,7 +103,7 @@ function ith_subject_cb(pre,datai::Subject,u0,t0,ProbType,saveat,save_discont,co
   ss_max_iters = 1000
   events = adjust_event(datai.events,pre,u0)
   tstops = sorted_approx_unique(events)
-  d_discontinuities = datai.covartime
+  d_discontinuities = _covariates_time(datai.covariates)
   counter::Int = 1
   ss_mode = Ref(false)
   ss_time = Ref(-one(eltype(tstops)))

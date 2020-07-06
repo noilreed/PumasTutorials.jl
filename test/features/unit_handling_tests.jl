@@ -1,6 +1,6 @@
 using Pumas, Test
 umodel = @model begin
-  @pre begin 
+  @pre begin
     k1 = 1.01u"mg"
     θI = 1u"hr"
     I = θI
@@ -15,6 +15,6 @@ umodel = @model begin
     C=x1
   end
 end
-evs = DosageRegimen(45u"mg",cmt=1,time=13u"d")
-subject=Subject(id=1,evs=evs)
-@test_broken sim=simobs(umodel,subject,obstimes=0u"d":1u"hr":1u"d",alg=OrdinaryDiffEq.Tsit5())
+events = DosageRegimen(45u"mg", cmt=1, time=13u"d")
+subject=Subject(id=1, events=events)
+@test_broken sim=simobs(umodel, subject, obstimes=0u"d":1u"hr":1u"d", alg=OrdinaryDiffEq.Tsit5())

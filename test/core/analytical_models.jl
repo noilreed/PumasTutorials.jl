@@ -113,7 +113,7 @@ doses_DR = DosageRegimen(doses_D, doses_R)
 doses_RD = DosageRegimen(doses_R, doses_D)
 
 dose = doses_RD
-pop     = Population(map(i -> Subject(id=i, evs=dose),1:15))
+pop     = Population(map(i -> Subject(id=i, events=dose),1:15))
 _simobs = simobs(model732, pop, NamedTuple())
 simdf = DataFrame(_simobs)
 data = read_pumas(simdf)
@@ -124,7 +124,7 @@ for i = 1:15
 end
 
 dose = doses_DD
-pop     = Population(map(i -> Subject(id=i, evs=dose),1:15))
+pop     = Population(map(i -> Subject(id=i, events=dose),1:15))
 _simobs = simobs(model732, pop, NamedTuple())
 simdf = DataFrame(_simobs)
 data = read_pumas(simdf)
@@ -136,7 +136,7 @@ end
 
 
 dose = doses_DR
-pop     = Population(map(i -> Subject(id=i, evs=dose),1:15))
+pop     = Population(map(i -> Subject(id=i, events=dose),1:15))
 _simobs = simobs(model732, pop, NamedTuple())
 simdf = DataFrame(_simobs)
 data = read_pumas(simdf)

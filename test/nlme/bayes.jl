@@ -1,6 +1,6 @@
 using Pumas, Test, CSV, Random, Distributions, TransformVariables
 
-theopp = read_pumas(example_data("event_data/THEOPP"),cvs = [:WT,:SEX])
+theopp = read_pumas(example_data("event_data/THEOPP"), covariates = [:WT,:SEX])
 
 @testset "Model with analytical solution" begin
   theopmodel_bayes = @model begin

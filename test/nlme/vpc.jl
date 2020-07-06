@@ -33,7 +33,7 @@ using Pumas, Test, QuantileRegressions
   end
 
   ev = DosageRegimen(100, time=0, addl=2, ii=24)
-  s1 = Subject(id=1,  evs=ev, cvs=(isPM=1, wt=70))
+  s1 = Subject(id=1, events=ev, covariates=(isPM=1, wt=70))
 
   param = (
     tvcl = 4.0,
@@ -45,11 +45,11 @@ using Pumas, Test, QuantileRegressions
 
   choose_covariates() = (isPM = rand([1, 0]),
   wt = rand(55:80))
-  pop_with_covariates = Population(map(i -> Subject(id=i, evs=ev, cvs=choose_covariates()),1:10))
+  pop_with_covariates = Population(map(i -> Subject(id=i, events=ev, covariates=choose_covariates()),1:10))
   obs = simobs(model, pop_with_covariates, param, obstimes=0:1:60)
   simdf = DataFrame(obs)
   simdf[rand(1:length(simdf.dv), 5), :dv] .= missing
-  data = read_pumas(simdf, time=:time, cvs=[:isPM, :wt])
+  data = read_pumas(simdf, time=:time, covariates=[:isPM, :wt])
 
   vpc_data = vpc(data)
   @test typeof(vpc_data) <: Pumas.PopVPC
@@ -77,7 +77,7 @@ end
 
 @testset "Discrete VPC" begin
   data = read_pumas(joinpath(dirname(pathof(Pumas)), "..", "examples", "pain_remed.csv"),
-    cvs = [:arm, :dose, :conc, :painord];
+    covariates = [:arm, :dose, :conc, :painord];
     time=:time, event_data=false)
 
   model = @model begin

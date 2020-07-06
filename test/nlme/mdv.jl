@@ -85,14 +85,14 @@ params = (tvcl     = 5.0,
           Ω        = Diagonal([0.05, 0.05]),
           σ        = 0.12)
 
-pop = [Subject(id=i, evs=DosageRegimen(100, cmt=1, time=0)) for i = 1:1000]
+pop = [Subject(id=i, events=DosageRegimen(100, cmt=1, time=0)) for i = 1:1000]
 sims = simobs(model, pop, params,obstimes = [0,0.1,0.2,0.3,0.4,0.5,1.0,1.5,2.5,4.0,5.0], ensemblealg = EnsembleSerial())
 
 reread_df = DataFrame(sims)
 reread_df[reread_df[!, :evid].==1, :dv1] .= missing
 reread_df[reread_df[!, :evid].==1, :dv2] .= missing
 reread_df[reread_df[!, :time].==0.0, :dv2] .= missing
-reread = read_pumas(reread_df; dvs=[:dv1, :dv2])
+reread = read_pumas(reread_df; observations=[:dv1, :dv2])
 
 deviance_analytical = deviance(model, reread, params, Pumas.FOCEI())
 deviance_diffeq = deviance(model_diffeq, reread, params, Pumas.FOCEI())

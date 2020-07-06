@@ -336,6 +336,7 @@ function simobs(m::PumasModel, subject::Subject,
   derived = m.derived(col, sol, obstimes, subject, param, randeffs)
   obs = m.observed(col, sol, obstimes, map(_rand, derived), subject)
   return SimulatedObservations(subject, obstimes, obs)
+events
 end
 
 struct RepeatedVector{T} <: AbstractVector{T}

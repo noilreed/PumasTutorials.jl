@@ -172,10 +172,10 @@ function simobstte(
     _r = randexp()
 
     # Build a cubic cpline based on the nT simulated values of the cumulative hazard
-    cs = DataInterpolations.CubicSpline(getfield.(_obs.observed[dvname], :Λ), _obstimes)
+    cs = DataInterpolations.CubicSpline(getfield.(_obs.observations[dvname], :Λ), _obstimes)
 
     # Find the root Λ(t) == _r
-    if _obs.observed[dvname][end].Λ > _r
+    if _obs.observations[dvname][end].Λ > _r
       tᵢ = Roots.find_zero(t -> cs(t) - _r, (startT, maxT))
       censored = false
     else
@@ -202,13 +202,11 @@ function simobstte(
 
   # FIXME! Which name should we use fo the dv?
   return Subject(
-    id=subject.id,
-    obs=NamedTuple{(dvname,)}((_death,)),
-    covariates=subject.covariates,
-    event_data=true,
-    evs=_events,
-    time=_times,
-    covartime=subject.covartime)
+    subject.id,
+    NamedTuple{(dvname,)}((_death,)),
+    subject.covariates,
+    _events,
+    _times)
 end
 
 simobstte(

@@ -2,7 +2,7 @@ using Pumas, Test, Random
 
 @testset "Negative binomial model" begin
 
-  pd_poisson = read_pumas(example_data("sim_poisson"), cvs = [:dose], event_data=false)
+  pd_poisson = read_pumas(example_data("sim_poisson"), covariates = [:dose], event_data=false)
 
   negativebinomial_model = @model begin
     @param begin

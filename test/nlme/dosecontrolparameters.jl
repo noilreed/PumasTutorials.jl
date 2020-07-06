@@ -62,7 +62,7 @@ using Pumas, Test, Random
 
   n = 20
   t = [1.0, 2.0, 4.0, 8.0, 12.0, 24.0]
-  pop_skeleton = [Subject(obs=(dv=Float64[],), evs=DosageRegimen(100), time=t) for i in 1:n]
+  pop_skeleton = [Subject(observations=(dv=Float64[],), events=DosageRegimen(100), time=t) for i in 1:n]
 
   Random.seed!(123)
   pop_est = Subject.(simobs(model_lag["closed form"], pop_skeleton, params₀, ensemblealg=EnsembleSerial()))
@@ -150,7 +150,7 @@ end
 
   n = 20
   t = [0.5, 1.0, 2.0, 4.0, 8.0, 12.0, 24.0]
-  pop_skeleton = [Subject(obs=(dv=Float64[],), evs=DosageRegimen(100, rate=-2), time=t) for i in 1:20]
+  pop_skeleton = [Subject(observations=(dv=Float64[],), events=DosageRegimen(100, rate=-2), time=t) for i in 1:20]
 
   Random.seed!(125)
   pop_est = Subject.(simobs(model_duration["closed form"], pop_skeleton, params₀, ensemblealg=EnsembleSerial()))
@@ -226,7 +226,7 @@ end
 
   n = 20
   t = [1.0, 2.0, 4.0, 8.0, 12.0, 24.0]
-  pop_skeleton = [Subject(obs=(dv=Float64[],), evs=DosageRegimen(100, rate=-2), time=t) for i in 1:20]
+  pop_skeleton = [Subject(observations=(dv=Float64[],), events=DosageRegimen(100, rate=-2), time=t) for i in 1:20]
 
   Random.seed!(123)
   pop_est = Subject.(simobs(model_rate["closed form"], pop_skeleton, params₀, ensemblealg=EnsembleSerial()))
@@ -308,7 +308,7 @@ end
   n = 20
   t = [1.0, 2.0, 4.0, 8.0, 12.0, 24.0]
   dr = DosageRegimen(DosageRegimen(100, cmt=1), DosageRegimen(100, cmt=2))
-  pop_skeleton = [Subject(obs=(dv=Float64[],), evs=dr, time=t) for i in 1:20]
+  pop_skeleton = [Subject(observations=(dv=Float64[],), events=dr, time=t) for i in 1:20]
 
   Random.seed!(123)
   pop_est = Subject.(simobs(model_bioav["closed form"], pop_skeleton, params₀, ensemblealg=EnsembleSerial()))

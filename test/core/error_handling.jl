@@ -2,12 +2,12 @@ using Test, Pumas
 
 #Creating the dataset
 
-evs = vcat(repeat([DosageRegimen(100, addl = 9, ii = 24)], 12),repeat([DosageRegimen(200, addl = 9, ii = 24)], 12))
-cvs = ((WT = round(clamp(rand(Normal(80, 30)), 50, 110), digits = 2),
+events = vcat(repeat([DosageRegimen(100, addl = 9, ii = 24)], 12),repeat([DosageRegimen(200, addl = 9, ii = 24)], 12))
+covariates = ((WT = round(clamp(rand(Normal(80, 30)), 50, 110), digits = 2),
         SEX = rand(Binomial(1, 0.7)),
         BCRCL = round(clamp(rand(Normal(90, 20)), 40, 120), digits = 2))
         for subj in 1:24)
-population = Population(map((id, cvs, evs) -> Subject(id = id, cvs = cvs, evs = evs),collect(1:24),cvs,evs))
+population = Population(map((id, covariates, events) -> Subject(id = id, covariates = covariates, events = events), collect(1:24), covariates, events))
 
 
 model = @model begin

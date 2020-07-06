@@ -1,13 +1,13 @@
 using Pumas
 
-data = read_pumas(example_data("data1"), cvs = [:sex,:wt,:etn])
+data = read_pumas(example_data("data1"), covariates = [:sex,:wt,:etn])
 
 tmp = []
-push!(tmp, Subject(obs=data[1].observations,
+push!(tmp, Subject(observations=data[1].observations,
                    time=data[1].time,
-                   cvs=(sex=1, wt=[51.6 for i in 1:length(data[1].time)], etn=1),
-                   cvstime=(sex=[0.0], wt=data[1].time, etn=[0.0]),
-                   evs=data[1].events))
+                   covariates=(sex=1, wt=[51.6 for i in 1:length(data[1].time)], etn=1),
+                   covariates_time=(sex=[0.0], wt=data[1].time, etn=[0.0]),
+                   events=data[1].events))
 push!(tmp, data[2])
 new_data = identity.(tmp)
 

@@ -40,11 +40,11 @@ param = (
     )
 
 randeffs = (η=randn(3),)
-subject = Subject(evs = DosageRegimen([10, 20], ii = 24, addl = 2, ss = 1:2, time = [0, 12], cmt = 2), cvs = (isPM="no", Wt=70))
+subject = Subject(events = DosageRegimen([10, 20], ii = 24, addl = 2, ss = 1:2, time = [0, 12], cmt = 2), covariates = (isPM="no", Wt=70))
 
 # Make sure simobs works without time, defaults to 1 day, obs at each hour
 obs = simobs(m_diffeq, subject, param, randeffs)
-@test obs.times == 0.0:1.0:84.0
+@test obs.time == 0.0:1.0:84.0
 @test DataFrame(obs, include_events=false).time == 0.0:1.0:84.0
 obsDF = DataFrame(obs)
 @test all(obsDF[obsDF[!, :evid] .== 0, :isPM] .== "no")
@@ -55,18 +55,18 @@ plot(obs)
 =#
 
 pop = Population([Subject(id = id,
-            evs = DosageRegimen([10rand(), 20rand()],
+            events = DosageRegimen([10rand(), 20rand()],
             ii = 24, addl = 2, ss = 1:2, time = [0, 12],
-            cmt = 2),cvs = cvs=(isPM="no", Wt=70)) for id in 1:10])
+            cmt = 2), covariates = (isPM="no", Wt=70)) for id in 1:10])
 vrandeffs = fill(randeffs, length(pop))
 pop_obs1 = simobs(m_diffeq, pop[1], param, randeffs, ensemblealg = EnsembleSerial())
 pop_obs1 = simobs(m_diffeq, pop, param, vrandeffs, ensemblealg = EnsembleSerial())
 _data = DataFrame(pop_obs1)
 
 pop = Population([Subject(id = id,
-            evs = DosageRegimen(10,
+            events = DosageRegimen(10,
             ii = 24, addl = 2, ss = 1:2, time = [0, 12],
-            cmt = 2),cvs = cvs=(isPM="no", Wt=70)) for id in 1:10])
+            cmt = 2), covariates = (isPM="no", Wt=70)) for id in 1:10])
 vrandeffs = fill(randeffs, length(pop))
 pop_obs1 = simobs(m_diffeq, pop[1], param, randeffs, ensemblealg = EnsembleSerial())
 pop_obs1 = simobs(m_diffeq, pop, param, vrandeffs, ensemblealg = EnsembleSerial())
@@ -78,7 +78,7 @@ pop_obs1 = simobs(m_diffeq, pop, param, ensemblealg = EnsembleSerial())
 plot(pop_obs)
 =#
 
-data = read_pumas(_data,cvs = [:isPM,:Wt],dvs = [:conc,:dv])
+data = read_pumas(_data, covariates = [:isPM,:Wt], observations = [:conc,:dv])
 
 obs2 = simobs(m_diffeq, data[1], param, randeffs)
 @test_broken _data2 = DataFrame(obs2)

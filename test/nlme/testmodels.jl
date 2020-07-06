@@ -118,7 +118,7 @@ if !haskey(TESTMODELS, "HCV")
 
   t = [0.25, 0.5, 1.0, 2.0, 3.0, 4.0, 6.99, 10.0, 13.99, 20.99, 28.0]
 
-  _pop = map(i -> Subject(id=i, evs=dr, time=t), 1:3)
+  _pop = map(i -> Subject(id=i, events=dr, time=t), 1:3)
 
   # Simulate data for estimation (fix seed for reproducibility)
   Random.seed!(123)

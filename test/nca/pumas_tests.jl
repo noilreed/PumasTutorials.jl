@@ -4,7 +4,7 @@ choose_covariates() = (isPM = rand([1, 0]),
                        Wt = rand(55:80))
 
 function generate_population(events,nsubs=4)
-  pop = Population(map(i -> Subject(id=i,evs=events,cvs=choose_covariates()),1:nsubs))
+  pop = Population(map(i -> Subject(id=i, events=events, covariates=choose_covariates()),1:nsubs))
   return pop
 end
 
@@ -58,19 +58,19 @@ p = (
 
 sim = @test_nowarn simobs(m_diffeq, ev2, p; abstol=1e-14, reltol=1e-14)
 for i in eachindex(sim)
-  @test NCA.auc(sim[i].observed.cp, sim[i].times)   ≈ sim[i].observed.auc
-  @test NCA.thalf(sim[i].observed.cp, sim[i].times) ≈ sim[i].observed.thalf
-  @test NCA.cmax(sim[i].observed.cp, sim[i].times)  ≈ sim[i].observed.cmax
+  @test NCA.auc(sim[i].observations.cp, sim[i].time)   ≈ sim[i].observations.auc
+  @test NCA.thalf(sim[i].observations.cp, sim[i].time) ≈ sim[i].observations.thalf
+  @test NCA.cmax(sim[i].observations.cp, sim[i].time)  ≈ sim[i].observations.cmax
 
   ncasubj = NCASubject(
     Subject(
-      id   = 1,
-      obs  = (dv=sim[i].observed.cp,),
-      time = sim[i].times,
-      evs  = sim[i].subject.events))
-  @test NCA.auc(ncasubj)   ≈ sim[i].observed.auc
-  @test NCA.thalf(ncasubj) ≈ sim[i].observed.thalf
-  @test NCA.cmax(ncasubj)  ≈ sim[i].observed.cmax
+      id           = 1,
+      observations = (dv=sim[i].observations.cp,),
+      time         = sim[i].time,
+      events       = sim[i].subject.events))
+  @test NCA.auc(ncasubj)   ≈ sim[i].observations.auc
+  @test NCA.thalf(ncasubj) ≈ sim[i].observations.thalf
+  @test NCA.cmax(ncasubj)  ≈ sim[i].observations.cmax
 end
 
 pop = Population(map(i->sim[i].subject, eachindex(sim)))
@@ -133,19 +133,19 @@ sim = @test_nowarn simobs(parmet, ev1, p)
 @test_nowarn DataFrame(sim)
 dose = NCADose.(filter(ev -> ev.rate_dir==1, sim[1].subject.events))
 for i in eachindex(sim)
-  subjcp = NCASubject(sim[i].observed.cp, sim[i].times, dose=dose, clean=false)
-  subjcm = NCASubject(sim[i].observed.cm, sim[i].times, dose=dose, clean=false)
-  @test NCA.auc(subjcp) ≈ sim[i].observed.auccp
-  @test NCA.thalf(subjcp) ≈ sim[i].observed.thalfcp
-  @test NCA.cmax(subjcp) ≈ sim[i].observed.cmaxcp
-  @test NCA.auc(subjcm) ≈ sim[i].observed.auccm
-  @test NCA.thalf(subjcm) ≈ sim[i].observed.thalfcm
-  @test NCA.cmax(subjcm) ≈ sim[i].observed.cmaxcm
+  subjcp = NCASubject(sim[i].observations.cp, sim[i].time, dose=dose, clean=false)
+  subjcm = NCASubject(sim[i].observations.cm, sim[i].time, dose=dose, clean=false)
+  @test NCA.auc(subjcp) ≈ sim[i].observations.auccp
+  @test NCA.thalf(subjcp) ≈ sim[i].observations.thalfcp
+  @test NCA.cmax(subjcp) ≈ sim[i].observations.cmaxcp
+  @test NCA.auc(subjcm) ≈ sim[i].observations.auccm
+  @test NCA.thalf(subjcm) ≈ sim[i].observations.thalfcm
+  @test NCA.cmax(subjcm) ≈ sim[i].observations.cmaxcm
 end
 
 @test NCADose(ev1[1].events[1]) === NCADose(0.0, 2000.0, 0.0, NCA.IVBolus)
 
-theopp = read_pumas(example_data("event_data/THEOPP"), cvs = [:SEX,:WT])
+theopp = read_pumas(example_data("event_data/THEOPP"), covariates = [:SEX,:WT])
 theonca = NCAPopulation(theopp, name=:dv)
 @test all(i->theonca[i].time ≈ theopp[i].time, eachindex(theopp))
 @test all(i->theonca[i].conc ≈ theopp[i].observations.dv, eachindex(theopp))

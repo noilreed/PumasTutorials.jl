@@ -3,7 +3,7 @@ using Pumas, CSV, Test
 @testset "Cross-sectional time-to-event examples" begin
 
   pd = read_pumas(example_data("tte_data1"),
-    id=:ID, time=:TIME, dvs=[:DV], cvs=[:DOSE], evid=:EVID,
+    id=:ID, time=:TIME, observations=[:DV], covariates=[:DOSE], evid=:EVID,
     event_data=false)
 
   tte_exponential = @model begin
@@ -195,7 +195,7 @@ end
   sort!(df, [:ID, :TIME, :EVID])
 
   pd = read_pumas(df,
-    id=:ID, dvs=[:DV], time=:TAD, evid=:EVID,
+    id=:ID, observations=[:DV], time=:TAD, evid=:EVID,
     event_data=false)
 
   model = @model begin

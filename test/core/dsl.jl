@@ -2,7 +2,7 @@ using Pumas, Test, Random, LabelledArrays
 
 
 # Read the data# Read the data
-data = read_pumas(example_data("data1"), cvs = [:sex,:wt,:etn])
+data = read_pumas(example_data("data1"), covariates = [:sex,:wt,:etn])
 # Cut off the `t=0` pre-dose observation as it throws conditional_nll calculations
 # off the scale (variance of the simulated distribution is too small).
 for subject in data
@@ -68,10 +68,10 @@ end
 
 function col_f(param,randeffs,subject)
     function f(t=0.0)
-        cvs = subject.covariates(t)
+        covariates = subject.covariates(t)
         (Ka = param.θ[1],  # pre
-        CL = param.θ[2] * ((cvs.wt/70)^0.75) *
-             (param.θ[4]^cvs.sex) * exp(randeffs.η[1]),
+        CL = param.θ[2] * ((covariates.wt/70)^0.75) *
+             (param.θ[4]^covariates.sex) * exp(randeffs.η[1]),
         Vc = param.θ[3] * exp(randeffs.η[2]))
     end
 end
@@ -137,8 +137,8 @@ conditional_nll(mobj,subject,param,randeffs)
 Random.seed!(1); obs_dsl = simobs(mdsl,subject,param,randeffs)
 Random.seed!(1); obs_obj = simobs(mobj,subject,param,randeffs)
 
-@test obs_dsl.observed.obs_cmax == obs_obj.observed.obs_cmax > 0
-@test obs_dsl.observed.T_max == obs_obj.observed.T_max
+@test obs_dsl.observations.obs_cmax == obs_obj.observations.obs_cmax > 0
+@test obs_dsl.observations.T_max == obs_obj.observations.T_max
 
 @test obs_dsl[:dv] ≈ obs_obj[:dv]
 

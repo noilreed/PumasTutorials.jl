@@ -1,10 +1,10 @@
 using Pumas, Test, Distributions
 
 # Load data
-cvs = [:ka, :cl, :v]
-dvs = [:dv]
+covariates = [:ka, :cl, :v]
+observations = [:dv]
 data = read_pumas(example_data("oral1_1cpt_KAVCL_MD_data"),
-                      cvs =  cvs , dvs = dvs)
+    covariates =  covariates , observations = observations)
 
 m_diffeq = @model begin
 

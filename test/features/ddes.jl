@@ -40,7 +40,7 @@ function derived_f(col,sol,obstimes,subject,param,randeffs)
 
     central = sol(obstimes;idxs=2)
     conc = @. central / Vc
-    
+
     dv = @. Normal(conc, conc*Σ)
     (dv=dv,)
 end
@@ -54,13 +54,13 @@ model = Pumas.PumasModel(p,randomfx,pre_f,init_f,prob,derived_f,observed_f)
 param = init_param(model)
 randeffs = init_randeffs(model, param)
 
-data = Subject(evs = DosageRegimen([10, 20], ii = 24, addl = 2, time = [0, 12]))
+data = Subject(events = DosageRegimen([10, 20], ii = 24, addl = 2, time = [0, 12]))
 sol  = solve(model,data,param,randeffs,alg=MethodOfSteps(Tsit5()))
 
-data = Subject(evs = DosageRegimen([10, 20], ii = 24, addl = 2, rate = 3, time = [0, 12]))
+data = Subject(events = DosageRegimen([10, 20], ii = 24, addl = 2, rate = 3, time = [0, 12]))
 sol  = solve(model,data,param,randeffs,alg=MethodOfSteps(Tsit5()))
 
-data = Subject(evs = DosageRegimen([10, 20], ii = 24, addl = 2, ss = 1:2, time = [0, 12], cmt = 2))
+data = Subject(events = DosageRegimen([10, 20], ii = 24, addl = 2, ss = 1:2, time = [0, 12], cmt = 2))
 sol  = solve(model,data,param,randeffs,saveat = Float64[], alg=MethodOfSteps(Tsit5()))
 
 # Regression test on interpolation issue
