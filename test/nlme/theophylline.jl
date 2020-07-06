@@ -409,6 +409,33 @@ Stratification by SEX.
     @test !(hasproperty(dfwres_focei_no_covar, :WT))
   end
 
+  @testset "icoef" begin
+    ic = icoef(o)
+    # The covariates are constant
+    @test ic[1](0.0) == ic[1](10.0)
+    icdf = reduce(vcat, DataFrame.(ic))
+    @test icdf.CL ≈ [
+      1.5978723108290178
+      2.9524078068762862
+      2.723722576535395
+      2.549208375882231
+      2.2893904950746204
+      3.8137500132411626
+      3.0640148950462534
+      3.1050086218552417
+      2.5148100255755113
+      1.8481872662850054
+      3.5303310069713496
+      2.249971644503409] rtol=1e-6
+
+    ic2 = icoef(o.model, o.data, coef(o))
+    @test DataFrame(ic2[1]).CL[1] ≈ icdf.CL[1] rtol=1e-6
+
+    ic3 = icoef(o.model, o.data, coef(o), obstimes=[0.0, 5.0])
+    ic3df = DataFrame(ic3[1])
+    @test hasproperty(ic3df, :time)
+    @test ic3df.CL[1] == ic3df.CL[2]
+  end
 end
 
 @testset "run2.mod FO without interaction, ODE solver, diagonal omega and additive error" begin

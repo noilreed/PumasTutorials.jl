@@ -256,7 +256,6 @@ end
 __probs(x) = probs(x)
 __probs(x::Bernoulli) = pdf.(x, support(x))
 
-
 ######################
 # Residual functions #
 ######################
@@ -493,7 +492,6 @@ end
 
 """
     eiwres(model::PumasModel, subject::Subject, param::NamedTuple, nsim::Integer)
-
 Calculate the Expected Simulation based Individual Weighted Residuals (EIWRES).
 """
 function eiwres(m::PumasModel,
@@ -554,7 +552,6 @@ function npde(
 
   _names = keys(subject.observations)
   sims = getproperty.(simobs(m, RepeatedVector([subject],nsim), param; kwargs...),:observed)
-
 
   return map(NamedTuple{_names}(_names)) do name
     y        = subject.observations[name]
@@ -681,8 +678,6 @@ function StatsBase.bic(m::PumasModel,
   n = sum(subject -> sum(dv -> sum(!ismissing, dv), subject.observations), population)
   return 2*nll + numparam*log(n)
 end
-
-
 
 # empirical_bayes
 function empirical_bayes(fpm::FittedPumasModel)
@@ -823,6 +818,80 @@ LinearAlgebra.cond(pmi::FittedPumasModelInference{<:Any, <:Bootstraps}) =
 LinearAlgebra.cond(pmi::FittedPumasModelInference{<:Any, <:AbstractMatrix}) =
   cond(pmi.vcov)
 
+###########################
+# Individual coefficients #
+###########################
+
+"""
+    icoef(fpm::FittedPumasModel)::Vector{ConstantInterpolationStructArray}
+
+Return the individual coefficients from `fpm`. The individual coefficients are the variables defined in the `@pre` block in the `@model` macro. The function return a vector of covariate interpolation objects. Each of which can be evaluated at any time point. Each of the covariate interpolation objects can be converted to a `DataFrame` by calling the `DataFrame` constructor. Hence, a complete `DataFrame` of the individual coefficients can be obtained by calling `reduce(vcat, DataFrame.(icoef(fpm)))`.
+"""
+function icoef(fpm::FittedPumasModel)
+  _param = coef(fpm)
+  return map(
+    ((subject, vrandeffsorth),) -> _icoef(
+      fpm.model, subject, _param, vrandeffsorth, fpm.args...;
+      obstimes=_isconstcovar(subject.covariates) ? nothing : subject.covariates.t,
+      fpm.kwargs...),
+    zip(fpm.data, fpm.vvrandeffsorth))
+end
+
+icoef(
+  model::PumasModel,
+  population::Population,
+  param::NamedTuple,
+  args...; kwargs...) = [icoef(model, subject, param, args...; kwargs...) for subject in population]
+
+function icoef(
+  model::PumasModel,
+  subject::Subject,
+  param::NamedTuple,
+  args...;
+  obstimes=subject.covariates isa ConstantCovar ? nothing : subject.covariates.t,
+  kwargs...)
+
+  vrandeffsorth = Pumas._orth_empirical_bayes(model, subject, param, Pumas.LaplaceI())
+
+  return _icoef(model, subject, param, vrandeffsorth, args...;
+    obstimes=obstimes, kwargs...)
+end
+
+function _icoef(
+  model::PumasModel,
+  subject::Subject,
+  param::NamedTuple,
+  vrandeffsorth::AbstractVector,
+  args...;
+  obstimes=_isconstcovar(subject.covariates) ? nothing : subject.covariates.t,
+  kwargs...)
+
+  trfr = Pumas.totransform(model.random(param))
+  randeffs = Pumas.TransformVariables.transform(trfr, vrandeffsorth)
+
+  _pre = Pumas.pre(
+    model,
+    subject,
+    param,
+    randeffs)
+
+  if obstimes === nothing
+    if !_isconstcovar(subject.covariates)
+      throw(ArgumentError("covariates for subject $(subject.id) are not constant. Please pass `obstimes` argument."))
+    end
+    return ConstantCovar((id=subject.id, _pre(0.0)...))
+  else
+    __pre = map(t -> (id=subject.id, _pre(t)...), obstimes)
+
+    return covariate_interpolant(
+      StructArrays.fieldarrays(StructArray(__pre)),
+      obstimes,
+      subject.id;
+      cvs_direction=:right)[2]
+  end
+end
+
+_isconstcovar(covariates) = !(covariates isa ConstantInterpolationStructArray)
 
 ################################################################################
 #                              Plotting functions                              #

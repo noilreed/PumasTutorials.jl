@@ -5,6 +5,7 @@ struct ConstantInterpolationStructArray{T, U, D}
   u::U
   dir::D
 end
+
 function (A::ConstantInterpolationStructArray{<:Any,<:StructArray,<:Any})(t::Number)
   if A.dir === :left
     # :left means that value to the left is used for interpolation
@@ -17,12 +18,17 @@ function (A::ConstantInterpolationStructArray{<:Any,<:StructArray,<:Any})(t::Num
   end
 end
 
+Tables.columns(cisa::ConstantInterpolationStructArray) = (time=cisa.t, fieldarrays(cisa.u)...)
+
 struct NoCovar end
 (nc::NoCovar)(t) = nothing
 struct ConstantCovar{C}
   u::C
 end
 (cc::ConstantCovar)(t=nothing) = cc.u
+
+Tables.columns(cc::ConstantCovar) = map(t -> [t], cc.u)
+
 
 """
   covariate_interpolant(cvs, data, time)
@@ -34,12 +40,13 @@ observations. This is safe for values which are not time-varying as well, allowi
 one to mix subjects with multiple measurements and subjects with a single measurement.
 Defaults to do a left-sided ConstantInterpolation.
 """
-function covariate_interpolant(cvs_keys,
-                     data,
-                     time::Union{Nothing,Symbol},
-                     id;
-                     interp=ConstantInterpolationStructArray,
-                     cvs_direction=:right)
+function covariate_interpolant(
+  cvs_keys,
+  data,
+  time::Union{Nothing,Symbol},
+  id;
+  interp=ConstantInterpolationStructArray,
+  cvs_direction=:right)
 
   _covariate_interpolant(cvs_keys, data, time, interp, id, cvs_direction)
 end
@@ -94,15 +101,21 @@ function _covariate_interpolant(cvs_keys, data, time, interp, id, direction)
     end
   end
 
-    tvcov_sa = StructArray(tvcov_nt)
-    tvcov_times, interp(tvcov_times, tvcov_sa, direction)
+  tvcov_sa = StructArray(tvcov_nt)
+  return tvcov_times, interp(tvcov_times, tvcov_sa, direction)
 end
 # Should this be special cased throughout?  I mean should we dispatch on a "constant covariates" type (and pre?)
 # We could have a pre object that also holds covariates.
-covariate_interpolant(cvs_nt::Nothing, time, id; cvs_direction=cvs_direction) = (@SVector([0.0]), NoCovar())
+covariate_interpolant(cvs_nt::Nothing, time, id; cvs_direction=cvs_direction) =
+  (@SVector([0.0]), NoCovar())
 
 # Keys as vec
-function covariate_interpolant(cvs_nt::NamedTuple, cvstimes, id; cvs_direction=cvs_direction)
+function covariate_interpolant(
+  cvs_nt::NamedTuple,
+  cvstimes,
+  id;
+  cvs_direction=:right)
+
   # This is the case where everything was passed in the correct form from the Subject
   # constructor
   # We allow for two ways of entering covariate times. Either you
@@ -112,8 +125,8 @@ function covariate_interpolant(cvs_nt::NamedTuple, cvstimes, id; cvs_direction=c
   cvs_keys_nt = NamedTuple{cvs_keys}(cvs_keys)
   if cvstimes isa NamedTuple # in a)
     cvs_data = map(cvs_keys_nt) do name
-        (ctime=cvstimes[name], name=cvs_nt[name])
-      end
+      (ctime=cvstimes[name], name=cvs_nt[name])
+    end
   elseif !isnothing(cvstimes) # in b) - use cvstimes for all covariates...
     cvs_data = map(cvs_keys_nt) do name
       if length(cvstimes) == length(cvs_nt[name])
@@ -124,13 +137,18 @@ function covariate_interpolant(cvs_nt::NamedTuple, cvstimes, id; cvs_direction=c
       end
     end
   end
-  covariate_interpolant(cvs_keys, cvs_data, nothing, id; cvs_direction=cvs_direction)
+  return covariate_interpolant(cvs_keys, cvs_data, nothing, id; cvs_direction=cvs_direction)
 end
 # No times were given, but there were covariates. Either this is an
 # error, or they're not varying over time (any of them!).
 
 # FIXME need one for BOV and no cvs!!!covariate_interpolant
-function covariate_interpolant(cvs_nt::NamedTuple, cvstimes_nt::Nothing, id; cvs_direction=cvs_direction)
+function covariate_interpolant(
+  cvs_nt::NamedTuple,
+  cvstimes_nt::Nothing,
+  id;
+  cvs_direction=:right)
+
   # You can only reach this method from the raw Subject constructor. If
   # covariate_interpolant is called from the read_pumas call, the input would have
   # a time column where we could grab these.

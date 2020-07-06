@@ -148,6 +148,27 @@ df = identity.(df)
     @test coef(ft_normal).gaeffect ≈ 10.5709                rtol=1e-2
     @test coef(ft_normal).Ω.diag   ≈ [0.0427348, 0.0678586] rtol=1e-2
     @test coef(ft_normal).σ_prop   ≈ 0.201621               rtol=1e-2
+
+    @testset "icoef" begin
+      ic = icoef(ft_normal)
+      # The covariates are time-varying
+      @test ic[1](0.0) != ic[1](10.0)
+      icdf = reduce(vcat, DataFrame.(ic))
+      @test filter(i -> i.id == "7" && i.time > 690, icdf).cl ≈ [
+        1.0692860963883548
+        1.070396783342263
+        1.0715561430899154
+        1.072667067340859
+        1.0738054170767328
+        1.0749176898756483] rtol=1e-4
+
+      ic2 = icoef(ft_normal.model, ft_normal.data[1], coef(ft_normal), obstimes=[0.0, 5.5])
+      ic2df = DataFrame(ic2)
+      @test hasproperty(ic2df, :time)
+      @test ic2df.cl[1] != ic2df.cl[2]
+
+      @test_throws ArgumentError("covariates for subject 1 are not constant. Please pass `obstimes` argument.") icoef(ft_normal.model, ft_normal.data[1], coef(ft_normal), obstimes=nothing)
+    end
   end
 
     # Currently disable since it's too slow. Enable once evaluation of time-varying covariates is faster
