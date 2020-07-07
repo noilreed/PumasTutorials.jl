@@ -140,11 +140,12 @@ pmoncl    -0.69962         0.00059607         [-0.70079; -0.69845]
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false), constcoef=(pmoncl=0.7,))
 
 @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fit2s) ==
-"""Vector{<:FittedPumasModel} with 1000 entries
+"""
+Vector{<:FittedPumasModel} with 1000 entries
 
 Parameter statistics
 -------------------------------------
-          Mean               Std
+           Mean            Std
 -------------------------------------
 tvcl       3.9988          0.083016
 tvv       70.001           2.9683

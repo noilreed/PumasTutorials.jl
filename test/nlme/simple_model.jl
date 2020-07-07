@@ -47,6 +47,39 @@ using Pumas
 
   ft = fit(mdsl1, data, param, Pumas.FOCEI(); constantcoef=(Ω=Diagonal([0.04]), Σ=0.1),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
+  ft2 = fit(mdsl1, data, param, Pumas.FO(); constantcoef=(Ω=Diagonal([0.04]), Σ=0.1),
+    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
+
+# These two tests are supposed to test that the show method works
+# but also that the alignment of the column names work.
+@test sprint((io, t) -> show(io, MIME"text/plain"(), t), [ft, ft]) ==
+"""
+Vector{<:FittedPumasModel} with 2 entries
+
+Parameter statistics
+---------------------
+        Mean     Std
+---------------------
+θ₁      0.36476  0.0
+Ω₁,₁    0.04     0.0
+Σ       0.1      0.0
+---------------------
+"""
+
+@test sprint((io, t) -> show(io, MIME"text/plain"(), t), [ft, ft2]) ==
+"""
+Vector{<:FittedPumasModel} with 2 entries
+
+Parameter statistics
+----------------------------------
+        Mean           Std
+----------------------------------
+θ₁      0.36488        0.00017191
+Ω₁,₁    0.04           0.0
+Σ       0.1            0.0
+----------------------------------
+"""
+
 @test sprint((io, t) -> show(io, MIME"text/plain"(), t), ft) ==
 """
 FittedPumasModel

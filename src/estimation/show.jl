@@ -110,7 +110,7 @@ function Base.show(io::IO, mime::MIME"text/plain", vfpm::Vector{<:FittedPumasMod
   paramstds = map(t -> string(round(t, sigdigits=5)), coefdf.standard_deviation)
   maxval = max(maximum(length, paramvals), length("Mean"))
   maxstd = max(maximum(length, paramstds), length("Std"))
-  labels = " "^(maxname + Int(round(maxval/1.2)) - 3)*rpad("Mean", Int(round(maxstd/1.2)) + maxval + 3)*"Std"
+  labels = " "^(maxname + Int(round(maxval/1.2)) - 2)*rpad("Mean", Int(round(maxstd/1.2)) + maxval)*"Std"
   stringrows = []
   for (name, val, std) in zip(coefdf.parameter, paramvals, paramstds)
     push!(stringrows,
