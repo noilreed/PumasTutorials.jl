@@ -447,7 +447,13 @@ function Subject(
     _evid = Int8(df[!,evid][i])
 
     if i > 1 && t < df[i-1,time] && df[i-1,evid] != 3 && df[i-1,evid] != 4
-      throw(PumasDataError("Time is not monotonically increasing between reset dose events (evid=3 or evid=4)"))
+      if t == 0
+        # EVID=4 dose at t=0 means the reset should be happening at the
+        # last observation time, so flip back to that value of t
+        t = df[i-1,time]
+      else
+        throw(PumasDataError("Time is not monotonically increasing between reset dose events (evid=3 or evid=4)"))
+      end
     end
 
     if _evid == 0 # observation, so add the time
