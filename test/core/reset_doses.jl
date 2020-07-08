@@ -40,3 +40,64 @@ simsub = simobs(model, sub, param, obstimes=0:1:30)
 @test simsub[1][:cpDepot][7] ≈ analytic
 @test simsub[1][:cpDepot][19] ≈ analytic
 @test simsub[1][:cpDepot][31] ≈ analytic
+@test simsub[1][:cpDepot][13] == 100
+@test simsub[1][:cpDepot][25] == 100
+
+param = (θCl=0.1, θV=1.0, θKa=0.11)
+analytic = (exp(6*[-param.θKa 0; param.θKa -param.θCl/param.θV])*[100, 0])[1]
+analytic12 = (exp(12*[-param.θKa 0; param.θKa -param.θCl/param.θV])*[100, 0])[1]
+df = DataFrame(
+    id = ones(9),
+    time = [0.0,0.0,6.0,12.0,12.0,6.0,12.0,12.0,6.0],
+    evid = [1,  0,  0,  0,   4,   0,  0,   4,   0],
+    cp   = [missing,analytic,analytic,analytic12,missing,analytic,analytic12,missing,analytic],
+    amt  = [100,missing,missing,missing,100,missing,missing,100,missing],
+    cmt  = ones(Int,9),
+)
+sub = read_pumas(df, observations=[:cp])
+@test sub[1].time == [0,6,12,18,24,30]
+simsub = simobs(model, sub, param, obstimes=0:1:30)
+@test simsub[1][:cpDepot][7] ≈ analytic
+@test simsub[1][:cpDepot][19] ≈ analytic
+@test simsub[1][:cpDepot][31] ≈ analytic
+@test simsub[1][:cpDepot][13] == 100
+@test simsub[1][:cpDepot][25] == 100
+
+param = (θCl=0.1, θV=1.0, θKa=0.11)
+analytic = (exp(6*[-param.θKa 0; param.θKa -param.θCl/param.θV])*[100, 0])[1]
+df = DataFrame(
+    id = ones(7),
+    time = [0.0,0.0,6.0,12.0,12+6.0,12+12.0,24+6.0],
+    evid = [1,0,0,4,0,4,0],
+    cp   = [missing,analytic,analytic,missing,analytic,missing,analytic],
+    amt  = [100,missing,missing,100,missing,100,missing],
+    cmt  = ones(Int,7),
+)
+sub = read_pumas(df, observations=[:cp], parse_tad = false)
+@test sub[1].time == [0,6,18,30]
+simsub = simobs(model, sub, param, obstimes=0:1:30)
+@test simsub[1][:cpDepot][7] ≈ analytic
+@test simsub[1][:cpDepot][19] ≈ analytic
+@test simsub[1][:cpDepot][31] ≈ analytic
+@test simsub[1][:cpDepot][13] == 100
+@test simsub[1][:cpDepot][25] == 100
+
+param = (θCl=0.1, θV=1.0, θKa=0.11)
+analytic = (exp(6*[-param.θKa 0; param.θKa -param.θCl/param.θV])*[100, 0])[1]
+analytic12 = (exp(12*[-param.θKa 0; param.θKa -param.θCl/param.θV])*[100, 0])[1]
+df = DataFrame(
+    id = ones(9),
+    time = [0.0,0.0,6.0,12.0,12.0,12+6.0,12+12.0,12+12.0,24+6.0],
+    evid = [1,  0,  0,  0,   4,   0,  0,   4,   0],
+    cp   = [missing,analytic,analytic,analytic12,missing,analytic,analytic12,missing,analytic],
+    amt  = [100,missing,missing,missing,100,missing,missing,100,missing],
+    cmt  = ones(Int,9),
+)
+sub = read_pumas(df, observations=[:cp], parse_tad = false)
+@test sub[1].time == [0,6,12,18,24,30]
+simsub = simobs(model, sub, param, obstimes=0:1:30)
+@test simsub[1][:cpDepot][7] ≈ analytic
+@test simsub[1][:cpDepot][19] ≈ analytic
+@test simsub[1][:cpDepot][31] ≈ analytic
+@test simsub[1][:cpDepot][13] == 100
+@test simsub[1][:cpDepot][25] == 100
