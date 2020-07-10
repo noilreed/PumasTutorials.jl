@@ -79,13 +79,13 @@ par1 = ( tvvc   = 50,    # (L)
 
 ```julia
 ev1  = DosageRegimen(25, time=0, cmt=:Central)
-sub1 = Subject(id=1, evs= ev1)
+sub1 = Subject(id=1, events= ev1)
 ev2  = DosageRegimen(200, time=0, cmt=:Central)
-sub2 = Subject(id=2, evs=ev2)
+sub2 = Subject(id=2, events=ev2)
 ev3  = DosageRegimen(400, time=0, cmt=:Central)
-sub3 = Subject(id=3, evs=ev3)
+sub3 = Subject(id=3, events=ev3)
 ev4  = DosageRegimen(600, time=0, cmt=:Central)
-sub4 = Subject(id=4, evs=ev4);
+sub4 = Subject(id=4, events=ev4);
 ```
 
 Concatenate all the four subjects as a population and use the `simobs` function for simulation
@@ -105,15 +105,16 @@ simdf = DataFrame(obs1)
 Use the Dataframes functions to `filter` and `select` the rows and colums as required for plotting
 
 ```julia
-df1 = filter(x -> x.time ==0 && x.amt>0, simdf)
-df2 = select!(df1,:amt,:auc)
+df1 = filter(x -> x.time ==0.1, simdf)
+df1[!, :dose] = [25,200,400,600]
+df2 = select!(df1,:auc,:dose)
 ```
 
 Plot AUC vs Dose and see the concentration-dependant change in AUC
 
 ```julia
-@df df2 scatter(:amt, :auc, xlabel="Dose (mg)", ylabel="AUC (mg.h/L)", title="AUC vs Dose", label=false)
-@df df2 plot!(:amt, :auc, label=false, linewidth=1.5)
+@df df2 scatter(:dose, :auc, xlabel="Dose (mg)", ylabel="AUC (mg.h/L)", title="AUC vs Dose", label=false)
+@df df2 plot!(:dose, :auc, label=false, linewidth=1.5)
 ```
 
 #### Concentration-dependant Metabolite Formation
@@ -191,13 +192,13 @@ par_met = ( tvvc    = 1,        # (L/kg)
 
 ```julia
 ev1  = DosageRegimen(50, time=0, cmt=:Central)
-sub1 = Subject(id=1, evs=ev1, cvs=(Wt=70,))
+sub1 = Subject(id=1, events=ev1, covariates=(Wt=70,))
 ev2  = DosageRegimen(300, time=0, cmt=:Central)
-sub2 = Subject(id=2, evs=ev2, cvs=(Wt=70,))
+sub2 = Subject(id=2, events=ev2, covariates=(Wt=70,))
 ev3  = DosageRegimen(600, time=0, cmt=:Central)
-sub3 = Subject(id=3, evs=ev3, cvs=(Wt=70,))
+sub3 = Subject(id=3, events=ev3, covariates=(Wt=70,))
 ev4  = DosageRegimen(900, time=0, cmt=:Central)
-sub4 = Subject(id=4, evs=ev4, cvs=(Wt=70,))
+sub4 = Subject(id=4, events=ev4, covariates=(Wt=70,))
 sub  = [sub1, sub2, sub3, sub4]
 ```
 
@@ -224,15 +225,16 @@ df1 = filter(x -> x.time >0, simdf)
 Use the Dataframes functions to `filter` and `select` the rows and colums as required for plotting
 
 ```julia
-df2 = filter(x -> x.time ==0 && x.amt>0, simdf)
-df3 = select!(df2,:id,:amt,:auc)
+df2 = filter(x -> x.time ==1, simdf)
+df2[!, :dose] = [50,300,600,900]
+df3 = select!(df2,:id,:dose,:auc)
 ```
 
 Plot AUC vs Dose and see the dose-dependant change in AUC
 
 ```julia
-@df df2 scatter(:amt, :auc, xlabel="Dose (ug/kg)", ylabel="AUC (ug.min/L/kg)", title="AUC vs Dose", label=false)
-@df df2 plot!(:amt, :auc, linewidth=1.5, label=false)
+@df df2 scatter(:dose, :auc, xlabel="Dose (ug/kg)", ylabel="AUC (ug.min/L/kg)", title="AUC vs Dose", label=false)
+@df df2 plot!(:dose, :auc, linewidth=1.5, label=false)
 ```
 
 #### Dose-dependant Bioavailability
@@ -242,9 +244,9 @@ a Michaelis-Menten type reaction
 
 **Note:**
 
- 1. In this example a term for bioavailability is intoduced in the @pre block. F which is dose-dependant is written in Michaelis-Menten terms and intoduced in the `bioav`.
+ 1. In this example a term for bioavailability is intoduced in the @pre block.
 
- 2. The same term to calculate bioavailability is introduced in the @vars block to obtain the output for plotting.To introduce a covariate in the @vars block you need to pass them through @pre block. In this current example the covariate `Dose` is assigned a new variable `_Dose` in the @pre block and then introduced into the @vars block.
+ 2. F which is dose-dependant is written in Michaelis-Menten terms and introduced inside `bioav` which is a reserved word for _bioavailability_.
 
 ```julia
 one_compt_non_linear_bio = @model begin
@@ -270,16 +272,12 @@ one_compt_non_linear_bio = @model begin
     RelFmax    = tvrelfmax
     RelFD50    = tvrelfd50
     RefDose    = 20
-    _Dose      = Dose
+    # Dose-dependant : Bioavailability
     F          = 1+((RelFmax*(Dose-RefDose))/(RelFD50+(Dose-RefDose)))
     # RelFmax   = Maximum Bioavailability relative to RefDose
     # When Dose = RefDose = The bioavailability will be 1
     # Consider an other scenario where RelFmax = RelFmin = -0.5 and the doses are 1,2,5,10,20. Use the RelFD50
     bioav      = (Depot = F,)
-  end
-
-  @vars begin # Dose-dependant : Bioavailability
-    bioava    = 1+((RelFmax*(_Dose-RefDose))/(RelFD50+(_Dose-RefDose)))
   end
 
   @dynamics begin
@@ -291,6 +289,7 @@ one_compt_non_linear_bio = @model begin
     cp         = @. Central/Vc
     nca        := @nca cp
     cl         = NCA.cl(nca)
+    bioava     = F
   end
 end
 ```
@@ -302,8 +301,8 @@ par1 = ( tvcl      = 20,     # (L/hr)
          tvvc      = 80,     # (L)
          tvka      = 1.77,   # (h⁻¹)
          tvrelfmax = 0.504,  # Maximum Bioavailability relative to Reference Dose (20mg)
-         tvrelfd50 = 80,  # (mg)
-         Ω         = Diagonal([0.001,0.001]))
+         tvrelfd50 = 80,     # (mg)
+         Ω         = Diagonal([0.0001,0.0001]))
 ```
 
 **Simulating a population of six subjects with different doses:**
@@ -317,17 +316,17 @@ par1 = ( tvcl      = 20,     # (L/hr)
 
 ```julia
 ev1  = DosageRegimen(20, time=0, cmt=:Depot)
-sub1 = Subject(id=1, evs=ev1, cvs=(Dose=20,))
+sub1 = Subject(id=1, events=ev1, covariates=(Dose=20,))
 ev2  = DosageRegimen(40, time=0, cmt=:Depot)
-sub2 = Subject(id=2, evs=ev2, cvs=(Dose=40,))
+sub2 = Subject(id=2, events=ev2, covariates=(Dose=40,))
 ev3  = DosageRegimen(80, time=0, cmt=:Depot)
-sub3 = Subject(id=3, evs=ev3, cvs=(Dose=80,))
+sub3 = Subject(id=3, events=ev3, covariates=(Dose=80,))
 ev4  = DosageRegimen(120, time=0, cmt=:Depot)
-sub4 = Subject(id=4, evs=ev4, cvs=(Dose=120,))
+sub4 = Subject(id=4, events=ev4, covariates=(Dose=120,))
 ev5  = DosageRegimen(240, time=0, cmt=:Depot)
-sub5 = Subject(id=5, evs=ev5, cvs=(Dose=240,))
+sub5 = Subject(id=5, events=ev5, covariates=(Dose=240,))
 ev6  = DosageRegimen(400, time=0, cmt=:Depot)
-sub6 = Subject(id=6, evs=ev6, cvs=(Dose=400,))
+sub6 = Subject(id=6, events=ev6, covariates=(Dose=400,))
 sub  = [sub1, sub2, sub3, sub4, sub5, sub6]
 ```
 
@@ -342,8 +341,8 @@ simdf = DataFrame(obs1)
 Use the Dataframes functions to `filter` and `select` the rows and colums as required for plotting
 
 ```julia
-df1 = filter!(x -> x.time ==0 && x.amt >0, simdf)
-df2 = select!(df1,:Dose,:cl, :bioava)
+df1 = filter(x -> x.time==0.1, simdf)
+df2 = select(df1,:Dose,:cl, :bioava)
 ```
 Plot Bioavailability vs Dose and see the dose-depededant change in Bioavailability
 
