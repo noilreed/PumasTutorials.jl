@@ -26,14 +26,14 @@ In the given dataset
 **Step1:** Load the NCA dataset using the `CSV.read` function and convert it to a Dataframe
 
 ```julia
-data = CSV.read("NCA_tutorial.csv")
+data = DataFrame!(CSV.File("NCA_tutorial.csv"))
 first(data, 6)
 ```
 
 Plot a exploratory graph of **Concentration vs Time** and group each subject by the specific `ID` assigned.
 
 ```julia
-@df data plot(:TIME, :DV, group=:ID, xlabel="Time (hrs)", ylabel="Concentration (mg/L)", xticks=[0,12,24,36,48,60,72,84,96,108,120], label=false)
+@df data plot(:TIME, :CONC, group=:ID, xlabel="Time (hrs)", ylabel="Concentration (mg/L)", xticks=[0,12,24,36,48,60,72,84,96,108,120], label=false)
 ```
 
 #### Single-dose NCA
@@ -76,7 +76,7 @@ automatically determined by PUMAS. eg: id, time, conc, amt, route, duration(if n
 pop        = read_nca(  single_dose_data,
                         id    = :ID,
                         time  = :TIME,
-                        conc  = :DV,
+                        conc  = :CONC,
                         amt   = :AMT,
                         route = :ROUTE,
                         llq   = 0.001concu,
@@ -121,7 +121,7 @@ You can select the colums that you wish to see in the output
 **Note:** Since this drug is given orally the parameters returned by NCA are **apparent** Volume of Distribution (Vz/F) and Clearance (Cl/F) where F is the bioavailability.
 
 ```julia
-nca_output_single = select(final, :dose, :kel, :half_life, :cmax, :tmax, :auclast, :aucinf_obs, :vz_f_obs, :cl_f_obs, :aumcinf_obs, :auc0_12, :auc12_24)
+nca_output_single = select(final, :doseamt, :kel, :half_life, :cmax, :tmax, :auclast, :aucinf_obs, :vz_f_obs, :cl_f_obs, :aumcinf_obs, :auc0_12, :auc12_24)
 ```
 
 Compute the Statistics of the selected variables that you require
@@ -138,7 +138,6 @@ Filter data for time >= 24 hrs to perform the Multiple-dose NCA
 
 ```julia
 multiple_dose_data           = filter(x -> x.TIME > 24 , data)
-multiple_dose_data[!, :TAD]  = multiple_dose_data.TIME .- 96.0
 ```
 
 In the case of multiple-dose NCA the extra parameters which are calculated based on the dosing interval (τ) will be included in the output.
@@ -146,12 +145,11 @@ In the case of multiple-dose NCA the extra parameters which are calculated based
 ```julia
 pop1       = read_nca( multiple_dose_data,
                        id    = :ID,
-                       time  = :TAD,
-                       conc  = :DV,
+                       time  = :TIME,
+                       conc  = :CONC,
                        amt   = :AMT,
                        route = :ROUTE,
                        ii    = :II,        # please specify II for Multiple-dose NCA
-                       SS    = :SS,        # specify the drug is at steady-state at the time of dosing using 1-SS and 0-otherwise
                        llq   = 0.001concu,
                        timeu = timeu,
                        concu = concu,
@@ -164,7 +162,7 @@ Similar to the Single-NCA you can compute individual parameters and merge them t
 You can select the colums that you wish to see in the output
 
 ```julia
-nca_output_multiple = select(report1, :dose, :kel, :half_life, :tmax, :cmax, :auclast, :auc_tau_obs, :vz_f_obs, :cl_f_obs, :aumcinf_obs, :tau, :cavgss)
+nca_output_multiple = select(report1, :doseamt, :kel, :half_life, :tmax, :cmax, :auclast, :auc_tau_obs, :vz_f_obs, :cl_f_obs, :aumcinf_obs, :tau, :cavgss)
 ```
 
 Compute the Statistics of the selected variables that you require
