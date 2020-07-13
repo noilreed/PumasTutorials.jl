@@ -1,0 +1,284 @@
+---
+title : Estimation using various Dosage Regimens
+author : Parsshava R Mehta
+date : 13th June 2020
+---
+
+Load the necessary libraries
+
+```julia
+using Pumas, Plots, CSV, StatsPlots
+```
+
+#### One Compartment IV- Bolus
+
+The given dataset contains a population of 30 subjects who receive an IV-bolus dose of 200mg at `time=0`.
+
+
+ *  **Step 1:** Read the given dataset using CSV.File function
+
+```julia
+iv_data       = DataFrame!(CSV.File("one_cmpt_iv.csv"))
+```
+
+ * **Step 2:** Read the CSV file into pumas using the `read_pumas` function
+
+```julia
+data_iv_bolus = read_pumas( iv_data,
+                            id           = :id,
+                            time         = :time,
+                            observations = [:dv],
+                            amt          = :amt,
+                            evid         = :evid,
+                            cmt          = :cmt)
+```
+
+Plot a graph of **Concentration vs Time** and have a closer look at the gievn data
+
+```julia
+@df iv_data scatter(:time, :dv, group=:id, xticks=[0,4,8,12,16,20,24], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+```
+
+This model describes a drug which follows a One Compartmental Kinetics
+
+```julia
+ivbol_one_cmpt = @model begin
+  @param   begin
+    tvCl       ∈ RealDomain(lower=0)
+    tvVc       ∈ RealDomain(lower=0)
+    Ω          ∈ PDiagDomain(2)
+    σ²_prop    ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η          ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Cl         = tvCl * exp(η[1])
+    Vc         = tvVc * exp(η[2])
+  end
+
+  @dynamics begin #Central1
+    Central'   =  - (Cl/Vc)*Central
+  end
+
+  @derived begin
+    cp        := @. 1000*(Central/Vc)
+    dv         ~ @. Normal(cp, sqrt(abs(cp^2)*σ²_prop))
+  end
+end
+```
+
+Parameters are as given below:
+
+```julia
+init_par_iv   =  ( tvCl    = 3.0,    # (L/hr) Clearance
+                   tvVc    = 70.0,   # (L)    Volume of Distribution
+                   Ω       = Diagonal([0.01,0.01]),
+                   σ²_prop = 0.01)
+```
+
+Estimate the required parameters as specified in the model
+
+```julia
+resultest  = fit(ivbol_one_cmpt, data_iv_bolus, init_par_iv, Pumas.FOCEI());
+```
+
+Compute the Covariance step and calculate the SE and 95% Confidence Intervals
+
+```julia
+inference  = infer(resultest);
+```
+
+Export the parameters to a table to generate reports
+
+```julia
+table      = coeftable(inference)
+```
+
+
+#### One Compartment IV-Infusion
+
+The given dataset contains a population of 30 subjects who receive an IV-Infusion of 200mg at `time=0`.
+
+ *  **Step 1:** Read the given dataset using CSV.File function
+
+```julia
+iv_data_inf  = DataFrame!(CSV.File("one_cmpt_iv_infusion.csv"))
+```
+
+ * **Step 2:** Read the CSV file into pumas using the `read_pumas` function
+
+```julia
+data_iv_inf  = read_pumas( iv_data_inf,
+                           id           = :id,
+                           time         = :time,
+                           observations = [:dv],
+                           amt          = :amt,
+                           evid         = :evid,
+                           cmt          = :cmt,
+                           rate         = :rate)
+```
+
+Plot a graph of **Concentration vs Time** and have a closer look at the gievn data
+
+```julia
+@df iv_data_inf scatter(:time, :dv, group=:id, xticks=[0,4,8,12,16,20,24], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+```
+
+Estimate the required parameters as specified in the model
+
+```julia
+resultest  = fit(ivbol_one_cmpt, data_iv_inf, init_par_iv, Pumas.FOCEI());
+```
+
+Compute the Covariance step and calculate the RSE and 95% Confidence Intervals
+
+```julia
+inference  = infer(resultest);
+```
+
+Export the parameters to a table to generate reports
+
+```julia
+table      = coeftable(inference)
+```
+
+
+#### One Compartment Oral Absorption
+
+The given dataset contains a population of 20 subjects who receive an oral dose of 100mg at `time=0`.
+
+*  **Step 1:** Read the given dataset using CSV.File function
+
+```julia
+oral_data        = DataFrame!(CSV.File("one_cmpt_oral.csv"))
+```
+
+* **Step 2:** Read the CSV file into pumas using the `read_pumas` function
+
+```julia
+data_oral_single = read_pumas( oral_data,
+                               id           = :id,
+                               time         = :time,
+                               observations = [:dv],
+                               amt          = :amt,
+                               evid         = :evid,
+                               cmt          = :cmt)
+```
+
+Plot a graph of **Concentration vs Time** and have a closer look at the gievn data
+
+```julia
+@df oral_data scatter(:time, :dv, group=:id, xticks=[0,4,8,12,16,20,24,28,32,36,40,44,48], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+```
+
+This model describes a drug which is given by the oral route and follows a One Compartmental Kinetics
+
+```julia
+oral_one_cmpt = @model begin
+  @param   begin
+    tvKa     ∈ RealDomain(lower=0)
+    tvCl     ∈ RealDomain(lower=0)
+    tvVc     ∈ RealDomain(lower=0)
+    Ω        ∈ PDiagDomain(3)
+    σ²_prop  ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η        ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Cl       = tvCl * exp(η[1])
+    Vc       = tvVc * exp(η[2])
+    Ka       = tvKa * exp(η[3])
+  end
+
+  @dynamics begin #Depots1Central1
+    Depot'   = -Ka*Depot
+    Central' =  Ka*Depot - (Cl/Vc)*Central
+  end
+
+  @derived begin
+    cp      := @. 1000*(Central/Vc)
+    dv       ~ @. Normal(cp, abs(cp)*σ²_prop)
+  end
+end
+```
+
+Parameters are as given below:
+
+```julia
+init_par  =  ( tvKa    = 0.4,    # (hr⁻¹) Absorption Rate Constant
+               tvCl    = 3.0,    # (L/hr) Clearance
+               tvVc    = 20.0,   # (L)    Volume of Distribution
+               Ω       = Diagonal([0.01,0.09,0.0225]),
+               σ²_prop = 0.1 )
+```
+
+Estimate the required parameters as specified in the model
+
+```julia
+resultest  = fit(oral_one_cmpt, data_oral_single, init_par, Pumas.FOCEI());
+```
+
+Compute the Covariance step and calculate the RSE and 95% Confidence Intervals
+
+```julia
+inference  = infer(resultest);
+```
+
+Export the parameters to a table to generate reports
+
+```julia
+table      = coeftable(inference)
+```
+
+
+#### Uneven Multiple Oral Dosing
+
+The given dataset contains a population of 10 subjects who receive an oral dose of 200mg at `time=0, 8, 20 and 28`.
+
+ *  **Step 1:** Read the given dataset using DataFrame!(CSV.File function
+
+```julia
+oral_data  = DataFrame!(CSV.File("one_cmpt_oral_multiple.csv"))
+```
+
+* **Step 2:** Read the CSV file into pumas using the `read_pumas` function
+
+```julia
+data_oral_multiple = read_pumas( oral_data,
+                                 id           = :id,
+                                 time         = :time,
+                                 observations = [:dv],
+                                 amt          = :amt,
+                                 evid         = :evid,
+                                 cmt          = :cmt)
+```
+
+Plot a graph of **Concentration vs Time** and have a closer look at the gievn data
+
+```julia
+@df oral_data scatter(:time, :dv, group=:id, xticks=[0,4,8,12,16,20,24,28,32,36,40,44,48,52,56,60], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+```
+
+Estimate the required parameters as specified in the model, we use the same one compartment oral absorption model for estimation, since the model parameters do not change. There is only change in the dosing regimen.
+
+```julia
+resultest  = fit(oral_one_cmpt, data_oral_multiple, init_par, Pumas.FOCEI());
+```
+
+Compute the Covariance step and calculate the RSE and 95% Confidence Intervals
+
+```julia
+inference  = infer(resultest);
+```
+
+Export the parameters to a table to generate reports
+
+```julia
+table      = coeftable(inference)
+```
