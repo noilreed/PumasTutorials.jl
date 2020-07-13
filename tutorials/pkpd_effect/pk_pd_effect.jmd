@@ -14,7 +14,7 @@ using Pumas, Plots, DataFrames, StatsPlots
 
 In this exercise you will learn to simultaneously model PK and PD data with an effect compartment.
 
- * No delay in the effect against the comncentration
+ * No delay in the effect against the concentration
  * Delay in the effect against the concentration
 
 
@@ -92,7 +92,7 @@ A single subject receives an oral dose of 25mg at `time=0`.
 
 ```julia
 ev1  = DosageRegimen(25, time=0, cmt=1)
-s1   = Subject(id=1,evs=ev1, cvs=(Wt=60,))
+s1   = Subject(id=1,events=ev1, covariates=(Wt=60,))
 obs  = simobs(pk_pd_nodelay, s1, par1, obstimes=0:0.1:30);
 ```
 
@@ -111,7 +111,8 @@ _Note:_ In this since we want the same x-axis and a different yaxis to show the 
 
 ```julia
 @df df1 plot(:time, :Cp, xticks=[0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30], yticks=[0,2,4,6,8,10],ylims=(0,10),xlabel="Time (hr)", ylabel="Concentration (mg/L)", linewidth=1.5,label= "Conc of Central Cmt")
-@df df1 plot!(twinx(), :time, :E, yticks=[0,20,40,60,80,100],ylims=(0,100),colour=:green, ylabel="Effect", label=false, linewidth=1.5)
+@df df1 plot!(:time, NaN.*(:E), label="Effect of the drug", linewidth=1.5, linecolor=:green)
+@df df1 plot!(twinx(), :time, :E, yticks=[0,20,40,60,80,100],ylims=(0,100),linecolour=:green, ylabel="Effect", label=false, linecolor=:red, linewidth=1.5)
 ```
 
 #### PK-PD with delayed-effect compartment
@@ -190,7 +191,7 @@ A single subject receives an oral dose of 25mg at `time=0`.
 
 ```julia
 ev1 = DosageRegimen(25, time=0, cmt=1)
-s1  = Subject(id=1,evs=ev1, cvs=(Wt=60,))
+s1  = Subject(id=1,events=ev1, covariates=(Wt=60,))
 obs = simobs(pk_pd_delay, s1, par, obstimes=0:0.1:30);
 ```
 
@@ -210,5 +211,6 @@ _Note:_ In this since we want the same x-axis and a different yaxis to show the 
 ```julia
 @df df1 plot(:time, :Cp, xticks=[0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30], yticks=[0,2,4,6,8,10],ylims=(0,10),xlabel="Time (hr)", ylabel="Concentration (mg/L)", linewidth=1.5,label= "Conc of Central Cmt")
 @df df1 plot!(:time, :Conc_eff, label="Conc of Effect Cmt", linewidth=1.5)
-@df df1 plot!(twinx(), :time, :E, yticks=[0,20,40,60,80,100],ylims=(0,100),colour=:green, ylabel="Effect", label=false, linewidth=1.5)
+@df df1 plot!(:time, NaN.*(:E), label="Effect of the drug", linewidth=1.5,linecolor=:green)
+@df df1 plot!(twinx(), :time, :E, yticks=[0,20,40,60,80,100],ylims=(0,100),colour=:green, ylabel="Effect", linecolor=:green, label=false, linewidth=1.5)
 ```
