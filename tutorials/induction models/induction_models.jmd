@@ -81,7 +81,7 @@ Note: We incorporate `ii` (interdose-interval) and `addl` (additional no. of dos
 
 ```julia
 ev1  = DosageRegimen(10, cmt=1, time=0, ii=8, addl=87)
-sub1 = Subject(id=1, evs=ev1)
+sub1 = Subject(id=1, events=ev1)
 ```
 Use the `simobs` function for simulation
 
@@ -164,25 +164,24 @@ A single subject receives a dose of 100mg IV-Bolus every 4 hrs followed by 20 ad
 
 ```julia
 ev1  = DosageRegimen(100, cmt=:Central, time=0, ii=4, addl=20)
-sub1 = Subject(id=1, evs=ev1)
+sub1 = Subject(id=1, events=ev1)
 ```
 
 Use the `simobs` function to simulate and convert to a dataframe
 
 ```julia
 obs1  = simobs(auto_model, sub1, par_auto, obstimes=0:0.1:80)
-simdf = DataFrame(obs1);
+simdf = DataFrame(obs1)
 ```
 
-Plot Plasma Concentration vs Time
+Plot **Plasma Concentration vs Time**
 
 ```julia
 @df simdf plot(:time, :cp, xlabel="Time (hr)", ylabel="Concentration (mg/L)", title="Plasma Concentration vs Time", label=false, linewidth=1.5)
 ```
 
-Plot Enzyme vs Time
+Plot **Enzyme vs Time**
 
 ```julia
 @df simdf plot(:time, :enz, xlabel="Time (hr)", ylabel="Amount (mg)", title="Enzyme vs Time", label=false, linewidth=1.5)
-
 ```
