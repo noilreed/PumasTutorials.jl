@@ -84,7 +84,7 @@ Simulate a _population_ of 5 subjects who receives a SC dose of 40μg at `time=0
 
 ```julia
 ev1  = DosageRegimen(40, time=0, cmt=:Skin)
-sub1 = map(i -> Subject(id=i, evs=ev1, cvs=(Wt=rand(50:100),)), 1:5)
+sub1 = map(i -> Subject(id=i, events=ev1, covariates=(Wt=rand(50:100),)), 1:5)
 ```
 
 Use the `simobs` function to run the simualtion
@@ -97,7 +97,7 @@ Convert the `obs1` to a Dataframe. The Plot depicts the Concentration Time Profi
 
 ```julia
 simdf = DataFrame(obs1)
-@df simdf plot(:time, :cp, group=:id, ylims=(0,300), yticks=[0,50,100,150,200,250,300], xlabel="Time (hr)", ylabel="Conc (Drug+Endogenous Compound) (ug/L)", title="Concentration vs Time", legendtitle="Subject Id", linewidth=1.5 )
+@df simdf plot(:time, :cp, group=:id, ylims=(0,350), yticks=[0,50,100,150,200,250,300,350], xlabel="Time (hr)", ylabel="Conc (Drug+Endogenous Compound) (ug/L)", title="Concentration vs Time", legendtitle="Subject Id", linewidth=1.5 )
 ```
 
 The Plot depicts the Concentration Time Profile of the **Drug Alone vs Time**
@@ -109,7 +109,7 @@ The Plot depicts the Concentration Time Profile of the **Drug Alone vs Time**
 Uisng the integrated NCA fucntion in the model we `Select` the output of the NCA object to a dataframe
 
 ```julia
-df1 = filter(x -> x.time ==0 && x.amt >0, simdf)
+df1 = filter(x -> x.time ==0 && x.amt ==0, simdf)
 df1 = select!(df1, :id, :half_life, :clearance, :volume_of_dist, :cmax, :auc)
 ```
 
@@ -195,11 +195,11 @@ Simulate a population of three subjects who receive the following doses:
 
 ```julia
 ev1  = DosageRegimen(100, time=0, cmt=:Central, duration=3)
-sub1 = Subject(id=100, evs=ev1)
+sub1 = Subject(id=100, events=ev1)
 ev2  = DosageRegimen(200, time=0, cmt=:Central, duration=3)
-sub2 = Subject(id=200, evs=ev2)
+sub2 = Subject(id=200, events=ev2)
 ev3  = DosageRegimen(300, time=0, cmt=:Central, duration=3)
-sub3 = Subject(id=300, evs=ev3)
+sub3 = Subject(id=300, events=ev3)
 sub  = [sub1, sub2, sub3]
 ```
 
@@ -294,11 +294,11 @@ Simulate a population of three subjects who receive the following doses:
 
 ```julia
 ev1  = DosageRegimen(100, time=0, cmt=:Central, duration=3)
-sub1 = Subject(id=100, evs=ev1)
+sub1 = Subject(id=100, events=ev1)
 ev2  = DosageRegimen(200, time=0, cmt=:Central, duration=3)
-sub2 = Subject(id=200, evs=ev2)
+sub2 = Subject(id=200, events=ev2)
 ev3  = DosageRegimen(300, time=0, cmt=:Central, duration=3)
-sub3 = Subject(id=300, evs=ev3)
+sub3 = Subject(id=300, events=ev3)
 sub  = [sub1, sub2, sub3]
 ```
 
@@ -387,11 +387,11 @@ Simulate a population of three subjects who receive the following doses:
 
 ```julia
 ev1  = DosageRegimen(100, time=0, cmt=:Central, duration=3)
-sub1 = Subject(id=100, evs=ev1)
+sub1 = Subject(id=100, events=ev1)
 ev2  = DosageRegimen(200, time=0, cmt=:Central, duration=3)
-sub2 = Subject(id=200, evs=ev2)
+sub2 = Subject(id=200, events=ev2)
 ev3  = DosageRegimen(300, time=0, cmt=:Central, duration=3)
-sub3 = Subject(id=300, evs=ev3)
+sub3 = Subject(id=300, events=ev3)
 sub  = [sub1, sub2, sub3]
 ```
 
@@ -480,11 +480,11 @@ Simulate a population of three subjects who receive the following doses:
 
 ```julia
 ev1  = DosageRegimen(100, time=0, cmt=:Central, duration=3)
-sub1 = Subject(id=100, evs=ev1)
+sub1 = Subject(id=100, events=ev1)
 ev2  = DosageRegimen(200, time=0, cmt=:Central, duration=3)
-sub2 = Subject(id=200, evs=ev2)
+sub2 = Subject(id=200, events=ev2)
 ev3  = DosageRegimen(300, time=0, cmt=:Central, duration=3)
-sub3 = Subject(id=300, evs=ev3)
+sub3 = Subject(id=300, events=ev3)
 sub  = [sub1, sub2, sub3]
 ```
 
