@@ -124,6 +124,9 @@ function NCASubject(conc, time;
   end_time = addunit(end_time, timeu)
 
   multidose = dose isa AbstractArray && length(dose) > 1
+  if !multidose && dose isa AbstractArray
+    dose = first(dose)
+  end
   nonmissingeltype(x) = Base.nonmissingtype(eltype(x))
   unitconc = float(oneunit(nonmissingeltype(conc)))
   unittime = float(oneunit(nonmissingeltype(time)))
