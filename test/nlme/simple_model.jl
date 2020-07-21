@@ -158,4 +158,18 @@ Number of subjects:                       10
 
     @test_throws ErrorException("gradient of θᵣ is exactly zero. This indicates that θᵣ isn't identified.") fit(unidentified_model, data, init_param(unidentified_model), Pumas.FO())
   end
+
+@testset "integer obstimes" begin
+  # from https://discourse.pumas.ai/t/help-with-fitting/50/54
+  # the test is simply that dff runs in the end of the testset 
+  ev1 = DosageRegimen(400, time=0, cmt=1)
+  ev2 = DosageRegimen(800, time=0, cmt=1, rate=30.769)
+  com = DosageRegimen(ev1,ev2)
+  sub = Subject(id=1, events=com)
+  # The issue was that these obstimes are integers and that caused problems in the DataFrame constructor
+  sim = simobs(mdsl1, sub, param, obstimes=[2, 5, 10, 15, 20, 25, 30, 33, 35, 37, 40, 45, 50, 60, 70, 90, 110, 120, 150])
+  # Test that dff is constructed by converting obstimes to floats internally
+  ddf = DataFrame(sim)
+  @test eltype(ddf.time) == Float64
+end
 end# testset
