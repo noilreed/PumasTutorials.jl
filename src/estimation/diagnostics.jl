@@ -11,23 +11,21 @@ end
 function StatsBase.predict(
   model::PumasModel,
   subject::Subject,
-  param::NamedTuple,
-  args...;
+  param::NamedTuple;
   kwargs...)
 
   vrandeffsorth = _orth_empirical_bayes(model, subject, param, Pumas.LaplaceI())
 
-  _predict(model, subject, param, vrandeffsorth, args...; kwargs...)
+  _predict(model, subject, param, vrandeffsorth; kwargs...)
 end
 
 function StatsBase.predict(
   model::PumasModel,
   population::Population,
-  param::NamedTuple,
-  args...;
+  param::NamedTuple;
   kwargs...)
 
-  map(subject -> predict(model, subject, param, approx, args...; kwargs...), population)
+  map(subject -> predict(model, subject, param, approx; kwargs...), population)
 end
 
 function StatsBase.predict(
@@ -50,8 +48,7 @@ function StatsBase.predict(
     fpm.model,
     population[i],
     coef(fpm),
-    vvrandeffsorth[i],
-    fpm.args...;
+    vvrandeffsorth[i];
     obstimes=obstimes,
     fpm.kwargs...), 1:length(population))
 end
@@ -63,7 +60,7 @@ function StatsBase.predict(
 
   vrandeffsorth = _orth_empirical_bayes(fpm.model, subject, coef(fpm), fpm.approx)
 
-  _predict(fpm.model, subject, coef(fpm), vrandeffsorth, fpm.args...; obstimes=obstimes, fpm.kwargs...)
+  _predict(fpm.model, subject, coef(fpm), vrandeffsorth; obstimes=obstimes, fpm.kwargs...)
 end
 
 function DataFrames.DataFrame(
@@ -95,15 +92,15 @@ function _predict(
   model::PumasModel,
   subject::Subject,
   param::NamedTuple,
-  vrandeffsorth::AbstractVector,
-  args...; kwargs...
+  vrandeffsorth::AbstractVector;
+  kwargs...
   )
 
-  ipred = __ipredict(model, subject, param, vrandeffsorth, args...; kwargs...)
+  ipred = __ipredict(model, subject, param, vrandeffsorth; kwargs...)
   if isempty(vrandeffsorth) # NaivePooled
     pred = ipred
   else
-    pred = __predict(model, subject, param, zero(vrandeffsorth), FO(), args...; kwargs...)
+    pred = __predict(model, subject, param, zero(vrandeffsorth), FO(); kwargs...)
   end
   SubjectPrediction(pred, ipred, subject)
 end
@@ -129,11 +126,11 @@ function __predict(
   subject::Subject,
   param::NamedTuple,
   vrandeffsorth::AbstractVector,
-  approx::FO,
-  args...; kwargs...)
+  approx::FO;
+  kwargs...)
 
   randeffs = TransformVariables.transform(totransform(m.random(param)), zero(vrandeffsorth))
-  dist = _derived(m, subject, param, randeffs, args...; kwargs...)
+  dist = _derived(m, subject, param, randeffs; kwargs...)
   return map(d -> mean.(d), NamedTuple{keys(subject.observations)}(dist))
 end
 
@@ -143,12 +140,12 @@ function __predict(
   subject::Subject,
   param::NamedTuple,
   vrandeffsorth::AbstractVector,
-  approx::Union{FOCE, FOCEI, LaplaceI},
-  args...; kwargs...)
+  approx::Union{FOCE, FOCEI, LaplaceI};
+  kwargs...)
 
   randeffstransform = totransform(m.random(param))
   randeffs = TransformVariables.transform(randeffstransform, vrandeffsorth)
-  dist = _derived(m, subject, param, randeffs, args...; kwargs...)
+  dist = _derived(m, subject, param, randeffs; kwargs...)
 
   _dv_keys = keys(subject.observations)
   # For FOCE, we don't allow the dispersion parameter to depend on the random effects
@@ -165,7 +162,7 @@ function __predict(
     F = ForwardDiff.jacobian(
       _vrandeffs -> begin
         _randeffs = TransformVariables.transform(randeffstransform, _vrandeffs)
-        return mean.(_derived(m, subject, param, _randeffs, args...; kwargs...)[name])
+        return mean.(_derived(m, subject, param, _randeffs; kwargs...)[name])
       end,
       vrandeffsorth
     )
@@ -177,8 +174,7 @@ end
 function epredict(
   m::PumasModel,
   subject::Subject,
-  param::NamedTuple,
-  args...;
+  param::NamedTuple;
   nsim::Union{Nothing,Integer}=nothing,
   kwargs...)
 
@@ -214,17 +210,17 @@ Return a DataFrame with outcome probabilities of all discrete dependent
 variables.
 """
 function probstable(fpm::FittedPumasModel)
-  _probstable(fpm.model, fpm.data, coef(fpm), fpm.vvrandeffsorth, fpm.args...; fpm.kwargs...)
+  _probstable(fpm.model, fpm.data, coef(fpm), fpm.vvrandeffsorth; fpm.kwargs...)
 end
 
 function probstable(
   model::PumasModel,
   subject::Subject,
   param::NamedTuple,
-  randeffs::NamedTuple,
-  args...; kwargs...)
+  randeffs::NamedTuple;
+  kwargs...)
 
-  probs_derived = _derived(model, subject, param, randeffs, args...; kwargs...)
+  probs_derived = _derived(model, subject, param, randeffs; kwargs...)
   df = DataFrame(id = fill(subject.id, size(subject.time, 1)), time = subject.time)
   for (name, val) in pairs(probs_derived)
     if all(x -> x isa Categorical || x isa Bernoulli, val)
@@ -243,8 +239,8 @@ function _probstable(
   model::PumasModel,
   population::Population,
   param::NamedTuple,
-  vvrandeffsorth::AbstractVector,
-  args...; kwargs...)
+  vvrandeffsorth::AbstractVector;
+  kwargs...)
 
   rtrf = totransform(model.random(param))
   randeffs = TransformVariables.transform.(Ref(rtrf), vvrandeffsorth)
@@ -315,7 +311,7 @@ function wresiduals(
     vvrandeffsorth = fpm.vvrandeffsorth
   else
     # re-estimate under approx
-    vvrandeffsorth = [_orth_empirical_bayes(fpm.model, subject, coef(fpm), approx, fpm.args...; fpm.kwargs...) for subject in population]
+    vvrandeffsorth = [_orth_empirical_bayes(fpm.model, subject, coef(fpm), approx; fpm.kwargs...) for subject in population]
   end
   [_wresiduals(fpm, population[i], vvrandeffsorth[i], approx; nsim=nsim) for i = 1:length(population)]
 end
@@ -329,12 +325,12 @@ function _wresiduals(
   nsim=nothing)
 
   if nsim === nothing
-    wres = __wresiduals(fpm.model, subject, coef(fpm), vrandeffsorth, approx, fpm.args...; fpm.kwargs...)
-    iwres = __iwresiduals(fpm.model, subject, coef(fpm), vrandeffsorth, approx, fpm.args...; fpm.kwargs...)
+    wres = __wresiduals(fpm.model, subject, coef(fpm), vrandeffsorth, approx; fpm.kwargs...)
+    iwres = __iwresiduals(fpm.model, subject, coef(fpm), vrandeffsorth, approx; fpm.kwargs...)
   else
     approx = nothing
     wres = nothing
-    iwres = eiwres(fpm.model, subject, coef(fpm), nsim, fpm.args...; fpm.kwargs...)
+    iwres = eiwres(fpm.model, subject, coef(fpm), nsim; fpm.kwargs...)
   end
 
   SubjectResidual(wres, iwres, subject, approx)
@@ -345,14 +341,14 @@ __wresiduals(
   subject::Subject,
   param::NamedTuple,
   vrandeffsorth::AbstractVector,
-  ::NaivePooled,
-  args...; kwargs...) = __iwresiduals(
+  ::NaivePooled;
+  kwargs...) = __iwresiduals(
     model,
     subject,
     param,
     vrandeffsorth,
-    NaivePooled(),
-    args...; kwargs...)
+    NaivePooled();
+    kwargs...)
 
 
 function __wresiduals(
@@ -360,14 +356,14 @@ function __wresiduals(
   subject::Subject,
   param::NamedTuple,
   vrandeffsorth::AbstractVector,
-  approx::FO,
-  args...; kwargs...)
+  approx::FO;
+  kwargs...)
 
   randeffstransform = totransform(model.random(param))
   randeffs = TransformVariables.transform(randeffstransform, zero(vrandeffsorth))
-  dist = _derived(model, subject, param, randeffs, args...; kwargs...)
+  dist = _derived(model, subject, param, randeffs; kwargs...)
 
-  F   = _mean_derived_vηorth_jacobian(model, subject, param, zero(vrandeffsorth), args...; kwargs...)
+  F   = _mean_derived_vηorth_jacobian(model, subject, param, zero(vrandeffsorth); kwargs...)
   res = _residuals(subject, dist)
 
   _dv_keys = keys(subject.observations)
@@ -405,14 +401,14 @@ function __wresiduals(
   subject::Subject,
   param::NamedTuple,
   vrandeffsorth::AbstractVector,
-  approx::Union{FOCE,FOCEI,LaplaceI},
-  args...; kwargs...)
+  approx::Union{FOCE,FOCEI,LaplaceI};
+  kwargs...)
 
   randeffstransform = totransform(model.random(param))
   randeffs = TransformVariables.transform(randeffstransform, vrandeffsorth)
-  dist = _derived(model, subject, param, randeffs, args...; kwargs...)
+  dist = _derived(model, subject, param, randeffs; kwargs...)
 
-  F   = _mean_derived_vηorth_jacobian(model, subject, param, vrandeffsorth, args...; kwargs...)
+  F   = _mean_derived_vηorth_jacobian(model, subject, param, vrandeffsorth; kwargs...)
   res = _residuals(subject, dist)
 
   _dv_keys = keys(subject.observations)
@@ -464,8 +460,8 @@ function __iwresiduals(
   subject::Subject,
   param::NamedTuple,
   vrandeffsorth::AbstractVector,
-  approx::Union{FO,FOCE,FOCEI,LaplaceI,NaivePooled},
-  args...; kwargs...)
+  approx::Union{FO,FOCE,FOCEI,LaplaceI,NaivePooled};
+  kwargs...)
 
   if approx isa FO
     _vrandeffsorth = zero(vrandeffsorth)
@@ -473,7 +469,7 @@ function __iwresiduals(
     _vrandeffsorth = vrandeffsorth
   end
   randeffs = TransformVariables.transform(totransform(m.random(param)), _vrandeffsorth)
-  dist = _derived(m, subject, param, randeffs, args...; kwargs...)
+  dist = _derived(m, subject, param, randeffs; kwargs...)
 
   _dv_keys = keys(subject.observations)
   # For FOCE, we don't allow the dispersion parameter to depend on the random effects
@@ -497,11 +493,10 @@ Calculate the Expected Simulation based Individual Weighted Residuals (EIWRES).
 function eiwres(m::PumasModel,
                 subject::Subject,
                 param::NamedTuple,
-                nsim::Integer,
-                args...;
+                nsim::Integer;
                 kwargs...)
 
-  dist = _derived(m, RepeatedVector([subject], nsim), param, args...;
+  dist = _derived(m, RepeatedVector([subject], nsim), param;
     obstimes=subject.time, kwargs...)
 
   _keys_dv = keys(subject.observations)
@@ -518,11 +513,11 @@ function eiwres(m::PumasModel,
 end
 
 # Internal _residuals helper function
-function _residuals(model::PumasModel, subject::Subject, param::NamedTuple, vrandeffs::AbstractArray, args...; kwargs...)
+function _residuals(model::PumasModel, subject::Subject, param::NamedTuple, vrandeffs::AbstractArray; kwargs...)
   rtrf = totransform(model.random(param))
   randeffs = TransformVariables.transform(rtrf, vrandeffs)
   # Calculated the dependent variable distribution objects
-  dist = _derived(model, subject, param, randeffs, args...; kwargs...)
+  dist = _derived(model, subject, param, randeffs; kwargs...)
   # Return the residuals
   return _residuals(subject, dist)
 end
@@ -596,8 +591,7 @@ random effects and corresponding η-shrinkage values is output.
 function _ηshrinkage(m::PumasModel,
                     data::Population,
                     param::NamedTuple,
-                    vvrandeffsorth::AbstractVector,
-                    args...;
+                    vvrandeffsorth::AbstractVector;
                     kwargs...)
 
   vtrandeffs = [TransformVariables.transform(totransform(m.random(param)),
@@ -625,8 +619,8 @@ derived variables and corresponding ϵ-shrinkage values is output.
 function _ϵshrinkage(m::PumasModel,
                      data::Population,
                      param::NamedTuple,
-                     vvrandeffsorth::AbstractVector,
-                     args...; kwargs...)
+                     vvrandeffsorth::AbstractVector;
+                     kwargs...)
 
   _keys_dv = keys(first(data).observations)
   _icwres = [__iwresiduals(m, subject, param,
@@ -650,11 +644,10 @@ StatsBase.aic(fpm::FittedPumasModel) =
 function StatsBase.aic(m::PumasModel,
                        data::Population,
                        param::NamedTuple,
-                       approx::LikelihoodApproximation,
-                       args...;
+                       approx::LikelihoodApproximation;
                        kwargs...)
   numparam = TransformVariables.dimension(totransform(m.param))
-  2*(marginal_nll(m, data, param, approx, args...; kwargs...) + numparam)
+  2*(marginal_nll(m, data, param, approx; kwargs...) + numparam)
 end
 
 """
@@ -669,12 +662,11 @@ StatsBase.bic(fpm::FittedPumasModel) =
 function StatsBase.bic(m::PumasModel,
                        population::Population,
                        param::NamedTuple,
-                       approx::LikelihoodApproximation,
-                       args...;
+                       approx::LikelihoodApproximation;
                        kwargs...)
 
   numparam = TransformVariables.dimension(totransform(m.param))
-  nll = marginal_nll(m, population, param, approx, args...; kwargs...)
+  nll = marginal_nll(m, population, param, approx; kwargs...)
   n = sum(subject -> sum(dv -> sum(!ismissing, dv), subject.observations), population)
   return 2*nll + numparam*log(n)
 end
@@ -696,8 +688,8 @@ function empirical_bayes(fpm::FittedPumasModel)
         _orth_empirical_bayes(
           fpm.model, subject,
           coef(fpm),
-          LaplaceI(),
-          fpm.args...; fpm.kwargs...
+          LaplaceI();
+          fpm.kwargs...
         )
       ) for subject in subjects]
   elseif fpm.approx isa NaivePooled
@@ -783,19 +775,18 @@ Return a vector of the `k` most influencial observations based on the value of
 the objective function.
 """
 findinfluential(fpm::FittedPumasModel, k::Integer=5) =
-  findinfluential(fpm.model, fpm.data, coef(fpm), fpm.approx, fpm.args...;
+  findinfluential(fpm.model, fpm.data, coef(fpm), fpm.approx;
     k=k, fpm.kwargs...)
 
 function findinfluential(
   m::PumasModel,
   data::Population,
   param::NamedTuple,
-  approx::LikelihoodApproximation,
-  args...;
+  approx::LikelihoodApproximation;
   k=5,
   kwargs...)
 
-  d = [deviance(m, subject, param, approx, args...; kwargs...) for subject in data]
+  d = [deviance(m, subject, param, approx; kwargs...) for subject in data]
   p = partialsortperm(d, 1:k, rev=true)
   return [(data[pᵢ].id, d[pᵢ]) for pᵢ in p]
 end
@@ -831,7 +822,7 @@ function icoef(fpm::FittedPumasModel)
   _param = coef(fpm)
   return map(
     ((subject, vrandeffsorth),) -> _icoef(
-      fpm.model, subject, _param, vrandeffsorth, fpm.args...;
+      fpm.model, subject, _param, vrandeffsorth;
       obstimes=_isconstcovar(subject.covariates) ? nothing : subject.covariates.t,
       fpm.kwargs...),
     zip(fpm.data, fpm.vvrandeffsorth))
@@ -840,20 +831,19 @@ end
 icoef(
   model::PumasModel,
   population::Population,
-  param::NamedTuple,
-  args...; kwargs...) = [icoef(model, subject, param, args...; kwargs...) for subject in population]
+  param::NamedTuple;
+  kwargs...) = [icoef(model, subject, param; kwargs...) for subject in population]
 
 function icoef(
   model::PumasModel,
   subject::Subject,
-  param::NamedTuple,
-  args...;
+  param::NamedTuple;
   obstimes=subject.covariates isa ConstantCovar ? nothing : subject.covariates.t,
   kwargs...)
 
   vrandeffsorth = Pumas._orth_empirical_bayes(model, subject, param, Pumas.LaplaceI())
 
-  return _icoef(model, subject, param, vrandeffsorth, args...;
+  return _icoef(model, subject, param, vrandeffsorth;
     obstimes=obstimes, kwargs...)
 end
 
@@ -861,8 +851,7 @@ function _icoef(
   model::PumasModel,
   subject::Subject,
   param::NamedTuple,
-  vrandeffsorth::AbstractVector,
-  args...;
+  vrandeffsorth::AbstractVector;
   obstimes=_isconstcovar(subject.covariates) ? nothing : subject.covariates.t,
   kwargs...)
 

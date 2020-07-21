@@ -11,7 +11,7 @@ function dim_rfx(m::PumasModel)
 end
 
 # This object wraps the model, data and some pre-allocated buffers to match the necessary interface for DynamicHMC.jl
-struct BayesLogDensity{M,D,B,C,R,A,K}
+struct BayesLogDensity{M,D,B,C,R,K}
   model::M
   data::D
   dim_param::Int
@@ -19,17 +19,16 @@ struct BayesLogDensity{M,D,B,C,R,A,K}
   buffer::B
   cfg::C
   res::R
-  args::A
   kwargs::K
 end
 
-function BayesLogDensity(model, data, args...;kwargs...)
+function BayesLogDensity(model, data, ;kwargs...)
   m = dim_param(model)
   n = dim_rfx(model)
   buffer = zeros(m + n)
   cfg = ForwardDiff.GradientConfig(logdensity, buffer)
   res = DiffResults.GradientResult(buffer)
-  BayesLogDensity(model, data, m, n, buffer, cfg, res, args, kwargs)
+  BayesLogDensity(model, data, m, n, buffer, cfg, res, kwargs)
 end
 
 function dimension(b::BayesLogDensity)
@@ -49,7 +48,7 @@ function logdensity(b::BayesLogDensity, v::AbstractVector)
   ℓ_rfx = sum(enumerate(b.data)) do (i, subject)
     # compute the random effect density and likelihood
     vrandeffsorth = @view v[(m + (i - 1)*n) .+ (1:n)]
-    return -Pumas._penalized_conditional_nll(b.model, subject, param, vrandeffsorth, b.args...; b.kwargs...)
+    return -Pumas._penalized_conditional_nll(b.model, subject, param, vrandeffsorth; b.kwargs...)
   end
   ℓ = ℓ_param + ℓ_rfx
   return isnan(ℓ) ? -Inf : ℓ
@@ -83,7 +82,7 @@ function logdensitygrad(b::BayesLogDensity, v::AbstractVector)
     function L_rfx(u)
       param = TransformVariables.transform(t_param, @view u[1:m])
       vrandeffsorth = @view u[m .+ (1:n)]
-      return -Pumas._penalized_conditional_nll(b.model, subject, param, vrandeffsorth, b.args...; b.kwargs...)
+      return -Pumas._penalized_conditional_nll(b.model, subject, param, vrandeffsorth; b.kwargs...)
     end
     copyto!(b.buffer, m + 1, v, m + (i - 1)*n + 1, n)
 
@@ -111,8 +110,7 @@ function Distributions.fit(
   model::PumasModel,
   data::Population,
   param::NamedTuple,
-  ::BayesMCMC,
-  args...;
+  ::BayesMCMC;
   nadapts::Integer=2000,
   nsamples::Integer=10000,
   progress = Base.is_interactive,
@@ -126,7 +124,7 @@ function Distributions.fit(
   vparam = Pumas.TransformVariables.inverse(trf, param)
 
   # Create BayesLogDensity objecet from Pumas model and data
-  bayes = BayesLogDensity(model, data, args...; kwargs...)
+  bayes = BayesLogDensity(model, data; kwargs...)
 
   # Augment parameter Vector with vector of random effects
   vparam_aug = [vparam; zeros(length(data)*bayes.dim_rfx)]

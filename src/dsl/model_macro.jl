@@ -75,10 +75,12 @@ function extract_params!(vars, params, exprs)
       push!(vars,p)
       params[p] = expr.args[3]
     elseif expr.head == :(=)
-      p = expr.args[1]
+      throw(ErrorException("Use of = is not allowed when defining parameters. Please define fixed parameters in @pre or use the constantcoef keyword in calls to fit."))
+      #= p = expr.args[1]
       p in vars && error("Variable $p already defined")
       push!(vars,p)
       params[p] = :(ConstDomain($(expr.args[2])))
+      =#
     elseif expr.head == :call && expr.args[1] == :~
       p = expr.args[2]
       p in vars && error("Variable $p already defined")

@@ -221,20 +221,19 @@ simobstte(
     maxT=maxT, simN=simN, repeated=repeated, kwargs...) for (subject, randeffs) in zip(population, vrandeffs)]
 
 """
-    conditional_nll(m::PumasModel, subject::Subject, param, randeffs, args...; kwargs...)
+    conditional_nll(m::PumasModel, subject::Subject, param, randeffs; kwargs...)
 
 Compute the conditional negative log-likelihood of model `m` for `subject`
-with parameters `param` and random effects `randeffs`. `args` and `kwargs` are
+with parameters `param` and random effects `randeffs`. `kwargs` is
 passed to ODE solver. Requires that the derived produces distributions.
 """
 @inline function conditional_nll(m::PumasModel,
                                  subject::Subject,
                                  param::NamedTuple,
-                                 randeffs::NamedTuple,
-                                 args...;
+                                 randeffs::NamedTuple;
                                  obstimes=nothing, # you are not allowed to set this, so we catch it
                                  kwargs...)
-    dist = _derived(m, subject, param, randeffs, args...; obstimes=subject.time, kwargs...)
+    dist = _derived(m, subject, param, randeffs; obstimes=subject.time, kwargs...)
     conditional_nll(m, subject, param, randeffs, dist)
 end
 
@@ -257,7 +256,7 @@ end
 
 
 """
-    penalized_conditional_nll(m::PumasModel, subject::Subject, param::NamedTuple, randeffs::NamedTuple, args...; kwargs...)
+    penalized_conditional_nll(m::PumasModel, subject::Subject, param::NamedTuple, randeffs::NamedTuple; kwargs...)
 
 Compute the penalized conditional negative log-likelihood. This is the same as
 [`conditional_nll`](@ref), except that it incorporates the penalty from the
@@ -270,21 +269,21 @@ function penalized_conditional_nll(
   m::PumasModel,
   subject::Subject,
   param::NamedTuple,
-  randeffs::NamedTuple,
-  args...;kwargs...)
+  randeffs::NamedTuple;
+  kwargs...)
 
   randeffstransform = totransform(m.random(param))
   vrandeffsorth = TransformVariables.inverse(randeffstransform, randeffs)
 
-  return _penalized_conditional_nll(m, subject, param, vrandeffsorth, args...; kwargs...)
+  return _penalized_conditional_nll(m, subject, param, vrandeffsorth; kwargs...)
 end
 
 function _penalized_conditional_nll(
   m::PumasModel,
   subject::Subject,
   param::NamedTuple,
-  vrandeffsorth::AbstractVector,
-  args...;kwargs...)
+  vrandeffsorth::AbstractVector;
+  kwargs...)
 
   # First evaluate the penalty (wihout the π term)
   nl_randeffs = vrandeffsorth'vrandeffsorth/2
@@ -295,7 +294,7 @@ function _penalized_conditional_nll(
   else
     randeffstransform = totransform(m.random(param))
     randeffs = TransformVariables.transform(randeffstransform, vrandeffsorth)
-    return conditional_nll(m, subject, param, randeffs, args...;kwargs...) + nl_randeffs
+    return conditional_nll(m, subject, param, randeffs;kwargs...) + nl_randeffs
   end
 end
 
@@ -318,12 +317,12 @@ function _orth_empirical_bayes(
   m::PumasModel,
   subject::Subject,
   param::NamedTuple,
-  approx::LikelihoodApproximation,
-  args...; kwargs...)
+  approx::LikelihoodApproximation;
+  kwargs...)
 
   initial_vrandefforth = _initial_randeffs(m, param)
 
-  return _orth_empirical_bayes!(initial_vrandefforth, m, subject, param, approx, args...; kwargs...)
+  return _orth_empirical_bayes!(initial_vrandefforth, m, subject, param, approx; kwargs...)
 end
 
 # This function depends on approx because a Newton's method is
@@ -334,13 +333,12 @@ function _orth_empirical_bayes!(
   m::PumasModel,
   subject::Subject,
   param::NamedTuple,
-  approx::Union{FO,FOCE,FOCEI,LaplaceI},
-  args...;
+  approx::Union{FO,FOCE,FOCEI,LaplaceI};
   kwargs...)
 
   function _fgh!(F, G, H, x)
     if G !== nothing || H !== nothing
-      nl, ∇nl, ∇²nl = _∂²l∂η²(m, subject, param, x, approx, args...; kwargs...)
+      nl, ∇nl, ∇²nl = _∂²l∂η²(m, subject, param, x, approx; kwargs...)
 
       if G !== nothing && ∇nl !== nothing
         G .= ∇nl
@@ -359,7 +357,7 @@ function _orth_empirical_bayes!(
     end
 
     if F !== nothing
-      return _penalized_conditional_nll(m, subject, param, x, args...; kwargs...)
+      return _penalized_conditional_nll(m, subject, param, x; kwargs...)
     end
   end
 
@@ -386,15 +384,13 @@ _orth_empirical_bayes!(
   m::PumasModel,
   subject::Subject,
   param::NamedTuple,
-  ::FO,
-  args...;
+  ::FO;
   kwargs...) = _orth_empirical_bayes!(
     vrandeffsorth,
     m,
     subject,
     param,
-    FOCEI(),
-    args...;
+    FOCEI();
     kwargs...)
 
 # For NaivePooled, it's convenient just to let the empty
@@ -404,8 +400,7 @@ _orth_empirical_bayes!(
   m::PumasModel,
   subject::Subject,
   param::NamedTuple,
-  ::NaivePooled,
-  args...;
+  ::NaivePooled;
   kwargs...) = vrandeffsorth
 
 function _empirical_bayes_dist(
@@ -413,13 +408,13 @@ function _empirical_bayes_dist(
   subject::Subject,
   param::NamedTuple,
   vrandeffsorth::AbstractVector,
-  approx::Union{FO,FOCE,FOCEI,LaplaceI},
-  args...; kwargs...)
+  approx::Union{FO,FOCE,FOCEI,LaplaceI};
+  kwargs...)
 
   parset = m.random(param)
   trf = totransform(parset)
 
-  _, _, __∂²l∂η² = _∂²l∂η²(m, subject, param, vrandeffsorth, approx, args...; kwargs...)
+  _, _, __∂²l∂η² = _∂²l∂η²(m, subject, param, vrandeffsorth, approx; kwargs...)
 
   V = inv(__∂²l∂η² + I)
 
@@ -461,19 +456,18 @@ marginal_nll
 function marginal_nll(m::PumasModel,
                       subject::Subject,
                       param::NamedTuple,
-                      approx::Union{FO,FOCE,FOCEI,LaplaceI,NaivePooled},
-                      args...;
+                      approx::Union{FO,FOCE,FOCEI,LaplaceI,NaivePooled};
                       kwargs...)
-  vrandeffsorth = _orth_empirical_bayes(m, subject, param, approx, args...; kwargs...)
-  _marginal_nll(m, subject, param, vrandeffsorth, approx, args...; kwargs...)
+  vrandeffsorth = _orth_empirical_bayes(m, subject, param, approx; kwargs...)
+  _marginal_nll(m, subject, param, vrandeffsorth, approx; kwargs...)
 end
 
 function _marginal_nll(m::PumasModel,
                       subject::Subject,
                       param::NamedTuple,
                       vrandeffsorth::AbstractVector,
-                      ::NaivePooled,
-                      args...; kwargs...)::promote_type(numtype(param), numtype(vrandeffsorth))
+                      ::NaivePooled;
+                      kwargs...)::promote_type(numtype(param), numtype(vrandeffsorth))
 
   # The negative loglikelihood function. There are no random effects.
   if length(m.random(param).params) > 0
@@ -482,18 +476,18 @@ function _marginal_nll(m::PumasModel,
   else
     randeffs = NamedTuple()
   end
-  conditional_nll(m, subject, param, randeffs, args...;kwargs...)
+  conditional_nll(m, subject, param, randeffs; kwargs...)
 
 end
 function _marginal_nll(m::PumasModel,
                       subject::Subject,
                       param::NamedTuple,
                       vrandeffsorth::AbstractVector,
-                      approx::FO,
-                      args...; kwargs...)::promote_type(numtype(param), numtype(vrandeffsorth))
+                      approx::FO;
+                      kwargs...)::promote_type(numtype(param), numtype(vrandeffsorth))
 
   # Compute the gradient of the likelihood and Hessian approxmation in the random effect vector η
-  nl, dldη, W  = _∂²l∂η²(m, subject, param, zero(vrandeffsorth), approx, args...; kwargs...)
+  nl, dldη, W  = _∂²l∂η²(m, subject, param, zero(vrandeffsorth), approx; kwargs...)
 
   if isfinite(nl)
     FIW = cholesky(Symmetric(Matrix(I + W)))
@@ -507,10 +501,10 @@ function _marginal_nll(m::PumasModel,
                       subject::Subject,
                       param::NamedTuple,
                       vrandeffsorth::AbstractVector,
-                      approx::Union{FOCE,FOCEI,LaplaceI},
-                      args...; kwargs...)::promote_type(numtype(param), numtype(vrandeffsorth))
+                      approx::Union{FOCE,FOCEI,LaplaceI};
+                      kwargs...)::promote_type(numtype(param), numtype(vrandeffsorth))
 
-  nl, _, W = _∂²l∂η²(m, subject, param, vrandeffsorth, approx, args...; kwargs...)
+  nl, _, W = _∂²l∂η²(m, subject, param, vrandeffsorth, approx; kwargs...)
 
   if isfinite(nl)
     # If the factorization succeeded then compute the approximate marginal likelihood. Otherwise, return Inf.
@@ -525,17 +519,17 @@ function _marginal_nll(m::PumasModel,
   return typeof(nl)(Inf)
 end
 
-function _marginal_nll(m::PumasModel,
-                      subject::Subject,
-                      param::NamedTuple,
-                      vrandeffsorth::AbstractVector,
-                      approx::LLQuad,
-                      # Since the random effect is scaled to be standard normal we can just hardcode the integration domain
-                      low::AbstractVector=fill(-4.0, length(vrandeffsorth)),
-                      high::AbstractVector=fill(4.0, length(vrandeffsorth)),
-                      args...; batch = 0,
-                      ireltol = 1e-12, iabstol=1e-12, imaxiters = 100_000,
-                      kwargs...)
+function _marginal_nll(
+  m::PumasModel,
+  subject::Subject,
+  param::NamedTuple,
+  vrandeffsorth::AbstractVector,
+  approx::LLQuad,
+  # Since the random effect is scaled to be standard normal we can just hardcode the integration domain
+  low::AbstractVector=fill(-4.0, length(vrandeffsorth)),
+  high::AbstractVector=fill(4.0, length(vrandeffsorth)); batch = 0,
+  ireltol = 1e-12, iabstol=1e-12, imaxiters = 100_000,
+  kwargs...)
 
   randeffstransform = totransform(m.random(param))
 
@@ -547,8 +541,7 @@ function _marginal_nll(m::PumasModel,
       TransformVariables.transform(
         randeffstransform,
         _vrandeffsorth
-      ),
-      args...;
+      );
       kwargs...
     ) - _vrandeffsorth'_vrandeffsorth/2 - log(2π)*length(vrandeffsorth)/2
   )
@@ -565,20 +558,20 @@ end
 marginal_nll(m::PumasModel,
              subject::Subject,
              param::NamedTuple,
-             ::LLQuad,
-             args...;
-             kwargs...) = _marginal_nll(m, subject, param, _initial_randeffs(m, param), LLQuad(), args...; kwargs...)
+             ::LLQuad;
+             kwargs...) = _marginal_nll(m, subject, param, _initial_randeffs(m, param), LLQuad(); kwargs...)
 
 # marginall_nll for whole populations
 function marginal_nll(
   m::PumasModel,
   # restrict to Vector to avoid distributed arrays taking this path
   population::Vector{<:Subject},
-  args...;
+  param::NamedTuple,
+  approx::LikelihoodApproximation;
   ensemblealg::DiffEqBase.EnsembleAlgorithm=EnsembleSerial(),
   kwargs...)
 
-  nll1 = marginal_nll(m, population[1], args...; kwargs...)
+  nll1 = marginal_nll(m, population[1], param, approx; kwargs...)
   # Compute first subject separately to determine return type and to return
   # early in case the parameter values cause the likelihood to be Inf. This
   # can e.g. happen if the ODE solver can't solve the ODE for the chosen
@@ -590,11 +583,11 @@ function marginal_nll(
   # The different parallel computations are separated out into functions
   # to make it easier to infer the return types
   if ensemblealg isa EnsembleSerial
-    return sum(subject -> marginal_nll(m, subject, args...; kwargs...), population)
+    return sum(subject -> marginal_nll(m, subject, param, approx; kwargs...), population)
   elseif ensemblealg isa EnsembleThreads
-    return _marginal_nll_threads(nll1, m, population, args...; kwargs...)
+    return _marginal_nll_threads(nll1, m, population, param, approx; kwargs...)
   elseif ensemblealg isa EnsembleDistributed
-    return _marginal_nll_pmap(nll1, m, population, args...; kwargs...)
+    return _marginal_nll_pmap(nll1, m, population, param, approx; kwargs...)
   else
     throw(ArgumentError("Parallelism of type $ensemblealg is not currently implemented for estimation."))
   end
@@ -603,7 +596,8 @@ end
 function _marginal_nll_threads(nll1::T,
                                m::PumasModel,
                                population::Vector{<:Subject},
-                               args...;
+                               param::NamedTuple,
+                               approx::LikelihoodApproximation;
                                kwargs...)::T where T
 
   # Allocate array to store likelihood values for each subject in the threaded
@@ -612,7 +606,7 @@ function _marginal_nll_threads(nll1::T,
 
   # Run threaded for loop for the remaining subjects
   Threads.@threads for i in 2:length(population)
-    nlls[i - 1] = marginal_nll(m, population[i], args...; kwargs...)
+    nlls[i - 1] = marginal_nll(m, population[i], param, approx; kwargs...)
   end
 
   return nll1 + sum(nlls)
@@ -621,12 +615,20 @@ end
 function _marginal_nll_pmap(nll1::T,
                             m::PumasModel,
                             population::Vector{<:Subject},
-                            args...;
+                            param::NamedTuple,
+                            approx::LikelihoodApproximation;
                             kwargs...)::T where T
 
-  nlls = convert(Vector{T},
-                 pmap(subject -> marginal_nll(m, subject, args...; kwargs...),
-                 population[2:length(population)]))
+  nlls = convert(
+    Vector{T},
+    pmap(
+      subject -> marginal_nll(
+        m,
+        subject,
+        param,
+        approx;
+        kwargs...),
+      population[2:length(population)]))
 
     return nll1 + sum(nlls)
 end
@@ -637,10 +639,11 @@ function _marginal_nll(m::PumasModel,
                       population::Vector{<:Subject},
                       param::NamedTuple,
                       vvrandeffsorth::Vector,
-                      args...; kwargs...)
+                      approx::LikelihoodApproximation;
+                      kwargs...)
 
   return sum(zip(population, vvrandeffsorth)) do (subject, vrandeffsorth)
-    _marginal_nll(m, subject, param, vrandeffsorth, args...; kwargs...)
+    _marginal_nll(m, subject, param, vrandeffsorth, approx; kwargs...)
   end
 end
 
@@ -697,8 +700,8 @@ function _∂ℓᵐ∂θ(
   vparam::AbstractVector,
   vrandeffsorth::AbstractVector,
   approx::LikelihoodApproximation,
-  trf::TransformVariables.TransformTuple,
-  args...; kwargs...)
+  trf::TransformVariables.TransformTuple;
+  kwargs...)
 
   _cs = max(1, div(8, length(vrandeffsorth)))
 
@@ -707,8 +710,8 @@ function _∂ℓᵐ∂θ(
     subject,
     TransformVariables.transform(trf, _vparam),
     vrandeffsorth,
-    approx,
-    args...; kwargs...
+    approx;
+    kwargs...
   )
   cs = min(length(vparam), _cs)
   cfg_∂ℓᵐ∂θ = ForwardDiff.GradientConfig(_f_∂ℓᵐ∂θ, vparam, ForwardDiff.Chunk{cs}())
@@ -720,8 +723,8 @@ function _∂ℓᵐ∂η(
   subject::Subject,
   param::NamedTuple,
   vrandeffsorth::AbstractVector,
-  approx::LikelihoodApproximation,
-  args...; kwargs...)
+  approx::LikelihoodApproximation;
+  kwargs...)
 
   _cs = max(1, div(8, length(vrandeffsorth)))
 
@@ -730,8 +733,8 @@ function _∂ℓᵐ∂η(
     subject,
     param,
     vηorth,
-    approx,
-    args...; kwargs...
+    approx;
+    kwargs...
   )
   cs = min(length(vrandeffsorth), _cs)
   cfg_∂ℓᵐ∂η = ForwardDiff.GradientConfig(_f_∂ℓᵐ∂η, vrandeffsorth, ForwardDiff.Chunk{cs}())
@@ -742,15 +745,15 @@ function _∂²ℓᵖ∂η²(
   model::PumasModel,
   subject::Subject,
   param::NamedTuple,
-  vrandeffsorth::AbstractVector,
-  args...; kwargs...)
+  vrandeffsorth::AbstractVector;
+  kwargs...)
 
   _f_∂²ℓᵖ∂η² = vηorth -> _penalized_conditional_nll(
     model,
     subject,
     param,
-    vηorth,
-    args...; kwargs...)
+    vηorth;
+    kwargs...)
 
   cs = min(length(vrandeffsorth), 3)
   cfg_∂²ℓᵖ∂η² = ForwardDiff.HessianConfig(_f_∂²ℓᵖ∂η², vrandeffsorth, ForwardDiff.Chunk{cs}())
@@ -762,8 +765,8 @@ function _∂²ℓᵖ∂η∂θ(
   subject::Subject,
   vparam::AbstractVector,
   vrandeffsorth::AbstractVector,
-  trf::TransformVariables.TransformTuple,
-  args...; kwargs...)
+  trf::TransformVariables.TransformTuple;
+  kwargs...)
 
   csθ = min(length(vparam), 3)
   csη = min(length(vrandeffsorth), 3)
@@ -776,8 +779,8 @@ function _∂²ℓᵖ∂η∂θ(
         model,
         subject,
         _param,
-        vηorth,
-        args...; kwargs...)
+        vηorth;
+        kwargs...)
 
     cfg_∂ℓᵖ∂η = ForwardDiff.GradientConfig(_f_∂ℓᵖ∂η, vrandeffsorth, ForwardDiff.Chunk{csη}())
 
@@ -799,18 +802,18 @@ function _marginal_nll_gradient!(
   vparam::AbstractVector,
   vrandeffsorth::AbstractVector,
   approx::Union{FOCE,FOCEI,LaplaceI},
-  trf::TransformVariables.TransformTuple,
-  args...; kwargs...)
+  trf::TransformVariables.TransformTuple;
+  kwargs...)
 
   param = TransformVariables.transform(trf, vparam)
 
-  ∂ℓᵐ∂θ = _∂ℓᵐ∂θ(model, subject, vparam, vrandeffsorth, approx, trf, args...; kwargs...)
+  ∂ℓᵐ∂θ = _∂ℓᵐ∂θ(model, subject, vparam, vrandeffsorth, approx, trf; kwargs...)
 
-  ∂ℓᵐ∂η = _∂ℓᵐ∂η(model, subject, param, vrandeffsorth, approx, args...; kwargs...)
+  ∂ℓᵐ∂η = _∂ℓᵐ∂η(model, subject, param, vrandeffsorth, approx; kwargs...)
 
-  ∂²ℓᵖ∂η² = _∂²ℓᵖ∂η²(model, subject, param, vrandeffsorth, args...; kwargs...)
+  ∂²ℓᵖ∂η² = _∂²ℓᵖ∂η²(model, subject, param, vrandeffsorth; kwargs...)
 
-  ∂²ℓᵖ∂η∂θ = _∂²ℓᵖ∂η∂θ(model, subject, vparam, vrandeffsorth, trf, args...; kwargs...)
+  ∂²ℓᵖ∂η∂θ = _∂²ℓᵖ∂η∂θ(model, subject, vparam, vrandeffsorth, trf; kwargs...)
 
   dηdθ = -∂²ℓᵖ∂η² \ ∂²ℓᵖ∂η∂θ
 
@@ -844,8 +847,8 @@ function _marginal_nll_gradient!(
   vparam::AbstractVector,
   vrandeffsorth::AbstractVector,
   approx::Union{NaivePooled,FO,FOI,LLQuad},
-  trf::TransformVariables.TransformTuple,
-  args...; kwargs...
+  trf::TransformVariables.TransformTuple;
+  kwargs...
   )
 
   # Compute first order derivatives of the marginal likelihood function
@@ -856,8 +859,8 @@ function _marginal_nll_gradient!(
       subject,
       TransformVariables.transform(trf, _vparam),
       vrandeffsorth,
-      approx,
-      args...; kwargs...
+      approx;
+      kwargs...
     ),
     vparam,
   )
@@ -875,8 +878,8 @@ function _marginal_nll_gradient_threads!(
   vparam::AbstractVector,
   vvrandeffsorth::AbstractVector,
   approx::LikelihoodApproximation,
-  trf::TransformVariables.TransformTuple,
-  args...; kwargs...)
+  trf::TransformVariables.TransformTuple;
+  kwargs...)
 
   Gs = similar(g, (length(g), length(population)))
 
@@ -891,8 +894,7 @@ function _marginal_nll_gradient_threads!(
       copy(vparam), # DiffEqDiffTools is not threadsafe. It mutates the input parameter vector to avoid allocation
       vrandeffsorth,
       approx,
-      trf,
-      args...;
+      trf;
       kwargs...
     )
   end
@@ -911,8 +913,8 @@ function _marginal_nll_gradient!(
   vparam::AbstractVector,
   vvrandeffsorth::AbstractVector,
   approx::LikelihoodApproximation,
-  trf::TransformVariables.TransformTuple,
-  args...; kwargs...)
+  trf::TransformVariables.TransformTuple;
+  kwargs...)
 
   # Zero the gradient
   fill!(g, 0)
@@ -928,8 +930,8 @@ function _marginal_nll_gradient!(
       vparam,
       vrandeffsorth,
       approx,
-      trf,
-      args...; kwargs...)
+      trf;
+      kwargs...)
     g .+= _g
   end
 
@@ -940,8 +942,7 @@ function _derived_vηorth_gradient(
   m::PumasModel,
   subject::Subject,
   param::NamedTuple,
-  vrandeffsorth::AbstractVector,
-  args...;
+  vrandeffsorth::AbstractVector;
   obstimes=nothing, # you're not allowed to change this, so we catch it
   kwargs...)
   # Costruct closure for calling conditional_nll_ext as a function
@@ -949,7 +950,7 @@ function _derived_vηorth_gradient(
   # tagging system to work properly
   _transform_derived =  vηorth -> begin
     randeffs = TransformVariables.transform(totransform(m.random(param)), vηorth)
-    return _derived(m, subject, param, randeffs, args...; obstimes=subject.time, kwargs...)
+    return _derived(m, subject, param, randeffs; obstimes=subject.time, kwargs...)
   end
   # Construct vector of dual numbers for the random effects to track the partial derivatives
   cfg = ForwardDiff.JacobianConfig(_transform_derived, vrandeffsorth, ForwardDiff.Chunk{length(vrandeffsorth)}())
@@ -963,9 +964,9 @@ end
 function _mean_derived_vηorth_jacobian(m::PumasModel,
                                        subject::Subject,
                                        param::NamedTuple,
-                                       vrandeffsorth::AbstractVector,
-                                       args...; kwargs...)
-  dual_derived = _derived_vηorth_gradient(m ,subject, param, vrandeffsorth, args...; kwargs...)
+                                       vrandeffsorth::AbstractVector;
+                                       kwargs...)
+  dual_derived = _derived_vηorth_gradient(m ,subject, param, vrandeffsorth; kwargs...)
   # Loop through the distribution vector and extract derivative information
   nt = length(first(dual_derived))
   nrandeffs = length(vrandeffsorth)
@@ -986,12 +987,12 @@ function _∂²l∂η²(m::PumasModel,
                  subject::Subject,
                  param::NamedTuple,
                  vrandeffsorth::AbstractVector,
-                 approx::Union{FO,FOI,FOCE,FOCEI},
-                 args...; kwargs...)
+                 approx::Union{FO,FOI,FOCE,FOCEI};
+                 kwargs...)
 
   # Compute the conditional likelihood and the conditional distributions of the dependent variable
   # per observation while tracking partial derivatives of the random effects
-  _derived_dist = _derived_vηorth_gradient(m, subject, param, vrandeffsorth, args...; kwargs...)
+  _derived_dist = _derived_vηorth_gradient(m, subject, param, vrandeffsorth; kwargs...)
 
   if any(d->d isa Nothing, _derived_dist)
     return (Inf, nothing, nothing)
@@ -1182,15 +1183,14 @@ function _∂²l∂η²(m::PumasModel,
                  subject::Subject,
                  param::NamedTuple,
                  vrandeffsorth::AbstractVector,
-                 ::LaplaceI,
-                 args...; kwargs...)
+                 ::LaplaceI;
+                 kwargs...)
 
   _f_ = vηorth -> conditional_nll(
       m,
       subject,
       param,
-      TransformVariables.transform(totransform(m.random(param)), vηorth),
-      args...; kwargs...)
+      TransformVariables.transform(totransform(m.random(param)), vηorth); kwargs...)
 
   # Initialize HessianResult for computing Hessian, gradient and value of negative loglikelihood in one go
   T = promote_type(numtype(param), numtype(vrandeffsorth))
@@ -1217,22 +1217,21 @@ _∂²l∂η²(dv_name::Symbol,
         subject::Subject,
         param::NamedTuple,
         vrandeffsorth::AbstractVector,
-        approx::LikelihoodApproximation,
-        args...; kwargs...) = throw(ArgumentError("Distribution is current not supported for the $approx approximation. Please consider a different likelihood approximation."))
+        approx::LikelihoodApproximation;
+        kwargs...) = throw(ArgumentError("Distribution is current not supported for the $approx approximation. Please consider a different likelihood approximation."))
 _∂²l∂η²(dv_d::Any,
         obsdv,
         approx::LikelihoodApproximation) = throw(ArgumentError("Distribution is current not supported for the $approx approximation. Please consider a different likelihood approximation."))
 
 # Fitting methods
-struct FittedPumasModel{T1<:PumasModel,T2<:Population,T3,T4<:LikelihoodApproximation, T5, T6, T7, T8}
+struct FittedPumasModel{T1<:PumasModel,T2<:Population,T3,T4<:LikelihoodApproximation, T5, T6, T7}
   model::T1
   data::T2
   optim::T3
   approx::T4
   vvrandeffsorth::T5
-  args::T6
-  kwargs::T7
-  fixedparamset::T8
+  kwargs::T6
+  fixedparamset::T7
 end
 simobs(fpm::FittedPumasModel) = simobs(fpm.model, fpm.data, coef(fpm), empirical_bayes(fpm); fpm.kwargs...)
 
@@ -1241,7 +1240,7 @@ struct DefaultOptimizeFN{A,K}
   kwargs::K
 end
 
-DefaultOptimizeFN(alg = nothing;kwargs...) =
+DefaultOptimizeFN(alg = nothing; kwargs...) =
   DefaultOptimizeFN(alg, (
     show_trace=true, # Print progress
     store_trace=true,
@@ -1317,8 +1316,7 @@ function _update_ebes_and_evaluate_marginal_nll!(
   param::NamedTuple,
   vrandeffsorth::Vector,
   vrandeffsorth_tmp::Vector,
-  approx::Union{FO,NaivePooled,LLQuad},
-  args...;
+  approx::Union{FO,NaivePooled,LLQuad};
   kwargs...
 )
 
@@ -1327,8 +1325,7 @@ function _update_ebes_and_evaluate_marginal_nll!(
     subject,
     param,
     vrandeffsorth_tmp,
-    approx,
-    args...;
+    approx;
     kwargs...
   )
 end
@@ -1339,8 +1336,7 @@ function _update_ebes_and_evaluate_marginal_nll!(
   param::NamedTuple,
   vrandeffsorth::Vector,
   vrandeffsorth_tmp::Vector,
-  approx::Union{FOCE,FOCEI,LaplaceI},
-  args...;
+  approx::Union{FOCE,FOCEI,LaplaceI};
   kwargs...
 )
 
@@ -1350,8 +1346,7 @@ function _update_ebes_and_evaluate_marginal_nll!(
     m,
     subject,
     param,
-    approx,
-    args...;
+    approx;
     kwargs...
   )
 
@@ -1360,8 +1355,7 @@ function _update_ebes_and_evaluate_marginal_nll!(
     subject,
     param,
     vrandeffsorth_tmp,
-    approx,
-    args...;
+    approx;
     kwargs...
   )
 end
@@ -1375,8 +1369,7 @@ function _update_ebes_and_evaluate_marginal_nll_threads!(
   param::NamedTuple,
   vvrandeffs::Vector,
   vvrandeffs_tmp::Vector,
-  approx::LikelihoodApproximation,
-  args...;
+  approx::LikelihoodApproximation;
   kwargs...)
 
   # Evaluate the first subject to determine the elementtype of the likelihood values
@@ -1387,8 +1380,7 @@ function _update_ebes_and_evaluate_marginal_nll_threads!(
     param,
     vvrandeffs[1],
     vvrandeffs_tmp[1],
-    approx,
-    args...;
+    approx;
     kwargs...
   )
 
@@ -1413,8 +1405,7 @@ function _update_ebes_and_evaluate_marginal_nll_threads!(
       param,
       vrandeffs,
       vrandeffs_tmp,
-      approx,
-      args...;
+      approx;
       kwargs...
     )
 
@@ -1436,8 +1427,7 @@ function _update_ebes_and_evaluate_marginal_nll!(
   param::NamedTuple,
   vvrandeffs::Vector,
   vvrandeffs_tmp::Vector,
-  approx::LikelihoodApproximation,
-  args...;
+  approx::LikelihoodApproximation;
   kwargs...)
 
   return sum(zip(population, vvrandeffs, vvrandeffs_tmp)) do (subject, vrandeffs, vrandeffs_tmp)
@@ -1447,8 +1437,7 @@ function _update_ebes_and_evaluate_marginal_nll!(
       param,
       vrandeffs,
       vrandeffs_tmp,
-      approx,
-      args...;
+      approx;
       kwargs...
     )
   end
@@ -1477,8 +1466,7 @@ function _check_zero_gradient(
   vparam::AbstractVector,
   vvrandeffsorth::AbstractVector,
   approx::LikelihoodApproximation,
-  fixedtrf,
-  args...;
+  fixedtrf;
   ensemblealg=ensemblealg,
   kwargs...)
 
@@ -1492,8 +1480,8 @@ function _check_zero_gradient(
       vparam,
       vvrandeffsorth,
       approx,
-      fixedtrf,
-      args...; kwargs...)
+      fixedtrf;
+      kwargs...)
   elseif ensemblealg isa EnsembleThreads
     _marginal_nll_gradient_threads!(
       g,
@@ -1502,8 +1490,8 @@ function _check_zero_gradient(
       vparam,
       vvrandeffsorth,
       approx,
-      fixedtrf,
-      args...; kwargs...)
+      fixedtrf;
+      kwargs...)
   else
     throw(ArgumentError("$ensemblealg not implemented for this method"))
   end
@@ -1511,7 +1499,7 @@ function _check_zero_gradient(
   for (i, gᵢ) in enumerate(g)
     if iszero(gᵢ)
       j = 0
-      for (k, v) in pairs(totransform(m.param).transformations)
+      for (k, v) in pairs(fixedtrf.transformations)
         d = TransformVariables.dimension(v)
         j += d
         if i <= j
@@ -1529,8 +1517,7 @@ end
 function Distributions.fit(m::PumasModel,
                            population::Population,
                            param::NamedTuple,
-                           approx::LikelihoodApproximation,
-                           args...;
+                           approx::LikelihoodApproximation;
                            # optimize_fn should take the arguments cost, p, and callback where cost is a
                            # NLSolversBase.OnceDifferentiable, p is a Vector, and cl is Function. Hence,
                            # optimize_fn should evaluate cost with the NLSolversBase.value and
@@ -1579,7 +1566,7 @@ function Distributions.fit(m::PumasModel,
 
   # Check identification issue by erroring on zero elements in the gradient
   if checkidentification
-    _check_zero_gradient(m, population, vparam, vvrandeffsorth_tmp, approx, fixedtrf, args...; ensemblealg=ensemblealg, kwargs...)
+    _check_zero_gradient(m, population, vparam, vvrandeffsorth_tmp, approx, fixedtrf; ensemblealg=ensemblealg, kwargs...)
   end
 
   # Define cost function for the optimization
@@ -1599,8 +1586,7 @@ function Distributions.fit(m::PumasModel,
           _param,
           vvrandeffsorth,
           vvrandeffsorth_tmp,
-          approx,
-          args...;
+          approx;
           kwargs...)
 
         # Update score
@@ -1612,8 +1598,8 @@ function Distributions.fit(m::PumasModel,
             _vparam,
             vvrandeffsorth_tmp,
             approx,
-            fixedtrf,
-            args...; kwargs...)
+            fixedtrf;
+            kwargs...)
         end
 
       elseif ensemblealg isa EnsembleThreads
@@ -1623,8 +1609,7 @@ function Distributions.fit(m::PumasModel,
           _param,
           vvrandeffsorth,
           vvrandeffsorth_tmp,
-          approx,
-          args...;
+          approx;
           kwargs...)
 
         # Update score
@@ -1636,8 +1621,8 @@ function Distributions.fit(m::PumasModel,
             _vparam,
             vvrandeffsorth_tmp,
             approx,
-            fixedtrf,
-            args...; kwargs...)
+            fixedtrf;
+            kwargs...)
         end
       end
 
@@ -1653,33 +1638,31 @@ function Distributions.fit(m::PumasModel,
 
   # Update the random effects after optimization
   for (vrandefforths, subject) in zip(vvrandeffsorth, population)
-    _orth_empirical_bayes!(vrandefforths, m, subject, TransformVariables.transform(fixedtrf, opt_minimizer(o)), approx, args...; kwargs...)
+    _orth_empirical_bayes!(vrandefforths, m, subject, TransformVariables.transform(fixedtrf, opt_minimizer(o)), approx; kwargs...)
   end
 
   explicit_kwargs = (; optimize_fn=optimize_fn, constantcoef=constantcoef, omegas=omegas, ensemblealg=ensemblealg)
   allkwargs = merge(explicit_kwargs, kwargs)
-  return FittedPumasModel(m, population, o, approx, vvrandeffsorth, args, allkwargs, fixedparamset)
+  return FittedPumasModel(m, population, o, approx, vvrandeffsorth, allkwargs, fixedparamset)
 end
 
 function Distributions.fit(m::PumasModel,
                            subject::Subject,
-                           param::NamedTuple,
-                           args...;
+                           param::NamedTuple;
                            kwargs...)
-  return fit(m, [subject,], param, NaivePooled(), args...; kwargs...)
+  return fit(m, [subject,], param, NaivePooled(); kwargs...)
 end
 function Distributions.fit(m::PumasModel,
                            population::Population,
                            param::NamedTuple,
-                           ::TwoStage,
-                           args...;
+                           ::TwoStage;
                            kwargs...)
-  return map(x->fit(m, [x,], param, NaivePooled(), args...; checkidentification=false, kwargs...), population)
+  return map(x->fit(m, [x,], param, NaivePooled(); checkidentification=false, kwargs...), population)
 end
 
-# error handling for fit(model, subject, param, args...; kwargs...)
+# error handling for fit(model, subject, param; kwargs...)
 function Distributions.fit(model::PumasModel, subject::Subject,
-             param::NamedTuple, approx::LikelihoodApproximation, args...; kwargs...)
+             param::NamedTuple, approx::LikelihoodApproximation; kwargs...)
   throw(ArgumentError("Calling fit on a single subject is not allowed with a likelihood approximation method specified."))
 end
 
@@ -1706,8 +1689,8 @@ marginal_nll(fpm::FittedPumasModel) = _marginal_nll(
   fpm.data,
   coef(fpm),
   fpm.vvrandeffsorth,
-  fpm.approx,
-  fpm.args...; fpm.kwargs...)
+  fpm.approx;
+  fpm.kwargs...)
 
 """
     deviance(fpm::FittedPumasModel)
@@ -1720,12 +1703,11 @@ StatsBase.deviance(fpm::FittedPumasModel) = _deviance(
   fpm.data,
   coef(fpm),
   fpm.vvrandeffsorth,
-  fpm.approx,
-  fpm.args...; fpm.kwargs...)
+  fpm.approx;
+  fpm.kwargs...)
 
 function _observed_information(f::FittedPumasModel,
-                                ::Val{Score},
-                               args...;
+                                ::Val{Score};
                                # We explicitly use reltol to compute the right step size for finite difference based gradient
                                # The tolerance has to be stricter when computing the covariance than during estimation
                                reltol=abs2(DEFAULT_ESTIMATION_RELTOL),
@@ -1763,7 +1745,7 @@ function _observed_information(f::FittedPumasModel,
           vrandeffsorth     = []
         end
       else
-        vrandeffsorth = _orth_empirical_bayes(f.model, subject, _param, f.approx, args...; kwargs...)
+        vrandeffsorth = _orth_empirical_bayes(f.model, subject, _param, f.approx; kwargs...)
       end
 
       _marginal_nll_gradient!(
@@ -1773,8 +1755,7 @@ function _observed_information(f::FittedPumasModel,
         _vparam,
         vrandeffsorth,
         f.approx,
-        trf,
-        args...;
+        trf;
         reltol=reltol,
         fdtype=Val{:central}(),
         fdrelstep=fdrelstep_hessian,
@@ -1804,7 +1785,7 @@ function _observed_information(f::FittedPumasModel,
           vrandeffsorth     = []
         end
       else
-        vrandeffsorth = _orth_empirical_bayes(f.model, subject, coef(f), f.approx, args...; kwargs...)
+        vrandeffsorth = _orth_empirical_bayes(f.model, subject, coef(f), f.approx; kwargs...)
       end
       _marginal_nll_gradient!(
         g,
@@ -1813,8 +1794,7 @@ function _observed_information(f::FittedPumasModel,
         vparam,
         vrandeffsorth,
         f.approx,
-        trf,
-        args...;
+        trf;
         reltol=reltol,
         fdtype=Val{:central}(),
         fdrelstep=fdrelstep_score,
@@ -1833,8 +1813,8 @@ function _expected_information(m::PumasModel,
                                subject::Subject,
                                param::NamedTuple,
                                vrandeffsorth::AbstractVector,
-                               ::FO,
-                               args...; kwargs...)
+                               ::FO;
+                               kwargs...)
 
   trf = toidentitytransform(m.param)
   vparam = TransformVariables.inverse(trf, param)
@@ -1842,7 +1822,7 @@ function _expected_information(m::PumasModel,
   # Costruct closure for calling _derived as a function
   # of a random effects vector. This makes it possible for ForwardDiff's
   # tagging system to work properly
-  __E_and_V = _param -> _E_and_V(m, subject, TransformVariables.transform(trf, _param), vrandeffsorth, FO(), args...; kwargs...)
+  __E_and_V = _param -> _E_and_V(m, subject, TransformVariables.transform(trf, _param), vrandeffsorth, FO(); kwargs...)
 
   # Construct vector of dual numbers for the population parameters to track the partial derivatives
   cfg = ForwardDiff.JacobianConfig(__E_and_V, vparam, ForwardDiff.Chunk{length(vparam)}())
@@ -1874,8 +1854,7 @@ function _expected_information_fd(
   subject::Subject,
   param::NamedTuple,
   vrandeffsorth::AbstractVector,
-  ::FO,
-  args...;
+  ::FO;
   blockdiag=true,
   reltol=DEFAULT_ESTIMATION_RELTOL,
   fdtype=Val{:central}(),
@@ -1893,8 +1872,8 @@ function _expected_information_fd(
     subject,
     TransformVariables.transform(trf, _param),
     vrandeffsorth,
-    FO(),
-    args...; kwargs...)
+    FO();
+    kwargs...)
 
   E, V = __E_and_V(vparam)
 
@@ -1941,9 +1920,9 @@ function StatsBase.informationmatrix(f::FittedPumasModel; expected::Bool=true)
   param         = coef(f)
   vrandeffsorth = f.vvrandeffsorth
   if expected
-    return sum(_expected_information(model, data[i], param, vrandeffsorth[i], f.approx, f.args...; f.kwargs...) for i in 1:length(data))
+    return sum(_expected_information(model, data[i], param, vrandeffsorth[i], f.approx; f.kwargs...) for i in 1:length(data))
   else
-    return first(_observed_information(f, Val(false), args...; kwargs...))
+    return first(_observed_information(f, Val(false); kwargs...))
   end
 end
 
@@ -1958,7 +1937,7 @@ Compute the covariance matrix of the population parameters
 function StatsBase.vcov(f::FittedPumasModel; rethrow_error=false)
   try
     # Compute the observed information based on the Hessian (H) and the product of the outer scores (S)
-    H, S = _observed_information(f, Val(true), f.args...; f.kwargs...)
+    H, S = _observed_information(f, Val(true); f.kwargs...)
 
     # Use generialized eigenvalue decomposition to compute inv(H)*S*inv(H)
     F = eigen(Symmetric(S), Symmetric(H))
@@ -1997,16 +1976,16 @@ function _E_and_V(model::PumasModel,
                   subject::Subject,
                   param::NamedTuple,
                   vrandeffsorth::AbstractVector,
-                  ::FO,
-                  args...; kwargs...)
+                  ::FO;
+                  kwargs...)
 
   randeffstransform = totransform(model.random(param))
   dist = _derived(
     model,
     subject,
     param,
-    TransformVariables.transform(randeffstransform, vrandeffsorth),
-    args...; kwargs...)
+    TransformVariables.transform(randeffstransform, vrandeffsorth);
+    kwargs...)
 
   _names = keys(subject.observations)
 
@@ -2016,8 +1995,8 @@ function _E_and_V(model::PumasModel,
     model,
     subject,
     param,
-    vrandeffsorth,
-    args...; kwargs...)
+    vrandeffsorth;
+    kwargs...)
 
   FF = vcat([F[_name] for _name in _names]...)
   dd = vcat([var.(dist[_name]) for _name in _names]...)
@@ -2037,7 +2016,7 @@ returned as a vector of `MvNormal`s.
 """
 function empirical_bayes_dist(fpm::FittedPumasModel)
   map(zip(fpm.data, fpm.vvrandeffsorth)) do (subject, vrandeffsorth)
-      _empirical_bayes_dist(fpm.model, subject, coef(fpm), vrandeffsorth, fpm.approx, fpm.args...; fpm.kwargs...)
+      _empirical_bayes_dist(fpm.model, subject, coef(fpm), vrandeffsorth, fpm.approx; fpm.kwargs...)
   end
 end
 
