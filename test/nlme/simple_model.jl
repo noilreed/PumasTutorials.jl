@@ -156,6 +156,11 @@ Number of subjects:                       10
       end
     end
 
-    @test_throws ErrorException("gradient of θᵣ is exactly zero. This indicates that θᵣ isn't identified.") fit(unidentified_model, data, init_param(unidentified_model), Pumas.FO())
+    @test_throws ErrorException("gradient of θᵣ is exactly zero. This indicates that θᵣ isn't identified.") fit(
+        unidentified_model,
+        data,
+        init_param(unidentified_model),
+        Pumas.FO(),
+        constantcoef=(θ=[0.5],))
   end
 end# testset

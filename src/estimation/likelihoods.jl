@@ -1511,7 +1511,7 @@ function _check_zero_gradient(
   for (i, gᵢ) in enumerate(g)
     if iszero(gᵢ)
       j = 0
-      for (k, v) in pairs(totransform(m.param).transformations)
+      for (k, v) in pairs(fixedtrf.transformations)
         d = TransformVariables.dimension(v)
         j += d
         if i <= j
