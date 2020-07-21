@@ -1,7 +1,6 @@
 """
 DiffEqSensitivity.gsa(model, population, params, method,
-                    vars, p_range_low, p_range_high,
-                    args...; kwargs...)
+                    vars, p_range_low, p_range_high; kwargs...)
 
 Function to perform global sensitivty analysis
 
@@ -20,9 +19,15 @@ For method specific arguments that are passed with the method constructor you ca
 [DiffEqSensitivity.jl](https://docs.sciml.ai/dev/analysis/global_sensitivity/#gsa-1) documentation.
 
 """
-function DiffEqSensitivity.gsa(m::PumasModel, subject::Subject, params::NamedTuple, method::DiffEqSensitivity.GSAMethod, vars = [:dv],
-                                p_range_low=NamedTuple{keys(params)}([par.*0.05 for par in values(params)]),
-                                p_range_high=NamedTuple{keys(params)}([par.*1.95 for par in values(params)]), args...; kwargs...)
+function DiffEqSensitivity.gsa(
+    m::PumasModel,
+    subject::Subject,
+    params::NamedTuple,
+    method::DiffEqSensitivity.GSAMethod,
+    vars = [:dv],
+    p_range_low=NamedTuple{keys(params)}([par.*0.05 for par in values(params)]),
+    p_range_high=NamedTuple{keys(params)}([par.*1.95 for par in values(params)]);
+    kwargs...)
 
     vlowparam = values(p_range_low)
     vhighparam = values(p_range_high)
@@ -30,12 +35,12 @@ function DiffEqSensitivity.gsa(m::PumasModel, subject::Subject, params::NamedTup
     symparsnotsa = setdiff(keys(params), keys(p_range_low))
     par_vals = [params[sym] for sym in symparsnotsa]
 
-    sim_ = simobs(m, subject, params, args...; kwargs...)
+    sim_ = simobs(m, subject, params; kwargs...)
     length_vars = [length(sim_.observations[key]) for key in vars]
 
     function f(p)
         param = NamedTuple{Tuple(vcat(symparsnotsa...,keys(p_range_low)...))}(vcat(par_vals..., p...))
-        sim = simobs(m, subject, param, args...; kwargs...)
+        sim = simobs(m, subject, param; kwargs...)
         collect(Iterators.flatten([sim.observations[key] for key in vars]))
     end
 
@@ -46,7 +51,7 @@ end
 
 function DiffEqSensitivity.gsa(m::PumasModel, population::Population, params::NamedTuple, method::DiffEqSensitivity.GSAMethod, vars = [:dv],
                                 p_range_low=NamedTuple{keys(params)}([par.*0.05 for par in values(params)]),
-                                p_range_high=NamedTuple{keys(params)}([par.*1.95 for par in values(params)]), args...; kwargs...)
+                                p_range_high=NamedTuple{keys(params)}([par.*1.95 for par in values(params)]); kwargs...)
 
     vlowparam = values(p_range_low)
     vhighparam = values(p_range_high)
@@ -54,12 +59,12 @@ function DiffEqSensitivity.gsa(m::PumasModel, population::Population, params::Na
     symparsnotsa = setdiff(keys(params), keys(p_range_low))
     par_vals = [params[sym] for sym in symparsnotsa]
 
-    sim_ = simobs(m, population, params, args...; kwargs...)
+    sim_ = simobs(m, population, params; kwargs...)
     length_vars = [length(sim_[1].observations[key]) for key in vars]
 
     function f(p)
         param = NamedTuple{Tuple(vcat(symparsnotsa...,keys(p_range_low)...))}(vcat(par_vals..., p...))
-        sim = simobs(m, population, param, args...; kwargs...)
+        sim = simobs(m, population, param; kwargs...)
         mean([collect(Iterators.flatten([sim[i].observations[key] for key in vars])) for i in 1:length(sim)])
     end
 

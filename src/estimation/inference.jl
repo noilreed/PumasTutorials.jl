@@ -33,7 +33,7 @@ based on the fitted model `fpm`.
 """
 function infer(fpm::FittedPumasModel; level=0.95, rethrow_error=false)
   print("Calculating: variance-covariance matrix")
-  _vcov = vcov(fpm, fpm.args...; rethrow_error=rethrow_error)
+  _vcov = vcov(fpm; rethrow_error=rethrow_error)
   if _vcov isa AbstractMatrix
     println(". Done.")
   else
@@ -48,7 +48,7 @@ end
 Perform bootstrapping by resampling the `Subject`s from the `Population` stored in `fpm`. The keyword `samples` is used to control the number of resampled datasets, and by specifying keyword `stratify_by` to be a `Symbol` with the name of a covariate it is possible to stratify by a covariate with a finite number of possible values. The rest of the keyword arguments are passed onto the `fit` function internally.
 """
 function bootstrap(fpm::FittedPumasModel; samples=200, stratify_by=nothing, level=0.95)
-  
+
   # Grab the stored optimize_fn from fit...
   opt_fn = fpm.kwargs[:optimize_fn]
   # ... and force show_trace to be false as async operations mess it up big time
@@ -93,7 +93,7 @@ function bootstrap(model::PumasModel, data::Population, coef, approx::Likelihood
   # Find the indices for the different types of subjects
   populations = [reduce(vcat, [sample(data[strata_values .== strata_unique[idx_s]], count_unique[idx_s]) for idx_s = 1:n_strata]) for n = 1:samples]
 
-  # add distributed 
+  # add distributed
   # fits = pmap(pop->fit(model, pop, coef, approx), populations)
   tasks = map(populations) do (pop)
     Threads.@spawn try_fit(model, pop, coef, approx; kwargs...)
