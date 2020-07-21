@@ -1,5 +1,4 @@
 using LinearAlgebra: Cholesky, copytri!
-import TransformVariables
 using TransformVariables: as, asℝ₊, ∞
 
 struct ElementArrayTransform{T<:TransformVariables.AbstractTransform,N} <: TransformVariables.VectorTransform

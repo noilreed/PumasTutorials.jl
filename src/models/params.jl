@@ -110,20 +110,53 @@ function _veccov(p::ParamSet)
   return hvcat(length(Ωis), Diagonal([Ωis...])...)
 end
 
+"""
+    Constrained
 
+Constrain a `Distribution` within a `Domain`. The most common case is an `MvNormal` constrained within a `VectorDomain`. The only supported method for `Constrained` is `logpdf`. Notice that the result does not represent a probability distribution since the remaining probability mass is not scaled by the mass excluded by the constraints.
+
+# Example
+```jldoctest
+julia> d = Constrained(MvNormal(fill(1.0, 1, 1)), lower=-1, upper=1)
+Constrained{MvNormal{Float64,PDMats.PDMat{Float64,Array{Float64,2}},FillArrays.Zeros{Float64,1,Tuple{Base.OneTo{Int64}}}},VectorDomain{Array{Int64,1},Array{Int64,1},Array{Float64,1}}}(ZeroMeanFullNormal(
+dim: 1
+μ: [0.0]
+Σ: [1.0]
+)
+, VectorDomain{Array{Int64,1},Array{Int64,1},Array{Float64,1}}([-1], [1], [0.0]))
+
+julia> logpdf(d, [ 0])
+-0.9189385332046728
+
+julia> logpdf(d, [-2])
+```
+"""
 struct Constrained{D<:Distribution,M<:Domain}
   dist::D
   domain::M
 end
 
-Constrained(dist::MvNormal; lower=-∞, upper=∞, init=0.0) =
-  Constrained(dist, VectorDomain(length(dist); lower=lower, upper=upper, init=init))
+Constrained(d::MvNormal; lower=-∞, upper=∞, init=0.0) =
+  Constrained(d, VectorDomain(length(d); lower=lower, upper=upper, init=init))
 
 Constrained(dist::ContinuousUnivariateDistribution; lower=-∞, upper=∞, init=0.0) =
   Constrained(dist, RealDomain(; lower=lower, upper=upper, init=init))
 
 Domain(c::Constrained) = c.domain
 
-# obviously wrong, but fine as long as parameters are constant
-# need to enforce this somehow
-Distributions.logpdf(d::Constrained, x) = logpdf(d.dist, x)
+# This doesn't have into account the probability mass outside of the
+# constraints but it shouldn't matter much since this won't affect MCMC
+# sampling which is the primary application for constrained distributions
+function Distributions.logpdf(d::Constrained, x)
+  v = logpdf(d.dist, x)
+  if all(((_x, _l, _u),) -> _l <= _x <= _u, zip(x, d.domain.lower, d.domain.upper))
+    return v
+  else
+    return oftype(v, -Inf)
+  end
+  return v
+end
+
+# Some convenience piracy
+Base.isless(x::Number, ::TransformVariables.Infinity{true}) = x !== Inf
+Base.isless(::TransformVariables.Infinity{false}, x::Number) = x !== -Inf

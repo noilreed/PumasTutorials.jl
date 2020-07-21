@@ -22,7 +22,7 @@ import MCMCChains: Chains
 
 import DiffResults: DiffResult
 
-import DataInterpolations, ExponentialUtilities, Roots
+import DataInterpolations, ExponentialUtilities, Roots, TransformVariables
 
 @reexport using OrdinaryDiffEq, Unitful
 @reexport using Distributions, DataFrames

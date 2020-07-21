@@ -1446,6 +1446,9 @@ end
 function Distributions.fit(m::PumasModel, p::Population, param::NamedTuple; kwargs...)
   throw(ArgumentError("No valid estimation method was provided."))
 end
+function Distributions.fit(m::PumasModel, p::DataFrame, param::NamedTuple, args...; kwargs...)
+  throw(ArgumentError("The second argument to fit was a DataFrame instead of a Population. Please use read_pumas to construct a Population from a DataFrame."))
+end
 
 function _compare_keys(m::PumasModel, param::NamedTuple)
   for modelkey in keys(m.param)
@@ -1540,6 +1543,12 @@ function Distributions.fit(m::PumasModel,
   fixedtrf = totransform(fixedparamset)
   vparam = TransformVariables.inverse(fixedtrf, fixedparam)
 
+  for (k, v) in pairs(m.random(fixedparam).params)
+    if !isa(v, AbstractMvNormal) && !isa(v, Normal)
+      throw(ArgumentError("The element $k from the random block does not follow a normal distribution."))
+    end
+  end
+
   # We'll store the orthogonalized random effects estimate in vvrandeffsorth which allows us to carry the estimates from last
   # iteration and use them as staring values in the next iteration. We also allocate a buffer to store the
   # random effect estimate during an iteration since it might be modified several times during a line search
@@ -1554,6 +1563,9 @@ function Distributions.fit(m::PumasModel,
     vvrandeffsorth_tmp = [copy(vrandefforths) for vrandefforths in vvrandeffsorth]
     cb(state) = false
   else
+    if length(m.random(fixedparam).params) == 0
+      throw(ArgumentError("The likelihood approximation method $approx is not appropriate for models without random effects. Please use Pumas.NaivePooled() instead."))
+    end
     vvrandeffsorth     = [zero(_vecmean(m.random(fixedparam))) for subject in population]
     vvrandeffsorth_tmp = [copy(vrandefforths) for vrandefforths in vvrandeffsorth]
     cb = state -> begin

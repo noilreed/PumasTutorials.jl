@@ -29,6 +29,9 @@ if group == "All" || group == "NLME_ML1"
     @time @safetestset "Analytical solutions" begin
       include("analytical_solutions.jl")
     end
+    @time @safetestset "Input checks" begin
+      include("input_checks.jl")
+    end
   end
 end
 

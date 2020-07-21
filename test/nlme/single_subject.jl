@@ -112,6 +112,10 @@ pmoncl     -0.70079
   fitnp = fit(model, data, param, Pumas.NaivePooled(),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
+  # You should use NaivePooled if no random effects are present.
+  @test_throws ArgumentError fit(model, data, param, Pumas.FOCEI())
+
+
 @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(fitnp)) ==
 """Asymptotic inference results
 

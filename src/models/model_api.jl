@@ -93,6 +93,9 @@ function DiffEqBase.solve(m::PumasModel, subject::Subject,
   solve(prob,args...;alg=alg,kwargs...)
 end
 
+function DiffEqBase.solve(m::PumasModel, pop::DataFrame, args...;kwargs...)
+  throw(ArgumentError("The second argument to solve was a DataFrame instead of a Population. Please use read_pumas to construct a Population from a DataFrame."))
+end
 function DiffEqBase.solve(m::PumasModel, pop::Population,
                           param = init_param(m),
                           randeffs = nothing,
@@ -357,6 +360,9 @@ function simobs(m::PumasModel, subject::Subject,
   return _simobs(m, RepeatedVector([subject], length(param)), param, randeffs, args...; kwargs...)
 end
 
+function simobs(m::PumasModel, pop::DataFrame, args...;kwargs...)
+  throw(ArgumentError("The second argument to simobs was a DataFrame instead of a Population. Please use read_pumas to construct a Population from a DataFrame."))
+end
 function simobs(m::PumasModel, pop::Population,
                 param::NamedTuple = init_param(m),
                 randeffs = [sample_randeffs(m, param) for i in 1:length(pop)],
