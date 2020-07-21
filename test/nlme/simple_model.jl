@@ -31,6 +31,34 @@ using Pumas
     end
   end
 
+  mdsl1_nofitrandom = @model begin
+    @param begin
+      θ ∈ VectorDomain(1, init=[0.5])
+      Ω ∈ PDiagDomain(init=[0.04])
+      Σ ∈ RealDomain(lower=0.0, upper=1.0, init=0.1)
+    end
+
+    @random begin
+      η ~ Beta(0.1,0.9)
+    end
+
+    @pre begin
+      CL = θ[1] * exp(η[1])
+      Vc = 1.0
+    end
+
+    @vars begin
+      conc = Central / Vc
+    end
+
+    @dynamics Central1
+
+    @derived begin
+      dv ~ @. Normal(conc,conc*sqrt(Σ)+eps())
+    end
+  end
+
+
   param = init_param(mdsl1)
 
   for (ηstar, dt) in zip([-0.114654,0.0350263,-0.024196,-0.0870518,0.0750881,0.059033,-0.114679,-0.023992,-0.0528146,-0.00185361], data)
@@ -44,6 +72,9 @@ using Pumas
   @test deviance(mdsl1, data, param, Pumas.FOCEI())     ≈ 56.410938825140313 rtol=1e-6
   @test deviance(mdsl1, data, param, Pumas.LaplaceI())  ≈ 56.810343602063618 rtol=1e-6
   @test deviance(mdsl1, data, param, Pumas.LLQuad()) ≈ 56.92491372848633  rtol=1e-6 #regression test
+
+  # Cannot fit a model with Beta random effects
+  @test_throws ArgumentError fit(mdsl1_nofitrandom, data, param, Pumas.FOCEI())
 
   ft = fit(mdsl1, data, param, Pumas.FOCEI(); constantcoef=(Ω=Diagonal([0.04]), Σ=0.1),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
