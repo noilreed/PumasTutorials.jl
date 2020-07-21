@@ -18,7 +18,6 @@ import TransformVariables
 
   pd = ParamSet((θ = Constrained(MvNormal([1.0 0.2; 0.2 1.0]), lower=-2.0),
                  Ω = InverseWishart(13.0, [1.0 0.2; 0.2 1.0])))
-
   td = Pumas.totransform(pd)
   @test TransformVariables.dimension(td) == 5
   ud = TransformVariables.transform(td, zeros(5))
@@ -33,5 +32,23 @@ import TransformVariables
     @test (d.lower...,) == (0.0, 2.0)
     @test (d.upper...,) == (10.0, 4.0)
     @test (d.init...,)  == (2, 2)
+  end
+
+  @testset "Constrained should constrain" begin
+    d = Constrained(MvNormal(fill(1.0, 1, 1)))
+    @test logpdf(d, [0]) ≈ -0.9189385332046728
+
+    d = Constrained(MvNormal(fill(1.0, 1, 1)), lower=-1)
+    @test logpdf(d, [ 0]) ≈ -0.9189385332046728
+    @test logpdf(d, [-2]) ≈ -Inf
+
+    d = Constrained(MvNormal(fill(1.0, 1, 1)), upper=1)
+    @test logpdf(d, [0]) ≈ -0.9189385332046728
+    @test logpdf(d, [2]) ≈ -Inf
+
+    d = Constrained(MvNormal(fill(1.0, 1, 1)), lower=-1, upper=1)
+    @test logpdf(d, [ 0]) ≈ -0.9189385332046728
+    @test logpdf(d, [-2]) ≈ -Inf
+    @test logpdf(d, [ 2]) ≈ -Inf
   end
 end
