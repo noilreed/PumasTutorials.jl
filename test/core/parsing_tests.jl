@@ -353,5 +353,5 @@ end
   sim = simobs(pk_13, sub, par, obstimes=[2, 5, 10, 15, 20, 25, 30, 33, 35, 37, 40, 45, 50, 60, 70, 90, 110, 120, 150])
   # Test that dff is constructed by converting obstimes to floats internally
   ddf = DataFrame(sim)
-  @test eltype(dff.time) == Float64
+  @test eltype(ddf.time) == Float64
 end
