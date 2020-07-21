@@ -560,6 +560,7 @@ function DataFrames.DataFrame(subject::Subject; include_covariates=true, include
   end
   # Generate the name for the dependent variable in a manner consistent with
   # multiple observations etc
+
   if isnothing(subject.time)
     df_events = hcat(DataFrame(id = fill(subject.id, length(df_events.evid))), df_events)
   else
@@ -608,7 +609,6 @@ function DataFrames.DataFrame(subject::Subject; include_covariates=true, include
   else
     df
   end
-
   # Sort the df according to time first, and use :base_time to ensure that events
   # come before observations (they are missing for observations, so they will come
   # last).
@@ -627,15 +627,19 @@ function DataFrames.DataFrame(subject::Subject; include_covariates=true, include
     end
     for i in 1:length(idxs)-1
       df[idxs[i]:idxs[i+1], :dose] .= df[idxs[i], :amt]
-      df[idxs[i]:idxs[i+1], :cmt] .= df[idxs[i], :cmt]
       df[idxs[i]:idxs[i+1], :tad] .= df[idxs[i]:idxs[i+1], :time].-df[idxs[i], :time]
     end
+
+    # If some rows were adding so far the cmt column will be missing. Fill them all out
+    # with the last occuring cmt (we already sorted above). We accumulate the largest occurence
+    # of nonmissing indeces to figure out which value to fill out. This is relevant when there
+    # are events and non-event observations 
+    df[!, :cmt] .= df.cmt[accumulate(max, [i*!ismissing(df.cmt[i]) for i=1:length(df.cmt)])]
   end
 
   if include_covariates
     df = _add_covariates(df, subject)
   end
-
   # Return df
   df
 end

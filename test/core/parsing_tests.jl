@@ -292,3 +292,13 @@ end
   pop2df = DataFrame(pop2)
   @test pop2df.WT == reduce(vcat, map(i->fill(pop2[i].covariates(0.0).WT, 5), 1:length(pop2)))
 end
+
+@testset "test that cmt is carried down" begin
+  ev = DosageRegimen([10,10], cmt=[1,2], time=[0,12])
+  pop =  Population(map(i->Subject(id=i, events=ev),1:3))
+  popdf = DataFrame(pop)
+  @test all(popdf.cmt .== [1,2,1,2,1,2])
+
+  theopp = DataFrame(read_pumas(example_data("event_data/THEOPP"), covariates = [:SEX,:WT]))
+  @test all(theopp.cmt .== Ref(1))
+end
