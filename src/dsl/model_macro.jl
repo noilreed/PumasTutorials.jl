@@ -153,6 +153,13 @@ function extract_syms!(vars, subvars, syms)
   end
 end
 
+function extract_covariates!(vars, subvars, syms)
+  if any(map(sym->occursin(",", string(sym)), syms))
+    throw(ArgumentError("Incorrect formating in `@covariates`. Covariate names have to be separated by spaces only not commas."))
+  end
+  extract_syms!(vars, subvars, syms)
+end
+
 function extract_pre!(vars, prevars, exprs)
   # should be called on an expression wrapped in a @pre
   # expr can be:
@@ -673,7 +680,7 @@ macro model(expr)
     elseif ex.args[1] == Symbol("@random")
       extract_randoms!(vars, randoms, ex.args[3])
     elseif ex.args[1] == Symbol("@covariates")
-      extract_syms!(vars, covariates, ex.args[3:end])
+      extract_covariates!(vars, covariates, ex.args[3:end])
     elseif ex.args[1] == Symbol("@cache")
       # Extracts from the same syntax as pre
       cacheexpr = extract_pre!(vars,cachevars,ex.args[3])

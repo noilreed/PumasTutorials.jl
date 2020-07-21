@@ -202,3 +202,22 @@ randeffs = init_randeffs(mdsl, param)
 @test solve(mdsl,subject,param,randeffs) isa Pumas.NullDESolution
 @test simobs(mdsl,subject,param,randeffs) != nothing
 @test conditional_nll(mdsl,subject,param,randeffs) == Inf # since real-valued observations
+
+
+
+@testset "test @covariates formatting" begin
+    vars = Set([:t])
+    subvars = ()
+    syms = Any[:wt, :OCC, :((Dose, SEXN))]
+    @test_throws ArgumentError Pumas.extract_covariates!(vars, subvars, syms)
+
+    vars = Set([:t])
+    subvars = []
+    syms = Any[:wt, :OCC, :Dose, :SEXN]
+    Pumas.extract_covariates!(vars, subvars, syms)
+
+    vars = Set([:t])
+    subvars = ()
+    syms = Any[:((wt, OCC)), :((Dose, SEXN))]
+    @test_throws ArgumentError Pumas.extract_covariates!(vars, subvars, syms)
+end
