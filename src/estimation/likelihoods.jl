@@ -1446,6 +1446,9 @@ end
 function Distributions.fit(m::PumasModel, p::Population, param::NamedTuple; kwargs...)
   throw(ArgumentError("No valid estimation method was provided."))
 end
+function Distributions.fit(m::PumasModel, p::DataFrame, param::NamedTuple, args...; kwargs...)
+  throw(ArgumentError("The second argument to fit was a DataFrame instead of a Population. Please use read_pumas to construct a Population from a DataFrame."))
+end
 
 function _compare_keys(m::PumasModel, param::NamedTuple)
   for modelkey in keys(m.param)
