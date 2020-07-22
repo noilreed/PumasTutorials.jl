@@ -35,7 +35,7 @@ function DataFrames.DataFrame(
   events = obs.subject.events
   nev = events isa Array ? length(events) : 0
   evtimes = map(ev->ev.time, events)
-  times = obs.time
+  times = float.(obs.time)
   ntime = length(obs.time)
   observed = obs.observations
   df = DataFrame(time=deepcopy(times))
