@@ -203,14 +203,23 @@ randeffs = init_randeffs(mdsl, param)
 @test simobs(mdsl,subject,param,randeffs) != nothing
 @test conditional_nll(mdsl,subject,param,randeffs) == Inf # since real-valued observations
 
-@testset "= and ConstDomain is disallowed in @param" begin
-    vars = ()
-    params = ()
-    exprs = quote
-        a = RealDomain(init = 0.03)
-    end
-    @test_throws ErrorException Pumas.extract_params!(vars, params, exprs)
+@testset "Issues 835" begin
+  t = Pumas.Variable(:t)()
+  dvars = Pumas.Operation[]
+  params = Pumas.Operation[]
+  bvars = :(begin end)
+  @test_throws ErrorException Pumas.convert_rhs_to_Expression(:cl, bvars, dvars, params, t)
 end
+  
+@testset "= and ConstDomain is disallowed in @param" begin
+  vars = ()
+  params = ()
+  exprs = quote
+    a = RealDomain(init = 0.03)
+  end
+  @test_throws ErrorException Pumas.extract_params!(vars, params, exprs)
+end
+
 @testset "test @covariates formatting" begin
     vars = Set([:t])
     subvars = ()
