@@ -449,7 +449,7 @@ end
 Compute the marginal negative loglikelihood of a subject or dataset, using the
 integral approximation `approx`.
 
-See also [`deviance`](@ref).
+See also [`loglikelihood`](@ref).
 """
 marginal_nll
 
@@ -647,37 +647,19 @@ function _marginal_nll(m::PumasModel,
   end
 end
 
-# deviance is NONMEM-equivalent marginal negative loglikelihood
-StatsBase.deviance(m::PumasModel,
+StatsBase.loglikelihood(m::PumasModel,
           subject::Subject,
           param::NamedTuple,
           approx::LikelihoodApproximation;
           kwargs...) =
-  2*marginal_nll(m, subject, param, approx; kwargs...) - sum(map(dv -> count(!ismissing, dv), subject.observations))*log(2π)
+  -marginal_nll(m, subject, param, approx; kwargs...)
 
-StatsBase.deviance(m::PumasModel,
+StatsBase.loglikelihood(m::PumasModel,
           data::Population,
           param::NamedTuple,
           approx::LikelihoodApproximation;
           kwargs...) =
-  2*marginal_nll(m, data, param, approx; kwargs...) - sum(subject -> sum(dv -> count(!ismissing, dv), subject.observations), data)*log(2π)
-
-_deviance(m::PumasModel,
-          subject::Subject,
-          param::NamedTuple,
-          vrandeffsorth::AbstractVector,
-          approx::LikelihoodApproximation;
-          kwargs...) =
-  2*_marginal_nll(m, subject, param, vrandeffsorth, approx; kwargs...) - sum(map(dv -> count(!ismissing, dv), subject.observations))*log(2π)
-
-_deviance(m::PumasModel,
-          data::Population,
-          param::NamedTuple,
-          vvrandeffsorth::AbstractVector,
-          approx::LikelihoodApproximation;
-          kwargs...) =
-  2*_marginal_nll(m, data, param, vvrandeffsorth, approx; kwargs...) - sum(subject -> sum(dv -> count(!ismissing, dv), subject.observations), data)*log(2π)
-# NONMEM doesn't allow ragged, so this suffices for testing
+  -marginal_nll(m, data, param, approx; kwargs...)
 
 # Compute the gradient of marginal_nll without solving inner optimization
 # problem. This functions follows the approach of Almquist et al. (2015) by
@@ -1705,12 +1687,11 @@ marginal_nll(fpm::FittedPumasModel) = _marginal_nll(
   fpm.kwargs...)
 
 """
-    deviance(fpm::FittedPumasModel)
+    loglikelihood(fpm::FittedPumasModel)
 
-Compute the deviance of a fitted Pumas model:
-this is scaled and shifted slightly from [`marginal_nll`](@ref).
+Compute the loglikelihood of a fitted Pumas model.
 """
-StatsBase.deviance(fpm::FittedPumasModel) = _deviance(
+StatsBase.loglikelihood(fpm::FittedPumasModel) = -_marginal_nll(
   fpm.model,
   fpm.data,
   coef(fpm),
@@ -2051,7 +2032,7 @@ based on the asymptotic `Χ²(k)` distribution of the test statistic.
 function lrtest(fpm_0::FittedPumasModel, fpm_A::FittedPumasModel)
   df_0 = length(fpm_0.optim.minimizer)
   df_A = length(fpm_A.optim.minimizer)
-  statistic = deviance(fpm_0) - deviance(fpm_A)
+  statistic = -2*(loglikelihood(fpm_0) - loglikelihood(fpm_A))
   return LikelihoodRatioTest(df_A - df_0, statistic)
 end
 

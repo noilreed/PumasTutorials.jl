@@ -54,7 +54,7 @@ using CSV
 
   ftFOCE = fit(ordinal_model, data, init_param(ordinal_model), Pumas.FOCE(),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
-  @test deviance(ftFOCE) ≈ 467.75689376720766
+  @test loglikelihood(ftFOCE) ≈ -1998.2404 rtol=1e-4
   @test [coef(ftFOCE)...] ≈ [
     3.360148753447197,
    -3.0319526108461274,
@@ -67,7 +67,7 @@ using CSV
 
   ftLaplaceI = fit(ordinal_model, data, init_param(ordinal_model), Pumas.LaplaceI(),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
-  @test deviance(ftLaplaceI) ≈ 469.41275685648816
+  @test loglikelihood(ftLaplaceI) ≈ -1999.0684 rtol=1e-4
   @test [coef(ftLaplaceI)...] ≈ [
     3.398664660546355,
    -3.066129779368099,

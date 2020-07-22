@@ -19,6 +19,6 @@ include("testmodels.jl")
     Pumas.FOCE(),
     optimize_fn=Pumas.DefaultOptimizeFN(x_reltol=1e-3))
 
-  @test deviance(ft) ≈ -109.23207 rtol=1e-4
+  @test loglikelihood(ft) ≈ -6.033906135 rtol=1e-4
 
 end

@@ -99,7 +99,7 @@ using Pumas, Test
       _approx in (Pumas.FO(), Pumas.FOCE(), Pumas.FOCEI(), Pumas.LaplaceI())
 
     if _model == "proportional" && _approx == Pumas.FOCE()
-      @test_throws ArgumentError deviance(model[_model], data, param, _approx)
+      @test_throws ArgumentError loglikelihood(model[_model], data, param, _approx)
       continue
     end
     # LaplaceI and proportional is very unstable and succeeds/fails depending on architecture
@@ -109,7 +109,7 @@ using Pumas, Test
         optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
       ft_missing = fit(model[_model], data_missing, param, _approx,
         optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
-      @test deviance(ft) == deviance(ft_missing)
+      @test loglikelihood(ft) == loglikelihood(ft_missing)
 
       # Weighted residuals not defined for the LogNormal error model
       if _model !== "exponential"

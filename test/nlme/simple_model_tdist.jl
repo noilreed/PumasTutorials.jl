@@ -45,9 +45,9 @@ for (d, v) in zip(data, [-0.110095703125000, 0.035454025268555, -0.0249826049804
 end
 
 # Not yet supported
-@test_throws ArgumentError deviance(tdist, data, param, Pumas.FO())
-@test_throws ArgumentError deviance(tdist, data, param, Pumas.FOCE())
-@test_throws ArgumentError deviance(tdist, data, param, Pumas.FOCEI())
-@test deviance(tdist, data, param, Pumas.LaplaceI()) ≈ 57.112537604068990 rtol=1e-6
+@test_throws ArgumentError loglikelihood(tdist, data, param, Pumas.FO())
+@test_throws ArgumentError loglikelihood(tdist, data, param, Pumas.FOCE())
+@test_throws ArgumentError loglikelihood(tdist, data, param, Pumas.FOCEI())
+@test loglikelihood(tdist, data, param, Pumas.LaplaceI()) ≈ -46.93503870457484 rtol=1e-6
 
 end

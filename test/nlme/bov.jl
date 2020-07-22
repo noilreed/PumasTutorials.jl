@@ -94,7 +94,7 @@ results_comb_err_wo_iov = fit(EACA_PKmodel,
                     Pumas.FOCEI(),
                   optimize_fn=Pumas.DefaultOptimizeFN(show_trace=true, extended_trace=false))
 
-@test deviance(results_comb_err_wo_iov) ≈ 1864.8081364379095 # verified to match nonmem to the fourth decimal
+@test loglikelihood(results_comb_err_wo_iov) ≈ -1119.8675 rtol=1e-4
 
 #Infer_results_comb_wo_iov = infer(results_comb_err_wo_iov)
 end

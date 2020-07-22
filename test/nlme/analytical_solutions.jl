@@ -119,9 +119,9 @@ param = (
 )
 
 pop = Subject.(simobs(model_2cp_metabolite_s, skeleton_pop, param, obstimes=t))
-deviance_analytical = deviance(fit(model_2cp_metabolite_a, pop, param, Pumas.FOCEI()))
-deviance_diffeq = deviance(fit(model_2cp_metabolite_s, pop, param, Pumas.FOCEI()))
-@test deviance_analytical ≈ deviance_diffeq rtol=1e-2
+loglikelihood_analytical = loglikelihood(fit(model_2cp_metabolite_a, pop, param, Pumas.FOCEI()))
+loglikelihood_diffeq = loglikelihood(fit(model_2cp_metabolite_s, pop, param, Pumas.FOCEI()))
+@test loglikelihood_analytical ≈ loglikelihood_diffeq rtol=1e-2
 
 cnll_analytical = conditional_nll(model_2cp_metabolite_a, pop[1], param, (eta=0.1,))
 cnll_diffeq = conditional_nll(model_2cp_metabolite_s, pop[1], param, (eta=0.1,))
@@ -233,9 +233,9 @@ param = (
 )
 
 pop = Subject.(simobs(model_2cp_metabolite_s, skeleton_pop, param, obstimes=t))
-deviance_analytical = deviance(model_2cp_metabolite_a, pop, param, Pumas.FOCEI())
-deviance_diffeq = deviance(model_2cp_metabolite_s, pop, param, Pumas.FOCEI())
-@test deviance_analytical ≈ deviance_diffeq rtol=1e-2
+loglikelihood_analytical = loglikelihood(model_2cp_metabolite_a, pop, param, Pumas.FOCEI())
+loglikelihood_diffeq = loglikelihood(model_2cp_metabolite_s, pop, param, Pumas.FOCEI())
+@test loglikelihood_analytical ≈ loglikelihood_diffeq rtol=1e-2
 
 cnll_analytical = conditional_nll(model_2cp_metabolite_a, pop[1], param, (eta=0.1,))
 cnll_diffeq = conditional_nll(model_2cp_metabolite_s, pop[1], param, (eta=0.1,))

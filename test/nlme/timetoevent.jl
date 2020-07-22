@@ -1,4 +1,4 @@
-using Pumas, CSV, Test
+using Pumas, CSV, Test, Random
 
 @testset "Cross-sectional time-to-event examples" begin
 
@@ -31,7 +31,7 @@ using Pumas, CSV, Test
 
   param_exponential = (θ=-1.0, λ₀=5e-3,)
 
-  @test deviance(tte_exponential, pd, param_exponential, Pumas.NaivePooled()) ≈ 2736.9323 rtol=1e-4
+  @test -2*loglikelihood(tte_exponential, pd, param_exponential, Pumas.NaivePooled()) - length(pd)*log(2π) ≈ 2736.9323 rtol=1e-4
   ft_exponential = fit(tte_exponential, pd, param_exponential, Pumas.NaivePooled(),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(ft_exponential)) == """
@@ -40,7 +40,7 @@ Asymptotic inference results
 Successful minimization:                true
 
 Likelihood approximation:  Pumas.NaivePooled
-Deviance:                          2734.5877
+Log-likelihood value:             -1642.9754
 Total number of observation records:     300
 Number of active observation records:    300
 Number of subjects:                      300
@@ -84,7 +84,7 @@ Number of subjects:                      300
 
   param_weibull = (θ=-1.0, λ₀=5e-3, p=1.1)
 
-  @test deviance(tte_weibull, pd, param_weibull, Pumas.NaivePooled()) ≈ 2722.7392 rtol=1e-4
+  @test -2*loglikelihood(tte_weibull, pd, param_weibull, Pumas.NaivePooled()) - length(pd)*log(2π) ≈ 2722.7392 rtol=1e-4
   ft_weibull = fit(tte_weibull, pd, param_weibull, Pumas.NaivePooled(),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(ft_weibull)) == """
@@ -93,7 +93,7 @@ Asymptotic inference results
 Successful minimization:                true
 
 Likelihood approximation:  Pumas.NaivePooled
-Deviance:                           2712.697
+Log-likelihood value:               -1632.03
 Total number of observation records:     300
 Number of active observation records:    300
 Number of subjects:                      300
@@ -138,7 +138,7 @@ p       1.3018           0.069773         [ 1.165    ;  1.4385   ]
 
   param_gompertz = (θ=-1.0, λ₀=5e-3, p=0.01)
 
-  @test deviance(tte_gompertz, pd, param_gompertz, Pumas.NaivePooled()) ≈ 7299.8768 rtol=1e-4
+  @test -2*loglikelihood(tte_gompertz, pd, param_gompertz, Pumas.NaivePooled()) - length(pd)*log(2π) ≈ 7299.8768 rtol=1e-4
   ft_gompertz = fit(tte_gompertz, pd, param_gompertz, Pumas.NaivePooled(),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(ft_gompertz)) == """
@@ -147,7 +147,7 @@ Asymptotic inference results
 Successful minimization:                true
 
 Likelihood approximation:  Pumas.NaivePooled
-Deviance:                          2713.7805
+Log-likelihood value:             -1632.5718
 Total number of observation records:     300
 Number of active observation records:    300
 Number of subjects:                      300
@@ -162,6 +162,8 @@ p       0.002232         0.00047099        [ 0.0013089;  0.0031551]
 """
 
   @testset "simulate and estiate (round trip)" begin
+
+    Random.seed!(123)
 
     pd_sim = Pumas.simobstte(
       tte_exponential,
@@ -224,7 +226,7 @@ end
 
   param = (θ=0.01, ω=sqrt(1e-08))
 
-  @test deviance(model, pd, param, Pumas.LaplaceI()) ≈ 1567.954845323044 rtol=1e-4 # regression test
+  @test loglikelihood(model, pd, param, Pumas.LaplaceI()) ≈ -1074.361999154395 rtol=1e-4 # regression test
 
   ft = fit(model, pd, param, Pumas.LaplaceI(),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
@@ -232,6 +234,8 @@ end
   @test coef(ft).θ               ≈ 1.1412e-02       rtol=1e-2 # From NONMEM
 
   @testset "simulate and estiate (round trip)" begin
+
+    Random.seed!(123)
 
     pd_sim = Pumas.simobstte(
       model,

@@ -120,7 +120,7 @@ using Test, Pumas, Random, StaticArrays
   @testset "model type: $mn" for mn in keys(models)
     model = models[mn]
 
-    @test @inferred(deviance(model, theopp_nlme, param, Pumas.LaplaceI())) ≈ 93.64166638742198 rtol = 1e-6 # NONMEM result
+    @test @inferred(loglikelihood(model, theopp_nlme, param, Pumas.LaplaceI())) ≈ -168.12071892 rtol = 1e-6 # NONMEM result
     @test_throws ArgumentError fit(model, theopp_nlme, param, Pumas.FOCE())
     Pumas._orth_empirical_bayes(model, theopp_nlme[1], param, Pumas.FOCEI())
 

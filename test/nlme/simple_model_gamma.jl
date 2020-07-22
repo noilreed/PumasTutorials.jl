@@ -36,21 +36,21 @@ using Pumas
   param = init_param(mdsl)
 
   # Not supported
-  @test_throws ArgumentError deviance(mdsl, data, param, Pumas.FO())
-  @test_throws ArgumentError deviance(mdsl, data, param, Pumas.FOCEI())
+  @test_throws ArgumentError loglikelihood(mdsl, data, param, Pumas.FO())
+  @test_throws ArgumentError loglikelihood(mdsl, data, param, Pumas.FOCEI())
 
-  @test deviance(mdsl, data, param, Pumas.FOCE())     ≈ 88.9136079338946 rtol=1e-6
-  @test deviance(mdsl, data, param, Pumas.LaplaceI()) ≈ 88.9571564205892 rtol=1e-6
+  @test loglikelihood(mdsl, data, param, Pumas.FOCE())     ≈ -62.83557462725005 rtol=1e-6
+  @test loglikelihood(mdsl, data, param, Pumas.LaplaceI()) ≈ -62.85734887438806 rtol=1e-6
 
   ft_FOCE = fit(mdsl, data, param, Pumas.FOCE(),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
-  @test deviance(ft_FOCE) ≈ 56.11354389316806 rtol=1e-6
+  @test loglikelihood(ft_FOCE) ≈ -46.43553768980682 rtol=1e-6
   @test_throws ArgumentError("weighted residuals only implemented for Gaussian error models") wresiduals(ft_FOCE)
   @test DataFrame(inspect(ft_FOCE)) isa DataFrame
 
   ft_LaplaceI = fit(mdsl, data, param, Pumas.LaplaceI(),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
-  @test deviance(ft_LaplaceI) ≈ 55.96605418561208 rtol=1e-6
+  @test loglikelihood(ft_LaplaceI) ≈ -46.36179773482574 rtol=1e-6
   @test_throws ArgumentError("weighted residuals only implemented for Gaussian error models") wresiduals(ft_LaplaceI)
   @test DataFrame(inspect(ft_LaplaceI)) isa DataFrame
 end

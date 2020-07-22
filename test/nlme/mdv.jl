@@ -94,9 +94,9 @@ reread_df[reread_df[!, :evid].==1, :dv2] .= missing
 reread_df[reread_df[!, :time].==0.0, :dv2] .= missing
 reread = read_pumas(reread_df; observations=[:dv1, :dv2])
 
-deviance_analytical = deviance(model, reread, params, Pumas.FOCEI())
-deviance_diffeq = deviance(model_diffeq, reread, params, Pumas.FOCEI())
-@test deviance_analytical ≈ deviance_diffeq rtol=1e-2
+loglikelihood_analytical = loglikelihood(model, reread, params, Pumas.FOCEI())
+loglikelihood_diffeq = loglikelihood(model_diffeq, reread, params, Pumas.FOCEI())
+@test loglikelihood_analytical ≈ loglikelihood_diffeq rtol=1e-2
 
 res_focei    = fit(model, reread, params, Pumas.FOCEI(),
   optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))

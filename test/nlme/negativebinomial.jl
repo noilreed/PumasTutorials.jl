@@ -56,7 +56,7 @@ FittedPumasModel
 Successful minimization:                true
 
 Likelihood approximation:         Pumas.FOCE
-Deviance:                          3898.5692
+Log-likelihood value:              -3603.374
 Total number of observation records:    1800
 Number of active observation records:   1800
 Number of subjects:                       20
@@ -77,7 +77,7 @@ Asymptotic inference results
 Successful minimization:                true
 
 Likelihood approximation:         Pumas.FOCE
-Deviance:                          3898.5692
+Log-likelihood value:              -3603.374
 Total number of observation records:    1800
 Number of active observation records:   1800
 Number of subjects:                       20
@@ -102,7 +102,7 @@ FittedPumasModel
 Successful minimization:                true
 
 Likelihood approximation:     Pumas.LaplaceI
-Deviance:                          3898.5679
+Log-likelihood value:             -3603.3733
 Total number of observation records:    1800
 Number of active observation records:   1800
 Number of subjects:                       20
@@ -123,7 +123,7 @@ Asymptotic inference results
 Successful minimization:                true
 
 Likelihood approximation:     Pumas.LaplaceI
-Deviance:                          3898.5679
+Log-likelihood value:             -3603.3733
 Total number of observation records:    1800
 Number of active observation records:   1800
 Number of subjects:                       20

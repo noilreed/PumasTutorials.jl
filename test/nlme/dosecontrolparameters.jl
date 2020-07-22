@@ -76,7 +76,7 @@ using Pumas, Test, Random
 
   @testset "$t" for t in ("closed form", "DiffEq")
     m = model_lag[t]
-    @test deviance(m, pop_est, params₀, Pumas.FOCEI()) ≈ 486.8800  rtol=1e-3
+    @test loglikelihood(m, pop_est, params₀, Pumas.FOCEI()) ≈ -353.71  rtol=1e-3
     if m.prob isa Pumas.ExplicitModel
       # Fit currently only works for analytical model. For DiffEq based model, NaNs are
       # created during the optimization. We avoid running the test in that case since it
@@ -163,7 +163,7 @@ end
 
   @testset "$t" for t in ("closed form", "DiffEq")
     m = model_duration[t]
-    @test deviance(m, pop_est, params₀, Pumas.FOCEI()) ≈ 699.6851 rtol=1e-4
+    @test loglikelihood(m, pop_est, params₀, Pumas.FOCEI()) ≈ -478.4939 rtol=1e-4
     @test coef(fit(m, pop_est, params , Pumas.FOCEI(),
       optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))).θduration ≈ params₀.θduration rtol=1e-1
   end
@@ -239,7 +239,7 @@ end
 
   @testset "$t" for t in ("closed form", "DiffEq")
     m = model_rate[t]
-    @test deviance(m, pop_est, params₀, Pumas.FOCEI()) ≈ 656.3552 rtol=1e-4
+    @test loglikelihood(m, pop_est, params₀, Pumas.FOCEI()) ≈ -438.4502 rtol=1e-4
     @test coef(fit(m, pop_est, params , Pumas.FOCEI(),
       optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))).θrate ≈ params₀.θrate rtol=1e-1
   end
@@ -322,7 +322,7 @@ end
 
   @testset "$t" for t in ("closed form", "DiffEq")
     m = model_bioav[t]
-    @test deviance(m, pop_est, params₀, Pumas.FOCEI()) ≈ 761.9867  rtol=1e-4
+    @test loglikelihood(m, pop_est, params₀, Pumas.FOCEI()) ≈ -491.2660  rtol=1e-4
     @test coef(fit(m, pop_est, params , Pumas.FOCEI(),
       optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))).θbioav ≈ params₀.θbioav rtol=1.5e-1
   end

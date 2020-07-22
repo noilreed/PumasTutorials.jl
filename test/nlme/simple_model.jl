@@ -67,11 +67,11 @@ using Pumas
 
   @test conditional_nll(mdsl1, data[1], param, (η=[0.0],)) ≈ 5.337249432459216 rtol=1e-6
   @test Pumas.penalized_conditional_nll(mdsl1, data[1], param, (η=[0.0],)) ≈ 5.337249432459216 rtol=1e-6
-  @test deviance(mdsl1, data, param, Pumas.FO())        ≈ 56.474912258255571 rtol=1e-6
-  @test_throws ArgumentError deviance(mdsl1, data, param, Pumas.FOCE())
-  @test deviance(mdsl1, data, param, Pumas.FOCEI())     ≈ 56.410938825140313 rtol=1e-6
-  @test deviance(mdsl1, data, param, Pumas.LaplaceI())  ≈ 56.810343602063618 rtol=1e-6
-  @test deviance(mdsl1, data, param, Pumas.LLQuad()) ≈ 56.92491372848633  rtol=1e-6 #regression test
+  @test loglikelihood(mdsl1, data, param, Pumas.FO())        ≈ -46.61622679322253 rtol=1e-6
+  @test_throws ArgumentError loglikelihood(mdsl1, data, param, Pumas.FOCE())
+  @test loglikelihood(mdsl1, data, param, Pumas.FOCEI())     ≈ -46.58423998502921 rtol=1e-6
+  @test loglikelihood(mdsl1, data, param, Pumas.LaplaceI())  ≈ -46.78394281224711 rtol=1e-6
+  @test loglikelihood(mdsl1, data, param, Pumas.LLQuad()) ≈ -46.84122752833662  rtol=1e-6 #regression test
 
   # Cannot fit a model with Beta random effects
   @test_throws ArgumentError fit(mdsl1_nofitrandom, data, param, Pumas.FOCEI())
@@ -81,9 +81,9 @@ using Pumas
   ft2 = fit(mdsl1, data, param, Pumas.FO(); constantcoef=(Ω=Diagonal([0.04]), Σ=0.1),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
-# These two tests are supposed to test that the show method works
-# but also that the alignment of the column names work.
-@test sprint((io, t) -> show(io, MIME"text/plain"(), t), [ft, ft]) ==
+  # These two tests are supposed to test that the show method works
+  # but also that the alignment of the column names work.
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), [ft, ft]) ==
 """
 Vector{<:FittedPumasModel} with 2 entries
 
@@ -97,7 +97,7 @@ Parameter statistics
 ---------------------
 """
 
-@test sprint((io, t) -> show(io, MIME"text/plain"(), t), [ft, ft2]) ==
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), [ft, ft2]) ==
 """
 Vector{<:FittedPumasModel} with 2 entries
 
@@ -111,14 +111,14 @@ Parameter statistics
 ----------------------------------
 """
 
-@test sprint((io, t) -> show(io, MIME"text/plain"(), t), ft) ==
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), ft) ==
 """
 FittedPumasModel
 
 Successful minimization:                true
 
 Likelihood approximation:        Pumas.FOCEI
-Deviance:                          54.490036
+Log-likelihood value:             -45.623789
 Total number of observation records:      20
 Number of active observation records:     20
 Number of subjects:                       10
@@ -132,14 +132,14 @@ Number of subjects:                       10
 ------------------
 """
 
-@test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(ft)) ==
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(ft)) ==
 """
 Asymptotic inference results
 
 Successful minimization:                true
 
 Likelihood approximation:        Pumas.FOCEI
-Deviance:                          54.490036
+Log-likelihood value:             -45.623789
 Total number of observation records:      20
 Number of active observation records:     20
 Number of subjects:                       10
@@ -195,29 +195,30 @@ Number of subjects:                       10
         constantcoef=(θ=[0.5],))
   end
 
-# test for #1043
-@testset "Symbol cmt names" begin
-  dr1 = DosageRegimen(100, cmt=:Central)
-  subj1 = Subject(id=1, events=dr1)
-  subj2 = Subject(id=2, events=dr1)
-  subj = [subj1, subj2]
-  sim1 = simobs(mdsl1, subj, init_param(mdsl1),obstimes=0:1:24)
-  pop = DataFrame(subj)
-  pop[!, :dv] .= missing
-  # it's important that this runs (before, a symbol in the cmt column would cause an error)
-  dd = read_pumas(pop)
-end
-@testset "integer obstimes" begin
-  # from https://discourse.pumas.ai/t/help-with-fitting/50/54
-  # the test is simply that dff runs in the end of the testset 
-  ev1 = DosageRegimen(400, time=0, cmt=1)
-  ev2 = DosageRegimen(800, time=0, cmt=1, rate=30.769)
-  com = DosageRegimen(ev1,ev2)
-  sub = Subject(id=1, events=com)
-  # The issue was that these obstimes are integers and that caused problems in the DataFrame constructor
-  sim = simobs(mdsl1, sub, param, obstimes=[2, 5, 10, 15, 20, 25, 30, 33, 35, 37, 40, 45, 50, 60, 70, 90, 110, 120, 150])
-  # Test that dff is constructed by converting obstimes to floats internally
-  ddf = DataFrame(sim)
-  @test eltype(ddf.time) == Float64
-end
+  # test for #1043
+  @testset "Symbol cmt names" begin
+    dr1 = DosageRegimen(100, cmt=:Central)
+    subj1 = Subject(id=1, events=dr1)
+    subj2 = Subject(id=2, events=dr1)
+    subj = [subj1, subj2]
+    sim1 = simobs(mdsl1, subj, init_param(mdsl1), obstimes=0:1:24)
+    pop = DataFrame(subj)
+    pop[!, :dv] .= missing
+    # it's important that this runs (before, a symbol in the cmt column would cause an error)
+    dd = read_pumas(pop)
+  end
+
+  @testset "integer obstimes" begin
+    # from https://discourse.pumas.ai/t/help-with-fitting/50/54
+    # the test is simply that dff runs in the end of the testset
+    ev1 = DosageRegimen(400, time=0, cmt=1)
+    ev2 = DosageRegimen(800, time=0, cmt=1, rate=30.769)
+    com = DosageRegimen(ev1,ev2)
+    sub = Subject(id=1, events=com)
+    # The issue was that these obstimes are integers and that caused problems in the DataFrame constructor
+    sim = simobs(mdsl1, sub, param, obstimes=[2, 5, 10, 15, 20, 25, 30, 33, 35, 37, 40, 45, 50, 60, 70, 90, 110, 120, 150])
+    # Test that dff is constructed by converting obstimes to floats internally
+    ddf = DataFrame(sim)
+    @test eltype(ddf.time) == Float64
+  end
 end# testset

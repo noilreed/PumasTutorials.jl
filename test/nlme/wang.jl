@@ -13,6 +13,7 @@ using Pumas, CSV
   sort!(df, [:id, :time])
 
   data = read_pumas(df)
+  n = sum(subject -> length(subject.observations.dv), data)
 
   @testset "Additive error model" begin
 
@@ -45,8 +46,8 @@ using Pumas, CSV
 
     param = init_param(wang_additive)
 
-    @test deviance(wang_additive, data, param, Pumas.FO())   ≈  0.026 atol = 1e-3
-    @test deviance(wang_additive, data, param, Pumas.FOCE()) ≈ -2.059 atol = 1e-3
+    @test -2*loglikelihood(wang_additive, data, param, Pumas.FO()) - n*log(2π)  ≈  0.026 atol = 1e-3
+    @test -2*loglikelihood(wang_additive, data, param, Pumas.FOCE()) - n*log(2π) ≈ -2.059 atol = 1e-3
   end
 
   @testset "Proportional error model" begin
@@ -80,9 +81,9 @@ using Pumas, CSV
 
     param = init_param(wang_proportional)
 
-    @test deviance(wang_proportional, data, param, Pumas.FO())    ≈ 39.213 atol = 1e-3
-    @test_throws ArgumentError deviance(wang_proportional, data, param, Pumas.FOCE())
-    @test deviance(wang_proportional, data, param, Pumas.FOCEI()) ≈ 39.458 atol = 1e-3
+    @test -2*loglikelihood(wang_proportional, data, param, Pumas.FO()) - n*log(2π)    ≈ 39.213 atol = 1e-3
+    @test_throws ArgumentError loglikelihood(wang_proportional, data, param, Pumas.FOCE())
+    @test -2*loglikelihood(wang_proportional, data, param, Pumas.FOCEI()) - n*log(2π) ≈ 39.458 atol = 1e-3
   end
 
   @testset "Exponential error model" begin
@@ -163,9 +164,9 @@ using Pumas, CSV
     param = init_param(wang_exponential)
 
     # Compute the correction term which is sum(log(dg⁻¹(y)/dy)) where g=exp in our case so g⁻¹=log
-    correction_term = 2*sum(sum(log.(d.observations.dv)) for d in data)
-    @test deviance(wang_exponential, data, param, Pumas.FO())    ≈ deviance(wang_exponential_log, data_log, param, Pumas.FO())    + correction_term
-    @test deviance(wang_exponential, data, param, Pumas.FOCE())  ≈ deviance(wang_exponential_log, data_log, param, Pumas.FOCE())  + correction_term
-    @test deviance(wang_exponential, data, param, Pumas.FOCEI()) ≈ deviance(wang_exponential_log, data_log, param, Pumas.FOCEI()) + correction_term
+    correction_term = sum(sum(log.(d.observations.dv)) for d in data)
+    @test loglikelihood(wang_exponential, data, param, Pumas.FO())    ≈ loglikelihood(wang_exponential_log, data_log, param, Pumas.FO())    - correction_term
+    @test loglikelihood(wang_exponential, data, param, Pumas.FOCE())  ≈ loglikelihood(wang_exponential_log, data_log, param, Pumas.FOCE())  - correction_term
+    @test loglikelihood(wang_exponential, data, param, Pumas.FOCEI()) ≈ loglikelihood(wang_exponential_log, data_log, param, Pumas.FOCEI()) - correction_term
   end
 end

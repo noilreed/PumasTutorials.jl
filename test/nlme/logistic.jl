@@ -112,6 +112,6 @@ end
   _ptable = probstable(ft)
   @test names(_ptable) == ["id", "time", "y_prob1", "y_prob2"]
 
-  @test deviance(ft) ≈ -185.4010155627602 rtol=1e-6
+  @test loglikelihood(ft) ≈ -127.84474 rtol=1e-6
 
 end

@@ -88,13 +88,13 @@ end
   fitone = fit(model, first(data), param,
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
-@test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone) ==
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone) ==
 """FittedPumasModel
 
 Successful minimization:                true
 
 Likelihood approximation:  Pumas.NaivePooled
-Deviance:                          1624.7916
+Log-likelihood value:             -923.58735
 Total number of observation records:     121
 Number of active observation records:    121
 Number of subjects:                        1
@@ -116,13 +116,13 @@ pmoncl     -0.70079
   @test_throws ArgumentError fit(model, data, param, Pumas.FOCEI())
 
 
-@test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(fitnp)) ==
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(fitnp)) ==
 """Asymptotic inference results
 
 Successful minimization:                true
 
 Likelihood approximation:  Pumas.NaivePooled
-Deviance:                        1.4996119e6
+Log-likelihood value:             -860997.51
 Total number of observation records:  121000
 Number of active observation records: 121000
 Number of subjects:                     1000
@@ -143,7 +143,7 @@ pmoncl    -0.69962         0.00059607         [-0.70079; -0.69845]
   fit2s = fit(model, data, param, Pumas.TwoStage(),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false), constcoef=(pmoncl=0.7,))
 
-@test sprint((io, t) -> show(io, MIME"text/plain"(), t), fit2s) ==
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fit2s) ==
 """
 Vector{<:FittedPumasModel} with 1000 entries
 
@@ -244,13 +244,13 @@ end
   fitone_noeta = fit(mdsl1_noeta, first(data), param_noeta,
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false), constantcoef=(σ=sqrt(0.1),))
 
-@test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_noeta) ==
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_noeta) ==
 """FittedPumasModel
 
 Successful minimization:                true
 
 Likelihood approximation:  Pumas.NaivePooled
-Deviance:                          4.4609099
+Log-likelihood value:              -4.068332
 Total number of observation records:       2
 Number of active observation records:      2
 Number of subjects:                        1
@@ -264,13 +264,13 @@ Number of subjects:                        1
 """
 
   infer_noeta = infer(fitone_noeta)
-@test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_noeta) ==
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_noeta) ==
 """Asymptotic inference results
 
 Successful minimization:                true
 
 Likelihood approximation:  Pumas.NaivePooled
-Deviance:                          4.4609099
+Log-likelihood value:              -4.068332
 Total number of observation records:       2
 Number of active observation records:      2
 Number of subjects:                        1
@@ -286,13 +286,13 @@ Number of subjects:                        1
   param = init_param(mdsl1)
   fitone_constantcoef = fit(mdsl1, first(data), param; constantcoef=(Ω=[0.0], σ=sqrt(0.1)),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
-@test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_constantcoef) ==
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_constantcoef) ==
 """FittedPumasModel
 
 Successful minimization:                true
 
 Likelihood approximation:  Pumas.NaivePooled
-Deviance:                            4.46091
+Log-likelihood value:             -4.0683321
 Total number of observation records:       2
 Number of active observation records:      2
 Number of subjects:                        1
@@ -307,13 +307,13 @@ Number of subjects:                        1
 """
 
   infer_constantcoef = infer(fitone_constantcoef)
-@test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_constantcoef) ==
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_constantcoef) ==
 """Asymptotic inference results
 
 Successful minimization:                true
 
 Likelihood approximation:  Pumas.NaivePooled
-Deviance:                            4.46091
+Log-likelihood value:             -4.0683321
 Total number of observation records:       2
 Number of active observation records:      2
 Number of subjects:                        1
@@ -329,13 +329,13 @@ Number of subjects:                        1
 
   fitone_omegas = fit(mdsl1, first(data), param; omegas=(:Ω,),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false), constantcoef=(σ=sqrt(0.1),))
-@test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_omegas) ==
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_omegas) ==
 """FittedPumasModel
 
 Successful minimization:                true
 
 Likelihood approximation:  Pumas.NaivePooled
-Deviance:                            4.46091
+Log-likelihood value:             -4.0683321
 Total number of observation records:       2
 Number of active observation records:      2
 Number of subjects:                        1
@@ -350,13 +350,13 @@ Number of subjects:                        1
 """
 
   infer_omegas = infer(fitone_omegas)
-@test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_omegas) ==
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_omegas) ==
 """Asymptotic inference results
 
 Successful minimization:                true
 
 Likelihood approximation:  Pumas.NaivePooled
-Deviance:                            4.46091
+Log-likelihood value:             -4.0683321
 Total number of observation records:       2
 Number of active observation records:      2
 Number of subjects:                        1
@@ -373,13 +373,13 @@ Number of subjects:                        1
   param = init_param(mdsl1full)
   fitone_constantcoef = fit(mdsl1full, first(data), param; constantcoef=(Ω=[0.0], σ=sqrt(0.1)),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
-@test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_constantcoef) ==
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_constantcoef) ==
 """FittedPumasModel
 
 Successful minimization:                true
 
 Likelihood approximation:  Pumas.NaivePooled
-Deviance:                            4.46091
+Log-likelihood value:             -4.0683321
 Total number of observation records:       2
 Number of active observation records:      2
 Number of subjects:                        1
@@ -394,13 +394,13 @@ Number of subjects:                        1
 """
 
   infer_constantcoef = infer(fitone_constantcoef)
-@test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_constantcoef) ==
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_constantcoef) ==
 """Asymptotic inference results
 
 Successful minimization:                true
 
 Likelihood approximation:  Pumas.NaivePooled
-Deviance:                            4.46091
+Log-likelihood value:             -4.0683321
 Total number of observation records:       2
 Number of active observation records:      2
 Number of subjects:                        1
@@ -416,13 +416,13 @@ Number of subjects:                        1
 
   fitone_omegas = fit(mdsl1full, first(data), param; omegas=(:Ω,),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false), constantcoef=(σ=sqrt(0.1),))
-@test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_omegas) ==
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_omegas) ==
 """FittedPumasModel
 
 Successful minimization:                true
 
 Likelihood approximation:  Pumas.NaivePooled
-Deviance:                            4.46091
+Log-likelihood value:             -4.0683321
 Total number of observation records:       2
 Number of active observation records:      2
 Number of subjects:                        1
@@ -437,13 +437,13 @@ Number of subjects:                        1
 """
 
   infer_omegas = infer(fitone_omegas)
-@test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_omegas) ==
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_omegas) ==
 """Asymptotic inference results
 
 Successful minimization:                true
 
 Likelihood approximation:  Pumas.NaivePooled
-Deviance:                            4.46091
+Log-likelihood value:             -4.0683321
 Total number of observation records:       2
 Number of active observation records:      2
 Number of subjects:                        1

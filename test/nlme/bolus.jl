@@ -87,7 +87,7 @@ using Pumas, Test, CSV
     end
 
     @testset "FOCE estimation of $dyntype model" for dyntype in ("analytical", "solver")
-      @test_throws ArgumentError deviance(mdl_proportional[dyntype], data, param_proportional, Pumas.FOCE())
+      @test_throws ArgumentError loglikelihood(mdl_proportional[dyntype], data, param_proportional, Pumas.FOCE())
     end
 
     @testset "FOCEI estimation of $dyntype model" for dyntype in ("analytical", "solver")
@@ -190,7 +190,7 @@ using Pumas, Test, CSV
     end
 
     @testset "FOCE estimation of $dyntype model" for dyntype in ("analytical", "solver")
-      @test_throws ArgumentError deviance(mdl_proportional_additive[dyntype], data, param_proportional_additive, Pumas.FOCE())
+      @test_throws ArgumentError loglikelihood(mdl_proportional_additive[dyntype], data, param_proportional_additive, Pumas.FOCE())
     end
 
     @testset "FOCEI estimation of $dyntype model" for dyntype in ("analytical", "solver")

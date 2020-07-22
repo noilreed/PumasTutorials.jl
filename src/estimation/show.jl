@@ -24,8 +24,8 @@ function _print_fit_header(io, fpm)
   println(io)
   println(io, string("Likelihood approximation:",
                      lpad(typeof(fpm.approx), 19)))
-  println(io, string("Deviance:",
-                     lpad(round(deviance(fpm); sigdigits=round(Int, -log10(DEFAULT_ESTIMATION_RELTOL))), 35)))
+  println(io, string("Log-likelihood value:",
+                     lpad(round(loglikelihood(fpm); sigdigits=round(Int, -log10(DEFAULT_ESTIMATION_RELTOL))), 23)))
   println(io, string("Total number of observation records:",
                      lpad(sum([length(sub.time) for sub in fpm.data]), 8)))
   println(io, string("Number of active observation records:",

@@ -87,7 +87,7 @@ export diagm, Diagonal, I, cond
 export mean, std, var
 
 # From StatsBase
-export aic, bic, coef, coeftable, deviance, fit, informationmatrix, predict, stderror, vcov, bootstrap
+export aic, bic, coef, coeftable, loglikelihood, fit, informationmatrix, predict, stderror, vcov, bootstrap
 
 # From StatsFuns
 export logistic

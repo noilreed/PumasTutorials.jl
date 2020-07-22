@@ -794,7 +794,7 @@ function findinfluential(
   k=5,
   kwargs...)
 
-  d = [deviance(m, subject, param, approx; kwargs...) for subject in data]
+  d = [loglikelihood(m, subject, param, approx; kwargs...) for subject in data]
   p = partialsortperm(d, 1:k, rev=true)
   return [(data[pᵢ].id, d[pᵢ]) for pᵢ in p]
 end

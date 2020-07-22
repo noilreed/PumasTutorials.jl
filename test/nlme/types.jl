@@ -146,15 +146,15 @@ end
       _approx in (Pumas.FO(), Pumas.FOCE(), Pumas.FOCEI(), Pumas.LaplaceI())
 
     if _model == "proportional" && _approx == Pumas.FOCE()
-      @test_throws ArgumentError deviance(fit(model[_model], data, param, _approx,
+      @test_throws ArgumentError loglikelihood(fit(model[_model], data, param, _approx,
         optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false)))
       continue
     end
     # LaplaceI and proportional is very unstable and succeeds/fails depending on architecture
     # so we can't mark this as @test_broken
     if _model != "proportional" || _approx != Pumas.LaplaceI()
-      @test deviance(fit(model[_model], data, param, _approx,
-        optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))) == deviance(
+      @test loglikelihood(fit(model[_model], data, param, _approx,
+        optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))) == loglikelihood(
         fit(model[_model], data_missing, param, _approx,
           optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false)))
       res = fit(model[_model], data, param, _approx,

@@ -65,7 +65,7 @@ end
     σ²_add = 0.388
     )
 
-  @test deviance(theopmodel_analytical_fo, theopp, param, Pumas.FO()) ≈ 137.16573310096661
+  @test loglikelihood(theopmodel_analytical_fo, theopp, param, Pumas.FO()) ≈ -189.88275293350014
 
   fo_estimated_params = (θ₁ = 4.20241E+00,  #Ka MEAN ABSORPTION RATE CONSTANT for SEX = 1(1/HR)
                          θ₂ = 7.25283E-02,  #K MEAN ELIMINATION RATE CONSTANT (1/HR)
@@ -91,9 +91,11 @@ end
   o = fit(theopmodel_analytical_fo, theopp, param, Pumas.FO(),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
-  ofix1 = fit(theopmodel_analytical_fo, theopp, param, Pumas.FO(); constantcoef=(θ₁=3.5,),
+  ofix1 = fit(theopmodel_analytical_fo, theopp, param, Pumas.FO();
+    constantcoef=(θ₁=3.5,),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
-  ofix2 = fit(theopmodel_analytical_fo, theopp, param, Pumas.FO(); constantcoef=(θ₁=3.5, σ²_add=0.2,),
+  ofix2 = fit(theopmodel_analytical_fo, theopp, param, Pumas.FO();
+    constantcoef=(θ₁=3.5, σ²_add=0.2,),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
   @test coef(ofix1).θ₁     == 3.5
@@ -259,7 +261,7 @@ Bootstrap inference results
 Successful minimization:                true
 
 Likelihood approximation:           Pumas.FO
-Deviance:                          90.837418
+Log-likelihood value:              -166.7186
 Total number of observation records:     132
 Number of active observation records:    132
 Number of subjects:                       12
@@ -290,7 +292,7 @@ Bootstrap inference results
 Successful minimization:                true
 
 Likelihood approximation:           Pumas.FO
-Deviance:                          90.837418
+Log-likelihood value:              -166.7186
 Total number of observation records:     132
 Number of active observation records:    132
 Number of subjects:                       12
@@ -316,7 +318,7 @@ Stratification by SEX.
   show(io_buffer, o)
   show(io_buffer, o_infer)
 
-  @test deviance(o) ≈ 71.979975297638589
+  @test loglikelihood(o) ≈ -157.2898737921918
 
   @testset "test estimate of $k" for k in keys(o_estimates)
     @test Pumas._coef_value(getfield(o_estimates, k)) ≈ Pumas._coef_value(getfield(fo_estimated_params, k)) rtol=1e-3
@@ -492,7 +494,7 @@ end
     σ²_add = 0.388
     )
 
-  @test deviance(theopmodel_solver_fo, theopp, param, Pumas.FO(), reltol=1e-6, abstol=1e-8) ≈ 137.16573310096661
+  @test loglikelihood(theopmodel_solver_fo, theopp, param, Pumas.FO(), reltol=1e-6, abstol=1e-8) ≈ -189.88275290617855
 
   fo_estimated_params = (θ₁ = 4.20241E+00,  #Ka MEAN ABSORPTION RATE CONSTANT for SEX = 1(1/HR)
                          θ₂ = 7.25283E-02,  #K MEAN ELIMINATION RATE CONSTANT (1/HR)
@@ -621,7 +623,7 @@ Bootstrap inference results
 Successful minimization:                true
 
 Likelihood approximation:           Pumas.FO
-Deviance:                          90.837418
+Log-likelihood value:              -166.7186
 Total number of observation records:     132
 Number of active observation records:    132
 Number of subjects:                       12
@@ -652,7 +654,7 @@ Bootstrap inference results
 Successful minimization:                true
 
 Likelihood approximation:           Pumas.FO
-Deviance:                          90.837418
+Log-likelihood value:              -166.7186
 Total number of observation records:     132
 Number of active observation records:    132
 Number of subjects:                       12
@@ -681,7 +683,7 @@ Stratification by SEX.
   show(io_buffer, o_predict)
   show(io_buffer, o_empirical_bayes)
 
-  @test deviance(o) ≈ 71.979975297638589 rtol=1e-6
+  @test loglikelihood(o) ≈ -157.28987379203153 rtol=1e-6
 
   @testset "test estimate of $k" for k in keys(o_estimates)
     @test Pumas._coef_value(getfield(o_estimates, k)) ≈ Pumas._coef_value(getfield(fo_estimated_params, k)) rtol=1e-3
@@ -763,7 +765,7 @@ end
         σ²_add = 0.388
        )
 
-  @test deviance(theopmodel_foce, theopp, param, Pumas.FOCE()) ≈ 138.90111320972699 rtol=1e-6
+  @test loglikelihood(theopmodel_foce, theopp, param, Pumas.FOCE()) ≈ -190.75044372296304 rtol=1e-6
 
   foce_estimated_params = (
     θ₁ = 1.67977E+00, #Ka MEAN ABSORPTION RATE CONSTANT for SEX = 1(1/HR)
@@ -890,7 +892,7 @@ end
   bts = bootstrap(o; samples=5)
   bts = bootstrap(o; samples=5, stratify_by=:SEX)
 
-  @test deviance(o) ≈ 121.89849119366599 rtol=1e-7
+  @test -2*loglikelihood(o) ≈ 364.49826395969956 rtol=1e-7
 
   @testset "test estimate of $k" for k in keys(o_estimates)
     @test Pumas._coef_value(getfield(o_estimates, k)) ≈ Pumas._coef_value(getfield(foce_estimated_params, k)) rtol=1e-3
@@ -1112,7 +1114,7 @@ end
         σ²_prop = 0.3
        )
 
-  @test deviance(theopmodel_focei, theopp, param, Pumas.FOCEI()) ≈ 287.08854688950419 rtol=1e-6
+  @test loglikelihood(theopmodel_focei, theopp, param, Pumas.FOCEI()) ≈ -264.8441545284401 rtol=1e-6
 
   focei_estimated_params = (
     θ₁ = 1.58896E+00, #Ka MEAN ABSORPTION RATE CONSTANT for SEX = 1(1/HR)
@@ -1234,7 +1236,7 @@ end
   show(io_buffer, o)
   show(io_buffer, o_infer)
 
-  @test deviance(o) ≈ 115.40505379554628 rtol=1e-7
+  @test -2*loglikelihood(o) ≈ 358.00482656157988 rtol=1e-7
   @testset "test estimate of $k" for k in keys(o_estimates)
     @test Pumas._coef_value(getfield(o_estimates, k)) ≈ Pumas._coef_value(getfield(focei_estimated_params, k)) rtol=1e-3
   end
@@ -1416,7 +1418,7 @@ end
             )
 
   # FOCE is not allowed for models where dispersion parameter depends on the random effects
-  @test_throws ArgumentError deviance(theopmodel_foce, theopp[1], param, Pumas.FOCE())
+  @test_throws ArgumentError loglikelihood(theopmodel_foce, theopp[1], param, Pumas.FOCE())
 end
 
 @testset "run5.mod LaplaceI without interaction, diagonal omega and additive error" begin
@@ -1485,7 +1487,7 @@ end
       @test sqrt(param.Ω)*Pumas._orth_empirical_bayes(theopmodel_laplace, theopp[i], param, Pumas.LaplaceI()) ≈ η rtol=1e-4
     end
 
-    @test deviance(theopmodel_laplace, theopp, param, Pumas.LaplaceI()) ≈ 141.296 atol=1e-3
+    @test loglikelihood(theopmodel_laplace, theopp, param, Pumas.LaplaceI()) ≈ -191.9476628317836 atol=1e-3
   end
 
   laplace_estimated_params = (
@@ -1536,7 +1538,7 @@ end
   # Elapsed estimation time in seconds:     0.23
   # Elapsed covariance time in seconds:     0.17
 
-  @test deviance(theopmodel_laplace, theopp, laplace_estimated_params, Pumas.LaplaceI()) ≈ 123.76439574418291 atol=1e-3
+  @test loglikelihood(theopmodel_laplace, theopp, laplace_estimated_params, Pumas.LaplaceI()) ≈ -183.18208439068763 atol=1e-3
 
   o = fit(theopmodel_laplace, theopp, param, Pumas.LaplaceI(),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
@@ -1608,7 +1610,7 @@ end
   show(io_buffer, o)
   show(io_buffer, o_infer)
 
-  @test deviance(o) ≈ 123.76439574418291 rtol=1e-5
+  @test -2*loglikelihood(o) ≈ 366.36416860492614 rtol=1e-5
 
   @testset "test estimate of $k" for k in keys(o_estimates)
     @test Pumas._coef_value(getfield(o_estimates, k)) ≈ Pumas._coef_value(getfield(laplace_estimated_params, k)) rtol=2e-3
@@ -1683,7 +1685,7 @@ end
         σ²_prop = 0.3
        )
 
-  @test deviance(theopmodel_laplacei, theopp, param, Pumas.LaplaceI()) ≈ 288.30901928585990 rtol=1e-6
+  @test loglikelihood(theopmodel_laplacei, theopp, param, Pumas.LaplaceI()) ≈ -265.4543958780463 rtol=1e-6
 
   laplacei_estimated_params = (
     θ = [1.60941E+00,  #Ka MEAN ABSORPTION RATE CONSTANT for SEX = 1(1/HR)
@@ -1801,7 +1803,7 @@ end
        3.1935E+00] rtol=1e-3
   end
 
-  @test deviance(o) ≈ 116.97275684239327 rtol=1e-5
+  @test -2*loglikelihood(o) ≈ 359.57252972246539 rtol=1e-5
 
   @testset "test estimate of $k" for k in keys(o_estimates)
     @test Pumas._coef_value(getfield(o_estimates, k)) ≈ Pumas._coef_value(getfield(laplacei_estimated_params, k)) rtol=1e-3
@@ -1828,8 +1830,8 @@ end
     @test ebe_cov[i].ηCL.σ^2 ≈ last( laplacei_ebes_cov[i,:]) rtol=1e-3
   end
 
-  @testset "Cubature based estimation deviance test" begin
-    @test deviance(theopmodel_laplacei, theopp, param, Pumas.LLQuad(), iabstol=0, ireltol=0, imaxiters=typemax(Int)) ≈ 281.1606964897779 rtol=1e-6
+  @testset "Cubature based estimation loglikelihood test" begin
+    @test loglikelihood(theopmodel_laplacei, theopp, param, Pumas.LLQuad(), iabstol=0, ireltol=0, imaxiters=typemax(Int)) ≈ -261.88023462805 rtol=1e-6
   end
 end
 end

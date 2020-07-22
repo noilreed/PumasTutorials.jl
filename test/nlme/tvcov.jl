@@ -140,7 +140,7 @@ df = identity.(df)
         reltol=1e-9
       )
 
-    @test deviance(ft_normal) ≈ 9946.755245118851 rtol=1e-5
+    @test loglikelihood(ft_normal) ≈ -9263.9016             rtol=1e-5
     @test coef(ft_normal).tvcl     ≈ 0.154637               rtol=1e-2
     @test coef(ft_normal).tvv      ≈ 3.66215                rtol=1e-3
     @test coef(ft_normal).tvka     ≈ 0.873848               rtol=1e-2
@@ -187,7 +187,7 @@ df = identity.(df)
   #   # Successful minimization:                true
 
   #   # Likelihood approximation:         Pumas.FOCE
-  #   # Deviance:                          8939.5062
+  #   # Log-likelihood:                    8939.5062
   #   # Total number of observation records:    4669
   #   # Number of active observation records:   4669
   #   # Number of subjects:                        7
