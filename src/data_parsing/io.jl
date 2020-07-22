@@ -437,7 +437,10 @@ function Subject(
   n_cmt = hasproperty(df, cmt)
   n_rate = hasproperty(df, rate)
   n_ss = hasproperty(df, ss)
-  cmtType = n_cmt ? (eltype(df[!,cmt]) <: String ? Symbol : Int) : Int
+  if n_cmt
+    Tcmt = eltype(df[!,cmt])
+  end
+  cmtType = n_cmt ? ((Tcmt <: String || Tcmt <: Symbol) ? Symbol : Int) : Int
   events = Event{Float64,Float64,Float64,Float64,Float64,Float64,cmtType}[]
   obstimes = Float64[]
   offset = 0.0
@@ -463,7 +466,7 @@ function Subject(
       _addl = n_addl ? Int(df[!,addl][i])   : 0
       _ii   = n_ii ? float(df[!,ii][i])     : zero(t)
       __cmt  = n_cmt ? df[!,cmt][i] : 1
-      _cmt = __cmt isa String ? Symbol(__cmt) : Int(__cmt)
+      _cmt = __cmt isa Symbol ? __cmt : __cmt isa String ? Symbol(__cmt) : Int(__cmt)
       _rate = n_rate ? float(df[!,rate][i]) : _amt === nothing ? 0.0 : zero(_amt)/oneunit(t)
       ss′   = n_ss ? Int8(df[!,ss][i])      : Int8(0)
       build_event_list!(events, event_data, offset + t, _evid, _amt, _addl, _ii, _cmt, _rate, ss′)
@@ -997,7 +1000,7 @@ argument event_data=false in your read_pumas function.
 
   # CASE : cmt must be positive or string
   if has_cmt
-    idx = findfirst(x -> !((x isa String) || (x isa Integer && x > 0)),
+    idx = findfirst(x -> !((x isa String) || (x isa Integer && x > 0) || (x isa Symbol)),
       filter(i -> i[evid] > 0, df)[!, cmt])
   end
   if has_cmt && idx !== nothing

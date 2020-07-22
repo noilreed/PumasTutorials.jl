@@ -195,6 +195,18 @@ Number of subjects:                       10
         constantcoef=(θ=[0.5],))
   end
 
+# test for #1043
+@testset "Symbol cmt names" begin
+  dr1 = DosageRegimen(100, cmt=:Central)
+  subj1 = Subject(id=1, events=dr1)
+  subj2 = Subject(id=2, events=dr1)
+  subj = [subj1, subj2]
+  sim1 = simobs(mdsl1, subj, init_param(mdsl1),obstimes=0:1:24)
+  pop = DataFrame(subj)
+  pop[!, :dv] .= missing
+  # it's important that this runs (before, a symbol in the cmt column would cause an error)
+  dd = read_pumas(pop)
+end
 @testset "integer obstimes" begin
   # from https://discourse.pumas.ai/t/help-with-fitting/50/54
   # the test is simply that dff runs in the end of the testset 
