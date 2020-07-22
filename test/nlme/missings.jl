@@ -111,9 +111,18 @@ using Pumas, Test
         optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
       @test deviance(ft) == deviance(ft_missing)
 
-      res         = wresiduals(ft)
-      res_missing = wresiduals(ft_missing)
-      @test all(map(((rᵢ, rmᵢ),) -> rᵢ.wres.dv ≈ filter(!ismissing, rmᵢ.wres.dv), zip(res, res_missing)))
+      # Weighted residuals not defined for the LogNormal error model
+      if _model !== "exponential"
+        res         = wresiduals(ft)
+        res_missing = wresiduals(ft_missing)
+        @test all(map(((rᵢ, rmᵢ),) -> rᵢ.wres.dv ≈ filter(!ismissing, rmᵢ.wres.dv), zip(res, res_missing)))
+      else
+        if _approx == Pumas.FO()
+          @test_throws AssertionError("eltype(_dist) <: Normal") wresiduals(ft)
+        else
+          @test_throws ArgumentError("weighted residuals only implemented for Gaussian error models") wresiduals(ft)
+        end
+      end
 
       @test ϵshrinkage(ft).dv ≈ ϵshrinkage(ft_missing).dv
       @test ηshrinkage(ft).η  ≈ ηshrinkage(ft_missing).η

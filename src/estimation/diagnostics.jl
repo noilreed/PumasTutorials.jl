@@ -377,7 +377,11 @@ function __wresiduals(
     Fname[missingmask, :] .= 0
     resname[missingmask]  .= 0
 
-    V = Symmetric(Fname*Fname' + Diagonal(var.(dist[name])))
+    _dist = dist[name]
+
+    @assert eltype(_dist) <: Normal
+
+    V = Symmetric(Fname*Fname' + Diagonal(var.(_dist)))
 
     # Theoretically, it should be just fine to use this version
     # based on the Choleksy
@@ -401,7 +405,7 @@ function __wresiduals(
   subject::Subject,
   param::NamedTuple,
   vrandeffsorth::AbstractVector,
-  approx::Union{FOCE,FOCEI,LaplaceI};
+  ::Union{FOCE,FOCEI,LaplaceI};
   kwargs...)
 
   randeffstransform = totransform(model.random(param))
@@ -413,16 +417,6 @@ function __wresiduals(
 
   _dv_keys = keys(subject.observations)
 
-  # For FOCE, we don't allow the dispersion parameter to depend on the random effects
-  if approx isa FOCE
-    foreach(_dv_keys) do _key
-      if !_is_homoscedastic(dist[_key])
-        throw(ArgumentError("dispersion parameter is not allowed to depend on the random effects when using FOCE"))
-      end
-      nothing
-    end
-  end
-
   return map(NamedTuple{_dv_keys}(_dv_keys)) do name
     # We have to handle missing values explicitly to avoid that the variance
     # components associated with missing values influence the weighting
@@ -432,7 +426,13 @@ function __wresiduals(
     Fname[missingmask, :] .= 0
     resname[missingmask]  .= 0
 
-    V = Symmetric(Fname*Fname' + Diagonal(var.(dist[name])))
+    _dist = dist[name]
+
+    if !(eltype(_dist) <: Normal)
+      throw(ArgumentError("weighted residuals only implemented for Gaussian error models"))
+    end
+
+    V = Symmetric(Fname*Fname' + Diagonal(var.(_dist)))
 
     # if "conditional" mothods, there is a first order term in the mean
     resname .+= Fname*vrandeffsorth
@@ -472,17 +472,8 @@ function __iwresiduals(
   dist = _derived(m, subject, param, randeffs; kwargs...)
 
   _dv_keys = keys(subject.observations)
-  # For FOCE, we don't allow the dispersion parameter to depend on the random effects
-  if approx isa FOCE
-    foreach(_dv_keys) do _key
-      if !_is_homoscedastic(dist[_key])
-        throw(ArgumentError("dispersion parameter is not allowed to depend on the random effects when using FOCE"))
-      end
-      nothing
-    end
-  end
-
   _res = _residuals(subject, dist)
+
   return map(name -> _res[name] ./ std.(dist[name]), NamedTuple{_dv_keys}(_dv_keys))
 end
 
@@ -716,6 +707,12 @@ StatsBase.predict(insp::FittedPumasModelInspection, args...) = predict(insp.o, a
 wresiduals(insp::FittedPumasModelInspection) = insp.wres
 empirical_bayes(insp::FittedPumasModelInspection) = insp.ebes
 
+function _is_gaussian(fpm::FittedPumasModel)
+  randeffs = TransformVariables.transform(totransform(fpm.model.random(coef(fpm))), first(fpm.vvrandeffsorth))
+  dist = _derived(fpm.model, first(fpm.data), coef(fpm), randeffs)
+  return all(name -> eltype(dist[name]) <: Normal, keys(first(fpm.data).observations))
+end
+
 """
     inspect(fpm::FittedPumasModel; pred_approx=fpm.approx, wres_approx=fpm.approx)
 
@@ -730,8 +727,12 @@ function inspect(fpm; wres_approx=fpm.approx)
   print("Calculating: ")
   print("predictions")
   pred = predict(fpm)
-  print(", weighted residuals")
-  res = wresiduals(fpm, wres_approx)
+  if _is_gaussian(fpm)
+    print(", weighted residuals")
+    res = wresiduals(fpm, wres_approx)
+  else
+    res = nothing
+  end
   print(", empirical bayes")
   ebes = empirical_bayes(fpm)
   println(". Done.")
@@ -741,7 +742,14 @@ end
 function DataFrames.DataFrame(i::FittedPumasModelInspection; include_covariates=true)
   # Creat the dataframe including
   pred_df = DataFrame(i.pred; include_covariates=false)
-  res_df = select!(select!(DataFrame(i.wres; include_covariates=false), Not(:id)), Not(:time))
+
+  # Only Gaussian error models include weighted residuals
+  if i.wres !== nothing
+    res_df = select!(select!(DataFrame(i.wres; include_covariates=false), Not(:id)), Not(:time))
+  else
+    res_df = DataFrame()
+  end
+
   ebes = i.ebes.ebes
   ebe_keys = keys(first(ebes))
   ebe_types = map(typeof, first(ebes))

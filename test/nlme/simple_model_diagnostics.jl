@@ -125,7 +125,6 @@ end
     @test Pumas.__wresiduals(mdsl_additive, dt, param,
       Pumas._orth_empirical_bayes(mdsl_additive, dt, param, Pumas.FOCE()), Pumas.FOCE()).dv ≈ sub_cwres
   end
-  @test_throws ArgumentError Pumas.__wresiduals(mdsl_proportional, data[1], param, zeros(1), Pumas.FOCE())
 end
 
 @testset "__wresiduals(::FOCEI), (CWRESI)" for
@@ -174,8 +173,6 @@ end
     @test Pumas.__iwresiduals(mdsl_additive, dt, param,
       Pumas._orth_empirical_bayes(mdsl_additive, dt, param, Pumas.FOCE()), Pumas.FOCE()).dv ≈ sub_icwres rtol=1e-6
   end
-
-  @test_throws ArgumentError Pumas.__iwresiduals(mdsl_proportional, data[1], param, zeros(1), Pumas.FOCE()).dv
 end
 
 @testset "__iwresiduals(::FOCEI) (ICWRESI)" for

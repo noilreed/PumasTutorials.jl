@@ -971,15 +971,15 @@ function _mean_derived_vηorth_jacobian(m::PumasModel,
   nt = length(first(dual_derived))
   nrandeffs = length(vrandeffsorth)
   F = map(NamedTuple{keys(subject.observations)}(dual_derived)) do dv
-        Ft = zeros(eltype(ForwardDiff.partials(first(dv).μ).values), nrandeffs, nt)
-        for j in eachindex(dv)
-          partial_values = ForwardDiff.partials(dv[j].μ).values
-          for i = 1:nrandeffs
-            Ft[i, j] = partial_values[i]
-          end
-        end
-        return Ft'
+    Ft = zeros(eltype(ForwardDiff.partials(mean(first(dv))).values), nrandeffs, nt)
+    for j in eachindex(dv)
+      partial_values = ForwardDiff.partials(mean(dv[j])).values
+      for i = 1:nrandeffs
+        Ft[i, j] = partial_values[i]
       end
+    end
+    return Ft'
+  end
   return F
 end
 

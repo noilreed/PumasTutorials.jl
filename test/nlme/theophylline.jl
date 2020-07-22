@@ -1269,6 +1269,7 @@ end
   end
 
   @test_throws ArgumentError Pumas.__predict(  theopmodel_focei, theopp[1], param, zeros(2), Pumas.FOCE()).dv
+
   @test Pumas.__predict(theopmodel_focei, theopp[1], param, zeros(2), Pumas.FO()).dv ≈ [
     0.0
     4.275044896193946
@@ -1281,6 +1282,7 @@ end
     4.389649021685277
     3.4538248683011945
     1.3267830785309427]
+
   @test Pumas.__predict(theopmodel_focei, theopp[1], param,
     Pumas._orth_empirical_bayes(theopmodel_focei, theopp[1], param, Pumas.FOCEI()), Pumas.FOCEI()).dv ≈ [
       0.0
@@ -1307,7 +1309,7 @@ end
      0.7076552241287248
      0.930052249555352
      1.7281576976471564]
-  @test_throws ArgumentError Pumas.__wresiduals(theopmodel_focei, theopp[1], param, zeros(2), Pumas.FOCE())
+
   @test Pumas.__wresiduals(theopmodel_focei, theopp[1], param,
     Pumas._orth_empirical_bayes(theopmodel_focei, theopp[1], param, Pumas.FOCEI()), Pumas.FOCEI()).dv ≈ [
       1.1879984032756807
@@ -1321,6 +1323,7 @@ end
       0.5739064984433875
       0.7462189258526601
       1.4570286207947225] rtol=1e-6
+
   @test Pumas.__iwresiduals(theopmodel_focei, theopp[1], param, zeros(2), Pumas.FO()).dv ≈ [
     1.1879984032756807
    -0.5922659254289279
@@ -1333,7 +1336,7 @@ end
     1.006709008521727
     1.2482988777536315
     2.0406927145826876]
-  @test_throws ArgumentError Pumas.__iwresiduals(theopmodel_focei, theopp[1], param, zeros(2), Pumas.FOCE())
+
   @test Pumas.__iwresiduals(theopmodel_focei, theopp[1], param,
     Pumas._orth_empirical_bayes(theopmodel_focei, theopp[1], param, Pumas.FOCEI()), Pumas.FOCEI()).dv ≈ [
       1.1879984032756807

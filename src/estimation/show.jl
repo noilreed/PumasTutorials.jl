@@ -285,9 +285,12 @@ end
 
 function Base.show(io::IO, mime::MIME"text/plain", pmi::FittedPumasModelInspection)
   println(io, "FittedPumasModelInspection\n")
-  println(io, "Fitting was successful: $(Optim.converged(pmi.o.optim))")
+  print(io, "Fitting was successful: $(Optim.converged(pmi.o.optim))")
 
-  println(io, "Likehood approximations used for weighted residuals : $(first(wresiduals(pmi)).approx)")
+  # Only Gaussian error models include weighted residuals
+  if pmi.wres !== nothing
+    print(io, "\nLikehood approximations used for weighted residuals : $(first(wresiduals(pmi)).approx)")
+  end
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", sens::SobolOutput)
