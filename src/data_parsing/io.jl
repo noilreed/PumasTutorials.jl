@@ -388,6 +388,13 @@ Fields:
 - `covariates`: a named tuple containing the covariates, or `nothing`.
 - `events`: a vector of `Event`s.
 - `time`: a vector of time stamps for the observations
+
+When there are time varying covariates, each covariate is interpolated
+with a common covariate time support. The interpolated values are then
+used to build a multi-valued interpolant for the complete time support.
+From the multi-valued interpolant, certain discontinuities are flagged
+in order to use that information for the differential equation solvers
+and to correctly apply the analytical solution per region as applicable.
 """
 struct Subject{T1,T2,T3,T4}
   id::String
