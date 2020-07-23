@@ -96,7 +96,7 @@ end
 function DiffEqBase.solve(m::PumasModel, pop::DataFrame, args...;kwargs...)
   throw(ArgumentError("The second argument to solve was a DataFrame instead of a Population. Please use read_pumas to construct a Population from a DataFrame."))
 end
-function DiffEqBase.solve(m::PumasModel, pop::Population,
+function DiffEqBase.solve(m::PumasModel, population::Population,
                           param = init_param(m),
                           randeffs = nothing,
                           args...;
@@ -104,14 +104,19 @@ function DiffEqBase.solve(m::PumasModel, pop::Population,
                           alg=AutoTsit5(Rosenbrock23()),
                           ensemblealg = EnsembleThreads(),
                           kwargs...)
+  # Compare keys in param with @param in the model
   _compare_keys(m, param)
+  # Check that doses happen into existing compartments
+  map(subject -> _check_dose_compartments(m, subject, param), population)
+
+
   function solve_prob_func(prob,i,repeat)
     _randeffs = randeffs === nothing ? sample_randeffs(m, param) : randeffs
-    col = m.pre(param, _randeffs, pop[i])
-    _problem(m,pop[i],col,args...;callback=callback,kwargs...)
+    col = m.pre(param, _randeffs, population[i])
+    _problem(m,population[i],col,args...;callback=callback,kwargs...)
   end
   prob = EnsembleProblem(m.prob,prob_func = solve_prob_func)
-  solve(prob,alg,ensemblealg,args...;trajectories = length(pop),kwargs...)
+  solve(prob,alg,ensemblealg,args...;trajectories = length(population),kwargs...)
 end
 
 """
@@ -363,35 +368,47 @@ end
 function simobs(m::PumasModel, pop::DataFrame, args...;kwargs...)
   throw(ArgumentError("The second argument to simobs was a DataFrame instead of a Population. Please use read_pumas to construct a Population from a DataFrame."))
 end
-function simobs(m::PumasModel, pop::Population,
+function simobs(m::PumasModel, population::Population,
                 param::NamedTuple = init_param(m),
-                randeffs = [sample_randeffs(m, param) for i in 1:length(pop)],
+                randeffs = [sample_randeffs(m, param) for i in 1:length(population)],
                 args...;
                 kwargs...)
-  if !(randeffs isa Nothing) && length(pop) !== length(randeffs)
-    throw(DimensionMismatch("The population and random effects input must have equal length, got $(length(pop)) and $(length(randeffs))."))
+  if !(randeffs isa Nothing) && length(population) !== length(randeffs)
+    throw(DimensionMismatch("The population and random effects input must have equal length, got $(length(population)) and $(length(randeffs))."))
   end
-  return _simobs(m,pop,RepeatedVector([param],length(pop)),randeffs,args...;kwargs...)
+
+  # Compare keys in param with @param in the model
+  _compare_keys(m, param)
+  # Check that doses happen into existing compartments
+  # We need to map _rand for Koopmans Expectation
+  map(subject -> _check_dose_compartments(m, subject, map(_rand, param)), population)
+
+  return _simobs(m,population,RepeatedVector([param],length(population)),randeffs,args...;kwargs...)
 end
 
-function simobs(m::PumasModel, pop::Population,
+function simobs(m::PumasModel, population::Population,
                 param::AbstractVector,
-                randeffs = [sample_randeffs(m, param) for i in 1:(length(pop)*length(param))],
+                randeffs = [sample_randeffs(m, param) for i in 1:(length(population)*length(param))],
                 args...;
                 kwargs...)
+  # Compare keys in param with @param in the model
+  map(_param -> _compare_keys(m, _param), param)
+  # Check that doses happen into existing compartments
+  # We need to map _rand for Koopmans Expectation
+  map(_param->map(subject -> _check_dose_compartments(m, subject, map(_randm, _param)), population), param)
 
   out = _simobs(m,
-    RepeatedVector(pop,length(param)),
-    RepeatedVector(param,length(pop)),
+    RepeatedVector(population,length(param)),
+    RepeatedVector(param,length(population)),
     randeffs,
     args...;kwargs...)
 
-  n = length(pop)
+  n = length(population)
   # Chop up into arrays of each population matching parameter i
   return [out[((i - 1)*n + 1):i*n] for i in 1:length(param)]
 end
 
-function _simobs(m::PumasModel, pop::Population,
+function _simobs(m::PumasModel, population::Population,
                  param::AbstractVector,
                  randeffs=nothing,
                  args...;
@@ -400,24 +417,23 @@ function _simobs(m::PumasModel, pop::Population,
                  callback = nothing,
                  isfor_derived = false,
                  kwargs...)
-  if !(randeffs isa Nothing) && length(pop) !== length(randeffs)
-    throw(DimensionMismatch("The population and random effects input must have equal length, got $(length(pop)) and $(length(randeffs))."))
+  if !(randeffs isa Nothing) && length(population) !== length(randeffs)
+    throw(DimensionMismatch("The population and random effects input must have equal length, got $(length(population)) and $(length(randeffs))."))
   end
-  _compare_keys(m, first(param))
 
   _param = [_rand(param[i]) for i in 1:length(param)]
   _randeffs = randeffs === nothing ? [sample_randeffs(m, _param[i]) for i in 1:length(param)] : randeffs
 
   function simobs_prob_func(prob, i, repeat)
-    col = m.pre(_param[i], _randeffs[i], pop[i])
-    obstimes = :obstimes ∈ keys(kwargs) ? kwargs[:obstimes] : observationtimes(pop[i])
+    col = m.pre(_param[i], _randeffs[i], population[i])
+    obstimes = :obstimes ∈ keys(kwargs) ? kwargs[:obstimes] : observationtimes(population[i])
     saveat = :saveat ∈ keys(kwargs) ? kwargs[:saveat] : obstimes
-    _problem(m, pop[i], col, args...; saveat=saveat, callback=callback, kwargs...)
+    _problem(m, population[i], col, args...; saveat=saveat, callback=callback, kwargs...)
   end
 
   function simobs_output_func(sol, i)
     col = sol.prob.p
-    obstimes = :obstimes ∈ keys(kwargs) ? kwargs[:obstimes] : observationtimes(pop[i])
+    obstimes = :obstimes ∈ keys(kwargs) ? kwargs[:obstimes] : observationtimes(population[i])
     saveat = :saveat ∈ keys(kwargs) ? kwargs[:saveat] : obstimes
 
     if isfor_derived
@@ -428,17 +444,17 @@ function _simobs(m::PumasModel, pop::Population,
         # FIXME! Do we need to make this type stable?
           return map(x->nothing, subject.observations), false # create a named tuple of nothing with the observed names ( should this be all of derived?)
       end
-      return m.derived(col, sol, obstimes, pop[i], param[i], _randeffs[i]), false
+      return m.derived(col, sol, obstimes, population[i], param[i], _randeffs[i]), false
     else
-      derived = m.derived(col, sol, obstimes, pop[i], param[i], _randeffs[i])
-      obs = m.observed(col, sol, obstimes, map(_rand, derived), pop[i])
-      return SimulatedObservations(pop[i], obstimes, obs), false
+      derived = m.derived(col, sol, obstimes, population[i], param[i], _randeffs[i])
+      obs = m.observed(col, sol, obstimes, map(_rand, derived), population[i])
+      return SimulatedObservations(population[i], obstimes, obs), false
     end
   end
 
   prob = EnsembleProblem(m.prob; prob_func = simobs_prob_func,
                          output_func = simobs_output_func)
-  return solve(prob, alg, ensemblealg,args...; trajectories = length(pop),kwargs...).u
+  return solve(prob, alg, ensemblealg,args...; trajectories = length(population),kwargs...).u
 end
 
 """

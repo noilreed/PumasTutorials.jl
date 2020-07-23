@@ -1499,6 +1499,39 @@ function _check_zero_gradient(
   end
 end
 
+function _check_dose_compartments(model, subject, param)
+  # grab any randeffs
+  randeffs = init_randeffs(model, param)
+
+  # get the pre function for this (model, subject, parameter) combination 
+  _pre = Pumas.pre(
+    model,
+    subject,
+    param,
+    randeffs)
+  
+  # Get the compartments as the keys of the initial system (at time 0.0)
+  compartments = keys(model.init(_pre, 0.0))
+
+  # Count the number of compartments for easy reference below
+  ncmt = length(compartments)
+
+  # Loop over events and look for strange dosage routes
+  for event in subject.events
+    # If the cmt is coded as an integer then we just check if it's within bounds
+    if event.cmt isa Integer
+      if !(event.cmt <= ncmt)
+        # Helper string for singular/plural
+        throw(ArgumentError("Subject with id $(subject.id) has an event with compartment index $(event.cmt), but the model only has $ncmt $("compartment"*(ncmt > 1 ? "s" : "")): $compartments"))
+      end
+    # elseif cmt is not a compartment in compartments, throw an error
+    elseif !(event.cmt ∈ compartments)
+      # Helper string for singular/plural
+      throw(ArgumentError("Subject with id $(subject.id) has an event with compartment name $(event.cmt), but the model only has the following $("compartment"*(ncmt > 1 ? "s" : "")): $compartments"))
+    end
+  end
+end
+
 function Distributions.fit(m::PumasModel,
                            population::Population,
                            param::NamedTuple,
@@ -1518,7 +1551,10 @@ function Distributions.fit(m::PumasModel,
                            checkidentification=true,
                            kwargs...)
 
+  # Compare keys in param with @param in the model
   _compare_keys(m, param)
+  # Check that doses happen into existing compartments
+  map(subject->_check_dose_compartments(m, subject, param), population)
 
   # Compute transform object defining the transformations from NamedTuple to Vector while applying any parameter restrictions and apply the transformations
   fixedparamset, fixedparam = _fixed_to_constant_paramset(m.param, param, constantcoef, omegas)
