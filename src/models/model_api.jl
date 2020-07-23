@@ -395,7 +395,7 @@ function simobs(m::PumasModel, population::Population,
   map(_param -> _compare_keys(m, _param), param)
   # Check that doses happen into existing compartments
   # We need to map _rand for Koopmans Expectation
-  map(_param->map(subject -> _check_dose_compartments(m, subject, map(_randm, _param)), population), param)
+  map(_param->map(subject -> _check_dose_compartments(m, subject, map(_rand, _param)), population), param)
 
   out = _simobs(m,
     RepeatedVector(population,length(param)),
