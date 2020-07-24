@@ -67,6 +67,39 @@ df = identity.(df)
     end
   end
 
+
+  tvcov_model_normal_analytical = @model begin
+    @param begin
+      tvcl ∈ RealDomain(lower = 0)
+      tvv ∈ RealDomain(lower = 0)
+      tvka ∈ RealDomain(lower = 0)
+      ec50 ∈ RealDomain(lower = 0)
+      gaeffect ∈ RealDomain(lower = 0)
+      Ω ∈ PDiagDomain(2)
+      σ_prop ∈ RealDomain(lower=0)
+    end
+
+    @random begin
+      η ~ MvNormal(Ω)
+    end
+
+    @covariates pnad gawk wtkg
+
+    @pre begin
+      mat = pnad / (ec50 + pnad)
+      CL = tvcl * mat * (gawk/34)^gaeffect * (1 - mat) * wtkg^0.75 * exp(η[1])
+      Vc = tvv * wtkg * exp(η[2])
+      Ka = tvka
+    end
+
+    @dynamics Depots1Central1
+
+    @derived begin
+      cp = @. (Central / Vc)
+      dv ~ @. Normal(cp, cp*σ_prop)
+    end
+  end
+
   param_normal = (
     tvcl = 0.138,
     tvv  = 3.5,
@@ -129,6 +162,10 @@ df = identity.(df)
   est_df = sim_df |>
     @mutate(cmt = ifelse(ismissing(_.cmt), 2, _.cmt)) |> DataFrame
   tvcov_pd = read_pumas(est_df, observations = [:dv], covariates = [:pnad,:gawk,:wtkg])
+
+  # check that we can't get closer than this, but note this has a lot of observations
+  # and discontinuities, so maybe it's not too surprising that we're seeing differences here.
+  @test abs(loglikelihood(tvcov_model_normal, tvcov_pd, param_normal, Pumas.FOCEI())-loglikelihood(tvcov_model_normal_analytical, tvcov_pd, param_normal, Pumas.FOCEI()))<0.50
 
   @testset "Fit proportional (normal) error model" begin
     ft_normal = fit(
