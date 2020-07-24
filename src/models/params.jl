@@ -82,7 +82,7 @@ function Domain(d::MvNormal)
   n = length(d)
   VectorDomain(fill(-∞, n), fill(∞, n), mean(d))
 end
-Domain(d::InverseWishart) = PSDDomain(Distributions.dim(d))
+Domain(d::Union{Wishart,InverseWishart}) = PSDDomain(Distributions.dim(d))
 Domain(d::Normal) = RealDomain(lower=-∞, upper=∞, init=mean(d))
 Domain(d::Uniform) = RealDomain(lower=minimum(d), upper=maximum(d), init=mean(d))
 Domain(d::Union{Gamma,InverseGamma,Exponential,Chisq}) = RealDomain(lower=zero(partype(d)), upper=∞, init=mean(d))

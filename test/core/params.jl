@@ -15,14 +15,19 @@ import TransformVariables
   @test u.Ω isa Pumas.PDMats.AbstractPDMat
 
 
+  @testset "Transformations" for Ω in (
+    InverseWishart(13.0, [1.0 0.2; 0.2 1.0]),
+    Wishart(13.0, [1.0 0.2; 0.2 1.0]))
 
-  pd = ParamSet((θ = Constrained(MvNormal([1.0 0.2; 0.2 1.0]), lower=-2.0),
-                 Ω = InverseWishart(13.0, [1.0 0.2; 0.2 1.0])))
-  td = Pumas.totransform(pd)
-  @test TransformVariables.dimension(td) == 5
-  ud = TransformVariables.transform(td, zeros(5))
-  @test all(ud.θ .> -2.0)
-  @test ud.Ω isa Pumas.PDMats.AbstractPDMat
+    pd = ParamSet((θ = Constrained(MvNormal([1.0 0.2; 0.2 1.0]), lower=-2.0),
+                 Ω = Ω))
+    td = Pumas.totransform(pd)
+    @test TransformVariables.dimension(td) == 5
+    ud = TransformVariables.transform(td, zeros(5))
+    @test all(ud.θ .> -2.0)
+    @test ud.Ω isa Pumas.PDMats.AbstractPDMat
+    @test logpdf(pd.params.Ω, ud.Ω) isa Number
+  end
 
   @testset "Promotion" begin
     d = RealDomain(lower=0, upper=1.0)

@@ -225,14 +225,16 @@ function TransformVariables.inverse!(x::AbstractVector, t::DiagonalTransform, y:
 end
 TransformVariables.inverse!(x::AbstractVector, t::DiagonalTransform, y::Diagonal) = TransformVariables.inverse!(x, t, PDiagMat(y.diag))
 
-
+# These can be removed when we upgrade PDMats to a version where
+# they are AbstractMatrix
+Distributions.logpdf(d::Wishart, M::PDMat) = logpdf(d, M.mat)
 function Distributions.logpdf(d::InverseWishart, M::PDMat)
-    p = dim(d)
-    df = d.df
-    Xcf = M.chol
-    # we use the fact: tr(Ψ * inv(X)) = tr(inv(X) * Ψ) = tr(X \ Ψ)
-    Ψ = Matrix(d.Ψ)
-    -0.5 * ((df + p + 1) * logdet(Xcf) + tr(Xcf \ Ψ)) - d.c0
+  p = dim(d)
+  df = d.df
+  Xcf = M.chol
+  # we use the fact: tr(Ψ * inv(X)) = tr(inv(X) * Ψ) = tr(X \ Ψ)
+  Ψ = Matrix(d.Ψ)
+  -0.5 * ((df + p + 1) * logdet(Xcf) + tr(Xcf \ Ψ)) - d.c0
 end
 
 totransform(d::ConstDomain) = ConstantTransform(d.val)
