@@ -32,8 +32,8 @@ function discrete_count(count_vals, df::AbstractDataFrame)
 end
 
 function discretize_covariates(population, cvname::Symbol, numstrat)
-    covariates = vcat([[getproperty(subject.covariates.u, cvname) for j in 1:length(subject.time)] for subject in population]...)
-    unqcovariates = unique(covariates)
+    sub_covariates = vcat([getproperty(subject.covariates(0.0), cvname) for subject in population]...)
+    unqcovariates = unique(sub_covariates)
     if length(unqcovariates) > numstrat
         boundvals = [quantile(unqcovariates,i/numstrat) for i in 1:numstrat]
         f_ = function(el)
@@ -43,8 +43,11 @@ function discretize_covariates(population, cvname::Symbol, numstrat)
                 end
             end
         end
-        covariates = map(f_, covariates)
+        sub_covariates = map(f_, sub_covariates)
     end
+
+    covariates = vcat([[sub_covariates[j] for i in 1:(subject.covariates isa ConstantInterpolationStructArray ? length(subject.covariates.u) : length(subject.time))] for (j,subject) in enumerate(population)]...)
+
     return covariates
 end
 
@@ -54,8 +57,8 @@ function _vpc(
     dv::Symbol,
     idv::Symbol,
     stratify_by,
-    bandwidth=2,
-    numstrats=stratify_by === nothing ? nothing : [4 for i in 1:length(stratify_by)],
+    count_vals,
+    numstrats=stratify_by === nothing ? nothing : [4 for i in 1:length(stratify_by)]
     )
 
     # Convert observations to DataFrame
@@ -64,6 +67,7 @@ function _vpc(
     # Use hardcoded names
     df.idv = df[!,idv]
     df.dv  = df[!,dv]
+
     if isa(stratify_by, Array{Symbol})
         for (numstrat,cvname) in zip(numstrats,stratify_by)
             df[!,cvname] .= discretize_covariates(population, cvname, numstrat)
@@ -73,9 +77,8 @@ function _vpc(
     # filter out missing obs
     df = filter(i -> !ismissing(i.dv), df)
 
-    count_vals = unique(df[!,:dv])
     if vpctype.idvdiscrete
-        data_quantiles = combine(t -> discrete_count(count_vals, t), groupby(df, stratify_by === nothing ? [idv] : [stratify_by, idv]))
+        data_quantiles = combine(t -> discrete_count(count_vals, t), groupby(df, stratify_by === nothing ? [:idv] : [stratify_by..., :idv]))
     else
         error("Continuous idv with discrete dv not supported")
     end
@@ -100,6 +103,7 @@ function _vpc(
     # Use hardcoded names
     df.idv = df[!,idv]
     df.dv  = df[!,dv]
+
     if isa(stratify_by, Array{Symbol})
         for (numstrat,cvname) in zip(numstrats,stratify_by)
             df[!,cvname] .= discretize_covariates(population, cvname, numstrat)
@@ -136,21 +140,26 @@ function _vpc(
     ensemblealg=EnsembleSerial(),
     bandwidth=2,
     numstrats=stratify_by === nothing ? nothing : [4 for i in 1:length(stratify_by)],
+    sim_idvs = nothing,
+    count_vals = unique(skipmissing(DataFrame(population)[!,dv]))
     )
 
     prediction_probabilities = ((1 - level)/2, 0.5, (1 + level)/2)
     sim_quantiles_v = Array{Any}(undef, reps)
-    mintime,maxtime = extrema(vcat([sub.time for sub in population]...))
-    num_timepoints = maximum([length(sub.time) for sub in population])
+    if sim_idvs === nothing
+        mintime,maxtime = extrema(vcat([sub.time for sub in population]...))
+        num_timepoints = maximum([length(sub.time) for sub in population]) #needs some heuristic guided selection of the times
+        sim_idvs = range(mintime, stop = maxtime, length = num_timepoints)
+    end
 
     for i in 1:reps
         # Simulate a new population
         if vpctype isa ContinuousVPC
-            sim_pop = Subject.(simobs(m, population, param, ensemblealg=ensemblealg, obstimes = range(mintime, stop = maxtime, length = num_timepoints)))
+            sim_pop = Subject.(simobs(m, population, param, ensemblealg=ensemblealg, obstimes = sim_idvs))
             sim_quantiles_v[i], = _vpc(sim_pop, qreg_method, vpctype; quantiles=quantiles, dv=dv, bandwidth=bandwidth, stratify_by=stratify_by, numstrats = numstrats, idv = idv)
         else
             sim_pop = Subject.(simobs(m, population, param, ensemblealg=ensemblealg))
-            sim_quantiles_v[i], = _vpc(sim_pop, vpctype; dv=dv, bandwidth=bandwidth, stratify_by=stratify_by, numstrats = numstrats, idv = idv)
+            sim_quantiles_v[i], = _vpc(sim_pop, vpctype; dv=dv, count_vals = count_vals, stratify_by = stratify_by, numstrats = numstrats, idv = idv)
         end
     end
 
@@ -179,14 +188,16 @@ function vpc(
     ensemblealg=EnsembleSerial(),
     bandwidth=2,
     numstrats= stratify_by === nothing ? nothing : [4 for i in 1:length(stratify_by)],
-    idv = :time
+    idv = :time,
+    count_vals = unique(skipmissing(DataFrame(population)[!,dv])),
+    sim_idvs = nothing
     )
     if vpctype isa ContinuousVPC
         _vpc_data, pop_stratified = _vpc(population, qreg_method, vpctype; dv = dv, stratify_by = stratify_by, quantiles = quantiles, bandwidth = bandwidth, numstrats = numstrats, idv = idv)
-        _vpc_simulated = _vpc(m, population, param, reps, qreg_method, vpctype; dv = dv, stratify_by = stratify_by, quantiles = quantiles, level = level, ensemblealg = ensemblealg, bandwidth = bandwidth, numstrats = numstrats, idv = idv)
+        _vpc_simulated = _vpc(m, population, param, reps, qreg_method, vpctype; dv = dv, stratify_by = stratify_by, quantiles = quantiles, level = level, ensemblealg = ensemblealg, bandwidth = bandwidth, numstrats = numstrats, idv = idv, sim_idvs = sim_idvs)
     else
-        _vpc_data, pop_stratified = _vpc(population, vpctype; dv = dv, stratify_by = stratify_by, bandwidth = bandwidth, numstrats = numstrats, idv = idv)
-        _vpc_simulated = _vpc(m, population, param, reps, qreg_method, vpctype; dv = dv, stratify_by = stratify_by, level = level, ensemblealg = ensemblealg, bandwidth = bandwidth, numstrats = numstrats, idv = idv)
+        _vpc_data, pop_stratified = _vpc(population, vpctype; dv = dv, stratify_by = stratify_by, numstrats = numstrats, idv = idv, count_vals = count_vals)
+        _vpc_simulated = _vpc(m, population, param, reps, qreg_method, vpctype; dv = dv, stratify_by = stratify_by, level = level, ensemblealg = ensemblealg, numstrats = numstrats, idv = idv, count_vals = count_vals)
     end
     return VPC(_vpc_simulated, PopVPC(_vpc_data,pop_stratified, stratify_by, dv), level)
 end
@@ -198,11 +209,12 @@ function vpc(
     dv::Symbol = keys(population[1].observations)[1],
     stratify_by = nothing,
     idv = :time,
+    count_vals = unique(skipmissing(DataFrame(population)[!,dv])),
     kwargs...)
     if vpctype isa ContinuousVPC
         _vpc_data, pop_stratified = _vpc(population, qreg_method, vpctype; stratify_by = stratify_by, dv = dv, idv = idv, kwargs...)
     else
-        _vpc_data, pop_stratified = _vpc(population, vpctype; stratify_by = stratify_by, dv = dv, idv = idv, kwargs...)
+        _vpc_data, pop_stratified = _vpc(population, vpctype; stratify_by = stratify_by, dv = dv, idv = idv, count_vals = count_vals, kwargs...)
     end
     return PopVPC(_vpc_data, pop_stratified, stratify_by, dv)
 end
@@ -258,11 +270,13 @@ vpc(fpm::FittedPumasModel,
     ensemblealg=EnsembleSerial(),
     bandwidth=2,
     numstrats= stratify_by === nothing ? nothing : [4 for i in 1:length(stratify_by)],
-    idv = :time
+    idv = :time,
+    count_vals = unique(skipmissing(DataFrame(fpm.data)[!,dv])),
+    sim_idvs = nothing
     ) = vpc(fpm.model, fpm.data, coef(fpm), reps, qreg_method, vpctype;
             dv = dv, stratify_by = stratify_by, quantiles = quantiles,
             level = level, ensemblealg = ensemblealg, bandwidth = bandwidth,
-            numstrats = numstrats, idv = idv)
+            numstrats = numstrats, idv = idv, count_vals = count_vals, sim_idvs = sim_idvs)
 
 
 @recipe function f(vpc::PopVPC;observations=true, observed_quantiles = true)
