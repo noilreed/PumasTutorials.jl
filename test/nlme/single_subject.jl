@@ -91,13 +91,15 @@ end
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone) ==
 """FittedPumasModel
 
-Successful minimization:                true
+Successful minimization:                      true
 
-Likelihood approximation:  Pumas.NaivePooled
-Log-likelihood value:             -923.58735
-Total number of observation records:     121
-Number of active observation records:    121
-Number of subjects:                        1
+Likelihood approximation:        Pumas.NaivePooled
+Log-likelihood value:                   -923.58735
+Number of subjects:                              1
+Number of parameters:                            4
+Observation records:         Active        Missing
+    dv:                         121              0
+    Total:                      121              0
 
 --------------------
            Estimate
@@ -119,13 +121,15 @@ pmoncl     -0.70079
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(fitnp)) ==
 """Asymptotic inference results
 
-Successful minimization:                true
+Successful minimization:                      true
 
-Likelihood approximation:  Pumas.NaivePooled
-Log-likelihood value:             -860997.51
-Total number of observation records:  121000
-Number of active observation records: 121000
-Number of subjects:                     1000
+Likelihood approximation:        Pumas.NaivePooled
+Log-likelihood value:                   -860997.51
+Number of subjects:                           1000
+Number of parameters:                            4
+Observation records:         Active        Missing
+    dv:                      121000              0
+    Total:                   121000              0
 
 -------------------------------------------------------------------
           Estimate           SE                      95.0% C.I.
@@ -247,13 +251,15 @@ end
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_noeta) ==
 """FittedPumasModel
 
-Successful minimization:                true
+Successful minimization:                      true
 
-Likelihood approximation:  Pumas.NaivePooled
-Log-likelihood value:              -4.068332
-Total number of observation records:       2
-Number of active observation records:      2
-Number of subjects:                        1
+Likelihood approximation:        Pumas.NaivePooled
+Log-likelihood value:                    -4.068332
+Number of subjects:                              1
+Number of parameters:                            2
+Observation records:         Active        Missing
+    dv:                           2              0
+    Total:                        2              0
 
 ----------------
        Estimate
@@ -267,13 +273,15 @@ Number of subjects:                        1
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_noeta) ==
 """Asymptotic inference results
 
-Successful minimization:                true
+Successful minimization:                      true
 
-Likelihood approximation:  Pumas.NaivePooled
-Log-likelihood value:              -4.068332
-Total number of observation records:       2
-Number of active observation records:      2
-Number of subjects:                        1
+Likelihood approximation:        Pumas.NaivePooled
+Log-likelihood value:                    -4.068332
+Number of subjects:                              1
+Number of parameters:                            2
+Observation records:         Active        Missing
+    dv:                           2              0
+    Total:                        2              0
 
 -----------------------------------------------------------
       Estimate           SE                  95.0% C.I.
@@ -289,13 +297,15 @@ Number of subjects:                        1
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_constantcoef) ==
 """FittedPumasModel
 
-Successful minimization:                true
+Successful minimization:                      true
 
-Likelihood approximation:  Pumas.NaivePooled
-Log-likelihood value:             -4.0683321
-Total number of observation records:       2
-Number of active observation records:      2
-Number of subjects:                        1
+Likelihood approximation:        Pumas.NaivePooled
+Log-likelihood value:                   -4.0683321
+Number of subjects:                              1
+Number of parameters:                            3
+Observation records:         Active        Missing
+    dv:                           2              0
+    Total:                        2              0
 
 ----------------
        Estimate
@@ -310,13 +320,15 @@ Number of subjects:                        1
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_constantcoef) ==
 """Asymptotic inference results
 
-Successful minimization:                true
+Successful minimization:                      true
 
-Likelihood approximation:  Pumas.NaivePooled
-Log-likelihood value:             -4.0683321
-Total number of observation records:       2
-Number of active observation records:      2
-Number of subjects:                        1
+Likelihood approximation:        Pumas.NaivePooled
+Log-likelihood value:                   -4.0683321
+Number of subjects:                              1
+Number of parameters:                            3
+Observation records:         Active        Missing
+    dv:                           2              0
+    Total:                        2              0
 
 ------------------------------------------------------------
       Estimate           SE                   95.0% C.I.
@@ -332,13 +344,15 @@ Number of subjects:                        1
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_omegas) ==
 """FittedPumasModel
 
-Successful minimization:                true
+Successful minimization:                      true
 
-Likelihood approximation:  Pumas.NaivePooled
-Log-likelihood value:             -4.0683321
-Total number of observation records:       2
-Number of active observation records:      2
-Number of subjects:                        1
+Likelihood approximation:        Pumas.NaivePooled
+Log-likelihood value:                   -4.0683321
+Number of subjects:                              1
+Number of parameters:                            3
+Observation records:         Active        Missing
+    dv:                           2              0
+    Total:                        2              0
 
 ------------------
          Estimate
@@ -353,13 +367,15 @@ Number of subjects:                        1
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_omegas) ==
 """Asymptotic inference results
 
-Successful minimization:                true
+Successful minimization:                      true
 
-Likelihood approximation:  Pumas.NaivePooled
-Log-likelihood value:             -4.0683321
-Total number of observation records:       2
-Number of active observation records:      2
-Number of subjects:                        1
+Likelihood approximation:        Pumas.NaivePooled
+Log-likelihood value:                   -4.0683321
+Number of subjects:                              1
+Number of parameters:                            3
+Observation records:         Active        Missing
+    dv:                           2              0
+    Total:                        2              0
 
 --------------------------------------------------------------
         Estimate           SE                   95.0% C.I.
@@ -376,13 +392,15 @@ Number of subjects:                        1
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_constantcoef) ==
 """FittedPumasModel
 
-Successful minimization:                true
+Successful minimization:                      true
 
-Likelihood approximation:  Pumas.NaivePooled
-Log-likelihood value:             -4.0683321
-Total number of observation records:       2
-Number of active observation records:      2
-Number of subjects:                        1
+Likelihood approximation:        Pumas.NaivePooled
+Log-likelihood value:                   -4.0683321
+Number of subjects:                              1
+Number of parameters:                            3
+Observation records:         Active        Missing
+    dv:                           2              0
+    Total:                        2              0
 
 ----------------
        Estimate
@@ -397,13 +415,15 @@ Number of subjects:                        1
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_constantcoef) ==
 """Asymptotic inference results
 
-Successful minimization:                true
+Successful minimization:                      true
 
-Likelihood approximation:  Pumas.NaivePooled
-Log-likelihood value:             -4.0683321
-Total number of observation records:       2
-Number of active observation records:      2
-Number of subjects:                        1
+Likelihood approximation:        Pumas.NaivePooled
+Log-likelihood value:                   -4.0683321
+Number of subjects:                              1
+Number of parameters:                            3
+Observation records:         Active        Missing
+    dv:                           2              0
+    Total:                        2              0
 
 ------------------------------------------------------------
       Estimate           SE                   95.0% C.I.
@@ -419,13 +439,15 @@ Number of subjects:                        1
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone_omegas) ==
 """FittedPumasModel
 
-Successful minimization:                true
+Successful minimization:                      true
 
-Likelihood approximation:  Pumas.NaivePooled
-Log-likelihood value:             -4.0683321
-Total number of observation records:       2
-Number of active observation records:      2
-Number of subjects:                        1
+Likelihood approximation:        Pumas.NaivePooled
+Log-likelihood value:                   -4.0683321
+Number of subjects:                              1
+Number of parameters:                            3
+Observation records:         Active        Missing
+    dv:                           2              0
+    Total:                        2              0
 
 ----------------
        Estimate
@@ -440,13 +462,15 @@ Number of subjects:                        1
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer_omegas) ==
 """Asymptotic inference results
 
-Successful minimization:                true
+Successful minimization:                      true
 
-Likelihood approximation:  Pumas.NaivePooled
-Log-likelihood value:             -4.0683321
-Total number of observation records:       2
-Number of active observation records:      2
-Number of subjects:                        1
+Likelihood approximation:        Pumas.NaivePooled
+Log-likelihood value:                   -4.0683321
+Number of subjects:                              1
+Number of parameters:                            3
+Observation records:         Active        Missing
+    dv:                           2              0
+    Total:                        2              0
 
 ------------------------------------------------------------
       Estimate           SE                   95.0% C.I.

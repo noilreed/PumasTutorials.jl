@@ -115,13 +115,15 @@ Parameter statistics
 """
 FittedPumasModel
 
-Successful minimization:                true
+Successful minimization:                      true
 
-Likelihood approximation:        Pumas.FOCEI
-Log-likelihood value:             -45.623789
-Total number of observation records:      20
-Number of active observation records:     20
-Number of subjects:                       10
+Likelihood approximation:              Pumas.FOCEI
+Log-likelihood value:                   -45.623789
+Number of subjects:                             10
+Number of parameters:                            3
+Observation records:         Active        Missing
+    dv:                          20              0
+    Total:                       20              0
 
 ------------------
          Estimate
@@ -136,13 +138,15 @@ Number of subjects:                       10
 """
 Asymptotic inference results
 
-Successful minimization:                true
+Successful minimization:                      true
 
-Likelihood approximation:        Pumas.FOCEI
-Log-likelihood value:             -45.623789
-Total number of observation records:      20
-Number of active observation records:     20
-Number of subjects:                       10
+Likelihood approximation:              Pumas.FOCEI
+Log-likelihood value:                   -45.623789
+Number of subjects:                             10
+Number of parameters:                            3
+Observation records:         Active        Missing
+    dv:                          20              0
+    Total:                       20              0
 
 -------------------------------------------------------------
         Estimate          SE                  95.0% C.I.

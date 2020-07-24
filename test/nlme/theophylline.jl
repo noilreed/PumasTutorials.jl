@@ -258,13 +258,15 @@ end
 """
 Bootstrap inference results
 
-Successful minimization:                true
+Successful minimization:                      true
 
-Likelihood approximation:           Pumas.FO
-Log-likelihood value:              -166.7186
-Total number of observation records:     132
-Number of active observation records:    132
-Number of subjects:                       12
+Likelihood approximation:                 Pumas.FO
+Log-likelihood value:                    -166.7186
+Number of subjects:                             12
+Number of parameters:                            6
+Observation records:         Active        Missing
+    dv:                         132              0
+    Total:                      132              0
 
 -------------------------------------------------------------------
           Estimate           SE                     95.0% C.I.
@@ -289,13 +291,15 @@ No stratification.
 """
 Bootstrap inference results
 
-Successful minimization:                true
+Successful minimization:                      true
 
-Likelihood approximation:           Pumas.FO
-Log-likelihood value:              -166.7186
-Total number of observation records:     132
-Number of active observation records:    132
-Number of subjects:                       12
+Likelihood approximation:                 Pumas.FO
+Log-likelihood value:                    -166.7186
+Number of subjects:                             12
+Number of parameters:                            6
+Observation records:         Active        Missing
+    dv:                         132              0
+    Total:                      132              0
 
 -------------------------------------------------------------------
           Estimate           SE                     95.0% C.I.
@@ -620,13 +624,15 @@ end
 """
 Bootstrap inference results
 
-Successful minimization:                true
+Successful minimization:                      true
 
-Likelihood approximation:           Pumas.FO
-Log-likelihood value:              -166.7186
-Total number of observation records:     132
-Number of active observation records:    132
-Number of subjects:                       12
+Likelihood approximation:                 Pumas.FO
+Log-likelihood value:                    -166.7186
+Number of subjects:                             12
+Number of parameters:                            6
+Observation records:         Active        Missing
+    dv:                         132              0
+    Total:                      132              0
 
 -------------------------------------------------------------------
           Estimate           SE                     95.0% C.I.
@@ -651,18 +657,20 @@ No stratification.
 """
 Bootstrap inference results
 
-Successful minimization:                true
+Successful minimization:                      true
 
-Likelihood approximation:           Pumas.FO
-Log-likelihood value:              -166.7186
-Total number of observation records:     132
-Number of active observation records:    132
-Number of subjects:                       12
+Likelihood approximation:                 Pumas.FO
+Log-likelihood value:                    -166.7186
+Number of subjects:                             12
+Number of parameters:                            6
+Observation records:         Active        Missing
+    dv:                         132              0
+    Total:                      132              0
 
 -------------------------------------------------------------------
           Estimate           SE                     95.0% C.I.
 -------------------------------------------------------------------
-θ₁         4.0491          0.48558          [ 3.5885  ;  4.7155  ]
+θ₁         4.0491          0.48559          [ 3.5885  ;  4.7155  ]
 θ₂         0.074816        0.0058439        [ 0.068367;  0.082669]
 θ₃         0.036284        0.00394          [ 0.03154 ;  0.041277]
 θ₄         2.0844          0.20047          [ 2.2468  ;  2.7553  ]
