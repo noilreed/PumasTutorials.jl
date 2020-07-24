@@ -15,8 +15,10 @@ abstract type VPCType end
 
 struct DiscreteVPC{Boolean} <: VPCType
     idvdiscrete::Boolean
+    numbins::Int
 end
-DiscreteVPC() = DiscreteVPC(true)
+DiscreteVPC() = DiscreteVPC(true,0)
+
 
 struct ContinuousVPC <: VPCType end
 
@@ -80,7 +82,10 @@ function _vpc(
     if vpctype.idvdiscrete
         data_quantiles = combine(t -> discrete_count(count_vals, t), groupby(df, stratify_by === nothing ? [:idv] : [stratify_by..., :idv]))
     else
-        error("Continuous idv with discrete dv not supported")
+        binned_idv = cut(df.idv, vpctype.numbins)
+        idv = Int.([binned_idv[i].level for i in 1:length(binned_idv)])
+        df.idv = idv
+        data_quantiles = combine(t -> discrete_count(count_vals, t), groupby(df, stratify_by === nothing ? [:idv] : [stratify_by..., :idv]))
     end
     return data_quantiles, [read_pumas(DataFrame(df), id = :id, observations = [:dv], event_data=false) for df in groupby(df, stratify_by === nothing ? [] : stratify_by)]
 end
