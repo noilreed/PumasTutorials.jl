@@ -28,8 +28,10 @@ function _print_fit_header(io, fpm)
                      lpad(round(loglikelihood(fpm); sigdigits=round(Int, -log10(DEFAULT_ESTIMATION_RELTOL))), 29)))
   println(io, string("Number of subjects:",
                      lpad(length(fpm.data), 31)))
-  println(io, string("Number of parameters:",
-                     lpad(string(length(coef(fpm))), 29)))
+  fixparamlen = count(i -> i isa ConstDomain, fpm.fixedparamset.params)
+  println(io, string("Number of parameters:", lpad("Fixed", 14),  lpad("Optimized", 15)))
+  println(io, lpad(string(fixparamlen), 35), 
+                     lpad(string(length(coef(fpm)) - fixparamlen), 15))
   println(io, string("Observation records:", lpad("Active", 15), lpad("Missing",15)))
   println(io, rstrip(string([string(lpad("$name:",4+length("$name:")), lpad("$(sum([count(!ismissing, subject.observations[name]) for subject in fpm.data]))",31-length("$name:")), 
                      lpad("$(sum([count(ismissing, subject.observations[name]) for subject in fpm.data]))\n",16)) 
