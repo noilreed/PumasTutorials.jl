@@ -96,7 +96,8 @@ Successful minimization:                      true
 Likelihood approximation:        Pumas.NaivePooled
 Log-likelihood value:                   -923.58735
 Number of subjects:                              1
-Number of parameters:                            4
+Number of parameters:         Fixed      Optimized
+                                  0              4
 Observation records:         Active        Missing
     dv:                         121              0
     Total:                      121              0
@@ -126,7 +127,8 @@ Successful minimization:                      true
 Likelihood approximation:        Pumas.NaivePooled
 Log-likelihood value:                   -860997.51
 Number of subjects:                           1000
-Number of parameters:                            4
+Number of parameters:         Fixed      Optimized
+                                  0              4
 Observation records:         Active        Missing
     dv:                      121000              0
     Total:                   121000              0
@@ -256,7 +258,8 @@ Successful minimization:                      true
 Likelihood approximation:        Pumas.NaivePooled
 Log-likelihood value:                    -4.068332
 Number of subjects:                              1
-Number of parameters:                            2
+Number of parameters:         Fixed      Optimized
+                                  0              2
 Observation records:         Active        Missing
     dv:                           2              0
     Total:                        2              0
@@ -278,7 +281,8 @@ Successful minimization:                      true
 Likelihood approximation:        Pumas.NaivePooled
 Log-likelihood value:                    -4.068332
 Number of subjects:                              1
-Number of parameters:                            2
+Number of parameters:         Fixed      Optimized
+                                  0              2
 Observation records:         Active        Missing
     dv:                           2              0
     Total:                        2              0
@@ -302,7 +306,8 @@ Successful minimization:                      true
 Likelihood approximation:        Pumas.NaivePooled
 Log-likelihood value:                   -4.0683321
 Number of subjects:                              1
-Number of parameters:                            3
+Number of parameters:         Fixed      Optimized
+                                  0              3
 Observation records:         Active        Missing
     dv:                           2              0
     Total:                        2              0
@@ -325,7 +330,8 @@ Successful minimization:                      true
 Likelihood approximation:        Pumas.NaivePooled
 Log-likelihood value:                   -4.0683321
 Number of subjects:                              1
-Number of parameters:                            3
+Number of parameters:         Fixed      Optimized
+                                  0              3
 Observation records:         Active        Missing
     dv:                           2              0
     Total:                        2              0
@@ -349,7 +355,8 @@ Successful minimization:                      true
 Likelihood approximation:        Pumas.NaivePooled
 Log-likelihood value:                   -4.0683321
 Number of subjects:                              1
-Number of parameters:                            3
+Number of parameters:         Fixed      Optimized
+                                  0              3
 Observation records:         Active        Missing
     dv:                           2              0
     Total:                        2              0
@@ -372,7 +379,8 @@ Successful minimization:                      true
 Likelihood approximation:        Pumas.NaivePooled
 Log-likelihood value:                   -4.0683321
 Number of subjects:                              1
-Number of parameters:                            3
+Number of parameters:         Fixed      Optimized
+                                  0              3
 Observation records:         Active        Missing
     dv:                           2              0
     Total:                        2              0
@@ -397,7 +405,8 @@ Successful minimization:                      true
 Likelihood approximation:        Pumas.NaivePooled
 Log-likelihood value:                   -4.0683321
 Number of subjects:                              1
-Number of parameters:                            3
+Number of parameters:         Fixed      Optimized
+                                  0              3
 Observation records:         Active        Missing
     dv:                           2              0
     Total:                        2              0
@@ -420,7 +429,8 @@ Successful minimization:                      true
 Likelihood approximation:        Pumas.NaivePooled
 Log-likelihood value:                   -4.0683321
 Number of subjects:                              1
-Number of parameters:                            3
+Number of parameters:         Fixed      Optimized
+                                  0              3
 Observation records:         Active        Missing
     dv:                           2              0
     Total:                        2              0
@@ -444,7 +454,8 @@ Successful minimization:                      true
 Likelihood approximation:        Pumas.NaivePooled
 Log-likelihood value:                   -4.0683321
 Number of subjects:                              1
-Number of parameters:                            3
+Number of parameters:         Fixed      Optimized
+                                  0              3
 Observation records:         Active        Missing
     dv:                           2              0
     Total:                        2              0
@@ -467,7 +478,8 @@ Successful minimization:                      true
 Likelihood approximation:        Pumas.NaivePooled
 Log-likelihood value:                   -4.0683321
 Number of subjects:                              1
-Number of parameters:                            3
+Number of parameters:         Fixed      Optimized
+                                  0              3
 Observation records:         Active        Missing
     dv:                           2              0
     Total:                        2              0

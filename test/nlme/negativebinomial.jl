@@ -58,7 +58,8 @@ Successful minimization:                      true
 Likelihood approximation:               Pumas.FOCE
 Log-likelihood value:                    -3603.374
 Number of subjects:                             20
-Number of parameters:                            4
+Number of parameters:         Fixed      Optimized
+                                  0              4
 Observation records:         Active        Missing
     dv:                        1800              0
     Total:                     1800              0
@@ -81,7 +82,8 @@ Successful minimization:                      true
 Likelihood approximation:               Pumas.FOCE
 Log-likelihood value:                    -3603.374
 Number of subjects:                             20
-Number of parameters:                            4
+Number of parameters:         Fixed      Optimized
+                                  0              4
 Observation records:         Active        Missing
     dv:                        1800              0
     Total:                     1800              0
@@ -108,7 +110,8 @@ Successful minimization:                      true
 Likelihood approximation:           Pumas.LaplaceI
 Log-likelihood value:                   -3603.3733
 Number of subjects:                             20
-Number of parameters:                            4
+Number of parameters:         Fixed      Optimized
+                                  0              4
 Observation records:         Active        Missing
     dv:                        1800              0
     Total:                     1800              0
@@ -131,7 +134,8 @@ Successful minimization:                      true
 Likelihood approximation:           Pumas.LaplaceI
 Log-likelihood value:                   -3603.3733
 Number of subjects:                             20
-Number of parameters:                            4
+Number of parameters:         Fixed      Optimized
+                                  0              4
 Observation records:         Active        Missing
     dv:                        1800              0
     Total:                     1800              0

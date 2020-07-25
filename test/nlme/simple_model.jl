@@ -120,7 +120,8 @@ Successful minimization:                      true
 Likelihood approximation:              Pumas.FOCEI
 Log-likelihood value:                   -45.623789
 Number of subjects:                             10
-Number of parameters:                            3
+Number of parameters:         Fixed      Optimized
+                                  0              3
 Observation records:         Active        Missing
     dv:                          20              0
     Total:                       20              0
@@ -143,7 +144,8 @@ Successful minimization:                      true
 Likelihood approximation:              Pumas.FOCEI
 Log-likelihood value:                   -45.623789
 Number of subjects:                             10
-Number of parameters:                            3
+Number of parameters:         Fixed      Optimized
+                                  0              3
 Observation records:         Active        Missing
     dv:                          20              0
     Total:                       20              0
