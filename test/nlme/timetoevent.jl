@@ -37,13 +37,15 @@ using Pumas, CSV, Test, Random
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(ft_exponential)) == """
 Asymptotic inference results
 
-Successful minimization:                true
+Successful minimization:                      true
 
-Likelihood approximation:  Pumas.NaivePooled
-Log-likelihood value:             -1642.9754
-Total number of observation records:     300
-Number of active observation records:    300
-Number of subjects:                      300
+Likelihood approximation:        Pumas.NaivePooled
+Log-likelihood value:                   -1642.9754
+Number of subjects:                            300
+Number of parameters:                            2
+Observation records:         Active        Missing
+    DV:                         300              0
+    Total:                      300              0
 
 --------------------------------------------------------------------
        Estimate            SE                       95.0% C.I.
@@ -90,13 +92,15 @@ Number of subjects:                      300
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(ft_weibull)) == """
 Asymptotic inference results
 
-Successful minimization:                true
+Successful minimization:                      true
 
-Likelihood approximation:  Pumas.NaivePooled
-Log-likelihood value:               -1632.03
-Total number of observation records:     300
-Number of active observation records:    300
-Number of subjects:                      300
+Likelihood approximation:        Pumas.NaivePooled
+Log-likelihood value:                     -1632.03
+Number of subjects:                            300
+Number of parameters:                            3
+Observation records:         Active        Missing
+    DV:                         300              0
+    Total:                      300              0
 
 -------------------------------------------------------------------
        Estimate            SE                      95.0% C.I.
@@ -144,13 +148,15 @@ p       1.3018           0.069773         [ 1.165    ;  1.4385   ]
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(ft_gompertz)) == """
 Asymptotic inference results
 
-Successful minimization:                true
+Successful minimization:                      true
 
-Likelihood approximation:  Pumas.NaivePooled
-Log-likelihood value:             -1632.5718
-Total number of observation records:     300
-Number of active observation records:    300
-Number of subjects:                      300
+Likelihood approximation:        Pumas.NaivePooled
+Log-likelihood value:                   -1632.5718
+Number of subjects:                            300
+Number of parameters:                            3
+Observation records:         Active        Missing
+    DV:                         300              0
+    Total:                      300              0
 
 --------------------------------------------------------------------
        Estimate            SE                       95.0% C.I.

@@ -180,6 +180,11 @@ end
     @test vg2[2] ≈ [8.023571333788363, 878.2155638921357, -763.9131862639035, 114.23979126237566, 9.92024209941141, 1.6, 448.2675514859386, 29.3969023983566, 28.081124185351666, 28.928080707496267, 7.42884186650985, 25.018349868626917, -5.042079192537063, -21.001561268109082, -2.437719761098352, 30.403288395312426, -13.086403802077914, 20.644305593349998, -7.709095620537853] rtol=1e-6
   end
 
+  @testset "Prior distribution infer test" begin
+    ft = fit(theopmodel_bayes2, theopp, param2, Pumas.FOCEI())
+    infer(ft)
+  end
+  
 #   Random.seed!(1)
 #   The MCMC sampler is very sensitive to rounding so we can't enable the test below
 #   b = Pumas.fit(theopmodel_bayes2, theopp, param2, Pumas.BayesMCMC(),

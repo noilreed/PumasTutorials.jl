@@ -20,21 +20,26 @@ end
 
 function _print_fit_header(io, fpm)
   println(io, string("Successful minimization:",
-                     lpad(string(Optim.converged(fpm.optim)), 20)))
+                     lpad(string(Optim.converged(fpm.optim)), 26)))     
   println(io)
   println(io, string("Likelihood approximation:",
-                     lpad(typeof(fpm.approx), 19)))
+                     lpad(typeof(fpm.approx), 25)))
   println(io, string("Log-likelihood value:",
-                     lpad(round(loglikelihood(fpm); sigdigits=round(Int, -log10(DEFAULT_ESTIMATION_RELTOL))), 23)))
-  println(io, string("Total number of observation records:",
-                     lpad(sum([length(sub.time) for sub in fpm.data]), 8)))
-  println(io, string("Number of active observation records:",
-                     lpad(sum(subject -> sum(name -> count(!ismissing, subject.observations[name]), keys(first(fpm.data).observations)), fpm.data),7)))
+                     lpad(round(loglikelihood(fpm); sigdigits=round(Int, -log10(DEFAULT_ESTIMATION_RELTOL))), 29)))
   println(io, string("Number of subjects:",
-                     lpad(length(fpm.data), 25)))
+                     lpad(length(fpm.data), 31)))
+  println(io, string("Number of parameters:",
+                     lpad(string(length(coef(fpm))), 29)))
+  println(io, string("Observation records:", lpad("Active", 15), lpad("Missing",15)))
+  println(io, rstrip(string([string(lpad("$name:",4+length("$name:")), lpad("$(sum([count(!ismissing, subject.observations[name]) for subject in fpm.data]))",31-length("$name:")), 
+                     lpad("$(sum([count(ismissing, subject.observations[name]) for subject in fpm.data]))\n",16)) 
+                     for name in keys(first(fpm.data).observations)]...)))
+  println(io, string(lpad("Total:",10),
+                     lpad(sum(subject -> sum(name -> count(!ismissing, subject.observations[name]), keys(first(fpm.data).observations)), fpm.data),25),
+                     lpad(sum(subject -> sum(name -> count(ismissing, subject.observations[name]), keys(first(fpm.data).observations)), fpm.data),15)))
+  
   println(io)
 end
-
 
 function _coeftable(nt::NamedTuple)
   _keys   = String[]

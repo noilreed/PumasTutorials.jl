@@ -53,13 +53,15 @@ using Pumas, Test, Random
 """
 FittedPumasModel
 
-Successful minimization:                true
+Successful minimization:                      true
 
-Likelihood approximation:         Pumas.FOCE
-Log-likelihood value:              -3603.374
-Total number of observation records:    1800
-Number of active observation records:   1800
-Number of subjects:                       20
+Likelihood approximation:               Pumas.FOCE
+Log-likelihood value:                    -3603.374
+Number of subjects:                             20
+Number of parameters:                            4
+Observation records:         Active        Missing
+    dv:                        1800              0
+    Total:                     1800              0
 
 ----------------
        Estimate
@@ -74,13 +76,15 @@ Number of subjects:                       20
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(fitFOCE)) == """
 Asymptotic inference results
 
-Successful minimization:                true
+Successful minimization:                      true
 
-Likelihood approximation:         Pumas.FOCE
-Log-likelihood value:              -3603.374
-Total number of observation records:    1800
-Number of active observation records:   1800
-Number of subjects:                       20
+Likelihood approximation:               Pumas.FOCE
+Log-likelihood value:                    -3603.374
+Number of subjects:                             20
+Number of parameters:                            4
+Observation records:         Active        Missing
+    dv:                        1800              0
+    Total:                     1800              0
 
 ---------------------------------------------------------
       Estimate          SE                  95.0% C.I.
@@ -99,13 +103,15 @@ Number of subjects:                       20
 """
 FittedPumasModel
 
-Successful minimization:                true
+Successful minimization:                      true
 
-Likelihood approximation:     Pumas.LaplaceI
-Log-likelihood value:             -3603.3733
-Total number of observation records:    1800
-Number of active observation records:   1800
-Number of subjects:                       20
+Likelihood approximation:           Pumas.LaplaceI
+Log-likelihood value:                   -3603.3733
+Number of subjects:                             20
+Number of parameters:                            4
+Observation records:         Active        Missing
+    dv:                        1800              0
+    Total:                     1800              0
 
 ----------------
        Estimate
@@ -120,13 +126,15 @@ Number of subjects:                       20
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(fitLaplaceI)) == """
 Asymptotic inference results
 
-Successful minimization:                true
+Successful minimization:                      true
 
-Likelihood approximation:     Pumas.LaplaceI
-Log-likelihood value:             -3603.3733
-Total number of observation records:    1800
-Number of active observation records:   1800
-Number of subjects:                       20
+Likelihood approximation:           Pumas.LaplaceI
+Log-likelihood value:                   -3603.3733
+Number of subjects:                             20
+Number of parameters:                            4
+Observation records:         Active        Missing
+    dv:                        1800              0
+    Total:                     1800              0
 
 -------------------------------------------------------
       Estimate          SE                95.0% C.I.
