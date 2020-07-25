@@ -46,6 +46,7 @@ end
     @covariates SEX WT
 
     @vars begin
+      dummy = Central*0
       conc = Central / SC
     end
 
