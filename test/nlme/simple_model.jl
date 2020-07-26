@@ -121,7 +121,7 @@ Likelihood approximation:              Pumas.FOCEI
 Log-likelihood value:                   -45.623789
 Number of subjects:                             10
 Number of parameters:         Fixed      Optimized
-                                  0              3
+                                  2              1
 Observation records:         Active        Missing
     dv:                          20              0
     Total:                       20              0
@@ -145,7 +145,7 @@ Likelihood approximation:              Pumas.FOCEI
 Log-likelihood value:                   -45.623789
 Number of subjects:                             10
 Number of parameters:         Fixed      Optimized
-                                  0              3
+                                  2              1
 Observation records:         Active        Missing
     dv:                          20              0
     Total:                       20              0
