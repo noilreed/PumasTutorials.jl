@@ -516,7 +516,12 @@ end
 function _residuals(subject::Subject, dist)
   # Return the residuals
   _keys = keys(subject.observations)
-  return map(x->x[1] .- mean.(x[2]), NamedTuple{_keys}(zip(subject.observations, dist)))
+
+  t = map(_keys) do k
+    subject.observations[k] .- mean.(dist[k])
+  end
+
+  return NamedTuple{_keys}(t)
 end
 
 ########

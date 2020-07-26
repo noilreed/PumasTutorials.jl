@@ -43,7 +43,13 @@ function _build_analytical_problem(
     Ttspan = map(float, tspan)
   end
 
-  events = adjust_event(subject.events,col,u0)
+  events = subject.events
+  if subject.covariates isa ConstantInterpolationStructArray
+    for t ∈ subject.covariates.t
+      push!(events, Event(0.0,t,1,1))
+    end
+  end
+  events = adjust_event(events,col,u0)
   times = sorted_approx_unique(events)
 
   prob = AnalyticalPKPDProblem{false}(f, Tu0, Ttspan, events, times, col)
