@@ -264,7 +264,8 @@ Successful minimization:                      true
 Likelihood approximation:                 Pumas.FO
 Log-likelihood value:                    -166.7186
 Number of subjects:                             12
-Number of parameters:                            6
+Number of parameters:         Fixed      Optimized
+                                  0              6
 Observation records:         Active        Missing
     dv:                         132              0
     Total:                      132              0
@@ -297,7 +298,8 @@ Successful minimization:                      true
 Likelihood approximation:                 Pumas.FO
 Log-likelihood value:                    -166.7186
 Number of subjects:                             12
-Number of parameters:                            6
+Number of parameters:         Fixed      Optimized
+                                  0              6
 Observation records:         Active        Missing
     dv:                         132              0
     Total:                      132              0
@@ -630,7 +632,8 @@ Successful minimization:                      true
 Likelihood approximation:                 Pumas.FO
 Log-likelihood value:                    -166.7186
 Number of subjects:                             12
-Number of parameters:                            6
+Number of parameters:         Fixed      Optimized
+                                  0              6
 Observation records:         Active        Missing
     dv:                         132              0
     Total:                      132              0
@@ -663,7 +666,8 @@ Successful minimization:                      true
 Likelihood approximation:                 Pumas.FO
 Log-likelihood value:                    -166.7186
 Number of subjects:                             12
-Number of parameters:                            6
+Number of parameters:         Fixed      Optimized
+                                  0              6
 Observation records:         Active        Missing
     dv:                         132              0
     Total:                      132              0
