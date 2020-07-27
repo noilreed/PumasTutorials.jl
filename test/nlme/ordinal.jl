@@ -63,7 +63,7 @@ using CSV
     1.6381356642400862] rtol=1e-5
 
   _ptable = probstable(ftFOCE)
-  @test names(_ptable) == ["id", "time", "painord_prob1", "painord_prob2", "painord_prob3", "painord_prob4"]
+  @test names(_ptable) == ["id", "time", "painord_iprob1", "painord_iprob2", "painord_iprob3", "painord_iprob4"]
 
   ftLaplaceI = fit(ordinal_model, data, init_param(ordinal_model), Pumas.LaplaceI(),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
@@ -76,7 +76,7 @@ using CSV
     1.6536338748877772] rtol=1e-5
 
   _ptable = probstable(ftLaplaceI)
-  @test names(_ptable) == ["id", "time", "painord_prob1", "painord_prob2", "painord_prob3", "painord_prob4"]
+  @test names(_ptable) == ["id", "time", "painord_iprob1", "painord_iprob2", "painord_iprob3", "painord_iprob4"]
 
   # Read the data# Read the data
   data_mixed = read_pumas(df,
@@ -133,11 +133,11 @@ using CSV
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
   _ptable = probstable(ftFOCE)
-  @test names(_ptable) == ["id", "time", "painord_prob1", "painord_prob2", "painord_prob3", "painord_prob4", "dv_prob1", "dv_prob2"]
+  @test names(_ptable) == ["id", "time", "painord_iprob1", "painord_iprob2", "painord_iprob3", "painord_iprob4", "dv_iprob1", "dv_iprob2"]
 
   ftLaplaceI = fit(mixed_model, data_mixed, init_param(mixed_model), Pumas.LaplaceI(),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
   _ptable = probstable(ftLaplaceI)
-  @test names(_ptable) == ["id", "time", "painord_prob1", "painord_prob2", "painord_prob3", "painord_prob4", "dv_prob1", "dv_prob2"]
+  @test names(_ptable) == ["id", "time", "painord_iprob1", "painord_iprob2", "painord_iprob3", "painord_iprob4", "dv_iprob1", "dv_iprob2"]
 end

@@ -228,7 +228,7 @@ function probstable(
       _probs = map(__probs, val)
       _probsmat = reduce(hcat, _probs)'
       subject_probs_df = DataFrame(_probsmat,
-        [Symbol("$(name)_prob$i") for i in 1:size(_probsmat, 2)])
+        [Symbol("$(name)_iprob$i") for i in 1:size(_probsmat, 2)])
       df = hcat(df, subject_probs_df)
     end
   end

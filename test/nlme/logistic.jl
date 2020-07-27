@@ -46,7 +46,7 @@ using Pumas, Test, Random
       _param = coef(ft)
 
       _ptable = probstable(ft)
-      @test names(_ptable) == ["id", "time", "dv_prob1", "dv_prob2"]
+      @test names(_ptable) == ["id", "time", "dv_iprob1", "dv_iprob2"]
 
       # Test values computed with MixedModels.jl
       @test _param.θ₁                ≈ -1.3085393956990727 rtol=1e-3
@@ -110,7 +110,7 @@ end
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
   _ptable = probstable(ft)
-  @test names(_ptable) == ["id", "time", "y_prob1", "y_prob2"]
+  @test names(_ptable) == ["id", "time", "y_iprob1", "y_iprob2"]
 
   @test loglikelihood(ft) ≈ -127.84474 rtol=1e-6
 
