@@ -1555,6 +1555,14 @@ function Distributions.fit(m::PumasModel,
   _compare_keys(m, param)
   # Check that doses happen into existing compartments
   map(subject->_check_dose_compartments(m, subject, param), population)
+  # if all dvs are missing then throw PumasDataError
+  for subject in population
+      for (key, value) in pairs(subject.observations)
+        if all(ismissing, value)
+          throw(PumasDataError("Subject id: $(subject.id) has all $(key) values missing"))
+        end
+      end
+  end
 
   # Compute transform object defining the transformations from NamedTuple to Vector while applying any parameter restrictions and apply the transformations
   fixedparamset, fixedparam = _fixed_to_constant_paramset(m.param, param, constantcoef, omegas)

@@ -164,6 +164,12 @@ pmoncl    -0.70006         0.0045657
 -------------------------------------
 """
 
+  # Test case for all_dv_missing in a subject during fit call
+
+  # Set all dvs to missing for Subject 10
+  data[10].observations.dv .= missing
+
+  @test_throws Pumas.PumasDataError("Subject id: 10 has all dv values missing") fit(model,data,param,Pumas.FOCEI())
 end
 
 
