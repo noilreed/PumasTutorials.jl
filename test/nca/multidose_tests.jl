@@ -153,6 +153,7 @@ subj = NCASubject(1:2, 1:2, dose=[NCADose(0, 0.1, 0, NCA.IVBolus), NCADose(10, 0
 @test subj.dose[1] === valid_dose
 
 @test_throws InvalidStateException NCASubject(1:2, 1:2, dose=[NCADose(0, 0.1, 0, NCA.IVBolus), NCADose(10, 0.1, 0, NCA.IVBolus), valid_dose, valid_dose])
+@test_nowarn NCASubject(0:2, 0:2, dose=[NCADose(0, 0.1, 0, NCA.IVBolus)])
 
 df2 = DataFrame(id = [1,1,1,1,1,2,2,2,2,2],
                 time = [0,1,2,3,4,0,1,2,3,4],
