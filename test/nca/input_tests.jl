@@ -94,3 +94,14 @@ df5 = DataFrame(id = [1,1,1,1,1,2,2,2,2,2],
                 conc=[missing,8,6,4,2,missing,8,6,4,2],
                 route = ["iv","iv","iv","iv","iv","iv","iv","iv","iv","iv"])
 @test_throws ArgumentError  read_nca(df5)
+
+dfnca = DataFrame(id = [1,1,1,1],
+                time = [0,0,1,2],
+                conc = [missing,9,8,6],
+                amt = [1,0,0,0], route ="ev")
+@test_nowarn read_nca(dfnca,
+                        id      =   :id,
+                        amt     =   :amt,
+                        time    =   :time,
+                        conc    =   :conc,
+                        route   =   :route)

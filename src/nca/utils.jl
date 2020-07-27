@@ -7,10 +7,10 @@ checkmonotonic(time, idxs) = checkmonotonic(nothing, time, idxs, nothing)
   while i < hi
     time[i+1] > time[i] && ( i+= 1; continue )
     if dose isa NCADose && conc !== nothing
-      dosecoincide = time[i+1] == time[i] && dose.time == time[i] && (iszero(conc[i]) || iszero(conc[i+1]))
+      dosecoincide = time[i+1] == time[i] && dose.time == time[i] && (ismissing(conc[i]) || iszero(conc[i]) || iszero(conc[i+1]))
       if dosecoincide
         deleteat!(time, i)
-        jj = iszero(conc[i]) ? i : i+1
+        jj = ismissing(conc[i]) || iszero(conc[i]) ? i : i+1
         deleteat!(conc, jj)
         i += 1
         hi -= 1
