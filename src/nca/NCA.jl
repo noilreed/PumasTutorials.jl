@@ -23,6 +23,14 @@ export read_nca
 export NCAReport
 export normalizedose
 
+_repeat(xs, ndoses) = mapreduce(vcat, zip(xs, ndoses)) do (x, ndose)
+  if x isa AbstractArray
+    repeat(x, ndose)
+  else
+    fill(x, ndose)
+  end
+end
+
 for f in [:lambdaz, :lambdazr2, :lambdazadjr2, :lambdazr, :lambdazintercept, :lambdaznpoints, :lambdaztimefirst, :lambdaztimelast, :span,
           :cmax, :cmaxss, :tmax, :cmin, :cminss, :ctau, :c0, :tmin, :clast, :tlast, :thalf, :cl, :_cl, :_clf, :vss, :vz, :_vz, :_vzf,
           :interpextrapconc, :auc, :auclast, :auctau, :aumc, :aumclast, :aumctau, :auc_extrap_percent, :aumc_extrap_percent, :auc_back_extrap_percent,
@@ -32,28 +40,22 @@ for f in [:lambdaz, :lambdazr2, :lambdazadjr2, :lambdazr, :lambdazintercept, :la
          ]
   @eval $f(conc, time, args...; kwargs...) = $f(NCASubject(conc, time; kwargs...), args...; kwargs...) # f(conc, time) interface
   f === :superposition && continue
-  @eval function $f(pop::NCAPopulation, args...; label=true, verbose=true, kwargs...) # NCAPopulation handling
+  isauclike = f in [:auc, :auclast, :aumc, :aucmclast]
+  function_body = quote
     ismulti = ismultidose(pop)
     if ismulti
       sol′ = map(enumerate(pop)) do (i, subj)
-        _sol = $f(subj, args...; verbose=verbose, kwargs...)
+        _sol = $f(subj, args...; verbose=verbose, interval=interval, kwargs...)
         param = $f == mat ? vcat(_sol, fill(missing, length(subj.dose)-1)) : # make `f` as long as the other ones
-                            $f(subj, args...; verbose=verbose, kwargs...)
+                            $f(subj, args...; verbose=verbose, interval=interval, kwargs...)
       end
       sol = mapreduce(x->x isa AbstractArray ? x : [x], vcat, sol′)
     else
-      sol = map(subj->$f(subj, args...; verbose=verbose, kwargs...), pop)
+      sol = map(subj->$f(subj, args...; verbose=verbose, interval=interval, kwargs...), pop)
     end
     typeof(sol) === Any && (sol = map(identity, sol))
     df = DataFrame()
     if label
-      _repeat(xs, ndoses) = mapreduce(vcat, zip(xs, ndoses)) do (x, ndose)
-        if x isa AbstractArray
-          repeat(x, ndose)
-        else
-          fill(x, ndose)
-        end
-      end
       firstsubj = first(pop)
       ndoses = map(subj->subj.dose isa Union{Nothing,NCADose} ? 1 : length(subj.dose), pop)
       id′ = map(subj->subj.id, pop)
@@ -74,7 +76,26 @@ for f in [:lambdaz, :lambdazr2, :lambdazadjr2, :lambdazr, :lambdazintercept, :la
         end
       end
     end
-    df.$f = sol
+    if $isauclike && interval !== nothing
+      setproperty!(df, Symbol($f, ustrip(interval[1]), :_, ustrip(interval[2])), sol)
+    else
+      df.$f = sol
+    end
+  end
+  @eval function $f(pop::NCAPopulation, args...; label=true, verbose=true, interval=nothing, kwargs...) # NCAPopulation handling
+    if interval isa AbstractVector
+      intervals = interval
+      label = label
+      _df = DataFrame()
+      for interval in intervals
+        $function_body
+        label = false
+        _df = hcat(_df, df)
+      end
+      df = _df
+    else
+      $function_body
+    end
     return df
   end
 end

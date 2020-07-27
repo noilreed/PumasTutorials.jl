@@ -11,6 +11,8 @@ amtu  = u"mg"
 data[!,:route] .= "iv"
 ncapop = @test_nowarn read_nca(data, id=:ID, time=:TIME, conc=:CObs, amt=:AMT_IV, route=:route,
                                     llq=0concu, timeu=timeu, concu=concu, amtu=amtu)
+@test names(NCA.auc(ncapop, interval=(0timeu,4timeu))) == ["id", "auc0_4"]
+@test names(NCA.auc(ncapop, interval=[(0timeu,4timeu), (0timeu,6timeu)])) == ["id", "auc0_4", "auc0_6"]
 df = @test_nowarn NCA.superposition(ncapop; ii=10timeu)
 nounit_df = NCA.liftunits2header(df)
 @test all(x->!(eltype(x) <: Quantity), eachcol(nounit_df))
