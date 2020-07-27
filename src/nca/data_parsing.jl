@@ -11,6 +11,10 @@ efficient NCA calculation.
 
 !!! remark
     Concentrations at dosing rows are NOT ignored in `read_nca`.
+
+For details about the handling of concentration values below the lower limit of
+quantification, please check out the documentation of `NCA.cleanblq`. All the
+keyword arguments of `NCA.cleanblq` are applicable to `read_nca`, too.
 """
 read_nca(file::AbstractString; kwargs...) = read_nca(DataFrame(CSV.File(file)); kwargs...)
 function read_nca(df; group=nothing, kwargs...)
