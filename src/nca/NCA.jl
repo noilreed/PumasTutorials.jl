@@ -40,7 +40,7 @@ for f in [:lambdaz, :lambdazr2, :lambdazadjr2, :lambdazr, :lambdazintercept, :la
          ]
   @eval $f(conc, time, args...; kwargs...) = $f(NCASubject(conc, time; kwargs...), args...; kwargs...) # f(conc, time) interface
   f === :superposition && continue
-  isauclike = f in [:auc, :auclast, :aumc, :aucmclast]
+  hasinterval = f in [:auc, :auclast, :aumc, :aucmclast, :cmax]
   function_body = quote
     ismulti = ismultidose(pop)
     if ismulti
@@ -76,7 +76,7 @@ for f in [:lambdaz, :lambdazr2, :lambdazadjr2, :lambdazr, :lambdazintercept, :la
         end
       end
     end
-    if $isauclike && interval !== nothing
+    if $hasinterval && interval !== nothing
       setproperty!(df, Symbol($f, ustrip(interval[1]), :_, ustrip(interval[2])), sol)
     else
       df.$f = sol
