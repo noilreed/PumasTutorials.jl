@@ -391,13 +391,13 @@ function dynamics_obj(odeexpr::Expr, pre, odevars, callvars, bvars, eqs, isstati
   end
   sys = ODESystem(mteqs,t,dvars,params)
   f_ex = ModelingToolkit.generate_function(sys)[funcindex]
-  J_ex = ModelingToolkit.generate_jacobian(sys)[funcindex]
+  # J_ex = ModelingToolkit.generate_jacobian(sys)[funcindex]
 
   quote
     let
       $fname = $f_ex
-      $jname = $J_ex
-      $funcname = ODEFunction($fname,jac=$jname)
+      # $jname = $J_ex
+      $funcname = ODEFunction($fname#=,jac=$jname=#)
       $diffeq
     end
   end
