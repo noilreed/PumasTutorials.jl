@@ -239,7 +239,7 @@ end
   # Super messy and should get cleaned.
   reltol=DEFAULT_ESTIMATION_RELTOL,
   abstol=DEFAULT_ESTIMATION_ABSTOL,
-  alg = AutoVern7(Rodas5(autodiff=false)),
+  alg = AutoVern7(Rodas5(autodiff=true)),
   # Estimation only uses subject.time for the
   # observation time series
   obstimes = nothing,
