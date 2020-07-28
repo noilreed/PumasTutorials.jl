@@ -1,0 +1,698 @@
+---
+title : Target Mediated Drug Disposition Models (TMDD)
+author : Vijay Ivaturi, Wansu Park, Parsshava Mehta
+date : 14th July 2020
+---
+
+```julia
+using Pumas, Plots, DataFrames, StatsPlots
+```
+
+## Introduction
+
+In this tutorial you will learn the different types of Target Mediated Drug Disposition (TMDD) Models
+ * Full TMDD Model
+ * Quasi-Steady State (QSS) Model
+ * Constant Rtot Model
+ * Irreversible Binding Model
+ * Wagner Model
+ * Constant Rtot + Irreversible Binding Model
+ * Michaelis-Menten Model
+
+
+#### Full TMDD Model
+The first TMDD model was proposed by [Mager & Jusko (2001)](https://link.springer.com/article/10.1023/A:1014414520282)
+
+The equations for the Full TMDD model can be found below
+
+The Compartments are:
+
+ - Ligand/Drug
+ - Receptor/Target
+ - Complex
+
+```julia
+tmdd_full_model   = @model begin
+  @param begin
+    tvCl          ∈ RealDomain(lower=0)
+    tvVc          ∈ RealDomain(lower=0)
+    tvQ           ∈ RealDomain(lower=0)
+    tvVp          ∈ RealDomain(lower=0)
+    tvKsyn        ∈ RealDomain(lower=0)
+    tvKdeg        ∈ RealDomain(lower=0)
+    tvKon         ∈ RealDomain(lower=0)
+    tvKoff        ∈ RealDomain(lower=0)
+    tvKint        ∈ RealDomain(lower=0)
+  end
+
+  @pre begin
+    Cl            = tvCl
+    Vc            = tvVc
+    Q             = tvQ
+    Vp            = tvVp
+    Ksyn          = tvKsyn
+    Kdeg          = tvKdeg
+    Kon           = tvKon
+    Koff          = tvKoff
+    Kint          = tvKint
+    bioav         = (Ligand=1/Vc,)    # The drug enters into the system as concentrations
+  end
+
+  @init begin
+    Receptor      = Ksyn/Kdeg
+  end
+
+  @vars begin
+    Kel          := Cl/Vc
+    K12          := Q/Vc
+    K21          := Q/Vp
+    R0            = Ksyn/Kdeg
+    Ligand_tot    = Ligand + Complex    # Total Ligand Concentration
+    Rtot          = Receptor + Complex  # Total Receptor Concentration
+    TO            = Receptor/Rtot       # Receptor occupancy
+    Ratio_Rec     = Receptor/R0         # Ratio of Free Receptor to Baseline value
+  end
+
+  @dynamics begin
+    Ligand'       = - Kel*Ligand -K12*Ligand +K21*(Peripheral/Vc) - Kon*Ligand*Receptor + Koff*Complex
+    Peripheral'   = K12*Ligand*Vc - K21*Peripheral
+    Receptor'     = Ksyn - Kdeg*Receptor - Kon*Ligand*Receptor + Koff*Complex
+    Complex'      = Kon*Ligand*Receptor - Koff*Complex - Kint*Complex
+  end
+
+  @derived begin
+    Free_ligand   = @. Ligand
+    Free_receptor = @. Receptor
+    Free_complex  = @. Complex
+  end
+end
+```
+
+The parameters are as given below:
+```julia
+param_full = (  tvCl   = 0.001,   # Clearance of the drug (L/hr)
+                tvVc   = 0.05,    # Volume of Central Compartment (L)
+                tvQ    = 0.003,   # Intercompartmental Clearance (L/hr)
+                tvVp   = 0.1,     # Volume of Peripheral Compartment (L)
+                tvKsyn = 0.11,    # Zero order Rate of Synthesis of Receptor (mg/L/hr)
+                tvKdeg = 0.0089,  # First order Rate of degradation of Receptor (hr⁻¹)
+                tvKon  = 0.096,   # Second order Binding rate (L/mg/hr)
+                tvKoff = 0.001,   # First order Dissociation rate (hr⁻¹)
+                tvKint = 0.003)   # First order Internalization rate of Complex (hr⁻¹)
+```
+
+**Simulating a population of four subjects with different doses**
+
+ * Subject 1 receives a dose of 1.5 mg given as an IV-Bolus at `time=0`
+ * Subject 2 receives a dose of 5 mg given as an IV-Bolus at `time=0`
+ * Subject 3 receives a dose of 15 mg given as an IV-Bolus at `time=0`
+ * Subject 4 receives a dose of 45 mg given as an IV-Bolus at `time=0`
+
+```julia
+evs1   = DosageRegimen(1.5, time=0, cmt=1)
+sub1   = Subject(id=1, events=evs1, covariates=(dose=1.5,))
+evs2   = DosageRegimen(5, time=0, cmt=1)
+sub2   = Subject(id=2, events=evs2, covariates=(dose=5,))
+evs3   = DosageRegimen(15, time=0, cmt=1)
+sub3   = Subject(id=3, events=evs3, covariates=(dose=15,))
+evs4   = DosageRegimen(45, time=0, cmt=1)
+sub4   = Subject(id=4, events=evs4, covariates=(dose=45,))
+pop    = [sub1,sub2,sub3,sub4];
+```
+
+Use the `simobs` function to run the simulation
+
+```julia
+sim_full = simobs(tmdd_full_model, pop, param_full, obstimes=0.01:1:500)
+df_full  = DataFrame(sim_full);
+```
+
+Plot **Time vs Lignad Concentration**
+
+```julia
+@df df_full plot(:time, :Free_ligand, group=:dose, yaxis=:log, yticks=[0.001,0.01,0.1,1,10,100,1000], ylims=(0.001,1000), legend=:bottomleft, linewidth=1.5,
+                title="Time vs Free Ligand Concentration", xlabel="Time (hr)", ylabel="Free Ligand Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+```
+
+Plot **Time vs Receptor Concentration**
+
+```julia
+@df df_full plot(:time, :Free_receptor, group=:dose, yaxis=:log, yticks=[0.001,0.01,0.1,1,10,100,1000], ylims=(0.001,1000), legend=:topleft, linewidth=1.5,
+                title="Time vs Free Receptor Concentration", xlabel="Time (hr)", ylabel="Free Receptor Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+```
+
+Plot **Time vs Complex Concentration**
+
+```julia
+@df df_full plot(:time, :Free_complex, group=:dose, yaxis=:log, yticks=[0.001,0.01,0.1,1,10,100,1000], ylims=(0.001,1000), legend=:bottomleft, linewidth=1.5,
+                title="Time vs Free Complex Concentration", xlabel="Time (hr)", ylabel="Free Complex Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+```
+
+Plot **Time vs Lignad,Receptor & Complex Concentration**
+
+```julia
+@df df_full plot(:time, :Free_ligand, yaxis=:log, yticks=[0.001,0.01,0.1,1,10,100,1000], ylims=(0.001,1000), linewidth=1.5,
+                title="Time vs Concentration", label="Ligand", xlabel="Time (hr)", ylabel="Concentration (mg/L)", legend=:outertopright)
+@df df_full plot!(:time, :Free_receptor, label="Receptor", linewidth=1.5)
+@df df_full plot!(:time, :Free_complex, label="Complex", linewidth=1.5)
+```
+
+#### Quasi-Steady State (QSS) Model
+
+```julia
+tmdd_qss_model    = @model begin
+  @param begin
+    tvCl          ∈ RealDomain(lower=0)
+    tvVc          ∈ RealDomain(lower=0)
+    tvQ           ∈ RealDomain(lower=0)
+    tvVp          ∈ RealDomain(lower=0)
+    tvKsyn        ∈ RealDomain(lower=0)
+    tvKdeg        ∈ RealDomain(lower=0)
+    tvKon         ∈ RealDomain(lower=0)
+    tvKoff        ∈ RealDomain(lower=0)
+    tvKint        ∈ RealDomain(lower=0)
+  end
+
+  @pre begin
+    Cl            = tvCl
+    Vc            = tvVc
+    Q             = tvQ
+    Vp            = tvVp
+    Ksyn          = tvKsyn
+    Kdeg          = tvKdeg
+    Kon           = tvKon
+    Koff          = tvKoff
+    Kint          = tvKint
+    bioav         = (Ltot=1/Vc,)      # The drug enters into the system as concentrations
+  end
+
+  @init begin
+    Rtot          = Ksyn/Kdeg
+  end
+
+  @vars begin
+    Kel          := Cl/Vc
+    K12          := Q/Vc
+    K21          := Q/Vp
+    Kss          := (Koff+Kint)/Kon
+    R0           := Ksyn/Kdeg
+    Conc_lig     := 1/2*((Ltot-Rtot-Kss) + sqrt((Ltot-Rtot-Kss)^2+4*Kss*Ltot))
+    Free_receptor = Rtot - (Ltot - Conc_lig)
+    Free_complex  = Ltot - Conc_lig
+    TO            = Free_receptor/Rtot    # Receptor occupancy
+    Ratio_Rec     = Free_receptor/R0      # Ratio of Free Receptor to Baseline value
+
+  end
+
+  @dynamics begin
+    Ltot'         = - Kint*Ltot - (Kel-Kint)*Conc_lig -K12*Conc_lig +K21*(Peripheral/Vc)
+    Peripheral'   =   K12*Conc_lig*Vc - K21*Peripheral
+    Rtot'         =   Ksyn - Kdeg*Rtot -(Kint-Kdeg)*(Ltot - Conc_lig)
+  end
+
+  @derived begin
+    Free_ligand   = @. Conc_lig
+  end
+end
+```
+
+The parameters are as given below:
+
+```julia
+param_qss = ( tvCl   = 0.001,   # Clearance of the drug (L/hr)
+              tvVc   = 0.05,    # Volume of Central Compartment (L)
+              tvQ    = 0.003,   # Intercompartmental Clearance (L/hr)
+              tvVp   = 0.1,     # Volume of Peripheral Compartment (L)
+              tvKsyn = 0.11,    # Zero order Rate of Synthesis of Receptor (mg/L/hr)
+              tvKdeg = 0.0089,  # First order Rate of degradation of Receptor (hr⁻¹)
+              tvKon  = 0.096,   # Second order Binding rate (L/mg/hr)
+              tvKoff = 0.001,   # First order Dissociation rate (hr⁻¹)
+              tvKint = 0.003)   # First order Internalization rate of Complex (hr⁻¹)
+```
+
+Use the `simobs` function to run the simulation
+
+```julia
+sim_qss = simobs(tmdd_qss_model, pop, param_qss, obstimes=0.1:1:500)
+df_qss  = DataFrame(sim_qss);
+```
+
+Plot **Time vs Lignad Concentration**
+
+```julia
+@df df_qss plot(:time, :Free_ligand, group=:dose, yaxis=:log, yticks=[0.001,0.01,0.1,1,10,100,1000], ylims=(0.001,1000), legend=:bottomleft, linewidth=1.5,
+                title="Time vs Free Ligand Concentration", xlabel="Time (hr)", ylabel="Free Ligand Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+```
+
+Plot **Time vs Receptor Concentration**
+
+```julia
+@df df_qss plot(:time, :Free_receptor, group=:dose, legend=:topleft, linewidth=1.5,
+                title="Time vs Free Receptor Concentration", xlabel="Time (hr)", ylabel="Free Receptor Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+```
+
+Plot **Time vs Complex Concentration**
+
+```julia
+@df df_qss plot(:time, :Free_complex, group=:dose, legend=:topleft, linewidth=1.5,
+                title="Time vs Free Complex Concentration", xlabel="Time (hr)", ylabel="Free Complex Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+```
+
+
+#### Constant Rtot Model
+
+```julia
+tmdd_con_rtot_model = @model begin
+  @param begin
+    tvCl            ∈ RealDomain(lower=0)
+    tvVc            ∈ RealDomain(lower=0)
+    tvQ             ∈ RealDomain(lower=0)
+    tvVp            ∈ RealDomain(lower=0)
+    tvKint          ∈ RealDomain(lower=0)
+    tvKon           ∈ RealDomain(lower=0)
+    tvKD            ∈ RealDomain(lower=0)
+    tvR0            ∈ RealDomain(lower=0)
+  end
+
+  @pre begin
+    Cl              = tvCl
+    Vc              = tvVc
+    Q               = tvQ
+    Vp              = tvVp
+    Kint            = tvKint
+    Kon             = tvKon
+    KD              = tvKD
+    R0              = tvR0
+    bioav           = (Ligand=1/Vc,)       # The drug enters into the system as concentrations
+  end
+
+  @vars begin
+    Kel            := Cl/Vc
+    K12            := Q/Vc
+    K21            := Q/Vp
+    Koff           := KD*Kon
+    Ltot            = Ligand + Complex
+    Rtot            = R0
+    Free_receptor   = Rtot - Complex
+    TO              = Free_receptor/Rtot    # Receptor occupancy
+    Ratio_Rec       = Free_receptor/R0      # Ratio of Free Receptor to Baseline value
+  end
+
+  @dynamics begin
+    Ligand'         = -(Kon*R0 + Kel)*Ligand + (Kon*Ligand + Koff)*Complex -K12*Ligand +K21*(Peripheral/Vc)
+    Peripheral'     = K12*Ligand*Vc - K21*Peripheral
+    Complex'        = Kon*R0*Ligand -(Koff+Kint+Kon*Ligand)*Complex
+  end
+
+  @derived begin
+    Free_ligand     = @. Ligand
+    Free_complex    = @. Complex
+  end
+end
+```
+
+The parameters are as given below:
+
+```julia
+param_con_rtot = (  tvCl   = 0.001,   # Clearance of the drug (L/hr)
+                    tvVc   = 0.05,    # Volume of Central Compartment (L)
+                    tvQ    = 0.003,   # Intercompartmental Clearance (L/hr)
+                    tvVp   = 0.1,     # Volume of Peripheral Compartment (L)
+                    tvR0   = 12.35,   # Initial Receptor Conc (mg/L)
+                    tvKon  = 0.096,   # Second order Binding rate (L/mg/hr)
+                    tvKD   = 0.0104,  # Dissociation Constant (hr⁻¹)
+                    tvKint = 0.003)   # First order Internalization rate of Complex (hr⁻¹)
+```
+
+Use the `simobs` function to run the simulation
+
+```julia
+sim_con_rtot = simobs(tmdd_con_rtot_model, pop, param_con_rtot, obstimes=0.1:1:500)
+df_con_rtot  = DataFrame(sim_con_rtot);
+```
+
+Plot **Time vs Lignad Concentration**
+
+```julia
+@df df_con_rtot plot(:time, :Free_ligand, group=:dose, yaxis=:log, yticks=[0.001,0.01,0.1,1,10,100,1000], ylims=(0.001,1000), legend=:bottomleft, linewidth=1.5,
+                title="Time vs Free Ligand Concentration", xlabel="Time (hr)", ylabel="Free Ligand Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+```
+
+Plot **Time vs Receptor Concentration**
+
+```julia
+@df df_con_rtot plot(:time, :Free_receptor, group=:dose, legend=:topleft, linewidth=1.5,
+                title="Time vs Free Receptor Concentration", xlabel="Time (hr)", ylabel="Free Receptor Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+```
+
+Plot **Time vs Complex Concentration**
+
+```julia
+@df df_con_rtot plot(:time, :Free_complex, group=:dose, legend=:bottomleft, linewidth=1.5,
+                title="Time vs Free Complex Concentration", xlabel="Time (hr)", ylabel="Free Complex Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+```
+
+
+#### Irreversible Binding Model
+
+```julia
+tmdd_ib_model     = @model begin
+  @param begin
+    tvCl          ∈ RealDomain(lower=0)
+    tvVc          ∈ RealDomain(lower=0)
+    tvQ           ∈ RealDomain(lower=0)
+    tvVp          ∈ RealDomain(lower=0)
+    tvKon         ∈ RealDomain(lower=0)
+    tvKsyn        ∈ RealDomain(lower=0)
+    tvR0          ∈ RealDomain(lower=0)
+    tvKint        ∈ RealDomain(lower=0)
+  end
+
+  @pre begin
+    Cl            = tvCl
+    Vc            = tvVc
+    Q             = tvQ
+    Vp            = tvVp
+    Kon           = tvKon
+    Ksyn          = tvKsyn
+    R0            = tvR0
+    Kint          = tvKint
+    bioav         = (Ligand=1/Vc,)     # The drug enters into the system as concentrations
+  end
+
+  @init begin
+    Receptor      = R0
+  end
+
+  @vars begin
+    Kel          := Cl/Vc
+    K12          := Q/Vc
+    K21          := Q/Vp
+    Kdeg         := Ksyn/R0
+    Ltot          = Ligand + Complex
+    Rtot          = Receptor + Complex
+    TO            = Receptor/Rtot      # Receptor occupancy
+    Ratio_Rec     = Receptor/R0        # Ratio of Free Receptor to Baseline value
+  end
+
+  @dynamics begin
+    Ligand'       = -Kel*Ligand - Kon*Ligand*Receptor -K12*Ligand +K21*(Peripheral/Vc)
+    Peripheral'   = K12*Ligand*Vc - K21*Peripheral
+    Receptor'     = Ksyn - Kdeg*Receptor - Kon*Ligand*Receptor
+    Complex'      = Kon*Ligand*Receptor - Kint*Complex
+  end
+
+  @derived begin
+    Free_ligand   = @. Ligand
+    Free_receptor = @. Receptor
+    Free_complex  = @. Complex
+  end
+end
+```
+
+The parameters are as given below:
+
+```julia
+param_ib = (  tvCl   = 0.001,   # Clearance of the drug (L/hr)
+              tvVc   = 0.05,    # Volume of Central Compartment (L)
+              tvQ    = 0.003,   # Intercompartmental Clearance (L/hr)
+              tvVp   = 0.1,     # Volume of Peripheral Compartment (L)
+              tvKsyn = 0.11,    # Zero order Rate of Synthesis of Receptor (mg/L/hr)
+              tvR0   = 12.35,   # Initial receptor Concentration (mg/L)
+              tvKon  = 0.096,   # Second order Binding rate (L/mg/hr)
+              tvKint = 0.003)   # First order Internalization rate of Complex (hr⁻¹)
+```
+
+Use the `simobs` function to run the simulation
+
+```julia
+sim_ib = simobs(tmdd_ib_model, pop, param_ib, obstimes=0.1:1:500)
+df_ib  = DataFrame(sim_ib);
+```
+
+Plot **Time vs Lignad Concentration**
+
+```julia
+@df df_ib plot(:time, :Free_ligand, group=:dose, yaxis=:log, yticks=[0.001,0.01,0.1,1,10,100,1000], ylims=(0.001,1000), legend=:bottomleft, linewidth=1.5,
+                title="Time vs Free Ligand Concentration", xlabel="Time (hr)", ylabel="Free Ligand Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+```
+
+Plot **Time vs Receptor Concentration**
+
+```julia
+@df df_ib plot(:time, :Free_receptor, group=:dose, legend=:topleft, linewidth=1.5,
+                title="Time vs Free Receptor Concentration", xlabel="Time (hr)", ylabel="Free Receptor Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+```
+
+Plot **Time vs Complex Concentration**
+
+```julia
+@df df_ib plot(:time, :Free_complex, group=:dose, legend=:topleft, linewidth=1.5,
+                title="Time vs Free Complex Concentration", xlabel="Time (hr)", ylabel="Free Complex Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+```
+
+
+#### Wagner Model
+
+```julia
+tmdd_wagner_model = @model begin
+  @param begin
+    tvCl          ∈ RealDomain(lower=0)
+    tvVc          ∈ RealDomain(lower=0)
+    tvQ           ∈ RealDomain(lower=0)
+    tvVp          ∈ RealDomain(lower=0)
+    tvKint        ∈ RealDomain(lower=0)
+    tvKD          ∈ RealDomain(lower=0)
+    tvR0          ∈ RealDomain(lower=0)
+  end
+
+  @pre begin
+    Cl            = tvCl
+    Vc            = tvVc
+    Q             = tvQ
+    Vp            = tvVp
+    Kint          = tvKint
+    KD            = tvKD
+    R0            = tvR0
+    bioav         = (Ltot=1/Vc,)      # The drug enters into the system as concentrations
+  end
+
+  @vars begin
+    Kel          := Cl/Vc
+    K12          := Q/Vc
+    K21          := Q/Vp
+    Conc_lig     := 1/2*((Ltot-R0-KD) + sqrt((Ltot-R0-KD)^2+4*KD*Ltot))
+    Rtot          = R0
+    Ltot_         = Ltot
+    Free_receptor = Rtot - (Ltot-Conc_lig)
+    Free_complex  = Ltot-Conc_lig
+    TO            = Free_receptor/Rtot    # Receptor occupancy
+    Ratio_Rec     = Free_receptor/R0      # Ratio of Free Receptor to Baseline value
+  end
+
+  @dynamics begin
+    Ltot'         = -Kint*Ltot - (Kel-Kint)*Conc_lig -K12*Conc_lig +K21*(Peripheral/Vc)
+    Peripheral'   = K12*Conc_lig*Vc - K21*Peripheral
+  end
+
+  @derived begin
+    Free_ligand   = @. Conc_lig
+  end
+end
+```
+
+The parameters are as given below:
+
+```julia
+param_wagner = (  tvCl   = 0.001,   # Clearance of the drug (L/hr)
+                  tvVc   = 0.05,    # Volume of Central Compartment (L)
+                  tvQ    = 0.003,   # Intercompartmental Clearance (L/hr)
+                  tvVp   = 0.1,     # Volume of Peripheral Compartment (L)
+                  tvR0   = 12.35,   # Initial Receptor Conc (mg/L)
+                  tvKD   = 0.0104,  # Dissociation Constant (hr⁻¹)
+                  tvKint = 0.003)   # First order Internalization rate of Complex (hr⁻¹)
+```
+
+Use the `simobs` function to run the simulation
+
+```julia
+sim_wagner = simobs(tmdd_wagner_model, pop, param_wagner, obstimes=0.1:1:500)
+df_wagner  = DataFrame(sim_wagner);
+```
+
+Plot **Time vs Lignad Concentration**
+
+```julia
+@df df_wagner plot(:time, :Free_ligand, group=:dose, yaxis=:log, yticks=[0.001,0.01,0.1,1,10,100,1000], ylims=(0.001,1000), legend=:bottomleft, linewidth=1.5,
+                title="Time vs Free Ligand Concentration", xlabel="Time (hr)", ylabel="Free Ligand Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+```
+
+Plot **Time vs Receptor Concentration**
+
+```julia
+@df df_wagner plot(:time, :Free_receptor, group=:dose, legend=:topleft, linewidth=1.5,
+                title="Time vs Free Receptor Concentration", xlabel="Time (hr)", ylabel="Free Receptor Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+```
+
+Plot **Time vs Complex Concentration**
+
+```julia
+@df df_wagner plot(:time, :Free_complex, group=:dose, legend=:topleft, linewidth=1.5,
+                title="Time vs Free Complex Concentration", xlabel="Time (hr)", ylabel="Free Complex Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+```
+
+
+#### Constant Rtot + Ireversible Binding Model
+
+```julia
+tmdd_con_rtot_ib_model = @model begin
+  @param begin
+    tvCl            ∈ RealDomain(lower=0)
+    tvVc            ∈ RealDomain(lower=0)
+    tvQ             ∈ RealDomain(lower=0)
+    tvVp            ∈ RealDomain(lower=0)
+    tvKint          ∈ RealDomain(lower=0)
+    tvKon           ∈ RealDomain(lower=0)
+    tvR0            ∈ RealDomain(lower=0)
+  end
+
+  @pre begin
+    Cl              = tvCl
+    Vc              = tvVc
+    Q               = tvQ
+    Vp              = tvVp
+    Kint            = tvKint
+    Kon             = tvKon
+    R0              = tvR0
+    bioav           = (Ligand=1/Vc,)      # The drug enters into the system as concentrations
+  end
+
+  @vars begin
+    Kel            := Cl/Vc
+    K12            := Q/Vc
+    K21            := Q/Vp
+    Rtot            = R0
+    Ltot            = Ligand + Complex
+    Free_receptor   = Rtot - Complex
+    TO              = Free_receptor/Rtot  # Receptor occupancy
+    Ratio_Rec       = Free_receptor/R0    # Ratio of Free Receptor to Baseline value
+  end
+
+  @dynamics begin
+    Ligand'         = -(Kon*R0 + Kel)*Ligand + (Kon*Ligand)*Complex -K12*Ligand +K21*(Peripheral/Vc)
+    Peripheral'     = K12*Ligand*Vc - K21*Peripheral
+    Complex'        = Kon*R0*Ligand - (Kon*Ligand + Kint)*Complex
+  end
+
+  @derived begin
+    Free_ligand     = @. Ligand
+    Free_complex    = @. Complex
+  end
+end
+```
+
+The parameters are as given below:
+
+```julia
+param_con_rtot_ib = (   tvCl   = 0.001,   # Clearance of the drug (L/hr)
+                        tvVc   = 0.05,    # Volume of Central Compartment (L)
+                        tvQ    = 0.003,   # Intercompartmental Clearance (L/hr)
+                        tvVp   = 0.1,     # Volume of Peripheral Compartment (L)
+                        tvR0   = 12.35,   # Initial Receptor Conc (mg/L)
+                        tvKon  = 0.096,   # Second order Binding rate (L/mg/hr)
+                        tvKint = 0.003)   # First order Internalization rate of Complex (hr⁻¹)
+```
+
+Use the `simobs` function to run the simulation
+
+```julia
+sim_con_rtot_ib = simobs(tmdd_con_rtot_ib_model, pop, param_con_rtot_ib, obstimes=0.1:1:500)
+df_con_rtot_ib  = DataFrame(sim_con_rtot_ib);
+```
+
+Plot **Time vs Free Ligand Concentration**
+
+```julia
+@df df_con_rtot_ib plot(:time, :Free_ligand, group=:dose, yaxis=:log, yticks=[0.001,0.01,0.1,1,10,100,1000], ylims=(0.001,1000), legend=:bottomleft, linewidth=1.5,
+                title="Time vs Free Ligand Concentration", xlabel="Time (hr)", ylabel="Free Ligand Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+```
+
+Plot **Time vs Receptor Concentration**
+
+```julia
+@df df_con_rtot_ib plot(:time, :Free_receptor, group=:dose, legend=:topleft, linewidth=1.5,
+                title="Time vs Free Receptor Concentration", xlabel="Time (hr)", ylabel="Free Receptor Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+```
+
+Plot **Time vs Free Complex Concentration**
+
+```julia
+@df df_con_rtot_ib plot(:time, :Free_complex, group=:dose, legend=:bottomleft, linewidth=1.5,
+                title="Time vs Free Complex Concentration", xlabel="Time (hr)", ylabel="Free Complex Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+```
+
+
+#### Michaelis-Menten Model
+
+```julia
+tmdd_mm_model   = @model begin
+  @param begin
+    tvCl        ∈ RealDomain(lower=0)
+    tvVc        ∈ RealDomain(lower=0)
+    tvQ         ∈ RealDomain(lower=0)
+    tvVp        ∈ RealDomain(lower=0)
+    tvVm        ∈ RealDomain(lower=0)
+    tvKm        ∈ RealDomain(lower=0)
+  end
+
+  @pre begin
+    Cl          = tvCl
+    Vc          = tvVc
+    Q           = tvQ
+    Vp          = tvVp
+    Vm          = tvVm
+    Km          = tvKm
+    bioav       = (Ligand=1/Vc,)     # The drug enters into the system as concentrations
+  end
+
+  @vars begin
+    Kel        := Cl/Vc
+    K12        := Q/Vc
+    K21        := Q/Vp
+  end
+
+  @dynamics begin
+    Ligand'     = -Kel*Ligand -K12*Ligand +K21*(Peripheral/Vc) -Vm*Ligand/(Km+Ligand)
+    Peripheral' = K12*Ligand*Vc - K21*Peripheral
+  end
+
+  @derived begin
+    Free_ligand = @. Ligand
+  end
+end
+```
+
+The parameters are as given below:
+
+```julia
+param_mm = (  tvCl   = 0.001,   # Clearance (L/hr)
+              tvVc   = 0.05,    # Volume of Central Compartment (L)
+              tvQ    = 0.003,   # Inter-compartmental Clearance (L/hr)
+              tvVp   = 0.1,     # Volume of Peripheral Compartment (L)
+              tvVm   = 0.0375,  # Michaelis Elimination Rate (mg/hr)
+              tvKm   = 0.0104)  # Michaelis Elimination Constant (mg/L)
+```
+
+Use the `simobs` function to run the simulation
+
+```julia
+sim_mm = simobs(tmdd_mm_model, pop, param_mm, obstimes=0.01:1:500)
+df_mm  = DataFrame(sim_mm);
+```
+
+Plot **Time vs Lignad Concentration**
+
+```julia
+@df df_mm plot(:time, :Free_ligand, group=:dose, yaxis=:log, yticks=[0.001,0.01,0.1,1,10,100,1000], ylims=(0.001,1000), legend=:bottomleft, linewidth=1.5,
+                title="Time vs Free Ligand Concentration", xlabel="Time (hr)", ylabel="Free Ligand Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+```
