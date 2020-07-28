@@ -103,6 +103,7 @@ function TransformVariables.inverse!(x::AbstractVector, t::PSDTransform, y::PDMa
   return x
 end
 TransformVariables.inverse!(x::AbstractVector, t::PSDTransform, y::Matrix) = TransformVariables.inverse!(x, t, PDMat(y))
+TransformVariables.inverse!(x::AbstractVector, t::PSDTransform, y::Diagonal) = TransformVariables.inverse!(x, t, PDMat(Matrix(y)))
 
 
 
