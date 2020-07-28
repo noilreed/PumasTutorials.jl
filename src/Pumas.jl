@@ -7,7 +7,7 @@ using FiniteDiff, Reexport, StatsBase,
       Statistics, DiffEqSensitivity, QuantileRegressions,
       DiffEqJump
 using LinearAlgebra
-using Random: randexp
+using Random: AbstractRNG, default_rng, randexp
 using Base.Threads # for bootstrap
 using AdvancedHMC: DiagEuclideanMetric, Hamiltonian, NUTS, Leapfrog, find_good_stepsize, StanHMCAdaptor, MassMatrixAdaptor, StepSizeAdaptor, MultinomialTS, GeneralisedNoUTurn
 using StatsFuns: logistic

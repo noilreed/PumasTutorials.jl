@@ -1,13 +1,11 @@
 using Test
 using Pumas
-using LinearAlgebra, DiffEqSensitivity, Random
+using LinearAlgebra, DiffEqSensitivity, StableRNGs, Random
 
 @testset "GSA Tests" begin
-choose_covariates() = (isPM = rand([1, 0]),
-                       Wt = rand(55:80))
 
-function generate_population(events,nsubs=4)
-  pop = Population(map(i -> Subject(id=i, events=events, covariates=choose_covariates()), 1:nsubs))
+function generate_population(events, nsubs=4)
+  pop = Population(map(i -> Subject(id=i, events=events), 1:nsubs))
   return pop
 end
 
@@ -26,8 +24,6 @@ m_diffeq = @model begin
     CL = θ2
     Vc = θ3
   end
-
-  @covariates isPM Wt
 
   @dynamics begin
     Depot'   = -Ka*Depot
@@ -156,7 +152,8 @@ morris = gsa(m_diffeq,
 @test morris.variances[!, :θ1][1] ≈ 0.0 rtol = 1e-12
 @test morris.variances[!, :θ2][1] ≈ 0.14922 atol = 5e-2
 
-@test sprint((io, t) -> show(io, MIME"text/plain"(), t), morris) ==
+if VERSION < v"1.5-"
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), morris) ==
 """Morris Sensitivity Analysis
 
 Means (μ)
@@ -181,6 +178,33 @@ Variances
 │ 1   │ auc     │ 0.0     │ 0.149501 │
 
 """
+else
+  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), morris) ==
+"""Morris Sensitivity Analysis
+
+Means (μ)
+1×3 DataFrame
+│ Row │ dv_name │ θ1      │ θ2        │
+│     │ Any     │ Float64 │ Float64   │
+├─────┼─────────┼─────────┼───────────┤
+│ 1   │ auc     │ 0.0     │ -0.880688 │
+
+Means star (μ*)
+1×3 DataFrame
+│ Row │ dv_name │ θ1      │ θ2       │
+│     │ Any     │ Float64 │ Float64  │
+├─────┼─────────┼─────────┼──────────┤
+│ 1   │ auc     │ 0.0     │ 0.880688 │
+
+Variances
+1×3 DataFrame
+│ Row │ dv_name │ θ1      │ θ2       │
+│     │ Any     │ Float64 │ Float64  │
+├─────┼─────────┼─────────┼──────────┤
+│ 1   │ auc     │ 0.0     │ 0.146061 │
+
+"""
+end
 
 Random.seed!(123)
 efast = gsa(m_diffeq,

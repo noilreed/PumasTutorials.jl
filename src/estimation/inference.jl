@@ -47,7 +47,12 @@ end
 
 Perform bootstrapping by resampling the `Subject`s from the `Population` stored in `fpm`. The keyword `samples` is used to control the number of resampled datasets, and by specifying keyword `stratify_by` to be a `Symbol` with the name of a covariate it is possible to stratify by a covariate with a finite number of possible values. The rest of the keyword arguments are passed onto the `fit` function internally.
 """
-function bootstrap(fpm::FittedPumasModel; samples=200, stratify_by=nothing, level=0.95)
+function bootstrap(
+  fpm::FittedPumasModel;
+  samples=200,
+  stratify_by=nothing,
+  level=0.95,
+  rng::AbstractRNG=default_rng())
 
   # Grab the stored optimize_fn from fit...
   opt_fn = fpm.kwargs[:optimize_fn]
@@ -59,8 +64,18 @@ function bootstrap(fpm::FittedPumasModel; samples=200, stratify_by=nothing, leve
       ))
 
   # pass defaults and the modified optimize_fn
-  bts = bootstrap(fpm.model, fpm.data, coef(fpm), fpm.approx; samples=samples, stratify_by=stratify_by, fpm.kwargs..., optimize_fn=optimize_fn)
-  FittedPumasModelInference(fpm, bts, level)
+  bts = bootstrap(
+    fpm.model,
+    fpm.data,
+    coef(fpm),
+    fpm.approx;
+    samples=samples,
+    stratify_by=stratify_by,
+    optimize_fn=optimize_fn,
+    rng=rng,
+    fpm.kwargs...)
+
+  return FittedPumasModelInference(fpm, bts, level)
 end
 
 function try_fit(args...; kwargs...)
@@ -71,7 +86,15 @@ function try_fit(args...; kwargs...)
   end
 end
 
-function bootstrap(model::PumasModel, data::Population, coef, approx::LikelihoodApproximation; samples=200, stratify_by=nothing, kwargs...)
+function bootstrap(
+  model::PumasModel,
+  data::Population,
+  coef,
+  approx::LikelihoodApproximation;
+  samples=200,
+  stratify_by=nothing,
+  rng::AbstractRNG=default_rng(),
+  kwargs...)
   # FIXME check for time varying covariates
   # This data preprocessing is not written for speed. Most of it could
   # be written in one long loop, but we keep it like this for clarity.
@@ -91,7 +114,7 @@ function bootstrap(model::PumasModel, data::Population, coef, approx::Likelihood
   # To assign each individual to a stratum by number
   stratum = map(i -> findfirst(isequal(i), strata_unique), strata_values)
   # Find the indices for the different types of subjects
-  populations = [reduce(vcat, [sample(data[strata_values .== strata_unique[idx_s]], count_unique[idx_s]) for idx_s = 1:n_strata]) for n = 1:samples]
+  populations = [reduce(vcat, [rand(rng, data[strata_values .== strata_unique[idx_s]], count_unique[idx_s]) for idx_s = 1:n_strata]) for n = 1:samples]
 
   # add distributed
   # fits = pmap(pop->fit(model, pop, coef, approx), populations)

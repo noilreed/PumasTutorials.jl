@@ -1,13 +1,24 @@
-using Test, Pumas
+using Test, Pumas, StableRNGs
 
 #Creating the dataset
-
-events = vcat(repeat([DosageRegimen(100, addl = 9, ii = 24)], 12),repeat([DosageRegimen(200, addl = 9, ii = 24)], 12))
-covariates = ((WT = round(clamp(rand(Normal(80, 30)), 50, 110), digits = 2),
-        SEX = rand(Binomial(1, 0.7)),
-        BCRCL = round(clamp(rand(Normal(90, 20)), 40, 120), digits = 2))
-        for subj in 1:24)
-population = Population(map((id, covariates, events) -> Subject(id = id, covariates = covariates, events = events), collect(1:24), covariates, events))
+rng = StableRNG(123)
+events = vcat(
+  repeat([DosageRegimen(100, addl = 9, ii = 24)], 12),
+  repeat([DosageRegimen(200, addl = 9, ii = 24)], 12))
+covariates = (
+  (
+    WT = round(clamp(rand(rng, Normal(80, 30)), 50, 110), digits = 2),
+    SEX = rand(rng, Binomial(1, 0.7)),
+    BCRCL = round(clamp(rand(rng, Normal(90, 20)), 40, 120), digits = 2)
+  ) for subj in 1:24)
+population = map(
+  (id, covariates, events) -> Subject(
+    id = id,
+    covariates = covariates,
+    events = events),
+  collect(1:24),
+  covariates,
+  events)
 
 
 model = @model begin
@@ -92,7 +103,7 @@ param = (θ = θ,
 
 #@test_throws MethodError conditional_nll(model, population[1], param, (η=zeros(9),))
 @test_throws MethodError conditional_nll(model, population[1])
-@test_nowarn simobs(model, population[1], param,obstimes=0.1:0.1:300.0)
+@test_nowarn simobs(model, population[1], param, obstimes=0.1:0.1:300.0, rng=rng)
 
 @testset "DosageRegiment error handling" begin
     @test_throws ArgumentError DosageRegimen(0)

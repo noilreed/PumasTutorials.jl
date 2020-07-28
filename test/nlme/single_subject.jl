@@ -1,6 +1,6 @@
 using Test
 using Pumas
-using Random
+using Random, StableRNGs
 
 @testset "Single subject" begin
   data = read_pumas(example_data("sim_data_model1"))
@@ -35,7 +35,7 @@ using Random
 end
 
 @testset "Readme roundtrip" begin
-  Random.seed!(123)
+  rng = StableRNG(123)
 
   model = @model begin
     @param  begin
@@ -72,11 +72,17 @@ end
     σ_prop = 0.2
   )
 
-  choose_covariates() = (isPM = rand([1, 0]), wt = rand(55:80))
+  choose_covariates() = (isPM = rand(rng, 0:1), wt = rand(rng, 55:80))
 
   pop_with_covariates = Population(map(i -> Subject(id=i, events=ev, covariates=choose_covariates()), 1:1000))
 
-  obs = simobs(model, pop_with_covariates, param, obstimes=0:1:120, ensemblealg=EnsembleSerial())
+  obs = simobs(
+    model,
+    pop_with_covariates,
+    param,
+    obstimes=0:1:120,
+    ensemblealg=EnsembleSerial(),
+    rng=rng)
 
   simdf = DataFrame(obs)
 
@@ -89,12 +95,13 @@ end
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitone) ==
-"""FittedPumasModel
+"""
+FittedPumasModel
 
 Successful minimization:                      true
 
 Likelihood approximation:        Pumas.NaivePooled
-Log-likelihood value:                   -923.58735
+Log-likelihood value:                   -904.93688
 Number of subjects:                              1
 Number of parameters:         Fixed      Optimized
                                   0              4
@@ -105,10 +112,10 @@ Observation records:         Active        Missing
 --------------------
            Estimate
 --------------------
-tvcl        3.9886
-tvv        71.687
-pmoncl     -0.70079
-σ_prop      0.22951
+tvcl        3.9441
+tvv        68.761
+pmoncl     -0.70392
+σ_prop      0.19049
 --------------------
 """
 
@@ -120,12 +127,13 @@ pmoncl     -0.70079
 
 
   @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(fitnp)) ==
-"""Asymptotic inference results
+"""
+Asymptotic inference results
 
 Successful minimization:                      true
 
 Likelihood approximation:        Pumas.NaivePooled
-Log-likelihood value:                   -860997.51
+Log-likelihood value:                   -858762.05
 Number of subjects:                           1000
 Number of parameters:         Fixed      Optimized
                                   0              4
@@ -136,10 +144,10 @@ Observation records:         Active        Missing
 -------------------------------------------------------------------
           Estimate           SE                      95.0% C.I.
 -------------------------------------------------------------------
-tvcl       3.9995          0.0031928          [ 3.9933 ;  4.0058 ]
-tvv       69.907           0.093962           [69.723  ; 70.092  ]
-pmoncl    -0.69962         0.00059607         [-0.70079; -0.69845]
-σ_prop     0.20041         0.00042691         [ 0.19957;  0.20125]
+tvcl       3.9992          0.0029873          [ 3.9934 ;  4.0051 ]
+tvv       69.823           0.093297           [69.64   ; 70.006  ]
+pmoncl    -0.69929         0.00060905         [-0.70048; -0.69809]
+σ_prop     0.19975         0.00043256         [ 0.1989 ;  0.20059]
 -------------------------------------------------------------------
 """
 
@@ -157,10 +165,10 @@ Parameter statistics
 -------------------------------------
            Mean            Std
 -------------------------------------
-tvcl       3.9988          0.083016
-tvv       70.001           2.9683
-pmoncl    -0.70006         0.0045657
-σ_prop     0.19843         0.013411
+tvcl       3.9993          0.083797
+tvv       69.913           2.9711
+pmoncl    -0.70002         0.0047254
+σ_prop     0.19777         0.013652
 -------------------------------------
 """
 

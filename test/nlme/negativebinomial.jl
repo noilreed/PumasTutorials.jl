@@ -56,7 +56,7 @@ FittedPumasModel
 Successful minimization:                      true
 
 Likelihood approximation:               Pumas.FOCE
-Log-likelihood value:                    -3603.374
+Log-likelihood value:                   -3495.4273
 Number of subjects:                             20
 Number of parameters:         Fixed      Optimized
                                   0              4
@@ -67,10 +67,10 @@ Observation records:         Active        Missing
 ----------------
        Estimate
 ----------------
-θ₁      3.1875
-θ₂      0.56983
-ω       0.80668
-θr      0.97207
+θ₁      3.1824
+θ₂      0.44859
+ω       0.824
+θr      0.91089
 ----------------
 """
 
@@ -80,7 +80,7 @@ Asymptotic inference results
 Successful minimization:                      true
 
 Likelihood approximation:               Pumas.FOCE
-Log-likelihood value:                    -3603.374
+Log-likelihood value:                   -3495.4273
 Number of subjects:                             20
 Number of parameters:         Fixed      Optimized
                                   0              4
@@ -91,10 +91,10 @@ Observation records:         Active        Missing
 ---------------------------------------------------------
       Estimate          SE                  95.0% C.I.
 ---------------------------------------------------------
-θ₁     3.1875         0.59367         [2.0239 ; 4.351  ]
-θ₂     0.56983        0.088667        [0.39605; 0.74362]
-ω      0.80668        0.11065         [0.5898 ; 1.0236 ]
-θr     0.97207        0.070796        [0.83332; 1.1108 ]
+θ₁     3.1824         0.63673         [1.9344 ; 4.4303 ]
+θ₂     0.44859        0.045974        [0.35848; 0.5387 ]
+ω      0.824          0.12598         [0.57709; 1.0709 ]
+θr     0.91089        0.04267         [0.82726; 0.99453]
 ---------------------------------------------------------
 """
 
@@ -108,7 +108,7 @@ FittedPumasModel
 Successful minimization:                      true
 
 Likelihood approximation:           Pumas.LaplaceI
-Log-likelihood value:                   -3603.3733
+Log-likelihood value:                   -3495.4145
 Number of subjects:                             20
 Number of parameters:         Fixed      Optimized
                                   0              4
@@ -119,10 +119,10 @@ Observation records:         Active        Missing
 ----------------
        Estimate
 ----------------
-θ₁      3.2076
-θ₂      0.56847
-ω       0.80664
-θr      0.97205
+θ₁      3.2045
+θ₂      0.44736
+ω       0.82399
+θr      0.91089
 ----------------
 """
 
@@ -132,7 +132,7 @@ Asymptotic inference results
 Successful minimization:                      true
 
 Likelihood approximation:           Pumas.LaplaceI
-Log-likelihood value:                   -3603.3733
+Log-likelihood value:                   -3495.4145
 Number of subjects:                             20
 Number of parameters:         Fixed      Optimized
                                   0              4
@@ -140,14 +140,14 @@ Observation records:         Active        Missing
     dv:                        1800              0
     Total:                     1800              0
 
--------------------------------------------------------
-      Estimate          SE                95.0% C.I.
--------------------------------------------------------
-θ₁     3.2076         0.59737        [2.0367; 4.3784 ]
-θ₂     0.56847        0.088508       [0.395 ; 0.74194]
-ω      0.80664        0.11064        [0.5898; 1.0235 ]
-θr     0.97205        0.070795       [0.8333; 1.1108 ]
--------------------------------------------------------
+---------------------------------------------------------
+      Estimate          SE                  95.0% C.I.
+---------------------------------------------------------
+θ₁     3.2045         0.64101         [1.9482 ; 4.4609 ]
+θ₂     0.44736        0.045827        [0.35755; 0.53718]
+ω      0.82399        0.12597         [0.57709; 1.0709 ]
+θr     0.91089        0.042669        [0.82726; 0.99452]
+---------------------------------------------------------
 """
 
   # FO/FOCEI not supported for
