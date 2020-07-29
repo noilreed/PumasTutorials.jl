@@ -109,6 +109,19 @@ using Pumas, Test, CSV
       @test param.Ω.diag ≈ [1.5123e-01, 1.6798e-01] rtol=3e-3
       @test param.σ_prop ≈ sqrt(1.0025e-01)         rtol=1e-3
     end
+
+    @testset "PDMat with PDiagDomain (Issue #422)" begin
+      param = (param_proportional..., Ω = Pumas.PDMat([0.04 0.0
+                                                      0.0 0.01]))
+      result = fit(mdl_proportional["analytical"], data, param, Pumas.LaplaceI(),
+                    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
+      @test loglikelihood(result) ≈ -4658.017764492754 rtol=1e-3
+
+      param = (param_proportional..., Ω = Pumas.PDMat([0.04 0.01
+                                                      0.01 0.01]))
+      @test_throws ArgumentError fit(mdl_proportional["analytical"], data, param, Pumas.LaplaceI(),
+                                    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
+    end
   end
 
   @testset "proportional+additive error model" begin

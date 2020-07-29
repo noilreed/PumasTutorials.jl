@@ -174,6 +174,7 @@ end
 
 TransformVariables.inverse_eltype(::Pumas.PDiagTransform, y::PDiagMat{T}) where T = T
 TransformVariables.inverse_eltype(::Pumas.PDiagTransform, y::Diagonal{T}) where T = T
+TransformVariables.inverse_eltype(::Pumas.PDiagTransform, y::PDMat{T}) where T = T
 
 function TransformVariables.inverse!(x::AbstractVector, t::PDiagTransform, y::PDiagMat)
   index = TransformVariables.firstindex(x)
@@ -187,6 +188,13 @@ function TransformVariables.inverse!(x::AbstractVector, t::PDiagTransform, y::PD
 end
 TransformVariables.inverse!(x::AbstractVector, t::PDiagTransform, y::Diagonal) =
   TransformVariables.inverse!(x, t, PDiagMat(y.diag))
+function TransformVariables.inverse!(x::AbstractVector, t::PDiagTransform, y::PDMat)
+  if y.mat == Diagonal(y.mat)
+    TransformVariables.inverse!(x, t, Diagonal(y.mat))
+  else
+    throw(ArgumentError("PDiagDomain requires diagonal matrix"))
+  end
+end
 
 
 struct DiagonalTransform  <: TransformVariables.VectorTransform
