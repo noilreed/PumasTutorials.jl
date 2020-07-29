@@ -78,6 +78,21 @@ using Pumas, Test, CSV
     @test p.θ₁       ≈ 1.0293E+00 rtol=1e-3
     @test p.θ₂       ≈ 4.5185E-01 rtol=1e-3
     @test p.Ω.mat[1] ≈ 1.2201E-01 rtol=1e-3
+
+    @testset "predictions" begin
+      o_i_df = DataFrame(inspect(o))
+
+      @test combine(
+        i -> first(i.dv_ipred),
+        groupby(
+          filter(i -> i.id=="1", o_i_df),
+          [:id, :dose])).x1 ≈ [1.177151949312931, 0.6244036489130487, 0.46177790333040564]
+      @test combine(
+        i -> first(i.dv_pred),
+        groupby(
+          filter(i -> i.id=="1", o_i_df),
+          [:id, :dose])).x1 ≈ [1.0293044041334547, 0.5459800038205147, 0.40377967339469106]
+    end
   end
 
   # FO/FOCEI not supported for

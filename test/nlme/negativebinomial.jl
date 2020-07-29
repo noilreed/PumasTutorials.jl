@@ -45,11 +45,11 @@ using Pumas, Test, Random
   sim_negativebinomial = simobs(negativebinomial_model, pd_poisson, param; ensemblealg = EnsembleSerial())
   pd_negativebinomial  = Subject.(sim_negativebinomial)
 
-  # FOCE
-  fitFOCE = fit(negativebinomial_model, pd_negativebinomial, param, Pumas.FOCE(),
-    optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
+  @testset "FOCE" begin
+    fitFOCE = fit(negativebinomial_model, pd_negativebinomial, param, Pumas.FOCE(),
+      optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 
-  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitFOCE) ==
+    @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitFOCE) ==
 """
 FittedPumasModel
 
@@ -74,7 +74,7 @@ Observation records:         Active        Missing
 ----------------
 """
 
-  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(fitFOCE)) == """
+    @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(fitFOCE)) == """
 Asymptotic inference results
 
 Successful minimization:                      true
@@ -98,10 +98,26 @@ Observation records:         Active        Missing
 ---------------------------------------------------------
 """
 
-  # LaplaceI
-  fitLaplaceI = fit(negativebinomial_model, pd_negativebinomial, param, Pumas.LaplaceI())
+    @testset "predictions" begin
+      fitFOCE_i_df = DataFrame(inspect(fitFOCE))
 
-  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitLaplaceI) ==
+      @test combine(
+        i -> first(i.dv_ipred),
+        groupby(
+          filter(i -> i.id=="1", fitFOCE_i_df),
+          [:id, :dose])).x1 ≈ [9.920118951112125, 5.2440762918095185, 3.8743781770433574]
+      @test combine(
+        i -> first(i.dv_pred),
+        groupby(
+          filter(i -> i.id=="1", fitFOCE_i_df),
+          [:id, :dose])).x1 ≈ [3.1823677878343046, 1.6822963061475433, 1.2428980306862867]
+    end
+  end
+
+  @testset "LaplaceI" begin
+    fitLaplaceI = fit(negativebinomial_model, pd_negativebinomial, param, Pumas.LaplaceI())
+
+    @test sprint((io, t) -> show(io, MIME"text/plain"(), t), fitLaplaceI) ==
 """
 FittedPumasModel
 
@@ -126,7 +142,7 @@ Observation records:         Active        Missing
 ----------------
 """
 
-  @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(fitLaplaceI)) == """
+    @test sprint((io, t) -> show(io, MIME"text/plain"(), t), infer(fitLaplaceI)) == """
 Asymptotic inference results
 
 Successful minimization:                      true
@@ -150,7 +166,24 @@ Observation records:         Active        Missing
 ---------------------------------------------------------
 """
 
-  # FO/FOCEI not supported for
-  @test_throws ArgumentError fit(negativebinomial_model, pd_negativebinomial, param, Pumas.FO())
-  @test_throws ArgumentError fit(negativebinomial_model, pd_negativebinomial, param, Pumas.FOCEI())
+    @testset "predictions" begin
+      fitLaplaceI_i_df = DataFrame(inspect(fitLaplaceI))
+
+      @test combine(
+        i -> first(i.dv_ipred),
+        groupby(
+          filter(i -> i.id=="1", fitLaplaceI_i_df),
+          [:id, :dose])).x1 ≈ [9.929956493632933, 5.242504382103425, 3.8717536698498147]
+      @test combine(
+        i -> first(i.dv_pred),
+        groupby(
+          filter(i -> i.id=="1", fitLaplaceI_i_df),
+          [:id, :dose])).x1 ≈ [3.2045212983156905, 1.69182180805482, 1.2494633893734663]
+    end
+  end
+
+  @testset "FO/FOCEI not supported for" begin
+    @test_throws ArgumentError fit(negativebinomial_model, pd_negativebinomial, param, Pumas.FO())
+    @test_throws ArgumentError fit(negativebinomial_model, pd_negativebinomial, param, Pumas.FOCEI())
+  end
 end
