@@ -1,4 +1,4 @@
-image: "julia:1.4.1"
+image: "julia:1.5"
 
 variables:
   JULIA_DEPOT_PATH: "$CI_PROJECT_DIR/.julia/"
@@ -30,17 +30,17 @@ build:
     - julia -e 'using InteractiveUtils;
                 versioninfo()'
     - >
-      if [ "$CI_COMMIT_BRANCH" == "master" ]; then
-        julia --depwarn=error --project -e 'using Pkg;
-          Pkg.test("Pumas"; coverage=true);'
-        julia -e 'using Pkg;
-          Pkg.add("Coverage");
-          using Coverage;
-          Codecov.submit_local(process_folder())'
-      else
+      # if [ "$CI_COMMIT_BRANCH" == "master" ]; then
+      #   julia --depwarn=error --project -e 'using Pkg;
+      #     Pkg.test("Pumas"; coverage=true);'
+      #   julia -e 'using Pkg;
+      #     Pkg.add("Coverage");
+      #     using Coverage;
+      #     Codecov.submit_local(process_folder())'
+      # else
         julia --depwarn=error --project -e 'using Pkg;
           Pkg.test("Pumas");'
-      fi
+      # fi
   interruptible: true
   artifacts:
     paths:
