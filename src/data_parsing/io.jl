@@ -911,12 +911,23 @@ Your dataset has dose event but it hasn't an evid column. We are adding 1 for do
   if mdv !== nothing || hasproperty(df, :mdv)
     mdv = mdv === nothing ? :mdv : mdv
     allowmissing!(df, observations)
-    mdv = isone.(df[!,mdv])
-    for dv in observations
-      df[!, dv] .= ifelse.(mdv, missing, df[!, dv])
+    nrows = 0;
+    for (idx, row) in enumerate(eachrow(df))
+      _mdv = isone(row[mdv])
+      for dv in observations
+        _dv = row[dv]
+        if _dv isa Missing && _mdv == zero(_mdv)
+          throw(Pumas.PumasDataError("(row: $(idx)) $(dv) is missing but $(mdv) is set to zero."))
+        elseif !(_dv isa Missing) && _mdv == one(_mdv)
+          nrows += 1;
+        end
+        row[dv] = ifelse(_mdv, missing, _dv)
+      end
+    end
+    if nrows > 0
+      @warn "$(nrows) row(s) has(ve) non-missing observation(s) with $(mdv) set to one. $(mdv) is taking precedence."
     end
   end
-
   return df
 end
 

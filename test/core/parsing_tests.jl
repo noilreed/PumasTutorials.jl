@@ -273,6 +273,14 @@ end
                 sex = ["M","M","M","M","M","F","F","F","F","F"],
                 crcl =[90,78,75,72,70,110,110,110,110,110])
   @test_throws Pumas.PumasDataError read_pumas(df12, amt=:amt, covariates=[:age,:sex,:crcl])
+
+  # dv-mdv consistent pair check
+  df = DataFrame(id = [1], time = [0.0], dv = [1.0], mdv = [1])
+  @test_logs (:warn, "1 row(s) has(ve) non-missing observation(s) with mdv set to one. mdv is taking precedence.") read_pumas(df, event_data=false, mdv=:mdv, observations=[:dv])
+
+  df = DataFrame(id = [1], time = [0.0], dv = [missing], mdv = [0])
+  @test_throws Pumas.PumasDataError("(row: 1) dv is missing but mdv is set to zero.") read_pumas(df, event_data=false, mdv=:mdv, observations=[:dv])
+
 end
 
 @testset "Covartime inclusion in time vector" begin
