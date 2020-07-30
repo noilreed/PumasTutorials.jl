@@ -129,6 +129,7 @@ julia> logpdf(d, [ 0])
 -0.9189385332046728
 
 julia> logpdf(d, [-2])
+-Inf
 ```
 """
 struct Constrained{D<:Distribution,M<:Domain}
