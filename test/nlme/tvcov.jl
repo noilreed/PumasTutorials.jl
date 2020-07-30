@@ -167,6 +167,10 @@ df = identity.(df)
   # and discontinuities, so maybe it's not too surprising that we're seeing differences here.
   @test abs(loglikelihood(tvcov_model_normal, tvcov_pd, param_normal, Pumas.FOCEI())-loglikelihood(tvcov_model_normal_analytical, tvcov_pd, param_normal, Pumas.FOCEI()))<0.50
 
+  @testset "check that extra zero dose events haven't been added to the subjects" begin
+    @test length(tvcov_pd[1].events) == 30
+  end
+
   @testset "Fit proportional (normal) error model" begin
     ft_normal = fit(
         tvcov_model_normal,

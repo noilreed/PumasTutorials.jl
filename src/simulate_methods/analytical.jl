@@ -43,7 +43,9 @@ function _build_analytical_problem(
     Ttspan = map(float, tspan)
   end
 
-  events = subject.events
+  # We add zero amount doses for all covariate times to ensure that
+  # that the coefficient values are constant on each subintercal
+  events = copy(subject.events)
   if subject.covariates isa ConstantInterpolationStructArray
     for t ∈ subject.covariates.t
       push!(events, Event(0.0,t,1,1))
