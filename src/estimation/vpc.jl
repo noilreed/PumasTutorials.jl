@@ -251,7 +251,7 @@ end
   - `numstrats`: The number of strata to divide into based on the unique values of the covariate, takes an array with the number of strata for the corresponding covariate
                 passed in `stratify_by`. It takes a default of `4` for each of the covariates.
 
-  While plotting the obtained `VPC` object with `plot` the following keyword arguments allow the option to include or exclude various compnonets with `true` or `false` respectively:
+  While plotting the obtained `VPC` object with `plot` the following keyword arguments allow the option to include or exclude various components with `true` or `false` respectively:
 
   - `observations`: Scatter plot of the true observations.
   - `simquantile_medians`: The median quantile regression of each quantile from the simulations.
@@ -263,7 +263,6 @@ end
   For most users the method used in quantile regression is not going to be of concern, but if you see large run times switching `qreg_method` to `IP(true)` should help in improving the
   performance with a tradeoff in the accuracy of the fitting.
 """
-
 vpc(fpm::FittedPumasModel,
     reps::Integer=499,
     qreg_method=IP(),
