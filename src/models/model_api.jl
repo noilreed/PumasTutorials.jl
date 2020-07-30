@@ -8,7 +8,7 @@ const DEFAULT_SIMULATION_ABSTOL=1e-6
 
 A model takes the following arguments
 - `param`: a `ParamSet` detailing the parameters and their domain
-- `random`: a mapping from a named tuple of parameters -> `DistSet`
+- `random`: a mapping from a named tuple of parameters -> `ParamSet`
 - `pre`: a mapping from the (params, randeffs, subject) -> ODE params
 - `init`: a mapping (col,t0) -> inital conditions
 - `prob`: a DEProblem describing the dynamics (either exact or analytical)
