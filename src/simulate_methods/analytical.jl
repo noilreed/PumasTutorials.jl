@@ -52,7 +52,7 @@ function _build_analytical_problem(
     end
   end
   events = adjust_event(events,col,u0)
-  times = sorted_approx_unique(events)
+  times = unique(map(ev->ev.time, events))
 
   prob = AnalyticalPKPDProblem{false}(f, Tu0, Ttspan, events, times, col)
 end
@@ -134,6 +134,7 @@ function DiffEqBase.solve(prob::AnalyticalPKPDProblem,
       # the time we believe it should be, and (b) that there's no floating
       # point error in t, which should be handled directly by the dual
       # handling above.
+
       @assert cur_ev.time == t
       if cur_ev.ss == 0
         dose,_rate = create_dose_rate_vector(cur_ev,t0,dose,rate)

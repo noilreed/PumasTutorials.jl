@@ -84,20 +84,6 @@ function adjust_event(ev::Event,pre,u0)
   end
 end
 
-function sorted_approx_unique(events::Vector{<:Event})
-  if isempty(events)
-    return Float64[]
-  end
-  tType = mapreduce(t -> typeof(t.time), promote_type, events)
-  out = tType[events[1].time]
-  for i in 2:length(events)
-    if abs(out[end] - events[i].time) > 10eps(tType)*oneunit(tType)
-      push!(out,events[i].time)
-    end
-  end
-  return out
-end
-
 # Ad-hoc fix for creating SLVectors from existing ones that differ
 # only in one element, indexed by a Symbol
 function Base.setindex(x::LabelledArrays.SLArray{S,T,N,L,Syms}, val::T,
