@@ -299,12 +299,10 @@ end
 ###
 ### Helper function for the Subject constructor
 ###
-"""
-  to_nt(obj)::NamedTuple{PN,VT}
-It returns a NamedTuple based on the propertynames of the object.
-If a value is a vector with a single value, it returns the value.
-If the vector has no missing values, it is promoted through disallowmissing.
-"""
+# to_nt(obj)::NamedTuple{PN,VT}
+# It returns a NamedTuple based on the propertynames of the object.
+# If a value is a vector with a single value, it returns the value.
+# If the vector has no missing values, it is promoted through disallowmissing.
 to_nt(obj::Any) = propertynames(obj) |>
   (x -> NamedTuple{Tuple(x)}(
     getproperty(obj, x) |>
@@ -323,7 +321,7 @@ build_observation_list(obs::NamedTuple) = obs
 build_observation_list(obs::Nothing) = obs
 
 build_event_list(events::AbstractVector{<:Event}, event_data::Bool) = events
-function build_event_list!(events, event_data, t, evid, amt, addl, ii, cmt, rate, ss)
+function build_event_list!(events::Vector{<:Event}, event_data::Bool, t, evid, amt, addl, ii, cmt, rate, ss)
   @assert evid ∈ 0:4 "evid must be in 0:4"
   # Dose-related data items
   drdi = iszero(amt) && (rate == 0) && iszero(ii) && iszero(addl) && iszero(ss)
@@ -395,6 +393,47 @@ used to build a multi-valued interpolant for the complete time support.
 From the multi-valued interpolant, certain discontinuities are flagged
 in order to use that information for the differential equation solvers
 and to correctly apply the analytical solution per region as applicable.
+
+Constructor
+
+    Subject(;id = "1",
+             observations = nothing,
+             events = Event[],
+             time = observations isa AbstractDataFrame ? observations.time : nothing,
+             event_data = true,
+             covariates::Union{Nothing, NamedTuple} = nothing,
+             covariates_time = observations isa AbstractDataFrame ? observations.time : nothing,
+             covariates_direction = :right)
+
+`Subject` may be constructed from an `<:AbstractDataFrame` with the appropriate schema
+or by providing the arguments directly through separate `DataFrames` / structures.
+
+Examples:
+
+```jldoctest
+julia> Subject()
+Subject
+  ID: 1
+  Events: 0
+
+julia> data = read_pumas(example_data("event_data/data1")) # Subjects created implicitly
+Population
+  Subjects: 1
+  Observables: dv
+
+julia> Subject(id = 20, events = DosageRegimen(200, ii = 24, addl = 2), covariates = (WT = 14.2, HT = 5.2))
+Subject
+  ID: 20
+  Events: 3
+  Covariates: WT, HT
+
+julia> Subject(covariates = (WT = [14.2, 14.7], HT = fill(5.2, 2)), covariates_time = [0, 3])
+Subject
+  ID: 1
+  Events: 0
+  Covariates: WT, HT
+
+```
 """
 struct Subject{T1,T2,T3,T4}
   id::String
@@ -406,12 +445,20 @@ end
 
 function Subject(
   df::AbstractDataFrame,
-  id, time, evid, amt, addl, ii, cmt, rate, ss,
+  id::Symbol,
+  time::Symbol,
+  evid::Symbol,
+  amt::Symbol,
+   addl::Symbol,
+   ii::Symbol,
+   cmt::Symbol,
+   rate::Symbol,
+   ss::Symbol,
   covariates::Vector{<:Symbol} = Symbol[],
   observations::Vector{<:Symbol} = Symbol[:dv],
-  event_data=true,
-  covariates_direction=:right,
-  parse_tad = true)
+  event_data::Bool=true,
+  covariates_direction::Symbol=:right,
+  parse_tad::Bool=true)
 
   ## Observations
   idx_obs = findall(iszero, df[!,evid])
@@ -497,14 +544,14 @@ function Subject(
 end
 
 function Subject(;
-  id = "1",
-  observations = nothing,
-  events = Event[],
-  time = observations isa AbstractDataFrame ? observations.time : nothing,
-  event_data = true,
+  id::Union{String,Number} = "1",
+  observations::Union{Nothing,AbstractDataFrame,NamedTuple} = nothing,
+  events::Union{DosageRegimen,Vector{<:Event}} = Event[],
+  time::Union{Nothing,AbstractVector{<:Number}} = observations isa AbstractDataFrame ? observations.time : nothing,
+  event_data::Bool = true,
   covariates::Union{Nothing, NamedTuple} = nothing,
-  covariates_time = observations isa AbstractDataFrame ? observations.time : nothing,
-  covariates_direction=:right)
+  covariates_time::Union{Nothing,AbstractVector{<:Number},NamedTuple} = observations isa AbstractDataFrame ? observations.time : nothing,
+  covariates_direction::Symbol = :right)
 
   # Check that time is well-specified (not nothing, not missing and increasing)
   _time = isnothing(time) ? nothing : Missings.disallowmissing(time)
