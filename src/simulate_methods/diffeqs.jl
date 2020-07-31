@@ -141,19 +141,19 @@ function ith_subject_cb(pre,datai::Subject,u0,t0,ProbType,saveat,save_discont,co
       cond1 = if counter <= length(tstops)
         tstops[counter] - t
       else
-        -1
+        -oneunit(t)
       end
 
       cond2 = if post_steady_state[]
         ss_time[] + ss_overlap_duration[] + ss_dropoff_counter[]*ss_ii[] - t
       else
-        -1
+        -oneunit(t)
       end
 
       cond3 = if ss_mode[]
         ss_end[] - t
       else
-        -1
+        -oneunit(t)
       end
 
       cond4 = ss_rate_end[] - t
