@@ -65,7 +65,7 @@ include("plotting/plotting.jl")
 
 @reexport using .NCA
 
-example_data(filename) = joinpath(joinpath(@__DIR__, ".."),"examples/"*filename*".csv")
+example_data(filename) = joinpath(dirname(pathof(Pumas)), "..", "examples", filename*".csv")
 
 export Subject, Population, DosageRegimen, TimeToEvent
 export PumasModel, init_param, init_randeffs, sample_randeffs
