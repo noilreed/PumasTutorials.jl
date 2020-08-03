@@ -628,23 +628,16 @@ end
 # Information criteria #
 ########################
 
+StatsBase.dof(fpm::FittedPumasModel) = TransformVariables.dimension(totransform(fpm.fixedparamset))
+StatsBase.nobs(fpm::FittedPumasModel) = sum(subject -> sum(map(dv -> count(!ismissing, dv), subject.observations)), fpm.data)
+
 """
     aic(fpm::FittedPumasModel)
 
 Calculate the Akaike information criterion (AIC) of the fitted Pumas model
 `fpm`.
 """
-StatsBase.aic(fpm::FittedPumasModel) =
-  aic(fpm.model, fpm.data, coef(fpm), fpm.approx; fpm.kwargs...)
-
-function StatsBase.aic(m::PumasModel,
-                       data::Population,
-                       param::NamedTuple,
-                       approx::LikelihoodApproximation;
-                       kwargs...)
-  numparam = TransformVariables.dimension(totransform(m.param))
-  2*(marginal_nll(m, data, param, approx; kwargs...) + numparam)
-end
+StatsBase.aic(fpm::FittedPumasModel) = 2*(marginal_nll(fpm) + dof(fpm))
 
 """
     bic(fpm::FittedPumasModel)
@@ -652,20 +645,7 @@ end
 Calculate the Bayesian information criterion (BIC) of the fitted Pumas model
 `fpm`.
 """
-StatsBase.bic(fpm::FittedPumasModel) =
-  bic(fpm.model, fpm.data, coef(fpm), fpm.approx, ; fpm.kwargs...)
-
-function StatsBase.bic(m::PumasModel,
-                       population::Population,
-                       param::NamedTuple,
-                       approx::LikelihoodApproximation;
-                       kwargs...)
-
-  numparam = TransformVariables.dimension(totransform(m.param))
-  nll = marginal_nll(m, population, param, approx; kwargs...)
-  n = sum(subject -> sum(dv -> sum(!ismissing, dv), subject.observations), population)
-  return 2*nll + numparam*log(n)
-end
+StatsBase.bic(fpm::FittedPumasModel) = 2*marginal_nll(fpm) + dof(fpm)*log(nobs(fpm))
 
 # empirical_bayes
 function empirical_bayes(fpm::FittedPumasModel)

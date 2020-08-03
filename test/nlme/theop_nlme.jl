@@ -133,8 +133,14 @@ using Test, Pumas, Random, StaticArrays
     @test ϵshrinkage(ft_focei).dv ≈ 0.09091845 rtol = 1e-4
 
     @test aic(ft_focei) ≈ 357.43064186213104 rtol = 1e-3 #regression test
+    @test aic(fit(model, theopp_nlme, param, Pumas.FOCEI(),
+        constantcoef=(θ=coef(ft_focei).θ,),
+        optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))) + 2*length(param.θ) ≈ aic(ft_focei)
 
     @test bic(ft_focei) ≈ 389.1414630105811  rtol = 1e-3 #regression test
+    @test bic(fit(model, theopp_nlme, param, Pumas.FOCEI(),
+        constantcoef=(θ=coef(ft_focei).θ,),
+        optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))) + log(Pumas.nobs(ft_focei))*length(param.θ) ≈ bic(ft_focei)
 
     param = init_param(model)
 
