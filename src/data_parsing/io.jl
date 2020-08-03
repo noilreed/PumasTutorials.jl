@@ -416,9 +416,9 @@ Subject
   ID: 1
   Events: 0
 
-julia> data = read_pumas(example_data("event_data/data1")) # Subjects created implicitly
+julia> data = read_pumas(example_data("sim_data_model1")) # Subjects created implicitly
 Population
-  Subjects: 1
+  Subjects: 10
   Observables: dv
 
 julia> Subject(id = 20, events = DosageRegimen(200, ii = 24, addl = 2), covariates = (WT = 14.2, HT = 5.2))
