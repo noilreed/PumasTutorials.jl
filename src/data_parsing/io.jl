@@ -1118,21 +1118,21 @@ argument event_data=false in your read_pumas function.
 
           # CASE: Steady-state dosing requires ii>0
           if _ii == 0
-            throw(PumasDataError("[Subject $(id): $(_id), row = $(idx), col = $(_ii)] for steady-state dosing the value of the interval column $ii must be non-zero but was $_ii"))
+            throw(PumasDataError("[Subject $(id): $(_id), row = $(idx), col = $(ii)] for steady-state dosing the value of the interval column $ii must be non-zero but was $_ii"))
           end
 
         elseif (_rate > 0 || _rate == -1) && _amt == 0
           # CASE : Steady-state infusion
           # CASE : requires ii=0
           if _ii != 0
-            throw(PumasDataError("[Subject $(id): $(_id), row = $(idx), col = $(_ii)] for steady-state infusion the value of the interval column $ii must be zero but was $_ii"))
+            throw(PumasDataError("[Subject $(id): $(_id), row = $(idx), col = $(ii)] for steady-state infusion the value of the interval column $ii must be zero but was $_ii"))
           end
 
           # CASE : requires addl=0
           if has_addl
             _addl = row[addl]
             if _addl != 0
-              throw(PumasDataError("[Subject $(id): $(_id), row = $(idx), col = $(_addl)] for steady-state infusion the value of the additional dose column $addl must be zero but was $_addl"))
+              throw(PumasDataError("[Subject $(id): $(_id), row = $(idx), col = $(addl)] for steady-state infusion the value of the additional dose column $addl must be zero but was $_addl"))
             end
           end
         else

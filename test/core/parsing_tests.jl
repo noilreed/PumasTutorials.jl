@@ -281,6 +281,25 @@ end
   df = DataFrame(id = [1], time = [0.0], dv = [missing], mdv = [0])
   @test_throws Pumas.PumasDataError("(row: 1) dv is missing but mdv is set to zero.") read_pumas(df, event_data=false, mdv=:mdv, observations=[:dv])
 
+  # steady state (ss) checks
+  df = DataFrame(id=[1,1], time=[0,1], amt=[10,0], ss=[1, 0],
+          cmt=[1,2], dv=[missing,8], age=[45,45],
+          sex = ["M","M"], evid=[1,0])
+  @test_throws Pumas.PumasDataError("your dataset does not have ii which is a required column for steady state dosing.") read_pumas(df, observations=[:dv], covariates=[:age, :sex])
+
+  df = DataFrame(id=[1,1], time=[0,1], amt=[10,0], ss=[1, 0], ii=[0,0],
+                 cmt=[1,2], dv=[missing,8], age=[45,45], sex = ["M","M"], evid=[1,0])
+  @test_throws Pumas.PumasDataError("[Subject id: 1, row = 1, col = ii] for steady-state dosing the value of the interval column ii must be non-zero but was 0") read_pumas(df, observations=[:dv], covariates=[:age, :sex])
+
+  df = DataFrame(id=[1,1], time=[0,1], amt=[0,0], ss=[1, 0], rate=[2, 0], ii=[1, 0],
+            cmt=[1,2], dv=[missing,8],
+                  age=[45,45], sex = ["M","M"], evid=[1,0])
+  @test_throws Pumas.PumasDataError("[Subject id: 1, row = 1, col = ii] for steady-state infusion the value of the interval column ii must be zero but was 1") read_pumas(df, observations=[:dv], covariates=[:age, :sex])
+
+  df = DataFrame(id=[1,1], time=[0,1], amt=[0,0], ss=[1, 0], rate=[2, 0], ii=[0, 0],
+            addl=[5, 0], cmt=[1,2], dv=[missing,8],
+                  age=[45,45], sex = ["M","M"], evid=[1,0])
+  @test_throws Pumas.PumasDataError("[Subject id: 1, row = 1, col = addl] for steady-state infusion the value of the additional dose column addl must be zero but was 5") read_pumas(df, observations=[:dv], covariates=[:age, :sex])
 end
 
 @testset "Covartime inclusion in time vector" begin
