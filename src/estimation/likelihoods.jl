@@ -1503,13 +1503,13 @@ function _check_dose_compartments(model, subject, param)
   # grab any randeffs
   randeffs = init_randeffs(model, param)
 
-  # get the pre function for this (model, subject, parameter) combination 
+  # get the pre function for this (model, subject, parameter) combination
   _pre = Pumas.pre(
     model,
     subject,
     param,
     randeffs)
-  
+
   # Get the compartments as the keys of the initial system (at time 0.0)
   compartments = keys(model.init(_pre, 0.0))
 
@@ -1532,6 +1532,56 @@ function _check_dose_compartments(model, subject, param)
   end
 end
 
+"""
+    fit(
+      model::PumasModel,
+      population::Population,
+      param::NamedTuple,
+      approx::LikelihoodApproximation;
+      optimize_fn = DefaultOptimizeFN(),
+      constantcoef::NamedTuple = NamedTuple(),
+      omegas::Tuple = tuple(),
+      ensemblealg::DiffEqBase.EnsembleAlgorithm = EnsembleSerial(),
+      checkidentification=true,
+      kwargs...))
+
+Fit the Pumas model `model` to the dataset `population` with starting values
+`param` using the estimation method `approx`. Currently supported values for
+the `approx` argument are `FO`, `FOCE`, `FOCEI`, `LaplaceI`, `TwoStage`,
+`NaivePooled`, and `BayesMCMC`. See the online documentation for more details
+about the different methods.
+
+The argument `optimize_fn` is used for optimizing the objective function
+for all `approx` methods except `BayesMCMC`. The default optimization function
+uses the quasi-Newton routine `BFGS` method from the `Optim` package.
+Optimization specific arguments can be passed to `DefaultOptimizeFN`, e.g. the
+optimization trace can be disabled by passing
+`DefaultOptimizeFN(show_trace=false)`. See `Optim` for more defails.
+
+It is possible to fix one or more parameters of the fit by passing a
+`NamedTuple` as the `constantcoef` argument with keys and values corresponding
+to the names and values of the fixed parameters, e.g. `constantcoef=(σ=0.1,)`.
+
+When models include an `@random` block and fitting with `NaivePooled` is
+requested, it is required that the user supplies the names of the parameters
+of the random effects as the `omegas` argument such that these can be ignored
+in the optimization, e.g. `omegas=(Ω,)`.
+
+Parallelization of the optimization is supported for most estimation methods
+via the ensemble interface of DifferentialEquations.jl. The default is
+`EnsembleSerial()`. Currently, the only supported parallelization for
+model fitting is `EnsembleThreads()`.
+
+The `fit` function will check if any gradients and throw an exception if any
+of the elements are exactly zero unless `checkidentification` is set to `false`.
+
+Further keyword arguments can be passed via the `kwargs...` argument. This
+allows for passing arguments to the differential equations solver such as
+`alg`, `abstol`, and `reltol`. The default values for these are
+`AutoVern7(Rodas5())`, `1e-12`, and `1e-8` respectively. See the
+DifferentialEquations.jl documentation for more details.
+
+"""
 function Distributions.fit(m::PumasModel,
                            population::Population,
                            param::NamedTuple,
