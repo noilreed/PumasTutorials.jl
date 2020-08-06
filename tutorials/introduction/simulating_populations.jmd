@@ -97,7 +97,7 @@ Note that `ev` is of type `DosageRegimen`. Specified like above,
 Let's create a single subject
 
 ```julia
-s1 = Subject(id=1,evs=ev,cvs=(isPM=0, Wt=70))
+s1 = Subject(id=1,events=ev,covariates=(isPM=0, Wt=70))
 for fn in fieldnames(Subject)
     x = getproperty(s1, fn)
     if !isa(x, Nothing)
@@ -144,7 +144,7 @@ plot(obs)
 Now, lets create one more subject, `s2`.
 
 ```julia
-s2 = Subject(id=2,evs=ev,cvs=(isPM=1,Wt=70))
+s2 = Subject(id=2,events=ev,covariates=(isPM=1,Wt=70))
 ```
 
 If we want to simulate both `s1` and `s2` together, we need to bring these subjects together to form a `Population`. A `Population` is
@@ -206,7 +206,7 @@ build's a subject with the randomly chosen covariates in order to build a
 population:
 
 ```julia
-pop_with_covariates = Population(map(i -> Subject(id=i,evs=ev,cvs=choose_covariates()),1:10))
+pop_with_covariates = Population(map(i -> Subject(id=i,events=ev,covariates=choose_covariates()),1:10))
 ```
 
 Simulate into the population
@@ -236,7 +236,7 @@ md =  DosageRegimen(100,ii=24,addl=6)
 Let's create a new subject, `s3` with this dosage regimen:
 
 ```julia
-s3 = Subject(id=3,evs=md, cvs=(isPM=0,Wt=70))
+s3 = Subject(id=3,events=md, covariates=(isPM=0,Wt=70))
 ```
 
 and see the results:
@@ -260,7 +260,7 @@ ldmd = DosageRegimen([500,100],cmt=1, time=[0,24], addl=[0,6],ii=[0,24])
 Let's see if this result matches our intuition:
 
 ```julia
-s4 = Subject(id=4, evs=ldmd, cvs=(isPM=0,Wt=70))
+s4 = Subject(id=4, events=ldmd, covariates=(isPM=0,Wt=70))
 obs = simobs(model, s4, fixeffs,obstimes=0:0.1:120)
 plot(obs, ylims=(0,50))
 ```
@@ -289,9 +289,9 @@ e3 = DosageRegimen(200, ii=24, addl=2)
 ```
 
 ```julia
-pop1 = Population(map(i -> Subject(id=i,evs=e1,cvs=choose_covariates()),1:5))
-pop2 = Population(map(i -> Subject(id=i,evs=e2,cvs=choose_covariates()),6:8))
-pop3 = Population(map(i -> Subject(id=i,evs=e3,cvs=choose_covariates()),9:10))
+pop1 = Population(map(i -> Subject(id=i,events=e1,covariates=choose_covariates()),1:5))
+pop2 = Population(map(i -> Subject(id=i,events=e2,covariates=choose_covariates()),6:8))
+pop3 = Population(map(i -> Subject(id=i,events=e3,covariates=choose_covariates()),9:10))
 pop = Population(vcat(pop1,pop2,pop3))
 ```
 
@@ -314,7 +314,7 @@ inf = DosageRegimen(100, rate=3, cmt=2)
 Now let's simulate a subject undergoing this treatment strategy:
 
 ```julia
-s5 = Subject(id=5, evs=inf, cvs=(isPM=0,Wt=70))
+s5 = Subject(id=5, events=inf, covariates=(isPM=0,Wt=70))
 obs = simobs(model, s5, fixeffs, obstimes=0:0.1:120)
 plot(obs)
 ```
@@ -324,7 +324,7 @@ plot(obs)
 Note that all of these functions are standard Julia functions, and thus standard
 Julia programming constructions can be utilized to simplify the construction of
 large populations. We already demonstrated the use of `map` and a comprehension,
-but we can also make use of constructs like for loops.
+but we can also make use of constructs like `for` loops.
 
 ## Conclusion
 
