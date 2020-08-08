@@ -25,8 +25,8 @@ As part of this workflow you will be introduced to various aspects such as
 
 ## The study and design
 
-CTM_Nopain is a novel anti-inflammatory agent under preliminary investigation.
-A dose-ranging trial was conducted comparing placebo with 3 doses of CTM_Nopain
+CTMNopain is a novel anti-inflammatory agent under preliminary investigation.
+A dose-ranging trial was conducted comparing placebo with 3 doses of CTMNopain
 (5mg, 20mg and 80 mg QD).  The maximum tolerated dose is 160 mg per day.
 Plasma concentrations (mg/L) of the drug were measured at 0, 0.5, 1, 1.5, 2, 2.5, 3-8 hours.
 
@@ -56,6 +56,7 @@ using Plots
 using StatsPlots
 using Pipe
 using StatsBase
+using PrettyTables
 ```
 
 ### Data Wrangling
@@ -67,14 +68,16 @@ the name of the variable with _df_ and the `Population` version of that datafram
 be without the _df_ to avoid confusion.
 
 ```julia
-pkpain_df = DataFrame!(CSV.File("./data/intro/pk_painscore.csv", missingstrings=["", "NA", "."]))
-remed_df  = DataFrame!(CSV.File("./data/intro/pain_remedication.csv", missingstrings=["", "NA", "."]))
+pkpain_df = DataFrame!(CSV.File("../../data/intro/pk_painscore.csv", missingstrings=["", "NA", "."]))
+remed_df  = DataFrame!(CSV.File("../../data/intro/pain_remedication.csv", missingstrings=["", "NA", "."]))
 ```
 
 Let's filter out the placebo data as we don't need that for the PK analysis.
 
 ```julia
 pkpain_noplb_df = filter(x -> !(occursin.("Placebo", x.ARM)), pkpain_df)
+pretty_table(first(pkpain_noplb_df,10), backend = :html;
+            formatters = ft_round(3))
 ```
 
 do some data wrangling and plotting here
@@ -109,9 +112,11 @@ of interest.
 
 ```julia
 pk_nca_report = NCAReport(pkpain_nca, sigdig=3)
+pretty_table(first(pk_nca_report,10), backend = :html;
+            formatters = ft_round(3))
 ```
 
-As CTM_Nopain's effect maybe mainly related to maximum concentration (`cmax`) or area under the curve (`auc`),
+As CTMNopain's effect maybe mainly related to maximum concentration (`cmax`) or area under the curve (`auc`),
 we present some summary statistics.
 
 ```julia
@@ -121,25 +126,35 @@ auc_cmax_stacked = stack(auc_cmax, [:cmax, :aucinf_obs], [:id, :DOSE])
 auc_cmax_summary = combine(groupby(auc_cmax_stacked,[:DOSE,:variable]),
                            [col => fun for col in [:value]
                            for fun in [mean, median, geomean, std]])
+
+pretty_table(auc_cmax_summary, backend = :html;
+            formatters = ft_round(3, [3,4,5,6]))
 ```
 
-```julia
-auc_cmax[!,:Dose] .= string.(auc_cmax.DOSE)
-@df auc_cmax violin(:Dose, :cmax, marker=(0.2,:blue,stroke(0)))
-@df auc_cmax boxplot!(:Dose, :cmax ,marker=(0.3,:orange,stroke(2)), alpha=0.75)
+```julia; eval=false
+#TODO unable to get ordered x-axis
+auc_cmax[!,:Dose] .= CategoricalArray(auc_cmax.DOSE)
+#levels!(auc_cmax[!,:Dose], ["5", "20", "80"])
+@df auc_cmax groupedviolin(:DOSE, :cmax, group=:Dose,
+                      marker=(0.2,:blue,stroke(0)))
+@df auc_cmax groupedboxplot!(:DOSE, :cmax , group=:Dose, label="",
+                      marker=(0.3,:orange,stroke(2)), alpha=0.75)
 plot!(size = (800,400), xlabel = "Dose (mg)", ylabel = "Cmax")
+##savefig("./assets/cmaxplot.png")
 ```
+![Plot cmax](./assets/cmaxplot.png)
+
 Dose normalized PK parameters, `cmax` and `aucinf` were
 essentially dose proportional between for 5 mg, 20 mg
 and 80 mg doses. Based on visual inspection of the
-concentration time profiles as seen below, CTM_Nopain exhibited monophasic decline, and perhaps
+concentration time profiles as seen below, CTMNopain exhibited monophasic decline, and perhaps
 a one compartment model best fits the PK data.
 
-```julia
+```julia; eval=false
 pkpain_noplb_plot_df = filter(x -> !(x.TIME .== 0), pkpain_noplb_df)
 @df pkpain_noplb_df plot(:TIME, :CONC,
                         color=:DOSE, group=:ID, legend=false,
-                        yaxis =:log, alpha=0.2, xlim=(0,2))
+                        yaxis =:log, alpha=0.2)
 
 @df pkpain_noplb_plot_df plot!(:TIME, :CONC,
                         group=:DOSE, legend=false, linewidth = 5,
@@ -147,7 +162,9 @@ pkpain_noplb_plot_df = filter(x -> !(x.TIME .== 0), pkpain_noplb_df)
                         xlabel = "Time (hours)", ylabel = "Concentration (ng/mL)",
                         size = (1000, 600), guidefontsize = 22,
                         tickfontsize =14)
+#savefig("./assets/spaghetti_pk.png")
 ```
+![Plot spaghetti](./assets/spaghetti_pk.png)
 
 ### Pharmacokinetic modeling
 
@@ -223,16 +240,18 @@ Before going to fit the model, let's evaluate some helpful steps.
 
 1. Simulation to check appropriatness of data and model
 
-```julia
+```julia; eval=false
 simpk = simobs(pk_1cmp, pkpain_noplb, init_param(pk_1cmp))
 plot(simpk, xlabel = "Time (hours)", ylabel = "Concentration (ng/mL)",
-    size = (1000, 600), guidefontsize = 22,
+    size = (1000, 600), guidefontsize = 22, label = "Simulated profiles",
     tickfontsize =14, alpha=0.1, yaxis = :log)
 #
 @df pkpain_noplb_plot_df scatter!(:TIME, :CONC,
                         color=:DOSE, group=:ID, legend=false,
-                        alpha=0.5, yaxis = :log)
+                        alpha=0.5, yaxis = :log, label = "Observed concentrations")
+#savefig("./assets/sim1_pk.png")
 ```
+![Plot sims1](./assets/sim1_pk.png)
 
 It does seem that the model simulated lines are slightly lower thatn the observed during earlier times
 
@@ -242,7 +261,7 @@ Lets change the initial estimates of the parameters to evaluate that.
 pkparam = (init_param(pk_1cmp)..., tvka=2, tvv = 10)
 ```
 
-```julia
+```julia; eval=false
 simpk = simobs(pk_1cmp,
                pkpain_noplb,
                pkparam)
@@ -253,7 +272,9 @@ plot(simpk, xlabel = "Time (hours)", ylabel = "Concentration (ng/mL)",
 @df pkpain_noplb_plot_df scatter!(:TIME, :CONC,
                         color=:DOSE, group=:ID, legend=false,
                         alpha=0.5, yaxis = :log)
+#savefig("./assets/sim2_pk.png")
 ```
+![Plot sims2](./assets/sim2_pk.png)
 
 Increasing the `tvka` and decreasing the `tvv`  seemed to make an impact and observations go
 through the simulated lines.
@@ -269,7 +290,7 @@ pkfit_np = fit(pk_1cmp,
                pkpain_noplb,
                pkparam,Pumas.NaivePooled(),
                omegas = (:Ω,))
-pkfit_np
+pretty_table(coeftable(pkfit_np), backend = :html, formatters = ft_round(2,[2]))
 ```
 
 The final estimates from the NaivePooled approach seem reasonably close to our initial
@@ -284,7 +305,7 @@ checking the `loglikelihood` subject wise.
 Below, we are basically checking if the initial estimates for any subject are way off
 that we are unable to compute the initial `loglikelihood`.
 
-```julia
+```julia; eval=false
 lls = []
 for subj in pkpain_noplb
   #println("ID: " , subj.id)
@@ -294,7 +315,10 @@ for subj in pkpain_noplb
                    Pumas.FOCEI()))
 end
 histogram(lls, size = (800,600))
+#savefig("./assets/histlls.png")
 ```
+![Plot lls](./assets/histlls.png)
+
 The distribution of the loglikelihood's suggest no extreme outliers.
 
 Now that we have a good handle on our data, lets go ahead and `fit` a population model
@@ -306,13 +330,14 @@ pkfit_1cmp = fit(pk_1cmp,
                  Pumas.FOCEI(), ensemblealg = EnsembleThreads(),
                  constantcoef = (tvka = 2,))
 pkfit_1cmp
+pretty_table(coeftable(pkfit_1cmp),backend = :html,  formatters = ft_round(2,[2]))
 ```
 
 Notice that I fixed the `tvka` to 2 as I we don't have a lot of information before `tmax`.
 From the table below, we see that the parameter precision for this model is reasonable.
 
 ```julia
-infer(pkfit_1cmp) |> coeftable
+pretty_table(coeftable(infer(pkfit_1cmp)), backend = :html, formatters = ft_round(2,[2,3,4,5]))
 ```
 
 Just to be sure, let's fit a 2-compartment model and evaluate
@@ -353,7 +378,7 @@ pkfit_2cmp = fit(pk_2cmp,
                  init_param(pk_2cmp),
                  Pumas.FOCEI(), ensemblealg = EnsembleThreads(),
                  constantcoef = (tvka = 2,))
-pkfit_2cmp
+pretty_table(coeftable(infer(pkfit_1cmp)), backend = :html, formatters = ft_round(2,[2,3,4,5]))
 ```
 The 2 compartment model has a much lower objective function compared to the 1 compartment. Lets compare
 the estimates from the 2 models.
@@ -361,7 +386,8 @@ the estimates from the 2 models.
 ```julia
 @pipe leftjoin(coeftable(pkfit_2cmp),
                coeftable(pkfit_1cmp), on = :parameter, makeunique = true) |>
-  rename!(_, :estimate => :pk2cmp, :estimate_1 => :pk1cmp)
+  rename!(_, :estimate => :pk2cmp, :estimate_1 => :pk1cmp) |>
+  pretty_table(_, backend = :html, formatters = ft_round(2,[2,3]))
 ```
 
 We perform a likelihood ratio test to compare the two nested models. The test statistic
@@ -375,7 +401,7 @@ We should also compare the other metrics and statistics, such `ηshrinkage`, `ϵ
 `aic`, `bic`, `cond` (condition number)
 
 #TODO make the code below generate a dataframe or some structure that allows comparison
-```julia
+```julia; eval=false
 for model in [pkfit_1cmp, pkfit_2cmp]
   ηshrinkage(model)
 end
@@ -387,16 +413,16 @@ To do this, we first `inspect` the diagnostics of our model fit.
 ```julia
 res_inspect_1cmp = DataFrame(inspect(pkfit_1cmp))
 dropmissing!(res_inspect_1cmp)
-first(res_inspect_1cmp, 10)
+pretty_table(first(res_inspect_1cmp, 10), backend = :html)
 ```
 
 ```julia
 res_inspect_2cmp = DataFrame(inspect(pkfit_2cmp))
 dropmissing!(res_inspect_2cmp)
-first(res_inspect_2cmp, 10)
+pretty_table(first(res_inspect_2cmp, 10), backend = :html)
 ```
 Let's make some plots.
-Note: These are WIP packages that will be modularized over time.
+_Note: These are WIP packages that will be improved over time._
 
 ```julia
 theme(:wong2)
@@ -478,18 +504,182 @@ function gof(res_inspect)
 end
 ```
 
-```julia
+```julia; eval=false
 gof_1cmp = gof(res_inspect_1cmp)
+#savefig("./assets/gof1cmt.png")
 ```
+![Plot gof1cmt](./assets/gof1cmt.png)
 
-```julia
+```julia; eval=false
 gof_2cmp = gof(res_inspect_2cmp)
+#savefig("./assets/gof2cmt.png")
 ```
+![Plot gof2cmt](./assets/gof2cmt.png)
 
 These plots clearly indicate that the 2 compartment model is a better fit
 compared to the one compartment model. We can look at selected sample of individaul
 plots.
 
-```julia
-
+```julia; eval=false
+function sample_df(df, nsamples)
+    gdf = groupby(df, :id)
+    sample_groups = sample(1:length(gdf), nsamples, replace=false)
+    resampled = reduce(vcat, [gdf[i] for i in sample_groups])
+    return resampled
+end
+Random.seed!(1234)
+res_inspect_2cmp_sampled = sample_df(res_inspect_2cmp,12)
 ```
+
+```julia; eval=false
+plot_grouped(
+    groupby(res_inspect_2cmp_sampled, :id);
+    # needs to be a large size for the plots to
+    # be visible.  Try to maintain a square aspect
+    # ratio.
+    size = (2000, 2000),
+    # we don't need a legend
+    legend = :none,
+    # link y axes together
+    link = :y,
+    # the figures should be laid out tightly
+    margin = 0Plots.px,
+    # these fontsizes are based on personal preference,
+    # but should be fairly large, so that they can be
+    # seen in PDFs.
+    tickfontsize = 14,
+    titlefontsize = 15
+) do subdf
+    @df subdf scatter(:time, :CONC, color=:black, markersize=8,
+    xlabel = "Time (hours)", ylabel = "Concentration (ng\\/mL)" )
+    @df subdf plot!(:time, :CONC_pred, color=:red, linewidth =4)
+    @df subdf plot!(:time, :CONC_ipred, color=:blue, linewidth =4)
+end
+#savefig("./assets/indpreds1.png")
+```
+![Plot indpreds1](./assets/indpreds1.png)
+
+```julia; eval=false
+data4_etacov = select(res_inspect_2cmp,["η_1", "η_2", "η_3", "η_4", "η_5", "DOSE"])
+data4_etacov = stack(data4_etacov, ["η_1", "η_2", "η_3", "η_4", "η_5"], "DOSE")
+data4_etacov[!,:variable] .= string.(data4_etacov.variable)
+@df data4_etacov groupedviolin(:variable,:value,
+                              group = :DOSE, alpha =0.5)
+@df data4_etacov groupedboxplot!(:variable,:value,
+                              group = :DOSE, alpha =0.5, label ="")
+Plots.abline!(0,0, linewidth=4, color = "black",
+              size = (1000, 800),
+              xlabel = "η's", ylabel = "η_values", legendtitle = "Dose (mg)",
+              guidefontsize = 22,
+              tickfontsize =14, label ="")
+#savefig("./assets/etacov1.png")
+```
+![Plot etacov1](./assets/etacov1.png)
+
+Clearly,our guess at `tvka` seems off-target. Let's try and estimate `tvka` instead of fixing it to `2`
+
+
+```julia
+pkfit_2cmp_unfix_ka = fit(pk_2cmp,
+                 pkpain_noplb,
+                 init_param(pk_2cmp),
+                 Pumas.FOCEI(), ensemblealg = EnsembleThreads())
+pretty_table(coeftable(infer(pkfit_2cmp_unfix_ka)), backend = :html, formatters = ft_round(2,[2,3,4,5]))
+```
+
+```julia
+@pipe leftjoin(coeftable(pkfit_2cmp),
+               coeftable(pkfit_2cmp_unfix_ka), on = :parameter, makeunique = true) |>
+  rename!(_, :estimate => :pk2cmp, :estimate_1 => :pk2cmp_unfix_ka) |>
+  pretty_table(_, backend = :html, formatters = ft_round(2,[2,3]))
+```
+
+Let's revaluate the goodness of fits and η distribution plots.
+
+Not much change in the general `gof` plots
+```julia; eval=false
+res_inspect_2cmp_unfix_ka = DataFrame(inspect(pkfit_2cmp_unfix_ka))
+gof(res_inspect_2cmp_unfix_ka)
+#savefig("./assets/gof2ka.png")
+```
+![Plot gofka](./assets/gof2ka.png)
+
+But you can see a huge improvement in the `ηka` distribution which is now centered around zero
+```julia; eval=false
+data4_etacov = select(res_inspect_2cmp_unfix_ka,["η_1", "η_2", "η_3", "η_4", "η_5", "DOSE"])
+data4_etacov = stack(data4_etacov, ["η_1", "η_2", "η_3", "η_4", "η_5"], "DOSE")
+data4_etacov[!,:variable] .= string.(data4_etacov.variable)
+@df data4_etacov groupedviolin(:variable,:value,
+                              group = :DOSE, alpha =0.5)
+@df data4_etacov groupedboxplot!(:variable,:value,
+                              group = :DOSE, alpha =0.5, label ="")
+Plots.abline!(0,0, linewidth=4, color = "black",
+              size = (1000, 800),
+              xlabel = "η's", ylabel = "η_values", legendtitle = "Dose (mg)",
+              guidefontsize = 22,
+              tickfontsize =14, label ="")
+#savefig("./assets/etacov2.png")
+```
+![Plot etacov2](./assets/etacov2.png)
+
+Finally looking at some individual plots
+
+```julia; eval=false
+Random.seed!(1234)
+res_inspect_2cmp_unfixka_sampled = sample_df(res_inspect_2cmp_unfix_ka,12)
+plot_grouped(
+    groupby(res_inspect_2cmp_unfixka_sampled, :id);
+    # needs to be a large size for the plots to
+    # be visible.  Try to maintain a square aspect
+    # ratio.
+    size = (2000, 2000),
+    # we don't need a legend
+    legend = :none,
+    # link y axes together
+    link = :y,
+    # the figures should be laid out tightly
+    margin = 0Plots.px,
+    # these fontsizes are based on personal preference,
+    # but should be fairly large, so that they can be
+    # seen in PDFs.
+    tickfontsize = 14,
+    titlefontsize = 15
+) do subdf
+    @df subdf scatter(:time, :CONC, color=:black, markersize=8,
+    xlabel = "Time (hours)", ylabel = "Concentration (ng\\/mL)" )
+    @df subdf plot!(:time, :CONC_pred, color=:red, linewidth =4)
+    @df subdf plot!(:time, :CONC_ipred, color=:blue, linewidth =4)
+end
+#savefig("./assets/indplotswka.png")
+```
+![indplots withka](./assets/indplotswka.png)
+
+The randomly sampled individual fits don't seem good in some individuals, but we
+can evaluate this via a `vpc` to see how to go about.
+
+We can now perform a `vpc` to check.
+
+```julia; eval=false
+pk_vpc = vpc(pkfit_2cmp_unfix_ka, 200; dv=:CONC,
+             stratify_by = [:DOSE],
+            ensemblealg=EnsembleThreads())
+plot(pk_vpc,
+    size=(2000,2000), xlabel="Time after dose (hours)",
+    ylabel = "CTMNopain concentration (ng/mL)" ,
+    titlefontsize=20,guidefontsize=20,
+    markersize=10, markeralpha = 0.5, markercolor =:grey,
+    observations = true,
+    observed_quantiles = true,
+    simquantile_medians = true,
+    ci_bands = true,
+    legend=true, legendfontsize = 20,
+    titlefontcolor = :blue,
+    linewidth =10,
+     xtickfont = font(25),
+     ytickfont = font(25))
+#savefig("./assets/pkvpc.png")
+```
+![Plot vpc](./assets/pkvpc.png)
+
+The visual predictive check suggests that the model captures the data well across
+all dose levels.
