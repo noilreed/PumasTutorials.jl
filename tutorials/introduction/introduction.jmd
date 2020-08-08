@@ -1,323 +1,495 @@
 ---
-title: Introduction to Pumas
-author: Chris Rackauckas
-date: July 19, 2019
+title: A comprehensive introduction to Pumas - Part 1
+date: `j Date(now())`
+css: ../../assets/resources.css
 ---
+
+```julia; echo = false
+using Dates
+```
 
 # Introduction
 
-This is an introduction to Pumas, a software for pharmacometric modeling and
-simulation.
+This tutorial provides a comprehensive introduction to a modeling and simulation workflow
+in Pumas. This tutorial will not get into the details of Pumas specifics, but instead provide
+a narrative on the lines of a regular workflow in our day to day work, with brevity where required
+to allow a broad overview. Wherever possible, cross-references will be provided to documentation
+and detailed examples that provide deeper insght into a particular topic.
 
-The basic workflow of Pumas is:
+As part of this workflow you will be introduced to various aspects such as
 
-1. Build a model.
-2. Define subjects or populations to simulate or estimate.
-3. Analyze the results with post-processing and plots.
+1. Data wrangling in Julia
+2. Exploratory analysis in Julia
+3. Continous and discrete data non-linear mixed effects modeling in Pumas
+4. Model comparison routines, post-processing, validation etc.
 
-We will show how to build a multiple-response PK/PD model
-via the `@model` macro, define a subject with multiple doses, and analyze
-the results of the simulation. This tutorial is made to be a broad overview
-of the workflow and more in-depth treatment of each section can be found in
-the subsequent tutorials and documentation.
+## The study and design
 
-## Installation
+CTM_Nopain is a novel anti-inflammatory agent under preliminary investigation.
+A dose-ranging trial was conducted comparing placebo with 3 doses of CTM_Nopain
+(5mg, 20mg and 80 mg QD).  The maximum tolerated dose is 160 mg per day.
+Plasma concentrations (mg/L) of the drug were measured at 0, 0.5, 1, 1.5, 2, 2.5, 3-8 hours.
 
-To install Pumas, first install [JuliaPro](https://juliacomputing.com/products/juliapro.html).
-Then use the command:
+Pain score (0=no pain, 1=mild, 2=moderate, 3=severe) were obtained at time points
+when plasma concentration was collected.  A pain score of 2 or more is considered
+as no pain relief.
 
-```{julia;eval=false}
-using Pkg
-Pkg.add("Pumas")
-```
+The subjects can request for remedication if pain relief is not achieved after 2 hours post dose.
+Some subjects had remedication before 2 hours if they were not able to bear the pain.
+The time to remedication and the remedication status is available for subjects.
 
-Doing it this way, Pumas and its dependencies will install automatically.
+## The goal
 
-## Getting Started
+We are expected to provide input for an optimal dose/dosing regimen to be carried
+forward in future trials. Two datasets are provided below, that can be downloaded using the
+links below.
 
-To load the package, use
+1. [pk_painscore.csv]()
+2. [pain_remedication.csv]()
 
 ```julia
+using Random
+using CSV
 using Pumas
-```
-
-## Using the Model Macro
-
-Now let's define a model. A model is defined in an `@model` block. Inside of
-this block we have a few subsections. The first of which is `@param`. In here
-we define what kind of parameters we have. For this model we will define a
-vector parameter `θ` of size 12:
-
-```{julia;eval=false}
-@param begin
-  θ ∈ VectorDomain(12)
-end
-```
-
-Next we define our random effects. The random effects are defined by a distribution
-from Distributions.jl. For more information on defining distributions, please
-see the Distributions.jl documentation. For this tutorial, we wish to have a
-multivariate normal of 11 uncorrelated random effects, so we utilize the syntax:
-
-```{julia;eval=false}
-using LinearAlgebra
-@random begin
-  η ~ MvNormal(Matrix{Float64}(I, 11, 11))
-end
-```
-
-Notice that here we imported `I` from LinearAlgebra and and said that our
-Normal distribution's covariance is said `I`, the identity matrix.
-
-Now we define our pre-processing step in `@pre`. This is where we choose how the
-parameters, random effects, and the covariates collate. We define the values and
-give them a name as follows:
-
-```{julia;eval=false}
-@pre begin
-    Ka1     = θ[1]
-    CL      = θ[2]*exp(η[1])
-    Vc      = θ[3]*exp(η[2])
-    Q       = θ[4]*exp(η[3])
-    Vp      = θ[5]*exp(η[4])
-    Kin     = θ[6]*exp(η[5])
-    Kout    = θ[7]*exp(η[6])
-    IC50    = θ[8]*exp(η[7])
-    IMAX    = θ[9]*exp(η[8])
-    γ       = θ[10]*exp(η[9])
-    Vmax    = θ[11]*exp(η[10])
-    Km      = θ[12]*exp(η[11])
-    Resp0   = θ[6]/θ[7]
-end
-```
-
-Next we define the `@init` block which gives the inital values for our
-differential equations. Any variable not mentioned in this block is assumed to
-have a zero for its starting value. We wish to only set the starting value for
-`Resp`, and thus we use `Resp0` defined in the pre-block:
-
-```{julia;eval=false}
-@init begin
-    Resp = Resp0
-end
-```
-
-Now we define our dynamics. We do this via the `@dynamics` block. Differential
-variables are declared by having a line defining their derivative. For our model,
-we use:
-
-```{julia;eval=false}
-@dynamics begin
-    Ev1'    = -Ka1*Ev1
-    Cent'   =  Ka1*Ev1 - (CL+Vmax/(Km+(Cent/Vc))+Q)*(Cent/Vc)  + Q*(Periph/Vp)
-    Periph' =  Q*(Cent/Vc)  - Q*(Periph/Vp)
-    Resp'   =  Kin*(1-(IMAX*(Cent/Vc)^γ/(IC50^γ+(Cent/Vc)^γ)))  - Kout*Resp
-end
-```
-
-Lastly we utilize the `@derived` macro to define our post-processing. We can
-output values using the following:
-
-```{julia;eval=false}
-@derived begin
-    ev1    = Ev1
-    cp     = Cent / θ[3]
-    periph = Periph
-    resp   = Resp
-end
-```
-
-The `@model` block is all of these together, giving us the following model:
-
-```julia
-using LinearAlgebra
-model = @model begin
-
-    @param begin
-      θ ∈ VectorDomain(12)
-    end
-
-    @random begin
-      η ~ MvNormal(Matrix{Float64}(I, 11, 11))
-    end
-
-    @pre begin
-        Ka1     = θ[1]
-        CL      = θ[2]*exp(η[1])
-        Vc      = θ[3]*exp(η[2])
-        Q       = θ[4]*exp(η[3])
-        Vp      = θ[5]*exp(η[4])
-        Kin     = θ[6]*exp(η[5])
-        Kout    = θ[7]*exp(η[6])
-        IC50    = θ[8]*exp(η[7])
-        IMAX    = θ[9]*exp(η[8])
-        γ       = θ[10]*exp(η[9])
-        Vmax    = θ[11]*exp(η[10])
-        Km      = θ[12]*exp(η[11])
-        Resp0   = θ[6]/θ[7]
-    end
-
-    @init begin
-        Resp = Resp0
-    end
-
-    @dynamics begin
-        Ev1'    = -Ka1*Ev1
-        Cent'   =  Ka1*Ev1 - (CL+Vmax/(Km+(Cent/Vc))+Q)*(Cent/Vc)  + Q*(Periph/Vp)
-        Periph' =  Q*(Cent/Vc)  - Q*(Periph/Vp)
-        Resp'   =  Kin*(1-(IMAX*(Cent/Vc)^γ/(IC50^γ+(Cent/Vc)^γ)))  - Kout*Resp
-    end
-
-    @derived begin
-        ev1    = Ev1
-        cp     = Cent / θ[3]
-        periph = Periph
-        resp   = Resp
-    end
-end
-```
-
-## Building a Subject
-
-Now let's build a subject to simulate the model with. A subject defines three
-components:
-
-1. The dosage regimen
-2. The covariates of the indvidual
-3. Observations associated with the individual.
-
-Our model did not make use of covariates so we will ignore (2) for now, and
-(3) is only necessary for fitting parameters to data which will not be covered
-in this tutorial. Thus our subject will be defined simply by its dosage regimen.
-
-To do this, we use the `DosageRegimen` constructor. It uses terms from the
-NMTRAN format to specify its dose schedule. The first value is always the
-dosing amount. Then there are optional arguments, the most important of which
-is `time` which specifies the time that the dosing occurs. For example,
-
-```julia{line_width=90}
-DosageRegimen(15, time=0)
-```
-
-is a dosage regimen which simply does a single dose at time `t=0` of amount 15.
-If we use arrays, then the dosage regimen will be the grouping of the values.
-For example, let's define a dose of amount 15 at times `t=0,4,8`, and `12`:
-
-```julia
-regimen = DosageRegimen([15,15,15,15], time=[0,4,8,12])
-```
-
-Let's define our subject to have `id=1` and this multiple dosing regimen:
-
-```julia
-subject = Subject(id=1,evs=regimen)
-```
-
-## Running a Simulation
-
-The main function for running a simulation is `simobs`. `simobs` on a population
-simulates all of the population (in parallel), while `simobs` on a subject
-simulates just that subject. If we wish to change the parameters from the
-initialized values, then we pass them in. Let's simulate subject 1 with a set
-of chosen parameters:
-
-```julia
-fixeffs = (θ = [
-          1, # Ka1  Absorption rate constant 1 (1/time)
-          1, # CL   Clearance (volume/time)
-          20, # Vc   Central volume (volume)
-          2, # Q    Inter-compartmental clearance (volume/time)
-          10, # Vp   Peripheral volume of distribution (volume)
-          10, # Kin  Response in rate constant (1/time)
-          2, # Kout Response out rate constant (1/time)
-          2, # IC50 Concentration for 50% of max inhibition (mass/volume)
-          1, # IMAX Maximum inhibition
-          1, # γ    Emax model sigmoidicity
-          0, # Vmax Maximum reaction velocity (mass/time)
-          2  # Km   Michaelis constant (mass/volume)
-          ],)
-
-sim = simobs(model, subject, fixeffs)
-```
-
-We can then plot the simulated observations by using the `plot` command:
-
-```julia
+using PumasPlots
 using Plots
-plot(sim)
+using StatsPlots
+using Pipe
+using StatsBase
 ```
 
-Note that we can use the [attributes from `Plots.jl`](http://docs.juliaplots.org/latest/attributes/)
-to further modify the plot. For example,
+### Data Wrangling
+
+We start by reading in the two dataset and making some quick summaries.
+
+Note: As a general convention during this example, I will refer to dataframes by ending
+the name of the variable with _df_ and the `Population` version of that dataframe will
+be without the _df_ to avoid confusion.
 
 ```julia
-plot(sim,
-     color=2,thickness_scaling=1.5,
-     legend=false, lw=2)
+pkpain_df = DataFrame!(CSV.File("./data/intro/pk_painscore.csv", missingstrings=["", "NA", "."]))
+remed_df  = DataFrame!(CSV.File("./data/intro/pain_remedication.csv", missingstrings=["", "NA", "."]))
 ```
 
-Notice that in our model we said that there was a single parameter `θ` so our
-input parameter is a named tuple with just the name `θ`. When we only give
-the parameters, the random effects are automatically sampled from their
-distributions. If we wish to prescribe a value for the random effects, we pass
-initial values similarly:
+Let's filter out the placebo data as we don't need that for the PK analysis.
 
 ```julia
-randeffs = (η = rand(11),)
-sim = simobs(model, subject, fixeffs, randeffs)
-plot(sim)
+pkpain_noplb_df = filter(x -> !(occursin.("Placebo", x.ARM)), pkpain_df)
 ```
 
-The points which are saved are by default at once every hour until one day after
-the last event. If you wish to change the saving time points, pass the keyword
-argument `obstimes`. For example, let's save at every `0.1` hours and run the
-simulation for 19 hours:
+do some data wrangling and plotting here
+
+### Non-compartmental analysis
+
+Let's begin by peforming a quick NCA of the concentration time profiles and view the exposure
+changes across doses. The input data specicfication for NCA analysis () requires the presence of
+a `route` column and an amount column that specifies the dose. So, let's add that in.
 
 ```julia
-sim = simobs(model, subject, fixeffs, randeffs, obstimes = 0:0.1:19)
-plot(sim)
+#adding route variable
+pkpain_noplb_df[!,:route] .= "ev"
+# creating an `amt` column
+pkpain_noplb_df[!,:amt] .= ifelse.(pkpain_noplb_df.TIME .== 0, pkpain_noplb_df.DOSE, missing)
 ```
 
-## Handling the SimulatedObservations
-
-The resulting `SimulatedObservations` type has two fields. `sim.times` is an
-array of time points for which the data was saved. `sim.derived` is the result
-of the derived variables. From there, the derived variabes are accessed by name.
-For example,
+Now, we map the data variables to the `read_nca` function that prepares the data for NCA analysis.
 
 ```julia
-sim[:cp]
+pkpain_nca = read_nca(pkpain_noplb_df,
+                      id = :ID,
+                      time = :TIME,
+                      amt = :amt,
+                      conc = :CONC,
+                      group = [:DOSE],
+                      route = :route)
 ```
 
-is the array of `cp` values at the associated time points. We can turn this
-into a DataFrame via using the `DataFrame` command:
+A full `NCAReport` is now obtained for completeness purposes, but later we will only extract a couple of key metrics
+of interest.
 
 ```julia
-df = DataFrame(sim)
-first(df,6) # Print only the first 6: the DataFrame is huge!
+pk_nca_report = NCAReport(pkpain_nca, sigdig=3)
 ```
 
-From there, any Julia tools can be used to analyze these arrays and DataFrames.
-For example, if we wish the plot the result of `ev1` over time, we'd use the
-following:
+As CTM_Nopain's effect maybe mainly related to maximum concentration (`cmax`) or area under the curve (`auc`),
+we present some summary statistics.
 
 ```julia
-plot(sim.times,sim[:ev1])
+auc_cmax = select(pk_nca_report, [:id, :DOSE, :cmax, :aucinf_obs])
+#pivot data to allow easy computation
+auc_cmax_stacked = stack(auc_cmax, [:cmax, :aucinf_obs], [:id, :DOSE])
+auc_cmax_summary = combine(groupby(auc_cmax_stacked,[:DOSE,:variable]),
+                           [col => fun for col in [:value]
+                           for fun in [mean, median, geomean, std]])
 ```
 
-Using these commands, a Julia program can be written to post-process the
-program however you like!
+```julia
+auc_cmax[!,:Dose] .= string.(auc_cmax.DOSE)
+@df auc_cmax violin(:Dose, :cmax, marker=(0.2,:blue,stroke(0)))
+@df auc_cmax boxplot!(:Dose, :cmax ,marker=(0.3,:orange,stroke(2)), alpha=0.75)
+plot!(size = (800,400), xlabel = "Dose (mg)", ylabel = "Cmax")
+```
+Dose normalized PK parameters, `cmax` and `aucinf` were
+essentially dose proportional between for 5 mg, 20 mg
+and 80 mg doses. Based on visual inspection of the
+concentration time profiles as seen below, CTM_Nopain exhibited monophasic decline, and perhaps
+a one compartment model best fits the PK data.
 
-## Conclusion
+```julia
+pkpain_noplb_plot_df = filter(x -> !(x.TIME .== 0), pkpain_noplb_df)
+@df pkpain_noplb_df plot(:TIME, :CONC,
+                        color=:DOSE, group=:ID, legend=false,
+                        yaxis =:log, alpha=0.2, xlim=(0,2))
 
-This tutorial covered basic workflow for how to build a model and simulate
-results from it. The subsequent models will go into more detail in the components,
-such as:
+@df pkpain_noplb_plot_df plot!(:TIME, :CONC,
+                        group=:DOSE, legend=false, linewidth = 5,
+                        yaxis =:log, seriestype = :Loess,
+                        xlabel = "Time (hours)", ylabel = "Concentration (ng/mL)",
+                        size = (1000, 600), guidefontsize = 22,
+                        tickfontsize =14)
+```
 
-1. More detailed treatment of specifying populations, dosage regimens, and covariates.
-2. Reading in dosage regimens and observations from NMTRAN data.
+### Pharmacokinetic modeling
 
-```julia{echo=false,skip="notebook"}
-using PumasTutorials
-PumasTutorials.tutorial_footer(WEAVE_ARGS[:folder],WEAVE_ARGS[:file])
+As seen from the plot above, the concentrations decline monoexponentially.
+We will evaluate both one and two compartment structural models to assess best fit.
+Further, different residual error models will also be tested.
+
+We will use the results from NCA to provide us good initial estimates.
+The mean clearance is `j pk_nca_report.cl_f_obs |> mean`, the mean volume is
+`j pk_nca_report.vz_f_obs |> mean` and a good initial estimate for absorption rate
+as obtained by $1/tmax$ is `j 1/mean(pk_nca_report.tmax)`
+
+#### Data preparation for modeling
+
+[PumasNDF]() requires the presence of `evid` and `cmt` columns in the dataset.
+
+```julia
+pkpain_noplb_df[!, :evid] .= ifelse.(pkpain_noplb_df.TIME .== 0, 1, 0)
+pkpain_noplb_df[!, :cmt] .= ifelse.(pkpain_noplb_df.TIME .== 0, 1, 2)
+pkpain_noplb_df[!, :cmt2] .= 1 # for zero order absorption
+```
+
+Further, observations at time of dosing, i.e., when `evid = 1` have to be `missing`
+
+```julia
+pkpain_noplb_df[!, :CONC] .= ifelse.(pkpain_noplb_df.evid .== 1, missing, pkpain_noplb_df.CONC)
+```
+
+The dataframe is now converted to a [`Population`]() using [`read_pumas`](). Note that
+both `observations` and `covariates` are required to be an array even if it is one element.
+
+```julia
+pkpain_noplb = read_pumas(pkpain_noplb_df,
+                          id           = :ID,
+                          time         = :TIME,
+                          amt          = :amt,
+                          observations = [:CONC],
+                          covariates   = [:DOSE],
+                          evid         = :evid,
+                          cmt          = :cmt)
+```
+
+Now that the data is transformed to a `Population` of subjects, we can explore different models.
+
+#### One-compartment model
+
+```julia
+pk_1cmp = @model begin
+  @param begin
+    tvcl ∈ RealDomain(lower = 0, init = 3.2)
+    tvv  ∈ RealDomain(lower = 0, init = 16.4)
+    tvka ∈ RealDomain(lower = 0, init = 1.3)
+    Ω    ∈ PDiagDomain(init = [0.04,0.04,0.04])
+    σ_p  ∈ RealDomain(lower = 0.0001, init = 0.2)
+  end
+  @random begin
+    η ~ MvNormal(Ω)
+  end
+  @covariates DOSE
+  @pre begin
+    CL = tvcl * exp(η[1])
+    Vc = tvv * exp(η[2])
+    Ka = tvka * exp(η[3])
+  end
+  @dynamics Depots1Central1
+  @derived begin
+    cp := @. Central/Vc
+    CONC ~ @. Normal(cp, cp*σ_p)
+  end
+end
+```
+Before going to fit the model, let's evaluate some helpful steps.
+
+1. Simulation to check appropriatness of data and model
+
+```julia
+simpk = simobs(pk_1cmp, pkpain_noplb, init_param(pk_1cmp))
+plot(simpk, xlabel = "Time (hours)", ylabel = "Concentration (ng/mL)",
+    size = (1000, 600), guidefontsize = 22,
+    tickfontsize =14, alpha=0.1, yaxis = :log)
+#
+@df pkpain_noplb_plot_df scatter!(:TIME, :CONC,
+                        color=:DOSE, group=:ID, legend=false,
+                        alpha=0.5, yaxis = :log)
+```
+
+It does seem that the model simulated lines are slightly lower thatn the observed during earlier times
+
+Lets change the initial estimates of the parameters to evaluate that.
+
+```julia
+pkparam = (init_param(pk_1cmp)..., tvka=2, tvv = 10)
+```
+
+```julia
+simpk = simobs(pk_1cmp,
+               pkpain_noplb,
+               pkparam)
+plot(simpk, xlabel = "Time (hours)", ylabel = "Concentration (ng/mL)",
+    size = (1000, 600), guidefontsize = 22,
+    tickfontsize =14, alpha=0.1, yaxis = :log)
+#
+@df pkpain_noplb_plot_df scatter!(:TIME, :CONC,
+                        color=:DOSE, group=:ID, legend=false,
+                        alpha=0.5, yaxis = :log)
+```
+
+Increasing the `tvka` and decreasing the `tvv`  seemed to make an impact and observations go
+through the simulated lines.
+
+There are two other ways to get a quick ballpark estimate of your PK parameters:
+NaivePooled analysis and Two-Stage Approach. Both these approaches are quite easy to perform
+without changing the model or the dataset. Below we test the `NaivePooled` approach
+
+##### NaivePooled
+
+```julia
+pkfit_np = fit(pk_1cmp,
+               pkpain_noplb,
+               pkparam,Pumas.NaivePooled(),
+               omegas = (:Ω,))
+pkfit_np
+```
+
+The final estimates from the NaivePooled approach seem reasonably close to our initial
+guess from NCA, except for the `tvka` parameter. We will stick with our initial guess
+
+One way to be cautious before going into a complete `fit`ing routine is to evaluate
+the likelihood of the individual subjects given the initial parameter values
+and see if anyone pops out as unreasonable.
+There are a few ways of doing this that will be introduce later, but here we will be
+checking the `loglikelihood` subject wise.
+
+Below, we are basically checking if the initial estimates for any subject are way off
+that we are unable to compute the initial `loglikelihood`.
+
+```julia
+lls = []
+for subj in pkpain_noplb
+  #println("ID: " , subj.id)
+  push!(lls,loglikelihood(pk_1cmp,
+                   subj,
+                   pkparam,
+                   Pumas.FOCEI()))
+end
+histogram(lls, size = (800,600))
+```
+The distribution of the loglikelihood's suggest no extreme outliers.
+
+Now that we have a good handle on our data, lets go ahead and `fit` a population model
+
+```julia
+pkfit_1cmp = fit(pk_1cmp,
+                 pkpain_noplb,
+                 pkparam,
+                 Pumas.FOCEI(), ensemblealg = EnsembleThreads(),
+                 constantcoef = (tvka = 2,))
+pkfit_1cmp
+```
+
+Notice that I fixed the `tvka` to 2 as I we don't have a lot of information before `tmax`.
+From the table below, we see that the parameter precision for this model is reasonable.
+
+```julia
+infer(pkfit_1cmp) |> coeftable
+```
+
+Just to be sure, let's fit a 2-compartment model and evaluate
+
+```julia
+pk_2cmp = @model begin
+  @param begin
+    tvcl ∈ RealDomain(lower = 0, init = 3.2)
+    tvv  ∈ RealDomain(lower = 0, init = 16.4)
+    tvvp ∈ RealDomain(lower = 0, init = 10)
+    tvq  ∈ RealDomain(lower = 0, init = 2)
+    tvka ∈ RealDomain(lower = 0, init = 1.3)
+    Ω    ∈ PDiagDomain(init = [0.04,0.04,0.04, 0.04, 0.04])
+    σ_p  ∈ RealDomain(lower = 0.0001, init = 0.2)
+  end
+  @random begin
+    η ~ MvNormal(Ω)
+  end
+  @covariates DOSE
+  @pre begin
+    CL = tvcl * exp(η[1])
+    Vc = tvv * exp(η[2])
+    Ka = tvka * exp(η[3])
+    Vp = tvvp * exp(η[4])
+    Q = tvq * exp(η[5])
+  end
+  @dynamics Depots1Central1Periph1
+  @derived begin
+    cp := @. Central/Vc
+    CONC ~ @. Normal(cp, cp*σ_p)
+  end
+end
+```
+
+```julia
+pkfit_2cmp = fit(pk_2cmp,
+                 pkpain_noplb,
+                 init_param(pk_2cmp),
+                 Pumas.FOCEI(), ensemblealg = EnsembleThreads(),
+                 constantcoef = (tvka = 2,))
+pkfit_2cmp
+```
+The 2 compartment model has a much lower objective function compared to the 1 compartment. Lets compare
+the estimates from the 2 models.
+
+```julia
+@pipe leftjoin(coeftable(pkfit_2cmp),
+               coeftable(pkfit_1cmp), on = :parameter, makeunique = true) |>
+  rename!(_, :estimate => :pk2cmp, :estimate_1 => :pk1cmp)
+```
+
+We perform a likelihood ratio test to compare the two nested models. The test statistic
+and the P-value clearly indicate that a 2 compartment model is better.
+
+```julia
+lrtest(pkfit_1cmp, pkfit_2cmp)
+```
+
+We should also compare the other metrics and statistics, such `ηshrinkage`, `ϵshrinkage`,
+`aic`, `bic`, `cond` (condition number)
+
+#TODO make the code below generate a dataframe or some structure that allows comparison
+```julia
+for model in [pkfit_1cmp, pkfit_2cmp]
+  ηshrinkage(model)
+end
+```
+
+We next generate some goodness of fit plots to compare which model is performing better.
+To do this, we first `inspect` the diagnostics of our model fit.
+
+```julia
+res_inspect_1cmp = DataFrame(inspect(pkfit_1cmp))
+dropmissing!(res_inspect_1cmp)
+first(res_inspect_1cmp, 10)
+```
+
+```julia
+res_inspect_2cmp = DataFrame(inspect(pkfit_2cmp))
+dropmissing!(res_inspect_2cmp)
+first(res_inspect_2cmp, 10)
+```
+Let's make some plots.
+Note: These are WIP packages that will be modularized over time.
+
+```julia
+theme(:wong2)
+```
+
+```julia
+function gof(res_inspect)
+  p1 = plot()
+  @df res_inspect scatter!(
+      p1,
+      :CONC_pred, :CONC;
+      ylabel = "Observed CTM-Nopain (ng/mL)",
+      xlabel = "Population Predicted CTM-Nopain (ng/mL)",
+      label = "",
+      legend=false,
+  )
+  Plots.abline!(p1,  1, 0; primary = false, linewidth=4)
+
+  @df res_inspect plot!(
+   p1,
+   :CONC_pred, :CONC;
+   seriestype = :Loess,
+   linewidth=4
+  )
+
+  #
+  p2 = plot()
+  @df res_inspect scatter!(
+      p2,
+      :CONC_ipred, :CONC;
+      ylabel = "Observed CTM-Nopain (ng/mL)",
+      xlabel = "Individual Predicted CTM-Nopain (ng/mL)",
+      label = "",
+      legend=false,
+  )
+  Plots.abline!(p2, 1, 0; primary = false, linewidth=4)
+
+  @df res_inspect plot!(
+   p2,
+   :CONC_ipred, :CONC;
+   seriestype = :Loess,
+   linewidth=4
+  )
+
+  #
+  p3 = plot()
+  @df res_inspect scatter!(
+      p3,
+      :time, :CONC_wres;
+      xlabel = "Time (h)",
+      ylabel = "Conditional Weighted Residuals",
+       legend=false
+  )
+  Plots.abline!(p3, 0, 0; primary = false, linewidth=4)
+  @df res_inspect plot!(
+   p3,
+   :time, :CONC_wres;
+   seriestype = :Loess,
+   linewidth=4
+  )
+  #
+  p4 = plot()
+  @df res_inspect scatter!(
+      p4,
+      :CONC_pred, :CONC_wres,
+      xlabel = "Population Predicted CTM-Nopain (ng/mL))",
+      ylabel = "Conditional Weighted Residuals",
+      legend=false
+  )
+  Plots.abline!(p4, 0, 0; primary = false, linewidth=4)
+  @df res_inspect plot!(
+   p4,
+   :CONC_pred, :CONC_wres;
+   seriestype = :Loess,
+   linewidth=4
+  )
+
+  return plot(p1,p2,p3,p4; size = (1000, 1000))
+end
+```
+
+```julia
+gof_1cmp = gof(res_inspect_1cmp)
+```
+
+```julia
+gof_2cmp = gof(res_inspect_2cmp)
+```
+
+These plots clearly indicate that the 2 compartment model is a better fit
+compared to the one compartment model. We can look at selected sample of individaul
+plots.
+
+```julia
+
 ```
