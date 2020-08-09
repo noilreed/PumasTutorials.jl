@@ -184,26 +184,17 @@ The meaning of each of the list elements is:
     tlast = time[lastidx]
   end
   for n in (:first, :middle, :last)
-    if n === :first
-      mask = let tfirst=tfirst, llq=llq
-        f = (c, t)-> t ≤ tfirst && c ≤ llq
-        f.(conc, time)
-      end
-    elseif n === :middle
-      mask = let tfirst=tfirst, tlast=tlast, llq=llq
-        f = (c,t)-> tfirst < t < tlast && c ≤ llq
-        f.(conc, time)
-      end
-    else # :last
-      mask = let tlast=tlast, llq=llq
-        f = (c,t) -> tlast <= t && c ≤ llq
-        f.(conc, time)
-      end
-    end
     rule = concblq isa Dict ? concblq[n] : concblq
-    if rule === :keep
-      # do nothing
-    elseif rule === :drop
+    # do nothing
+    rule === :keep && continue
+    if n === :first
+        mask = @. (time ≤ tfirst) & (conc ≤ llq)
+    elseif n === :middle
+      mask = @. (tfirst < time < tlast) & (conc ≤ llq)
+    else # :last
+      mask = @. (tlast ≤ time) & (conc ≤ llq)
+    end
+    if rule === :drop
       idxs = .!mask
       conc = conc[idxs]
       time = time[idxs]
