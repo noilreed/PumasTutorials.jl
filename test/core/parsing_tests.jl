@@ -329,3 +329,19 @@ end
   theopp = DataFrame(read_pumas(example_data("event_data/THEOPP"), covariates = [:SEX,:WT]))
   @test all(theopp.cmt .== Ref(1))
 end
+
+@testset "#1231" begin
+    # observations before first cmt observation
+    df = DataFrame(
+      id=[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+      time=[0.0, 0.1, 0.1, 0.5, 0.9, 1.0, 2.0, 3.0, 3.5, 4.0],
+      dv = [0.0, missing, 0.1, 0.2, 0.3, missing, 0.5, missing, 0.9, missing],
+      amt=[missing, 1.0, missing, missing, missing, 2.0, missing, 9.0, missing, 3.0],
+      evid=[0, 1, 0, 0,0, 1, 0, 1, 0, 1],
+      cmt=[missing, 1, 1, 1, 1, 2, 2, 3, 3, 3])
+    pop = read_pumas(df)
+    popdf = DataFrame(pop)
+    for name = [:id, :time, :dv, :amt, :evid, :cmt]
+      @test all(df[map(!ismissing, df[!, name]), name] .== df[map(!ismissing, df[!, name]), name])
+    end
+end

@@ -687,11 +687,14 @@ function DataFrames.DataFrame(subject::Subject; include_covariates=true, include
       df[idxs[i]:idxs[i+1], :tad] .= df[idxs[i]:idxs[i+1], :time].-df[idxs[i], :time]
     end
 
-    # If some rows were adding so far the cmt column will be missing. Fill them all out
+    # If some rows were added so far the cmt column will be missing. Fill them all out
     # with the last occuring cmt (we already sorted above). We accumulate the largest occurence
     # of nonmissing indeces to figure out which value to fill out. This is relevant when there
     # are events and non-event observations 
-    df[!, :cmt] .= df.cmt[accumulate(max, [i*!ismissing(df.cmt[i]) for i=1:length(df.cmt)])]
+    
+    # if the first rows are observed before the first event we need to filter out the 0's
+    idxs = filter(x->x>0, accumulate(max, [j*!ismissing(df.cmt[j]) for j=1:length(df.cmt)]))
+    df[end-length(idxs)+1:end, :cmt] .= df.cmt[idxs]
   end
 
   if include_covariates
