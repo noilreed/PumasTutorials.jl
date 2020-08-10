@@ -49,13 +49,13 @@ ev = DosageRegimen(100, time=0)
 first(ev.data)
 
 
-s1 = Subject(id=1,evs=ev,cvs=(isPM=0, Wt=70))
+s1 = Subject(id=1,events=ev,covariates=(isPM=0, Wt=70))
 for fn in fieldnames(Subject)
-           x = getproperty(s1, fn)
-           if !isa(x, Nothing)
-               println(fn)
-               println(x)
-           end
+    x = getproperty(s1, fn)
+    if !isa(x, Nothing)
+        println(fn)
+        println(x)
+    end
 end
 
 
@@ -69,7 +69,7 @@ obs = simobs(model,s1,fixeffs,obstimes=0:0.1:120)
 plot(obs)
 
 
-s2 = Subject(id=2,evs=ev,cvs=(isPM=1,Wt=70))
+s2 = Subject(id=2,events=ev,covariates=(isPM=1,Wt=70))
 
 
 twosubjs =  Population([s1,s2])
@@ -95,7 +95,7 @@ cvs = [ choose_covariates() for i in 1:10 ]
 DataFrame(cvs)
 
 
-pop_with_covariates = Population(map(i -> Subject(id=i,evs=ev,cvs=choose_covariates()),1:10))
+pop_with_covariates = Population(map(i -> Subject(id=i,events=ev,covariates=choose_covariates()),1:10))
 
 
 obs = simobs(model,pop_with_covariates,fixeffs,obstimes=0:0.1:120);
@@ -107,7 +107,7 @@ plot(obs)
 md =  DosageRegimen(100,ii=24,addl=6)
 
 
-s3 = Subject(id=3,evs=md, cvs=(isPM=0,Wt=70))
+s3 = Subject(id=3,events=md, covariates=(isPM=0,Wt=70))
 
 
 obs = simobs(model, s3, fixeffs,obstimes=0:0.1:240)
@@ -117,7 +117,7 @@ plot(obs)
 ldmd = DosageRegimen([500,100],cmt=1, time=[0,24], addl=[0,6],ii=[0,24])
 
 
-s4 = Subject(id=4, evs=ldmd, cvs=(isPM=0,Wt=70))
+s4 = Subject(id=4, events=ldmd, covariates=(isPM=0,Wt=70))
 obs = simobs(model, s4, fixeffs,obstimes=0:0.1:120)
 plot(obs, ylims=(0,50))
 
@@ -134,9 +134,9 @@ e2 = DosageRegimen(50,  ii=12, addl=13)
 e3 = DosageRegimen(200, ii=24, addl=2)
 
 
-pop1 = Population(map(i -> Subject(id=i,evs=e1,cvs=choose_covariates()),1:5))
-pop2 = Population(map(i -> Subject(id=i,evs=e2,cvs=choose_covariates()),6:8))
-pop3 = Population(map(i -> Subject(id=i,evs=e3,cvs=choose_covariates()),9:10))
+pop1 = Population(map(i -> Subject(id=i,events=e1,covariates=choose_covariates()),1:5))
+pop2 = Population(map(i -> Subject(id=i,events=e2,covariates=choose_covariates()),6:8))
+pop3 = Population(map(i -> Subject(id=i,events=e3,covariates=choose_covariates()),9:10))
 pop = Population(vcat(pop1,pop2,pop3))
 
 
@@ -147,11 +147,7 @@ plot(obs)
 inf = DosageRegimen(100, rate=3, cmt=2)
 
 
-s5 = Subject(id=5, evs=inf, cvs=(isPM=0,Wt=70))
+s5 = Subject(id=5, events=inf, covariates=(isPM=0,Wt=70))
 obs = simobs(model, s5, fixeffs, obstimes=0:0.1:120)
 plot(obs)
-
-
-using PumasTutorials
-PumasTutorials.tutorial_footer(WEAVE_ARGS[:folder],WEAVE_ARGS[:file])
 
