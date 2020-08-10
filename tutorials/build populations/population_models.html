@@ -3,7 +3,7 @@
 <HEAD>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>Designing Dosage Regimens</title>
+  <title>Building Populations for Simulation</title>
   
 
   <script type="text/x-mathjax-config">
@@ -653,9 +653,9 @@ div.title {text-align: center;}
     <div class = "row">
       <div class = "col-md-12 twelve columns">
         <div class="title">
-          <h1 class="title">Designing Dosage Regimens</h1>
-          <h5>Parsshava R Mehta</h5>
-          <h5>7th August 20202</h5>
+          <h1 class="title">Building Populations for Simulation</h1>
+          
+          
         </div>
 
         <p>Load the necessary libraries</p>
@@ -667,26 +667,34 @@ div.title {text-align: center;}
 
 
 
-<p>In this tutorial you will learn how to design different dosage regimens</p>
+<p>In this tutorial you will learn how to build <code>Population</code> of subjects each with a dosing regimen &#40;<code>events</code>&#41;, <code>covariates</code> and <code>observations</code>. There are two approaches to doing this:</p>
+<ul>
+<li><p>using the <code>DosageRegimen</code> constructor followed by <code>Subject</code>/<code>Population</code> with <code>covariates</code></p>
+</li>
+<li><p>construct a <code>DataFrame</code> and then use the <code>read_pumas</code> function to turn this into a <code>Population</code></p>
+</li>
+</ul>
+<p>Check out the <a href="https://pumasai.gitlab.io/PumasDocs-jl/basics/doses_subjects_populations/">documentation</a> on <code>DosageRegimen</code>, <code>read_pumas</code> and <code>Subject</code> for more information. In this tutorial, we do not show the simulation from a model, but any of these examples below are ready to be simulated with an appropriate model.</p>
 <ol>
-<li><p>A population of <code>20 subjects</code> receive a dose of <strong>5mg/kg</strong> as an <em>IV-Infusion</em> for a duration of <code>30 mins &#40;0.5hrs&#41;</code>.</p>
+<li><p>A population of 20 subjects receive a dose of <strong>5mg/kg</strong> as an <em>IV-Infusion</em></p>
 </li>
 </ol>
+<p>for a duration of 30 mins &#40;0.5hrs&#41;.</p>
 <p>We will go <em>stepwise</em> from the above information:</p>
 <ul>
-<li><p>First write the <code>number of subjects</code></p>
+<li><p>First specify the <code>number of subjects</code></p>
 </li>
 <li><p>Write the <code>dose</code> in mg/kg</p>
 </li>
 <li><p>Assign weights randomly from <code>75 to 102</code> for the 20 subjects</p>
 </li>
-<li><p>Now calculate the dose for each subject by <code>multiplying</code> the dose/kg into Weight</p>
+<li><p>Next calculate the dose for each subject by <code>multiplying</code> the dose/kg into <code>Weight</code></p>
 </li>
 <li><p>Calculate the <code>Rate</code> for each subject by dividing <strong>Dose/Duration</strong></p>
 </li>
-<li><p>Create a DataFrame for the 20 subjects</p>
+<li><p>Create a <code>DataFrame</code> for the 20 subjects</p>
 </li>
-<li><p>Pass the dataframe to <code>read_pumas</code> with Weight as covariates</p>
+<li><p>Pass the dataframe to <code>read_pumas</code> with <code>Weight</code> as covariate</p>
 </li>
 <li><p>You can now simulate using the dosage regimen that you have designed</p>
 </li>
@@ -703,10 +711,15 @@ div.title {text-align: center;}
 </span><span class='hljl-n'>Rate</span><span class='hljl-t'>    </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>Dose</span><span class='hljl-t'> </span><span class='hljl-oB'>./</span><span class='hljl-t'> </span><span class='hljl-nfB'>0.5</span><span class='hljl-t'>
 
 </span><span class='hljl-cs'>#Creating a DataFrame of the population</span><span class='hljl-t'>
-</span><span class='hljl-n'>pop1</span><span class='hljl-t'>    </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>DataFrame</span><span class='hljl-p'>(</span><span class='hljl-n'>id</span><span class='hljl-oB'>=</span><span class='hljl-ni'>1</span><span class='hljl-oB'>:</span><span class='hljl-ni'>20</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>amt</span><span class='hljl-oB'>=</span><span class='hljl-n'>Dose</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>time</span><span class='hljl-oB'>=</span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>dv</span><span class='hljl-oB'>=</span><span class='hljl-n'>missing</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>cmt</span><span class='hljl-oB'>=</span><span class='hljl-ni'>1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>evid</span><span class='hljl-oB'>=</span><span class='hljl-ni'>1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>rate</span><span class='hljl-oB'>=</span><span class='hljl-n'>Rate</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>Weight</span><span class='hljl-oB'>=</span><span class='hljl-n'>Weight</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>df1</span><span class='hljl-t'>     </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>DataFrame</span><span class='hljl-p'>(</span><span class='hljl-n'>id</span><span class='hljl-oB'>=</span><span class='hljl-ni'>1</span><span class='hljl-oB'>:</span><span class='hljl-ni'>20</span><span class='hljl-p'>,</span><span class='hljl-t'>
+                    </span><span class='hljl-n'>amt</span><span class='hljl-oB'>=</span><span class='hljl-n'>Dose</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>time</span><span class='hljl-oB'>=</span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-t'>
+                    </span><span class='hljl-n'>dv</span><span class='hljl-oB'>=</span><span class='hljl-n'>missing</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>cmt</span><span class='hljl-oB'>=</span><span class='hljl-ni'>1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>evid</span><span class='hljl-oB'>=</span><span class='hljl-ni'>1</span><span class='hljl-p'>,</span><span class='hljl-t'>
+                    </span><span class='hljl-n'>rate</span><span class='hljl-oB'>=</span><span class='hljl-n'>Rate</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>Weight</span><span class='hljl-oB'>=</span><span class='hljl-n'>Weight</span><span class='hljl-p'>)</span><span class='hljl-t'>
 
 </span><span class='hljl-cs'>#Read dataset into Pumas</span><span class='hljl-t'>
-</span><span class='hljl-n'>df1</span><span class='hljl-t'>     </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>read_pumas</span><span class='hljl-p'>(</span><span class='hljl-n'>pop1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:Weight</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>observations</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:dv</span><span class='hljl-p'>])</span>
+</span><span class='hljl-n'>pop</span><span class='hljl-t'>     </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>read_pumas</span><span class='hljl-p'>(</span><span class='hljl-n'>df1</span><span class='hljl-p'>,</span><span class='hljl-t'>
+                     </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:Weight</span><span class='hljl-p'>],</span><span class='hljl-t'>
+                     </span><span class='hljl-n'>observations</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:dv</span><span class='hljl-p'>])</span>
 </pre>
 
 
@@ -719,9 +732,10 @@ Population
 
 
 <ol start="2">
-<li><p>A population of <code>3 subjects</code> recieve <strong>three different doses</strong> of a drug as an <em>IV-Bolus</em> every <code>8</code> hours for <code>1 day</code>.</p>
+<li><p>A population of 3 subjects recieve <strong>three different doses</strong> of a drug as an</p>
 </li>
 </ol>
+<p><em>IV-Bolus</em> every <code>8</code> hours for <code>1 day</code>.</p>
 <ul>
 <li><p>Subject 1 - Receives a dose of <strong>60mg</strong></p>
 </li>
@@ -744,7 +758,7 @@ Population
 </span><span class='hljl-n'>sub3</span><span class='hljl-t'>    </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>Subject</span><span class='hljl-p'>(</span><span class='hljl-n'>id</span><span class='hljl-oB'>=</span><span class='hljl-ni'>3</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>events</span><span class='hljl-oB'>=</span><span class='hljl-n'>ev3</span><span class='hljl-p'>)</span><span class='hljl-t'>
 
 </span><span class='hljl-cs'>#Merge 3 subjects to a build a population</span><span class='hljl-t'>
-</span><span class='hljl-n'>pop1</span><span class='hljl-t'>    </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-p'>[</span><span class='hljl-n'>sub1</span><span class='hljl-p'>,</span><span class='hljl-n'>sub2</span><span class='hljl-p'>,</span><span class='hljl-n'>sub3</span><span class='hljl-p'>]</span>
+</span><span class='hljl-n'>pop</span><span class='hljl-t'>     </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-p'>[</span><span class='hljl-n'>sub1</span><span class='hljl-p'>,</span><span class='hljl-n'>sub2</span><span class='hljl-p'>,</span><span class='hljl-n'>sub3</span><span class='hljl-p'>]</span>
 </pre>
 
 
@@ -755,9 +769,10 @@ Population
 
 
 <ol start="3">
-<li><p>A total of <code>4 subjects</code> receive <strong>3 different dosage regimens</strong> at <strong>3 different periods</strong>. Of the four subjects <code>1 is healthy</code> and <code>3 are obese</code>. The weight of the subjects are: Sub1 - 76kg, Sub2 - 112kg, Sub3 - 145kg, Sub4 - 186kg.</p>
+<li><p>A total of 4 subjects receive <strong>3 different dosage regimens</strong> at <strong>3 different periods</strong>.</p>
 </li>
 </ol>
+<p>Of the four subjects 1 is healthy and 3 are obese. The weights of the subjects are: Sub1 - 76kg, Sub2 - 112kg, Sub3 - 145kg, Sub4 - 186kg.</p>
 <ul>
 <li><p>Period 1 : IV - 5mg</p>
 </li>
@@ -780,7 +795,7 @@ Population
 </span><span class='hljl-cs'>#Rate for Infusion</span><span class='hljl-t'>
 </span><span class='hljl-n'>rate_inf</span><span class='hljl-t'>  </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>repeat</span><span class='hljl-p'>([</span><span class='hljl-nfB'>2.5</span><span class='hljl-p'>],</span><span class='hljl-n'>n</span><span class='hljl-p'>)</span><span class='hljl-t'>
 </span><span class='hljl-n'>rate_zero</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>repeat</span><span class='hljl-p'>([</span><span class='hljl-ni'>0</span><span class='hljl-p'>],</span><span class='hljl-n'>n</span><span class='hljl-p'>)</span><span class='hljl-t'>
-</span><span class='hljl-n'>rate</span><span class='hljl-t'>      </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-p'>[</span><span class='hljl-n'>rate_zero</span><span class='hljl-p'>;</span><span class='hljl-n'>rate_inf</span><span class='hljl-p'>;</span><span class='hljl-n'>rate_zero</span><span class='hljl-p'>]</span><span class='hljl-t'>
+</span><span class='hljl-n'>rates</span><span class='hljl-t'>     </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-p'>[</span><span class='hljl-n'>rate_zero</span><span class='hljl-p'>;</span><span class='hljl-n'>rate_inf</span><span class='hljl-p'>;</span><span class='hljl-n'>rate_zero</span><span class='hljl-p'>]</span><span class='hljl-t'>
 
 </span><span class='hljl-cs'>#Create different Compartments for IV and Oral</span><span class='hljl-t'>
 </span><span class='hljl-n'>cmt_iv</span><span class='hljl-t'>    </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>repeat</span><span class='hljl-p'>([</span><span class='hljl-ni'>2</span><span class='hljl-p'>],</span><span class='hljl-ni'>8</span><span class='hljl-p'>)</span><span class='hljl-t'>
@@ -798,10 +813,14 @@ Population
 </span><span class='hljl-n'>Obese</span><span class='hljl-t'>     </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>repeat</span><span class='hljl-p'>([</span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-ni'>1</span><span class='hljl-p'>,</span><span class='hljl-ni'>1</span><span class='hljl-p'>,</span><span class='hljl-ni'>1</span><span class='hljl-p'>],</span><span class='hljl-ni'>3</span><span class='hljl-p'>)</span><span class='hljl-t'>
 
 </span><span class='hljl-cs'>#Create a dataframe of the population</span><span class='hljl-t'>
-</span><span class='hljl-n'>pop</span><span class='hljl-t'>       </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>DataFrame</span><span class='hljl-p'>(</span><span class='hljl-n'>id</span><span class='hljl-oB'>=</span><span class='hljl-nf'>repeat</span><span class='hljl-p'>([</span><span class='hljl-ni'>1</span><span class='hljl-p'>,</span><span class='hljl-ni'>2</span><span class='hljl-p'>,</span><span class='hljl-ni'>3</span><span class='hljl-p'>,</span><span class='hljl-ni'>4</span><span class='hljl-p'>],</span><span class='hljl-ni'>3</span><span class='hljl-p'>),</span><span class='hljl-t'> </span><span class='hljl-n'>time</span><span class='hljl-oB'>=</span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>dv</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>missing</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>evid</span><span class='hljl-oB'>=</span><span class='hljl-ni'>1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>cmt</span><span class='hljl-oB'>=</span><span class='hljl-n'>cmt</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>amt</span><span class='hljl-oB'>=</span><span class='hljl-n'>dose</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>rate</span><span class='hljl-oB'>=</span><span class='hljl-n'>rate</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>Period</span><span class='hljl-oB'>=</span><span class='hljl-n'>Period</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>Weight</span><span class='hljl-oB'>=</span><span class='hljl-n'>Weight</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>Obese</span><span class='hljl-oB'>=</span><span class='hljl-n'>Obese</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>df</span><span class='hljl-t'>        </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>DataFrame</span><span class='hljl-p'>(</span><span class='hljl-n'>id</span><span class='hljl-oB'>=</span><span class='hljl-nf'>repeat</span><span class='hljl-p'>([</span><span class='hljl-ni'>1</span><span class='hljl-p'>,</span><span class='hljl-ni'>2</span><span class='hljl-p'>,</span><span class='hljl-ni'>3</span><span class='hljl-p'>,</span><span class='hljl-ni'>4</span><span class='hljl-p'>],</span><span class='hljl-ni'>3</span><span class='hljl-p'>),</span><span class='hljl-t'>
+            </span><span class='hljl-n'>time</span><span class='hljl-oB'>=</span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>dv</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>missing</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>evid</span><span class='hljl-oB'>=</span><span class='hljl-ni'>1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>cmt</span><span class='hljl-oB'>=</span><span class='hljl-n'>cmt</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>amt</span><span class='hljl-oB'>=</span><span class='hljl-n'>dose</span><span class='hljl-p'>,</span><span class='hljl-t'>
+            </span><span class='hljl-n'>rate</span><span class='hljl-oB'>=</span><span class='hljl-n'>rates</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>Period</span><span class='hljl-oB'>=</span><span class='hljl-n'>Period</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>Weight</span><span class='hljl-oB'>=</span><span class='hljl-n'>Weight</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>Obese</span><span class='hljl-oB'>=</span><span class='hljl-n'>Obese</span><span class='hljl-p'>)</span><span class='hljl-t'>
 
 </span><span class='hljl-cs'>#Read dataset into Pumas</span><span class='hljl-t'>
-</span><span class='hljl-n'>df1</span><span class='hljl-t'>       </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>read_pumas</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>observations</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:dv</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:Weight</span><span class='hljl-p'>,</span><span class='hljl-oB'>:</span><span class='hljl-n'>Obese</span><span class='hljl-p'>])</span>
+</span><span class='hljl-n'>pop</span><span class='hljl-t'>       </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>read_pumas</span><span class='hljl-p'>(</span><span class='hljl-n'>df</span><span class='hljl-p'>,</span><span class='hljl-t'>
+            </span><span class='hljl-n'>observations</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:dv</span><span class='hljl-p'>],</span><span class='hljl-t'>
+            </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:Weight</span><span class='hljl-p'>,</span><span class='hljl-oB'>:</span><span class='hljl-n'>Obese</span><span class='hljl-p'>])</span>
 </pre>
 
 
@@ -814,9 +833,10 @@ Population
 
 
 <ol start="4">
-<li><p>A total of <code>600 subjects</code> receive a dose of either <strong>0.1 mg/kg, 0.3 mg/kg, 1.0 mg/kg, 3.0 mg/kg or 10 mg/kg</strong> as an <em>1 hour IV-infusion</em> at <code>time&#61;0 &#40;day1&#41;</code> and second dose at <code>time&#61;336 &#40;day 14&#41;</code>. The probablity of receiving the respective doses are <em>10&#37;, 10&#37;, 10&#37;, 60&#37; and 10&#37;</em>. The covariates are:</p>
+<li><p>A total of 600 subjects receive a dose of either <strong>0.1 mg/kg, 0.3 mg/kg, 1.0 mg/kg, 3.0 mg/kg or 10 mg/kg</strong></p>
 </li>
 </ol>
+<p>as an <em>1 hour IV-infusion</em> at time&#61;0 &#40;day1&#41; and second dose at time&#61;336 &#40;day 14&#41;. The probablity of receiving the respective doses are <em>10&#37;, 10&#37;, 10&#37;, 60&#37; and 10&#37;</em>. The covariates are:</p>
 <ul>
 <li><p>Body Weight - Mean &#61; 79.09 and SD &#61; 19.28</p>
 </li>
@@ -849,20 +869,24 @@ Population
 </span><span class='hljl-n'>ismale</span><span class='hljl-t'>        </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>rand</span><span class='hljl-p'>(</span><span class='hljl-nf'>Binomial</span><span class='hljl-p'>(</span><span class='hljl-ni'>1</span><span class='hljl-p'>,</span><span class='hljl-n'>pmale</span><span class='hljl-p'>),</span><span class='hljl-t'> </span><span class='hljl-n'>n</span><span class='hljl-p'>)</span><span class='hljl-t'>
 
 </span><span class='hljl-cs'>#For First Dose</span><span class='hljl-t'>
-</span><span class='hljl-n'>df1</span><span class='hljl-t'>           </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>DataFrame</span><span class='hljl-p'>(</span><span class='hljl-n'>id</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-ni'>1</span><span class='hljl-oB'>:</span><span class='hljl-ni'>600</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>time</span><span class='hljl-oB'>=</span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>evid</span><span class='hljl-oB'>=</span><span class='hljl-ni'>1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>cmt</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-ni'>1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>dv</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>missing</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>Weight</span><span class='hljl-oB'>=</span><span class='hljl-n'>bwt</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>eGFR</span><span class='hljl-oB'>=</span><span class='hljl-n'>gfr</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>Sex</span><span class='hljl-oB'>=</span><span class='hljl-n'>ismale</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>dose</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>dose_kg</span><span class='hljl-p'>[</span><span class='hljl-n'>dosegrps_prob</span><span class='hljl-p'>])</span><span class='hljl-t'>
-</span><span class='hljl-n'>df1</span><span class='hljl-p'>[</span><span class='hljl-oB'>!</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:amt</span><span class='hljl-p'>]</span><span class='hljl-t'> </span><span class='hljl-oB'>.=</span><span class='hljl-t'> </span><span class='hljl-n'>df1</span><span class='hljl-oB'>.</span><span class='hljl-n'>Weight</span><span class='hljl-t'> </span><span class='hljl-oB'>.*</span><span class='hljl-t'> </span><span class='hljl-n'>df1</span><span class='hljl-oB'>.</span><span class='hljl-n'>dose</span><span class='hljl-t'>
+</span><span class='hljl-n'>df1</span><span class='hljl-t'>           </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>DataFrame</span><span class='hljl-p'>(</span><span class='hljl-n'>id</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-ni'>1</span><span class='hljl-oB'>:</span><span class='hljl-ni'>600</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>time</span><span class='hljl-oB'>=</span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-t'>
+                </span><span class='hljl-n'>evid</span><span class='hljl-oB'>=</span><span class='hljl-ni'>1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>cmt</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-ni'>1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>dv</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>missing</span><span class='hljl-p'>,</span><span class='hljl-t'>
+                </span><span class='hljl-n'>Weight</span><span class='hljl-oB'>=</span><span class='hljl-n'>bwt</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>eGFR</span><span class='hljl-oB'>=</span><span class='hljl-n'>gfr</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>Sex</span><span class='hljl-oB'>=</span><span class='hljl-n'>ismale</span><span class='hljl-p'>,</span><span class='hljl-t'>
+                </span><span class='hljl-n'>dose</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>dose_kg</span><span class='hljl-p'>[</span><span class='hljl-n'>dosegrps_prob</span><span class='hljl-p'>])</span><span class='hljl-t'>
+
+</span><span class='hljl-n'>df1</span><span class='hljl-p'>[</span><span class='hljl-oB'>!</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:amt</span><span class='hljl-p'>]</span><span class='hljl-t'>  </span><span class='hljl-oB'>.=</span><span class='hljl-t'> </span><span class='hljl-n'>df1</span><span class='hljl-oB'>.</span><span class='hljl-n'>Weight</span><span class='hljl-t'> </span><span class='hljl-oB'>.*</span><span class='hljl-t'> </span><span class='hljl-n'>df1</span><span class='hljl-oB'>.</span><span class='hljl-n'>dose</span><span class='hljl-t'>
 </span><span class='hljl-n'>df1</span><span class='hljl-p'>[</span><span class='hljl-oB'>!</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:rate</span><span class='hljl-p'>]</span><span class='hljl-t'> </span><span class='hljl-oB'>.=</span><span class='hljl-t'> </span><span class='hljl-n'>df1</span><span class='hljl-oB'>.</span><span class='hljl-n'>amt</span><span class='hljl-t'>
 
 </span><span class='hljl-cs'>#For Second dose</span><span class='hljl-t'>
 </span><span class='hljl-n'>df2</span><span class='hljl-t'>            </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>copy</span><span class='hljl-p'>(</span><span class='hljl-n'>df1</span><span class='hljl-p'>)</span><span class='hljl-t'>
-</span><span class='hljl-n'>df2</span><span class='hljl-p'>[</span><span class='hljl-oB'>!</span><span class='hljl-p'>,</span><span class='hljl-oB'>:</span><span class='hljl-n'>time</span><span class='hljl-p'>]</span><span class='hljl-t'> </span><span class='hljl-oB'>.=</span><span class='hljl-t'> </span><span class='hljl-ni'>336</span><span class='hljl-t'>
+</span><span class='hljl-n'>df2</span><span class='hljl-p'>[</span><span class='hljl-oB'>!</span><span class='hljl-p'>,</span><span class='hljl-oB'>:</span><span class='hljl-n'>time</span><span class='hljl-p'>]</span><span class='hljl-t'>  </span><span class='hljl-oB'>.=</span><span class='hljl-t'> </span><span class='hljl-ni'>336</span><span class='hljl-t'>
 </span><span class='hljl-n'>df3</span><span class='hljl-t'>            </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>vcat</span><span class='hljl-p'>(</span><span class='hljl-n'>df1</span><span class='hljl-p'>,</span><span class='hljl-n'>df2</span><span class='hljl-p'>)</span><span class='hljl-t'>
 
 </span><span class='hljl-cs'>#Sort dose times</span><span class='hljl-t'>
 </span><span class='hljl-nf'>sort!</span><span class='hljl-p'>(</span><span class='hljl-n'>df3</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-p'>[</span><span class='hljl-sc'>:id</span><span class='hljl-p'>,</span><span class='hljl-oB'>:</span><span class='hljl-n'>time</span><span class='hljl-p'>])</span><span class='hljl-t'>
 
 </span><span class='hljl-cs'>#Read dataset into Pumas</span><span class='hljl-t'>
-</span><span class='hljl-n'>df</span><span class='hljl-t'>             </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>read_pumas</span><span class='hljl-p'>(</span><span class='hljl-n'>df3</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:Weight</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:eGFR</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:Sex</span><span class='hljl-p'>])</span>
+</span><span class='hljl-n'>pop</span><span class='hljl-t'>            </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>read_pumas</span><span class='hljl-p'>(</span><span class='hljl-n'>df3</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:Weight</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:eGFR</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:Sex</span><span class='hljl-p'>])</span>
 </pre>
 
 
@@ -875,9 +899,10 @@ Population
 
 
 <ol start="5">
-<li><p>A population of <code>100 subjects</code> receives a dose of <strong>2000 mcg</strong> as an <em>IV-Infusion</em> over <code>10 mins</code> at <code>time&#61;0</code>. The covariates are weight and age assigned randomly.</p>
+<li><p>A population of 100 subjects receives a dose of <strong>2000 mcg</strong> as an <em>IV-Infusion</em> over</p>
 </li>
 </ol>
+<p>10 mins at time&#61;0. The covariates are weight and age assigned randomly.</p>
 
 
 <pre class='hljl'>
@@ -934,9 +959,10 @@ Population
 
 
 <ol start="7">
-<li><p>A population of <code>20 subjects</code> receives an <em>IV-Bolus</em> dose of <strong>20mg/kg</strong>. The weights are assigned randomly between <code>45 and 78</code>.</p>
+<li><p>A population of 20 subjects receives an <em>IV-Bolus</em> dose of <strong>20mg/kg</strong>. The weights</p>
 </li>
 </ol>
+<p>are assigned randomly between 45 and 78.</p>
 
 
 <pre class='hljl'>
@@ -949,7 +975,7 @@ Population
 </span><span class='hljl-n'>df1</span><span class='hljl-p'>[</span><span class='hljl-oB'>!</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:dv</span><span class='hljl-p'>]</span><span class='hljl-t'> </span><span class='hljl-oB'>.=</span><span class='hljl-t'> </span><span class='hljl-n'>missing</span><span class='hljl-t'>
 
 </span><span class='hljl-cs'>#Read dataset into Pumas</span><span class='hljl-t'>
-</span><span class='hljl-n'>df</span><span class='hljl-t'>   </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>read_pumas</span><span class='hljl-p'>(</span><span class='hljl-n'>df1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>observations</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:dv</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:Weight</span><span class='hljl-p'>])</span>
+</span><span class='hljl-n'>pop</span><span class='hljl-t'>   </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>read_pumas</span><span class='hljl-p'>(</span><span class='hljl-n'>df1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>observations</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:dv</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:Weight</span><span class='hljl-p'>])</span>
 </pre>
 
 
@@ -962,50 +988,10 @@ Population
 
 
 <ol start="8">
-<li><p>In a study of <em>in vivo</em> antitumor assessments of anti-angiogenic agent on mice implanted with tumor:</p>
+<li><p>A <em>fixed dose combination</em> of <strong>drug A &#40;100 mg&#41;</strong> and <strong>drug B &#40;200 mg&#41;</strong> is</p>
 </li>
 </ol>
-<ul>
-<li><p>Group A - <code>8 mice</code> receive the drug &#40;control&#41; on day 9,10,13,14,15,16</p>
-</li>
-<li><p>Group B - <code>8 mice</code> receive a combination of <strong>control &#43; new drug of 45mcg</strong> on day 9,10,13,14,15,16</p>
-</li>
-</ul>
-<p><strong>Note:-</strong> Since both the groups receive control, the dose is not included for both. There are no dosing <code>events</code> in Group A.</p>
-
-
-<pre class='hljl'>
-<span class='hljl-cs'># ID - A</span><span class='hljl-t'>
-</span><span class='hljl-n'>df1</span><span class='hljl-t'>      </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>map</span><span class='hljl-p'>(</span><span class='hljl-t'> </span><span class='hljl-n'>i</span><span class='hljl-t'> </span><span class='hljl-oB'>-&gt;</span><span class='hljl-t'> </span><span class='hljl-nf'>DataFrame</span><span class='hljl-p'>(</span><span class='hljl-n'>id</span><span class='hljl-oB'>=</span><span class='hljl-n'>i</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>time</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-ni'>9</span><span class='hljl-p'>,</span><span class='hljl-ni'>10</span><span class='hljl-p'>,</span><span class='hljl-ni'>13</span><span class='hljl-p'>,</span><span class='hljl-ni'>14</span><span class='hljl-p'>,</span><span class='hljl-ni'>15</span><span class='hljl-p'>,</span><span class='hljl-ni'>16</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>amt</span><span class='hljl-oB'>=</span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>cmt</span><span class='hljl-oB'>=</span><span class='hljl-ni'>1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>evid</span><span class='hljl-oB'>=</span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>group</span><span class='hljl-oB'>=</span><span class='hljl-s'>&quot;A&quot;</span><span class='hljl-p'>),</span><span class='hljl-ni'>1</span><span class='hljl-oB'>:</span><span class='hljl-ni'>8</span><span class='hljl-p'>)</span><span class='hljl-t'>
-</span><span class='hljl-n'>df2</span><span class='hljl-t'>      </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>vcat</span><span class='hljl-p'>(</span><span class='hljl-n'>DataFrame</span><span class='hljl-oB'>.</span><span class='hljl-p'>(</span><span class='hljl-n'>df1</span><span class='hljl-p'>)</span><span class='hljl-oB'>...</span><span class='hljl-p'>)</span><span class='hljl-t'>
-
-</span><span class='hljl-cs'># ID - B</span><span class='hljl-t'>
-</span><span class='hljl-n'>ev1</span><span class='hljl-t'>   </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>DosageRegimen</span><span class='hljl-p'>(</span><span class='hljl-ni'>45</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>time</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-ni'>9</span><span class='hljl-p'>,</span><span class='hljl-ni'>10</span><span class='hljl-p'>,</span><span class='hljl-ni'>13</span><span class='hljl-p'>,</span><span class='hljl-ni'>14</span><span class='hljl-p'>,</span><span class='hljl-ni'>15</span><span class='hljl-p'>,</span><span class='hljl-ni'>16</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>cmt</span><span class='hljl-oB'>=</span><span class='hljl-ni'>2</span><span class='hljl-p'>)</span><span class='hljl-t'>
-</span><span class='hljl-n'>subB</span><span class='hljl-t'>  </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>map</span><span class='hljl-p'>(</span><span class='hljl-n'>i</span><span class='hljl-t'> </span><span class='hljl-oB'>-&gt;</span><span class='hljl-t'> </span><span class='hljl-nf'>Subject</span><span class='hljl-p'>(</span><span class='hljl-n'>id</span><span class='hljl-oB'>=</span><span class='hljl-n'>i</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>events</span><span class='hljl-oB'>=</span><span class='hljl-n'>ev1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>(</span><span class='hljl-n'>group</span><span class='hljl-oB'>=</span><span class='hljl-s'>&quot;B&quot;</span><span class='hljl-p'>,)),</span><span class='hljl-ni'>9</span><span class='hljl-oB'>:</span><span class='hljl-ni'>16</span><span class='hljl-p'>)</span><span class='hljl-t'>
-</span><span class='hljl-n'>df3</span><span class='hljl-t'>   </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>DataFrame</span><span class='hljl-p'>(</span><span class='hljl-n'>subB</span><span class='hljl-p'>)</span><span class='hljl-t'>
-</span><span class='hljl-nf'>select!</span><span class='hljl-p'>(</span><span class='hljl-n'>df3</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:id</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:time</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:amt</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:cmt</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:evid</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:group</span><span class='hljl-p'>)</span><span class='hljl-t'>
-
-</span><span class='hljl-cs'># Merge</span><span class='hljl-t'>
-</span><span class='hljl-n'>df4</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>vcat</span><span class='hljl-p'>(</span><span class='hljl-n'>df2</span><span class='hljl-p'>,</span><span class='hljl-n'>df3</span><span class='hljl-p'>)</span><span class='hljl-t'>
-</span><span class='hljl-n'>df4</span><span class='hljl-p'>[</span><span class='hljl-oB'>!</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:dv</span><span class='hljl-p'>]</span><span class='hljl-t'> </span><span class='hljl-oB'>.=</span><span class='hljl-t'> </span><span class='hljl-n'>missing</span><span class='hljl-t'>
-
-</span><span class='hljl-cs'>#Read dataset into Pumas</span><span class='hljl-t'>
-</span><span class='hljl-n'>df</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>read_pumas</span><span class='hljl-p'>(</span><span class='hljl-n'>df4</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:group</span><span class='hljl-p'>])</span>
-</pre>
-
-
-<pre class="output">
-Population
-  Subjects: 16
-  Covariates: group
-  Observables: dv
-</pre>
-
-
-<ol start="9">
-<li><p>A <em>fixed dose combination</em> of <strong>drug A &#40;100 mg&#41;</strong> and <strong>drug B &#40;200 mg&#41;</strong> is given <code>once-daily</code> orally for <code>3 days</code>.</p>
-</li>
-</ol>
+<p>given once-daily orally for 3 days.</p>
 <ul>
 <li><p>Subjects weighing &lt; 50kg are given <code>1.5 tablets</code> &#40;150mg&#41;</p>
 </li>
@@ -1037,14 +1023,14 @@ Population
 </pre>
 
 
-<ol start="10">
-<li><p>A total of <code>40 patients</code> receive a drug as follows</p>
+<ol start="9">
+<li><p>A total of 40 patients receive a drug as follows</p>
 </li>
 </ol>
 <ul>
-<li><p><code>20 obese patients</code> receive an <em>IV-Infusion</em> of <strong>12.5 mg/kg/day</strong> at the <code>rate of 600mg/hr</code>. The dose is <em>capped</em> at max <strong>2500mg/day</strong>.</p>
+<li><p>20 obese patients receive an <em>IV-Infusion</em> of <strong>12.5 mg/kg/day</strong> at the <code>rate of 600mg/hr</code>. The dose is <em>capped</em> at max <strong>2500mg/day</strong>.</p>
 </li>
-<li><p><code>20 non-obese patients</code> receive an <em>IV-Infusion</em> of <strong>1000mg/day</strong> at the <code>rate of 600mg/hr</code>.</p>
+<li><p>20 non-obese patients receive an <em>IV-Infusion</em> of <strong>1000mg/day</strong> at the <code>rate of 600mg/hr</code>.</p>
 </li>
 </ul>
 
@@ -1054,8 +1040,8 @@ Population
 </span><span class='hljl-n'>ev1</span><span class='hljl-t'>   </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>DosageRegimen</span><span class='hljl-p'>(</span><span class='hljl-nfB'>12.5</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>time</span><span class='hljl-oB'>=</span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>cmt</span><span class='hljl-oB'>=</span><span class='hljl-ni'>1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>rate</span><span class='hljl-oB'>=</span><span class='hljl-ni'>600</span><span class='hljl-p'>)</span><span class='hljl-t'>
 </span><span class='hljl-n'>pop1</span><span class='hljl-t'>  </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>map</span><span class='hljl-p'>(</span><span class='hljl-n'>i</span><span class='hljl-t'> </span><span class='hljl-oB'>-&gt;</span><span class='hljl-t'> </span><span class='hljl-nf'>Subject</span><span class='hljl-p'>(</span><span class='hljl-n'>id</span><span class='hljl-oB'>=</span><span class='hljl-n'>i</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>events</span><span class='hljl-oB'>=</span><span class='hljl-n'>ev1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>(</span><span class='hljl-n'>Weight</span><span class='hljl-oB'>=</span><span class='hljl-nf'>rand</span><span class='hljl-p'>(</span><span class='hljl-ni'>90</span><span class='hljl-oB'>:</span><span class='hljl-ni'>230</span><span class='hljl-p'>),</span><span class='hljl-t'> </span><span class='hljl-n'>Obese</span><span class='hljl-oB'>=</span><span class='hljl-ni'>1</span><span class='hljl-p'>)),</span><span class='hljl-ni'>1</span><span class='hljl-oB'>:</span><span class='hljl-ni'>20</span><span class='hljl-p'>)</span><span class='hljl-t'>
 </span><span class='hljl-n'>df1</span><span class='hljl-t'>   </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>DataFrame</span><span class='hljl-p'>(</span><span class='hljl-n'>pop1</span><span class='hljl-p'>)</span><span class='hljl-t'>
-</span><span class='hljl-n'>df1</span><span class='hljl-p'>[</span><span class='hljl-sc'>:amt</span><span class='hljl-p'>]</span><span class='hljl-t'> </span><span class='hljl-oB'>.=</span><span class='hljl-t'> </span><span class='hljl-n'>df1</span><span class='hljl-p'>[</span><span class='hljl-sc'>:amt</span><span class='hljl-p'>]</span><span class='hljl-t'> </span><span class='hljl-oB'>.*</span><span class='hljl-t'> </span><span class='hljl-n'>df1</span><span class='hljl-p'>[</span><span class='hljl-sc'>:Weight</span><span class='hljl-p'>]</span><span class='hljl-t'>
-</span><span class='hljl-n'>df1</span><span class='hljl-p'>[</span><span class='hljl-sc'>:amt</span><span class='hljl-p'>][</span><span class='hljl-n'>df1</span><span class='hljl-p'>[</span><span class='hljl-sc'>:amt</span><span class='hljl-p'>]</span><span class='hljl-t'> </span><span class='hljl-oB'>.&gt;</span><span class='hljl-t'> </span><span class='hljl-ni'>2500</span><span class='hljl-p'>]</span><span class='hljl-t'> </span><span class='hljl-oB'>.=</span><span class='hljl-t'> </span><span class='hljl-ni'>2500</span><span class='hljl-t'>
+</span><span class='hljl-n'>df1</span><span class='hljl-p'>[</span><span class='hljl-oB'>!</span><span class='hljl-p'>,</span><span class='hljl-oB'>:</span><span class='hljl-n'>amt</span><span class='hljl-p'>]</span><span class='hljl-t'> </span><span class='hljl-oB'>.=</span><span class='hljl-t'> </span><span class='hljl-n'>df1</span><span class='hljl-p'>[</span><span class='hljl-oB'>:</span><span class='hljl-p'>,</span><span class='hljl-oB'>:</span><span class='hljl-n'>amt</span><span class='hljl-p'>]</span><span class='hljl-t'> </span><span class='hljl-oB'>.*</span><span class='hljl-t'> </span><span class='hljl-n'>df1</span><span class='hljl-p'>[</span><span class='hljl-oB'>:</span><span class='hljl-p'>,</span><span class='hljl-oB'>:</span><span class='hljl-n'>Weight</span><span class='hljl-p'>]</span><span class='hljl-t'>
+</span><span class='hljl-n'>df1</span><span class='hljl-p'>[</span><span class='hljl-oB'>!</span><span class='hljl-p'>,</span><span class='hljl-oB'>:</span><span class='hljl-n'>amt</span><span class='hljl-p'>]</span><span class='hljl-t'> </span><span class='hljl-oB'>.=</span><span class='hljl-t'> </span><span class='hljl-n'>ifelse</span><span class='hljl-oB'>.</span><span class='hljl-p'>(</span><span class='hljl-n'>df1</span><span class='hljl-oB'>.</span><span class='hljl-n'>amt</span><span class='hljl-t'> </span><span class='hljl-oB'>.&gt;</span><span class='hljl-t'> </span><span class='hljl-ni'>2500</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-ni'>2500</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>df1</span><span class='hljl-oB'>.</span><span class='hljl-n'>amt</span><span class='hljl-p'>)</span><span class='hljl-t'>
 </span><span class='hljl-n'>df1</span><span class='hljl-p'>[</span><span class='hljl-oB'>!</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:dv</span><span class='hljl-p'>]</span><span class='hljl-t'> </span><span class='hljl-oB'>.=</span><span class='hljl-t'> </span><span class='hljl-n'>missing</span><span class='hljl-t'>
 
 </span><span class='hljl-cs'># Non-Obese Individuals</span><span class='hljl-t'>
@@ -1065,10 +1051,10 @@ Population
 </span><span class='hljl-n'>df2</span><span class='hljl-p'>[</span><span class='hljl-oB'>!</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:dv</span><span class='hljl-p'>]</span><span class='hljl-t'> </span><span class='hljl-oB'>.=</span><span class='hljl-t'> </span><span class='hljl-n'>missing</span><span class='hljl-t'>
 
 </span><span class='hljl-cs'># Concatenate the Population</span><span class='hljl-t'>
-</span><span class='hljl-n'>pop</span><span class='hljl-t'>   </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>vcat</span><span class='hljl-p'>(</span><span class='hljl-n'>df1</span><span class='hljl-p'>,</span><span class='hljl-n'>df2</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>df</span><span class='hljl-t'>    </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>vcat</span><span class='hljl-p'>(</span><span class='hljl-n'>df1</span><span class='hljl-p'>,</span><span class='hljl-n'>df2</span><span class='hljl-p'>)</span><span class='hljl-t'>
 
 </span><span class='hljl-cs'>#Read dataset into Pumas</span><span class='hljl-t'>
-</span><span class='hljl-n'>df</span><span class='hljl-t'>    </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>read_pumas</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:Weight</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:Obese</span><span class='hljl-p'>])</span>
+</span><span class='hljl-n'>pop</span><span class='hljl-t'>   </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>read_pumas</span><span class='hljl-p'>(</span><span class='hljl-n'>df</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:Weight</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:Obese</span><span class='hljl-p'>])</span>
 </pre>
 
 
@@ -1080,10 +1066,11 @@ Population
 </pre>
 
 
-<ol start="11">
-<li><p>In this example, we will build a population of <code>150 patients</code> for a <strong><em>disease progression model</em></strong> tested on <code>three treatment groups</code> as follows:</p>
+<ol start="10">
+<li><p>In this example, we will build a population of 150 patients for a</p>
 </li>
 </ol>
+<p><strong><em>disease progression model</em></strong> tested on <code>three treatment groups</code> as follows:</p>
 <ul>
 <li><p>Group A - A population of <code>50 patients</code> receives <em>Drug A</em></p>
 </li>
@@ -1092,21 +1079,21 @@ Population
 <li><p>Group C - A population of <code>50 patients</code> receives <em>Drug C</em></p>
 </li>
 </ul>
-<p>Note: There is <strong>no event data</strong> we are modelling the PD data. Each <em>Treatment Group</em> is a <code>Covariate</code>.</p>
+<p>Note: There is <strong>no event data</strong> as we are modelling the PD data. Each <em>Treatment Group</em> is a <code>Covariate</code>.</p>
 
 
 <pre class='hljl'>
 <span class='hljl-cs'># Group A:</span><span class='hljl-t'>
 </span><span class='hljl-n'>df1</span><span class='hljl-t'>   </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>DataFrame</span><span class='hljl-p'>(</span><span class='hljl-nf'>map</span><span class='hljl-p'>(</span><span class='hljl-n'>i</span><span class='hljl-t'> </span><span class='hljl-oB'>-&gt;</span><span class='hljl-t'> </span><span class='hljl-p'>(</span><span class='hljl-n'>id</span><span class='hljl-oB'>=</span><span class='hljl-n'>i</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>time</span><span class='hljl-oB'>=</span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>trtgrp_A</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-ni'>1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>trtgrp_B</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>trtgrp_C</span><span class='hljl-oB'>=</span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>dv_pd</span><span class='hljl-oB'>=</span><span class='hljl-n'>missing</span><span class='hljl-p'>),</span><span class='hljl-t'> </span><span class='hljl-ni'>1</span><span class='hljl-oB'>:</span><span class='hljl-ni'>50</span><span class='hljl-p'>))</span><span class='hljl-t'>
-</span><span class='hljl-n'>data1</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>read_pumas</span><span class='hljl-p'>(</span><span class='hljl-n'>df1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>observations</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:dv_pd</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:trtgrp_A</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:trtgrp_B</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:trtgrp_C</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>event_data</span><span class='hljl-oB'>=</span><span class='hljl-kc'>false</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>pop1</span><span class='hljl-t'>  </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>read_pumas</span><span class='hljl-p'>(</span><span class='hljl-n'>df1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>observations</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:dv_pd</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:trtgrp_A</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:trtgrp_B</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:trtgrp_C</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>event_data</span><span class='hljl-oB'>=</span><span class='hljl-kc'>false</span><span class='hljl-p'>)</span><span class='hljl-t'>
 
 </span><span class='hljl-cs'># Group B:</span><span class='hljl-t'>
 </span><span class='hljl-n'>df2</span><span class='hljl-t'>   </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>DataFrame</span><span class='hljl-p'>(</span><span class='hljl-nf'>map</span><span class='hljl-p'>(</span><span class='hljl-n'>i</span><span class='hljl-t'> </span><span class='hljl-oB'>-&gt;</span><span class='hljl-t'> </span><span class='hljl-p'>(</span><span class='hljl-n'>id</span><span class='hljl-oB'>=</span><span class='hljl-n'>i</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>time</span><span class='hljl-oB'>=</span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>trtgrp_A</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>trtgrp_B</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-ni'>1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>trtgrp_C</span><span class='hljl-oB'>=</span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>dv_pd</span><span class='hljl-oB'>=</span><span class='hljl-n'>missing</span><span class='hljl-p'>),</span><span class='hljl-t'> </span><span class='hljl-ni'>51</span><span class='hljl-oB'>:</span><span class='hljl-ni'>100</span><span class='hljl-p'>))</span><span class='hljl-t'>
-</span><span class='hljl-n'>data2</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>read_pumas</span><span class='hljl-p'>(</span><span class='hljl-n'>df2</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>observations</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:dv_pd</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:trtgrp_A</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:trtgrp_B</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:trtgrp_C</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>event_data</span><span class='hljl-oB'>=</span><span class='hljl-kc'>false</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>pop2</span><span class='hljl-t'>  </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>read_pumas</span><span class='hljl-p'>(</span><span class='hljl-n'>df2</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>observations</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:dv_pd</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:trtgrp_A</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:trtgrp_B</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:trtgrp_C</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>event_data</span><span class='hljl-oB'>=</span><span class='hljl-kc'>false</span><span class='hljl-p'>)</span><span class='hljl-t'>
 
 </span><span class='hljl-cs'># Group C:</span><span class='hljl-t'>
 </span><span class='hljl-n'>df3</span><span class='hljl-t'>   </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>DataFrame</span><span class='hljl-p'>(</span><span class='hljl-nf'>map</span><span class='hljl-p'>(</span><span class='hljl-n'>i</span><span class='hljl-t'> </span><span class='hljl-oB'>-&gt;</span><span class='hljl-t'> </span><span class='hljl-p'>(</span><span class='hljl-n'>id</span><span class='hljl-oB'>=</span><span class='hljl-n'>i</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>time</span><span class='hljl-oB'>=</span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>trtgrp_A</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>trtgrp_B</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>trtgrp_C</span><span class='hljl-oB'>=</span><span class='hljl-ni'>1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>dv_pd</span><span class='hljl-oB'>=</span><span class='hljl-n'>missing</span><span class='hljl-p'>),</span><span class='hljl-t'> </span><span class='hljl-ni'>101</span><span class='hljl-oB'>:</span><span class='hljl-ni'>150</span><span class='hljl-p'>))</span><span class='hljl-t'>
-</span><span class='hljl-n'>data3</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>read_pumas</span><span class='hljl-p'>(</span><span class='hljl-n'>df3</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>observations</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:dv_pd</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:trtgrp_A</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:trtgrp_B</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:trtgrp_C</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>event_data</span><span class='hljl-oB'>=</span><span class='hljl-kc'>false</span><span class='hljl-p'>)</span>
+</span><span class='hljl-n'>pop3</span><span class='hljl-t'>  </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>read_pumas</span><span class='hljl-p'>(</span><span class='hljl-n'>df3</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>observations</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:dv_pd</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:trtgrp_A</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:trtgrp_B</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:trtgrp_C</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>event_data</span><span class='hljl-oB'>=</span><span class='hljl-kc'>false</span><span class='hljl-p'>)</span>
 </pre>
 
 
@@ -1118,8 +1105,8 @@ Population
 </pre>
 
 
-<ol start="12">
-<li><p>A total of <code>30 patients</code> receive various doses as follows:</p>
+<ol start="11">
+<li><p>A total of 30 patients receive various doses as follows:</p>
 </li>
 </ol>
 <ul>
@@ -1147,18 +1134,27 @@ Population
 </span><span class='hljl-nf'>cvstimes</span><span class='hljl-p'>()</span><span class='hljl-t'>   </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-p'>(</span><span class='hljl-n'>Weight</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-ni'>0</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>CrCl</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-p'>[</span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-ni'>144</span><span class='hljl-p'>])</span><span class='hljl-t'>
 
 </span><span class='hljl-cs'># Building the Population</span><span class='hljl-t'>
-</span><span class='hljl-n'>pop1</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>map</span><span class='hljl-p'>(</span><span class='hljl-n'>i</span><span class='hljl-t'> </span><span class='hljl-oB'>-&gt;</span><span class='hljl-t'> </span><span class='hljl-nf'>Subject</span><span class='hljl-p'>(</span><span class='hljl-n'>id</span><span class='hljl-oB'>=</span><span class='hljl-n'>i</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>events</span><span class='hljl-oB'>=</span><span class='hljl-n'>ev1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-nf'>cvs_normal</span><span class='hljl-p'>(),</span><span class='hljl-t'> </span><span class='hljl-n'>covariates_time</span><span class='hljl-oB'>=</span><span class='hljl-nf'>cvstimes</span><span class='hljl-p'>(),</span><span class='hljl-t'> </span><span class='hljl-n'>covariates_direction</span><span class='hljl-oB'>=:</span><span class='hljl-n'>left</span><span class='hljl-p'>),</span><span class='hljl-ni'>1</span><span class='hljl-oB'>:</span><span class='hljl-ni'>10</span><span class='hljl-p'>)</span><span class='hljl-t'>
-</span><span class='hljl-n'>pop2</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>map</span><span class='hljl-p'>(</span><span class='hljl-n'>i</span><span class='hljl-t'> </span><span class='hljl-oB'>-&gt;</span><span class='hljl-t'> </span><span class='hljl-nf'>Subject</span><span class='hljl-p'>(</span><span class='hljl-n'>id</span><span class='hljl-oB'>=</span><span class='hljl-n'>i</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>events</span><span class='hljl-oB'>=</span><span class='hljl-n'>ev2</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-nf'>cvs_medium</span><span class='hljl-p'>(),</span><span class='hljl-t'> </span><span class='hljl-n'>covariates_time</span><span class='hljl-oB'>=</span><span class='hljl-nf'>cvstimes</span><span class='hljl-p'>(),</span><span class='hljl-t'> </span><span class='hljl-n'>covariates_direction</span><span class='hljl-oB'>=:</span><span class='hljl-n'>left</span><span class='hljl-p'>),</span><span class='hljl-ni'>11</span><span class='hljl-oB'>:</span><span class='hljl-ni'>20</span><span class='hljl-p'>)</span><span class='hljl-t'>
-</span><span class='hljl-n'>pop3</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>map</span><span class='hljl-p'>(</span><span class='hljl-n'>i</span><span class='hljl-t'> </span><span class='hljl-oB'>-&gt;</span><span class='hljl-t'> </span><span class='hljl-nf'>Subject</span><span class='hljl-p'>(</span><span class='hljl-n'>id</span><span class='hljl-oB'>=</span><span class='hljl-n'>i</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>events</span><span class='hljl-oB'>=</span><span class='hljl-n'>ev3</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-nf'>cvs_poor</span><span class='hljl-p'>(),</span><span class='hljl-t'> </span><span class='hljl-n'>covariates_time</span><span class='hljl-oB'>=</span><span class='hljl-nf'>cvstimes</span><span class='hljl-p'>(),</span><span class='hljl-t'> </span><span class='hljl-n'>covariates_direction</span><span class='hljl-oB'>=:</span><span class='hljl-n'>left</span><span class='hljl-p'>),</span><span class='hljl-ni'>21</span><span class='hljl-oB'>:</span><span class='hljl-ni'>30</span><span class='hljl-p'>)</span><span class='hljl-t'>
-</span><span class='hljl-n'>pop</span><span class='hljl-t'>  </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-p'>[</span><span class='hljl-n'>pop1</span><span class='hljl-p'>;</span><span class='hljl-n'>pop2</span><span class='hljl-p'>;</span><span class='hljl-n'>pop3</span><span class='hljl-p'>]</span><span class='hljl-t'>
-</span><span class='hljl-n'>df1</span><span class='hljl-t'>  </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>DataFrame</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>pop1</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>map</span><span class='hljl-p'>(</span><span class='hljl-n'>i</span><span class='hljl-t'> </span><span class='hljl-oB'>-&gt;</span><span class='hljl-t'> </span><span class='hljl-nf'>Subject</span><span class='hljl-p'>(</span><span class='hljl-n'>id</span><span class='hljl-oB'>=</span><span class='hljl-n'>i</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>events</span><span class='hljl-oB'>=</span><span class='hljl-n'>ev1</span><span class='hljl-p'>,</span><span class='hljl-t'>
+                        </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-nf'>cvs_normal</span><span class='hljl-p'>(),</span><span class='hljl-t'>
+                        </span><span class='hljl-n'>covariates_time</span><span class='hljl-oB'>=</span><span class='hljl-nf'>cvstimes</span><span class='hljl-p'>(),</span><span class='hljl-t'>
+                        </span><span class='hljl-n'>covariates_direction</span><span class='hljl-oB'>=:</span><span class='hljl-n'>left</span><span class='hljl-p'>),</span><span class='hljl-ni'>1</span><span class='hljl-oB'>:</span><span class='hljl-ni'>10</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>pop2</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>map</span><span class='hljl-p'>(</span><span class='hljl-n'>i</span><span class='hljl-t'> </span><span class='hljl-oB'>-&gt;</span><span class='hljl-t'> </span><span class='hljl-nf'>Subject</span><span class='hljl-p'>(</span><span class='hljl-n'>id</span><span class='hljl-oB'>=</span><span class='hljl-n'>i</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>events</span><span class='hljl-oB'>=</span><span class='hljl-n'>ev2</span><span class='hljl-p'>,</span><span class='hljl-t'>
+                        </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-nf'>cvs_medium</span><span class='hljl-p'>(),</span><span class='hljl-t'>
+                        </span><span class='hljl-n'>covariates_time</span><span class='hljl-oB'>=</span><span class='hljl-nf'>cvstimes</span><span class='hljl-p'>(),</span><span class='hljl-t'>
+                        </span><span class='hljl-n'>covariates_direction</span><span class='hljl-oB'>=:</span><span class='hljl-n'>left</span><span class='hljl-p'>),</span><span class='hljl-ni'>11</span><span class='hljl-oB'>:</span><span class='hljl-ni'>20</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>pop3</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>map</span><span class='hljl-p'>(</span><span class='hljl-n'>i</span><span class='hljl-t'> </span><span class='hljl-oB'>-&gt;</span><span class='hljl-t'> </span><span class='hljl-nf'>Subject</span><span class='hljl-p'>(</span><span class='hljl-n'>id</span><span class='hljl-oB'>=</span><span class='hljl-n'>i</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>events</span><span class='hljl-oB'>=</span><span class='hljl-n'>ev3</span><span class='hljl-p'>,</span><span class='hljl-t'>
+                        </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-nf'>cvs_poor</span><span class='hljl-p'>(),</span><span class='hljl-t'>
+                        </span><span class='hljl-n'>covariates_time</span><span class='hljl-oB'>=</span><span class='hljl-nf'>cvstimes</span><span class='hljl-p'>(),</span><span class='hljl-t'>
+                        </span><span class='hljl-n'>covariates_direction</span><span class='hljl-oB'>=:</span><span class='hljl-n'>left</span><span class='hljl-p'>),</span><span class='hljl-ni'>21</span><span class='hljl-oB'>:</span><span class='hljl-ni'>30</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>pop_all</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-p'>[</span><span class='hljl-n'>pop1</span><span class='hljl-p'>;</span><span class='hljl-n'>pop2</span><span class='hljl-p'>;</span><span class='hljl-n'>pop3</span><span class='hljl-p'>]</span><span class='hljl-t'>
+</span><span class='hljl-n'>df1</span><span class='hljl-t'>  </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>DataFrame</span><span class='hljl-p'>(</span><span class='hljl-n'>pop_all</span><span class='hljl-p'>)</span><span class='hljl-t'>
 
 </span><span class='hljl-cs'># Adjust dose based on weight</span><span class='hljl-t'>
-</span><span class='hljl-n'>df1</span><span class='hljl-p'>[</span><span class='hljl-sc'>:amt</span><span class='hljl-p'>]</span><span class='hljl-t'> </span><span class='hljl-oB'>.=</span><span class='hljl-t'> </span><span class='hljl-n'>df1</span><span class='hljl-p'>[</span><span class='hljl-sc'>:amt</span><span class='hljl-p'>]</span><span class='hljl-t'> </span><span class='hljl-oB'>.*</span><span class='hljl-t'> </span><span class='hljl-n'>df1</span><span class='hljl-p'>[</span><span class='hljl-sc'>:Weight</span><span class='hljl-p'>]</span><span class='hljl-t'>
+</span><span class='hljl-n'>df1</span><span class='hljl-p'>[</span><span class='hljl-oB'>!</span><span class='hljl-p'>,</span><span class='hljl-oB'>:</span><span class='hljl-n'>amt</span><span class='hljl-p'>]</span><span class='hljl-t'> </span><span class='hljl-oB'>.=</span><span class='hljl-t'> </span><span class='hljl-n'>df1</span><span class='hljl-oB'>.</span><span class='hljl-n'>amt</span><span class='hljl-t'> </span><span class='hljl-oB'>.*</span><span class='hljl-t'> </span><span class='hljl-n'>df1</span><span class='hljl-oB'>.</span><span class='hljl-n'>Weight</span><span class='hljl-t'>
 </span><span class='hljl-n'>df1</span><span class='hljl-p'>[</span><span class='hljl-oB'>!</span><span class='hljl-p'>,</span><span class='hljl-oB'>:</span><span class='hljl-n'>dv</span><span class='hljl-p'>]</span><span class='hljl-t'> </span><span class='hljl-oB'>.=</span><span class='hljl-t'> </span><span class='hljl-n'>missing</span><span class='hljl-t'>
 
 </span><span class='hljl-cs'>#Read dataset into Pumas</span><span class='hljl-t'>
-</span><span class='hljl-n'>df</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>read_pumas</span><span class='hljl-p'>(</span><span class='hljl-n'>df1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:Weight</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:CrCl</span><span class='hljl-p'>])</span>
+</span><span class='hljl-n'>pop</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>read_pumas</span><span class='hljl-p'>(</span><span class='hljl-n'>df1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:Weight</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:CrCl</span><span class='hljl-p'>])</span>
 </pre>
 
 
@@ -1170,8 +1166,8 @@ Population
 </pre>
 
 
-<ol start="13">
-<li><p>A population of <code>1000 subjects</code> receive an <em>IV-Infusion</em> of <strong>5mg/kg</strong> for a duration of <code>0.5 hrs</code>.</p>
+<ol start="12">
+<li><p>A population of 1000 subjects receive an <em>IV-Infusion</em> of <strong>5mg/kg</strong> for a duration of <code>0.5 hrs</code>.</p>
 </li>
 </ol>
 
@@ -1185,12 +1181,12 @@ Population
 </span><span class='hljl-n'>df1</span><span class='hljl-t'>  </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>DataFrame</span><span class='hljl-p'>(</span><span class='hljl-n'>pop1</span><span class='hljl-p'>)</span><span class='hljl-t'>
 
 </span><span class='hljl-cs'>#Calculate the Weight based dose</span><span class='hljl-t'>
-</span><span class='hljl-n'>df1</span><span class='hljl-p'>[</span><span class='hljl-sc'>:amt</span><span class='hljl-p'>]</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>df1</span><span class='hljl-p'>[</span><span class='hljl-sc'>:amt</span><span class='hljl-p'>]</span><span class='hljl-t'> </span><span class='hljl-oB'>.*</span><span class='hljl-t'> </span><span class='hljl-n'>df1</span><span class='hljl-p'>[</span><span class='hljl-sc'>:Weight</span><span class='hljl-p'>]</span><span class='hljl-t'>
-</span><span class='hljl-n'>df1</span><span class='hljl-p'>[</span><span class='hljl-sc'>:rate</span><span class='hljl-p'>]</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>df1</span><span class='hljl-p'>[</span><span class='hljl-sc'>:amt</span><span class='hljl-p'>]</span><span class='hljl-t'> </span><span class='hljl-oB'>./</span><span class='hljl-t'> </span><span class='hljl-nfB'>0.5</span><span class='hljl-t'>
+</span><span class='hljl-n'>df1</span><span class='hljl-p'>[</span><span class='hljl-oB'>!</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:amt</span><span class='hljl-p'>]</span><span class='hljl-t'>  </span><span class='hljl-oB'>.=</span><span class='hljl-t'> </span><span class='hljl-n'>df1</span><span class='hljl-oB'>.</span><span class='hljl-n'>amt</span><span class='hljl-t'> </span><span class='hljl-oB'>.*</span><span class='hljl-t'> </span><span class='hljl-n'>df1</span><span class='hljl-oB'>.</span><span class='hljl-n'>Weight</span><span class='hljl-t'>
+</span><span class='hljl-n'>df1</span><span class='hljl-p'>[</span><span class='hljl-oB'>!</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:rate</span><span class='hljl-p'>]</span><span class='hljl-t'> </span><span class='hljl-oB'>.=</span><span class='hljl-t'> </span><span class='hljl-n'>df1</span><span class='hljl-oB'>.</span><span class='hljl-n'>amt</span><span class='hljl-t'> </span><span class='hljl-oB'>./</span><span class='hljl-t'> </span><span class='hljl-nfB'>0.5</span><span class='hljl-t'>
 </span><span class='hljl-n'>df1</span><span class='hljl-p'>[</span><span class='hljl-oB'>!</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:dv</span><span class='hljl-p'>]</span><span class='hljl-t'> </span><span class='hljl-oB'>.=</span><span class='hljl-t'> </span><span class='hljl-n'>missing</span><span class='hljl-t'>
 
 </span><span class='hljl-cs'>#Read dataset into Pumas</span><span class='hljl-t'>
-</span><span class='hljl-n'>df</span><span class='hljl-t'>   </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>read_pumas</span><span class='hljl-p'>(</span><span class='hljl-n'>df1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>observations</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:dv</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:MDRD</span><span class='hljl-p'>,</span><span class='hljl-oB'>:</span><span class='hljl-n'>Weight</span><span class='hljl-p'>])</span>
+</span><span class='hljl-n'>pop</span><span class='hljl-t'>  </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>read_pumas</span><span class='hljl-p'>(</span><span class='hljl-n'>df1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>observations</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:dv</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:MDRD</span><span class='hljl-p'>,</span><span class='hljl-oB'>:</span><span class='hljl-n'>Weight</span><span class='hljl-p'>])</span>
 </pre>
 
 
@@ -1202,8 +1198,8 @@ Population
 </pre>
 
 
-<ol start="14">
-<li><p>A population of <code>20 subjects</code> receive an <em>IV-Infusion</em> of <strong>700000mcg</strong> over <code>12 hours</code>. The covariates are:</p>
+<ol start="13">
+<li><p>A population of 20 subjects receive an <em>IV-Infusion</em> of <strong>700000mcg</strong> over <code>12 hours</code>. The covariates are:</p>
 </li>
 </ol>
 <ul>
@@ -1232,7 +1228,7 @@ Population
                </span><span class='hljl-n'>LDH</span><span class='hljl-t'>    </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>rand</span><span class='hljl-p'>(</span><span class='hljl-ni'>140</span><span class='hljl-oB'>:</span><span class='hljl-ni'>400</span><span class='hljl-p'>))</span><span class='hljl-t'>
 
 </span><span class='hljl-cs'>#Build a Population</span><span class='hljl-t'>
-</span><span class='hljl-n'>pop1</span><span class='hljl-t'>  </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>map</span><span class='hljl-p'>(</span><span class='hljl-n'>i</span><span class='hljl-t'> </span><span class='hljl-oB'>-&gt;</span><span class='hljl-t'> </span><span class='hljl-nf'>Subject</span><span class='hljl-p'>(</span><span class='hljl-n'>id</span><span class='hljl-oB'>=</span><span class='hljl-n'>i</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>events</span><span class='hljl-oB'>=</span><span class='hljl-n'>ev1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-nf'>covariate</span><span class='hljl-p'>()),</span><span class='hljl-t'> </span><span class='hljl-ni'>1</span><span class='hljl-oB'>:</span><span class='hljl-ni'>20</span><span class='hljl-p'>)</span>
+</span><span class='hljl-n'>pop</span><span class='hljl-t'>  </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>map</span><span class='hljl-p'>(</span><span class='hljl-n'>i</span><span class='hljl-t'> </span><span class='hljl-oB'>-&gt;</span><span class='hljl-t'> </span><span class='hljl-nf'>Subject</span><span class='hljl-p'>(</span><span class='hljl-n'>id</span><span class='hljl-oB'>=</span><span class='hljl-n'>i</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>events</span><span class='hljl-oB'>=</span><span class='hljl-n'>ev1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-nf'>covariate</span><span class='hljl-p'>()),</span><span class='hljl-t'> </span><span class='hljl-ni'>1</span><span class='hljl-oB'>:</span><span class='hljl-ni'>20</span><span class='hljl-p'>)</span>
 </pre>
 
 
@@ -1243,8 +1239,8 @@ Population
 </pre>
 
 
-<ol start="15">
-<li><p>A population of <code>30 subjects</code> receive <strong>3 cycles</strong> of <strong>3 different regimens</strong>, with each cycle as a covariate</p>
+<ol start="14">
+<li><p>A population of 30 subjects receive <strong>3 cycles</strong> of <strong>3 different regimens</strong>, with each cycle as a covariate</p>
 </li>
 </ol>
 <ul>
@@ -1276,13 +1272,16 @@ Population
 </span><span class='hljl-nf'>covariate_time</span><span class='hljl-p'>()</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-p'>(</span><span class='hljl-n'>Weight</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-ni'>0</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>Cycle</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-ni'>504</span><span class='hljl-p'>,</span><span class='hljl-ni'>1008</span><span class='hljl-p'>])</span><span class='hljl-t'>
 
 </span><span class='hljl-cs'>#Build a Population</span><span class='hljl-t'>
-</span><span class='hljl-n'>pop</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>map</span><span class='hljl-p'>(</span><span class='hljl-n'>i</span><span class='hljl-t'> </span><span class='hljl-oB'>-&gt;</span><span class='hljl-t'> </span><span class='hljl-nf'>Subject</span><span class='hljl-p'>(</span><span class='hljl-n'>id</span><span class='hljl-oB'>=</span><span class='hljl-n'>i</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>events</span><span class='hljl-oB'>=</span><span class='hljl-n'>evs</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-nf'>covariates</span><span class='hljl-p'>(),</span><span class='hljl-t'> </span><span class='hljl-n'>covariates_time</span><span class='hljl-oB'>=</span><span class='hljl-nf'>covariate_time</span><span class='hljl-p'>(),</span><span class='hljl-t'> </span><span class='hljl-n'>covariates_direction</span><span class='hljl-oB'>=:</span><span class='hljl-n'>left</span><span class='hljl-p'>),</span><span class='hljl-t'> </span><span class='hljl-ni'>1</span><span class='hljl-oB'>:</span><span class='hljl-ni'>20</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>pop1</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>map</span><span class='hljl-p'>(</span><span class='hljl-n'>i</span><span class='hljl-t'> </span><span class='hljl-oB'>-&gt;</span><span class='hljl-t'> </span><span class='hljl-nf'>Subject</span><span class='hljl-p'>(</span><span class='hljl-n'>id</span><span class='hljl-oB'>=</span><span class='hljl-n'>i</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>events</span><span class='hljl-oB'>=</span><span class='hljl-n'>evs</span><span class='hljl-p'>,</span><span class='hljl-t'>
+                    </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-nf'>covariates</span><span class='hljl-p'>(),</span><span class='hljl-t'>
+                    </span><span class='hljl-n'>covariates_time</span><span class='hljl-oB'>=</span><span class='hljl-nf'>covariate_time</span><span class='hljl-p'>(),</span><span class='hljl-t'>
+                    </span><span class='hljl-n'>covariates_direction</span><span class='hljl-oB'>=:</span><span class='hljl-n'>left</span><span class='hljl-p'>),</span><span class='hljl-t'> </span><span class='hljl-ni'>1</span><span class='hljl-oB'>:</span><span class='hljl-ni'>20</span><span class='hljl-p'>)</span><span class='hljl-t'>
 
-</span><span class='hljl-n'>df1</span><span class='hljl-t'>  </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>DataFrame</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>df1</span><span class='hljl-t'>  </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>DataFrame</span><span class='hljl-p'>(</span><span class='hljl-n'>pop1</span><span class='hljl-p'>)</span><span class='hljl-t'>
 </span><span class='hljl-n'>df1</span><span class='hljl-p'>[</span><span class='hljl-oB'>!</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:dv</span><span class='hljl-p'>]</span><span class='hljl-t'> </span><span class='hljl-oB'>.=</span><span class='hljl-t'> </span><span class='hljl-n'>missing</span><span class='hljl-t'>
 
 </span><span class='hljl-cs'>#Read dataset into Pumas</span><span class='hljl-t'>
-</span><span class='hljl-n'>df</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>read_pumas</span><span class='hljl-p'>(</span><span class='hljl-n'>df1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:Weight</span><span class='hljl-p'>,</span><span class='hljl-oB'>:</span><span class='hljl-n'>Cycle</span><span class='hljl-p'>])</span>
+</span><span class='hljl-n'>pop</span><span class='hljl-t'>  </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>read_pumas</span><span class='hljl-p'>(</span><span class='hljl-n'>df1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:Weight</span><span class='hljl-p'>,</span><span class='hljl-oB'>:</span><span class='hljl-n'>Cycle</span><span class='hljl-p'>])</span>
 </pre>
 
 
@@ -1294,7 +1293,7 @@ Population
 </pre>
 
 
-<ol start="16">
+<ol start="15">
 <li><p>In an <em>in-vitro</em> study of <code>2 drugs</code>, <em>various concentrations</em> are tested for both the compounds as follows.</p>
 </li>
 </ol>
@@ -1313,31 +1312,32 @@ Population
 
 <pre class='hljl'>
 <span class='hljl-cs'>#Parameters</span><span class='hljl-t'>
-</span><span class='hljl-n'>param_cmpA</span><span class='hljl-t'>      </span><span class='hljl-oB'>=</span><span class='hljl-t'>   </span><span class='hljl-p'>(</span><span class='hljl-t'> </span><span class='hljl-n'>tvλ0</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nfB'>0.0283</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>tvn0</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nfB'>1313.1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>tvk1</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nfB'>0.293</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>tvk2</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nfB'>0.0726</span><span class='hljl-t'> </span><span class='hljl-p'>)</span><span class='hljl-t'>
-</span><span class='hljl-n'>param_cmpB</span><span class='hljl-t'>      </span><span class='hljl-oB'>=</span><span class='hljl-t'>   </span><span class='hljl-p'>(</span><span class='hljl-t'> </span><span class='hljl-n'>tvλ0</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nfB'>0.0292</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>tvn0</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nfB'>1016.7</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>tvk1</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nfB'>0.416</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>tvk2</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nfB'>0.0112</span><span class='hljl-t'> </span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>param_cmpA</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'>   </span><span class='hljl-p'>(</span><span class='hljl-t'> </span><span class='hljl-n'>tvλ0</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nfB'>0.0283</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>tvn0</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nfB'>1313.1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>tvk1</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nfB'>0.293</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>tvk2</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nfB'>0.0726</span><span class='hljl-t'> </span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>param_cmpB</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'>   </span><span class='hljl-p'>(</span><span class='hljl-t'> </span><span class='hljl-n'>tvλ0</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nfB'>0.0292</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>tvn0</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nfB'>1016.7</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>tvk1</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nfB'>0.416</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>tvk2</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nfB'>0.0112</span><span class='hljl-t'> </span><span class='hljl-p'>)</span><span class='hljl-t'>
 
 </span><span class='hljl-cs'>#Concentrations tested for the Compounds</span><span class='hljl-t'>
 </span><span class='hljl-n'>conc_compA</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-p'>[</span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-nfB'>0.009</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-nfB'>0.019</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-nfB'>0.03</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-nfB'>0.7</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-nfB'>1.5</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-nfB'>3.125</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-nfB'>6.125</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-nfB'>12.5</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-ni'>25</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-ni'>50</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-ni'>100</span><span class='hljl-p'>]</span><span class='hljl-t'>
 </span><span class='hljl-n'>conc_compB</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-p'>[</span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-nfB'>0.009</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-nfB'>0.019</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-nfB'>0.03</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-nfB'>0.07</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-nfB'>0.15</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-nfB'>0.312</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-nfB'>0.625</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-nfB'>1.25</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-nfB'>2.5</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-ni'>5</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-ni'>10</span><span class='hljl-p'>]</span><span class='hljl-t'>
 
 
-</span><span class='hljl-n'>drugs</span><span class='hljl-t'>   </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>repeat</span><span class='hljl-p'>([</span><span class='hljl-s'>&quot;Comp_A&quot;</span><span class='hljl-p'>,</span><span class='hljl-s'>&quot;Comp_B&quot;</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>inner</span><span class='hljl-oB'>=</span><span class='hljl-nf'>length</span><span class='hljl-p'>(</span><span class='hljl-n'>conc_compA</span><span class='hljl-p'>))</span><span class='hljl-t'>
-</span><span class='hljl-n'>concs</span><span class='hljl-t'>   </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>vcat</span><span class='hljl-p'>(</span><span class='hljl-n'>conc_compA</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>conc_compB</span><span class='hljl-p'>)</span><span class='hljl-t'>
-</span><span class='hljl-cs'>#param   = vcat(param_cmpA,param_cmpB)</span><span class='hljl-t'>
-</span><span class='hljl-cs'>#param   = repeat(param, inner=length(conc_compA))</span><span class='hljl-t'>
+</span><span class='hljl-n'>drugs</span><span class='hljl-t'>      </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>repeat</span><span class='hljl-p'>([</span><span class='hljl-s'>&quot;Comp_A&quot;</span><span class='hljl-p'>,</span><span class='hljl-s'>&quot;Comp_B&quot;</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>inner</span><span class='hljl-oB'>=</span><span class='hljl-nf'>length</span><span class='hljl-p'>(</span><span class='hljl-n'>conc_compA</span><span class='hljl-p'>))</span><span class='hljl-t'>
+</span><span class='hljl-n'>concs</span><span class='hljl-t'>      </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>vcat</span><span class='hljl-p'>(</span><span class='hljl-n'>conc_compA</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>conc_compB</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-cs'>#param     = vcat(param_cmpA,param_cmpB)</span><span class='hljl-t'>
+</span><span class='hljl-cs'>#param     = repeat(param, inner=length(conc_compA))</span><span class='hljl-t'>
 
 </span><span class='hljl-cs'>#Build a Population</span><span class='hljl-t'>
-</span><span class='hljl-n'>pop</span><span class='hljl-t'>     </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>Population</span><span class='hljl-p'>(</span><span class='hljl-nf'>map</span><span class='hljl-p'>(</span><span class='hljl-n'>i</span><span class='hljl-t'> </span><span class='hljl-oB'>-&gt;</span><span class='hljl-nf'>Subject</span><span class='hljl-p'>(</span><span class='hljl-n'>id</span><span class='hljl-oB'>=</span><span class='hljl-n'>i</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>event_data</span><span class='hljl-oB'>=</span><span class='hljl-kc'>false</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>(</span><span class='hljl-n'>conc</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>concs</span><span class='hljl-p'>[</span><span class='hljl-n'>i</span><span class='hljl-p'>],</span><span class='hljl-n'>drug</span><span class='hljl-oB'>=</span><span class='hljl-n'>drugs</span><span class='hljl-p'>[</span><span class='hljl-n'>i</span><span class='hljl-p'>])),</span><span class='hljl-t'> </span><span class='hljl-ni'>1</span><span class='hljl-oB'>:</span><span class='hljl-nf'>length</span><span class='hljl-p'>(</span><span class='hljl-n'>concs</span><span class='hljl-p'>)))</span><span class='hljl-t'>
+</span><span class='hljl-n'>pop</span><span class='hljl-t'>        </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>Population</span><span class='hljl-p'>(</span><span class='hljl-nf'>map</span><span class='hljl-p'>(</span><span class='hljl-n'>i</span><span class='hljl-t'> </span><span class='hljl-oB'>-&gt;</span><span class='hljl-t'> </span><span class='hljl-nf'>Subject</span><span class='hljl-p'>(</span><span class='hljl-n'>id</span><span class='hljl-oB'>=</span><span class='hljl-n'>i</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>event_data</span><span class='hljl-oB'>=</span><span class='hljl-kc'>false</span><span class='hljl-p'>,</span><span class='hljl-t'>
+                                 </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>(</span><span class='hljl-n'>conc</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>concs</span><span class='hljl-p'>[</span><span class='hljl-n'>i</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>drug</span><span class='hljl-oB'>=</span><span class='hljl-n'>drugs</span><span class='hljl-p'>[</span><span class='hljl-n'>i</span><span class='hljl-p'>])),</span><span class='hljl-t'> </span><span class='hljl-ni'>1</span><span class='hljl-oB'>:</span><span class='hljl-nf'>length</span><span class='hljl-p'>(</span><span class='hljl-n'>concs</span><span class='hljl-p'>)))</span><span class='hljl-t'>
 
 </span><span class='hljl-cs'>#Run Simulation using the Model</span><span class='hljl-t'>
-</span><span class='hljl-cs'>#sim    = map(((subject, paramᵢ),) -&gt; simobs(model, subject, paramᵢ, obstimes=0:6:72), zip(pop, param))</span><span class='hljl-t'>
-</span><span class='hljl-cs'>#df     = DataFrame(sim)</span>
+</span><span class='hljl-cs'>#sim       = map(((subject, paramᵢ),) -&gt; simobs(model, subject, paramᵢ, obstimes=0:6:72), zip(pop, param))</span><span class='hljl-t'>
+</span><span class='hljl-cs'>#df_sim    = DataFrame(sim)</span>
 </pre>
 
 
 
-<ol start="17">
-<li><p>A population of <code>20 subjects</code> receive a <em>Loading Dose</em> of <strong>0.1mg/kg</strong> and and a <em>Maintenance Dose</em> of <strong>14.4 mg/kg</strong> for <code>12 hours</code>. The covariates are:</p>
+<ol start="16">
+<li><p>A population of 20 subjects receive a <em>Loading Dose</em> of <strong>0.1mg/kg</strong> and and a <em>Maintenance Dose</em> of <strong>14.4 mg/kg</strong> for <code>12 hours</code>. The covariates are:</p>
 </li>
 </ol>
 <ul>
@@ -1352,7 +1352,7 @@ Population
 
 <pre class='hljl'>
 <span class='hljl-cs'>#Dosage Regimen</span><span class='hljl-t'>
-</span><span class='hljl-n'>wt</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>rand</span><span class='hljl-p'>(</span><span class='hljl-nfB'>42.5</span><span class='hljl-oB'>:</span><span class='hljl-nfB'>63.5</span><span class='hljl-p'>,</span><span class='hljl-ni'>60</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>wt</span><span class='hljl-t'>  </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>rand</span><span class='hljl-p'>(</span><span class='hljl-nfB'>42.5</span><span class='hljl-oB'>:</span><span class='hljl-nfB'>63.5</span><span class='hljl-p'>,</span><span class='hljl-ni'>60</span><span class='hljl-p'>)</span><span class='hljl-t'>
 </span><span class='hljl-nf'>dose_by_weight</span><span class='hljl-p'>(</span><span class='hljl-n'>wt</span><span class='hljl-p'>)</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>DosageRegimen</span><span class='hljl-p'>([</span><span class='hljl-nfB'>0.1</span><span class='hljl-oB'>*</span><span class='hljl-n'>wt</span><span class='hljl-p'>,</span><span class='hljl-nfB'>14.4</span><span class='hljl-oB'>*</span><span class='hljl-n'>wt</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>time</span><span class='hljl-oB'>=</span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>cmt</span><span class='hljl-oB'>=</span><span class='hljl-ni'>1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>rate</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-nfB'>0.1</span><span class='hljl-oB'>*</span><span class='hljl-n'>wt</span><span class='hljl-p'>])</span><span class='hljl-t'>
 
 </span><span class='hljl-cs'>#Covariate Times</span><span class='hljl-t'>
@@ -1372,7 +1372,7 @@ Population
 </pre>
 
 
-<ol start="18">
+<ol start="17">
 <li><p>In this <code>example</code> you will learn how to <strong>simulate data</strong> if you have <strong>individual parameters</strong> of each subject.</p>
 </li>
 </ol>
@@ -1403,7 +1403,7 @@ Population
 
 </span><span class='hljl-cs'>#Simulate using the sim_obs function</span><span class='hljl-t'>
 </span><span class='hljl-cs'>#sim    = map(((subject, paramᵢ),) -&gt; simobs(model, subject, paramᵢ, obstimes=0:1:72), zip(pop, param))</span><span class='hljl-t'>
-</span><span class='hljl-cs'>#df     = DataFrame(sim)</span>
+</span><span class='hljl-cs'>#df_sim = DataFrame(sim)</span>
 </pre>
 
 
@@ -1413,7 +1413,7 @@ Population
         <div class="footer">
           <p>
             Published from <a href="population_models.jmd">population_models.jmd</a>
-            using <a href="http://github.com/JunoLab/Weave.jl">Weave.jl</a> v0.10.2 on 2020-08-08.
+            using <a href="http://github.com/JunoLab/Weave.jl">Weave.jl</a> v0.10.2 on 2020-08-10.
           </p>
         </div>
       </div>
