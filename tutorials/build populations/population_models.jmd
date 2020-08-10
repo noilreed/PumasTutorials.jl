@@ -1,27 +1,39 @@
 ---
-title : Designing Dosage Regimens
-author : Parsshava R Mehta
-date : 7th August 20202
+title : Building Populations for Simulation
+date: `j Date(now())`
 ---
 
 Load the necessary libraries
+
 ```julia
 using Pumas, DataFrames
 ```
 
-In this tutorial you will learn how to design different dosage regimens
+In this tutorial you will learn how to build `Population` of subjects each with a
+dosing regimen (`events`), `covariates` and `observations`. There are two approaches
+to doing this:
 
-1. A population of `20 subjects` receive a dose of **5mg/kg** as an _IV-Infusion_ for a duration of `30 mins (0.5hrs)`.
+* using the `DosageRegimen` constructor followed by `Subject`/`Population` with `covariates`
+* construct a `DataFrame` and then use the `read_pumas` function to turn this into a `Population`
+
+Check out the [documentation](https://pumasai.gitlab.io/PumasDocs-jl/basics/doses_subjects_populations/)
+on `DosageRegimen`, `read_pumas` and `Subject` for more information. In this tutorial, we do
+not show the simulation from a model, but any of these examples below are ready to be simulated
+with an appropriate model.
+
+1. A population of 20 subjects receive a dose of **5mg/kg** as an _IV-Infusion_
+for a duration of 30 mins (0.5hrs).
 
 We will go _stepwise_ from the above information:
- * First write the `number of subjects`
+ * First specify the `number of subjects`
  * Write the `dose` in mg/kg
  * Assign weights randomly from `75 to 102` for the 20 subjects
- * Now calculate the dose for each subject by `multiplying` the dose/kg into Weight
+ * Next calculate the dose for each subject by `multiplying` the dose/kg into `Weight`
  * Calculate the `Rate` for each subject by dividing **Dose/Duration**
- * Create a DataFrame for the 20 subjects
- * Pass the dataframe to `read_pumas` with Weight as covariates
+ * Create a `DataFrame` for the 20 subjects
+ * Pass the dataframe to `read_pumas` with `Weight` as covariate
  * You can now simulate using the dosage regimen that you have designed
+
 ```julia
 n       = 20
 
@@ -32,13 +44,20 @@ Dose    = Weight .* dose_kg
 Rate    = Dose ./ 0.5
 
 #Creating a DataFrame of the population
-pop1    = DataFrame(id=1:20, amt=Dose, time=0, dv=missing, cmt=1, evid=1, rate=Rate, Weight=Weight)
+pop1    = DataFrame(id=1:20,
+                    amt=Dose, time=0,
+                    dv=missing, cmt=1, evid=1,
+                    rate=Rate, Weight=Weight)
 
 #Read dataset into Pumas
-df1     = read_pumas(pop1, covariates=[:Weight], observations=[:dv])
+df1     = read_pumas(pop1,
+                     covariates=[:Weight],
+                     observations=[:dv])
 ```
 
-2. A population of `3 subjects` recieve **three different doses** of a drug as an _IV-Bolus_ every `8` hours for `1 day`.
+2. A population of 3 subjects recieve **three different doses** of a drug as an
+_IV-Bolus_ every `8` hours for `1 day`.
+
  * Subject 1 - Receives a dose of **60mg**
  * Subject 2 - Receives a dose of **45mg**
  * Subject 3 - Receives a dose of **20mg**
@@ -58,7 +77,10 @@ sub3    = Subject(id=3, events=ev3)
 pop1    = [sub1,sub2,sub3]
 ```
 
-3. A total of `4 subjects` receive **3 different dosage regimens** at **3 different periods**. Of the four subjects `1 is healthy` and `3 are obese`. The weight of the subjects are: Sub1 - 76kg, Sub2 - 112kg, Sub3 - 145kg, Sub4 - 186kg.
+3. A total of 4 subjects receive **3 different dosage regimens** at **3 different periods**.
+Of the four subjects 1 is healthy and 3 are obese. The weights of the subjects are:
+Sub1 - 76kg, Sub2 - 112kg, Sub3 - 145kg, Sub4 - 186kg.
+
  * Period 1 : IV - 5mg
  * Period 2 : Infusion - 2.5mg over 1 hour
  * Period 3 : Oral - 7.5mg
@@ -75,7 +97,7 @@ dose      = [dose_iv;dose_inf;dose_oral]
 #Rate for Infusion
 rate_inf  = repeat([2.5],n)
 rate_zero = repeat([0],n)
-rate      = [rate_zero;rate_inf;rate_zero]
+rates      = [rate_zero;rate_inf;rate_zero]
 
 #Create different Compartments for IV and Oral
 cmt_iv    = repeat([2],8)
@@ -93,13 +115,20 @@ Weight    = repeat([76,112,145,186],3)
 Obese     = repeat([0,1,1,1],3)
 
 #Create a dataframe of the population
-pop       = DataFrame(id=repeat([1,2,3,4],3), time=0, dv = missing, evid=1, cmt=cmt, amt=dose, rate=rate, Period=Period, Weight=Weight, Obese=Obese)
+pop       = DataFrame(id=repeat([1,2,3,4],3),
+            time=0, dv = missing, evid=1, cmt=cmt, amt=dose,
+            rate=rates, Period=Period, Weight=Weight, Obese=Obese)
 
 #Read dataset into Pumas
-df1       = read_pumas(pop, observations=[:dv], covariates=[:Weight,:Obese])
+df1       = read_pumas(pop,
+            observations=[:dv],
+            covariates=[:Weight,:Obese])
 ```
 
-4. A total of `600 subjects` receive a dose of either **0.1 mg/kg, 0.3 mg/kg, 1.0 mg/kg, 3.0 mg/kg or 10 mg/kg** as an _1 hour IV-infusion_ at `time=0 (day1)` and second dose at `time=336 (day 14)`. The probablity of receiving the respective doses are _10%, 10%, 10%, 60% and 10%_. The covariates are:
+4. A total of 600 subjects receive a dose of either **0.1 mg/kg, 0.3 mg/kg, 1.0 mg/kg, 3.0 mg/kg or 10 mg/kg**
+as an _1 hour IV-infusion_ at time=0 (day1) and second dose at time=336 (day 14). The probablity of receiving
+the respective doses are _10%, 10%, 10%, 60% and 10%_. The covariates are:
+
  * Body Weight - Mean = 79.09 and SD = 19.28
  * eGFR - Mean = 78.49 and SD = 21.63
  * Gender - Male(66%) and Female(33%)
@@ -126,7 +155,11 @@ pmale         = 0.66
 ismale        = rand(Binomial(1,pmale), n)
 
 #For First Dose
-df1           = DataFrame(id = 1:600, time=0, evid=1, cmt = 1, dv = missing, Weight=bwt, eGFR=gfr, Sex=ismale, dose = dose_kg[dosegrps_prob])
+df1           = DataFrame(id = 1:600, time=0,
+                evid=1, cmt = 1, dv = missing,
+                Weight=bwt, eGFR=gfr, Sex=ismale,
+                dose = dose_kg[dosegrps_prob])
+
 df1[!, :amt] .= df1.Weight .* df1.dose
 df1[!, :rate] .= df1.amt
 
@@ -142,7 +175,8 @@ sort!(df3, [:id,:time])
 df             = read_pumas(df3, covariates=[:Weight, :eGFR, :Sex])
 ```
 
-5. A population of `100 subjects` receives a dose of **2000 mcg** as an _IV-Infusion_ over `10 mins` at `time=0`. The covariates are weight and age assigned randomly.
+5. A population of 100 subjects receives a dose of **2000 mcg** as an _IV-Infusion_ over
+10 mins at time=0. The covariates are weight and age assigned randomly.
 
 ```julia
 # Dosage Regimen
@@ -172,7 +206,8 @@ pop3  = map(i -> Subject(id=i, events=ev3, covariates=(Weight=rand(13:18),)), 25
 pop   = [pop1;pop2;pop3]
 ```
 
-7. A population of `20 subjects` receives an _IV-Bolus_ dose of **20mg/kg**. The weights are assigned randomly between `45 and 78`.
+7. A population of 20 subjects receives an _IV-Bolus_ dose of **20mg/kg**. The weights
+are assigned randomly between 45 and 78.
 
 ```julia
 ev1  = DosageRegimen(20, time=0, cmt=1)
@@ -191,8 +226,9 @@ df   = read_pumas(df1, observations=[:dv], covariates=[:Weight])
  * Group A - `8 mice` receive the drug (control) on day 9,10,13,14,15,16
  * Group B - `8 mice` receive a combination of **control + new drug of 45mcg** on day 9,10,13,14,15,16
 
-**Note:-** Since both the groups receive control, the dose is not included for both. There are no dosing `events` in Group A.
-
+**Note:-** Since both the groups receive control, the dose is not included for both.
+_There are no dosing `events` in Group A._
+#TODO: NOT SURE IF THIS POPULATION WILL RUN IN A MODEL. PLEASE CHECK
 ```julia
 # ID - A
 df1      = map( i -> DataFrame(id=i, time=[9,10,13,14,15,16], amt=0, cmt=1, evid=0, group="A"),1:8)
@@ -212,7 +248,9 @@ df4[!, :dv] .= missing
 df = read_pumas(df4, covariates=[:group])
 ```
 
-9. A _fixed dose combination_ of **drug A (100 mg)** and **drug B (200 mg)** is given `once-daily` orally for `3 days`.
+9. A _fixed dose combination_ of **drug A (100 mg)** and **drug B (200 mg)** is
+given once-daily orally for 3 days.
+
  * Subjects weighing < 50kg are given `1.5 tablets` (150mg)
  * Subjects weighing 50-60 kgs are given `2 tablets` (200mg)
  * Subjects weighing >60 kgs are given `2.5 tablets` (250mg)
@@ -231,17 +269,17 @@ pop3 = map(i -> Subject(id=1, events=ev3, covariates=(Weights=rand(60:80),)),1:1
 pop  = [pop1;pop2;pop3]
 ```
 
-10. A total of `40 patients` receive a drug as follows
- * `20 obese patients` receive an _IV-Infusion_ of **12.5 mg/kg/day** at the `rate of 600mg/hr`. The dose is _capped_ at max **2500mg/day**.
- * `20 non-obese patients` receive an _IV-Infusion_ of **1000mg/day** at the `rate of 600mg/hr`.
+10. A total of 40 patients receive a drug as follows
+ * 20 obese patients receive an _IV-Infusion_ of **12.5 mg/kg/day** at the `rate of 600mg/hr`. The dose is _capped_ at max **2500mg/day**.
+ * 20 non-obese patients receive an _IV-Infusion_ of **1000mg/day** at the `rate of 600mg/hr`.
 
 ```julia
 # Obese Individuals
 ev1   = DosageRegimen(12.5, time=0, cmt=1, rate=600)
 pop1  = map(i -> Subject(id=i, events=ev1, covariates=(Weight=rand(90:230), Obese=1)),1:20)
 df1   = DataFrame(pop1)
-df1[:amt] .= df1[:amt] .* df1[:Weight]
-df1[:amt][df1[:amt] .> 2500] .= 2500
+df1[!,:amt] .= df1[:,:amt] .* df1[:,:Weight]
+df1[!,:amt] .= ifelse.(df1.amt .> 2500, 2500, df1.amt)
 df1[!, :dv] .= missing
 
 # Non-Obese Individuals
@@ -258,12 +296,14 @@ df    = read_pumas(pop, covariates=[:Weight, :Obese])
 ```
 
 
-11. In this example, we will build a population of `150 patients` for a **_disease progression model_** tested on `three treatment groups` as follows:
+11. In this example, we will build a population of 150 patients for a
+**_disease progression model_** tested on `three treatment groups` as follows:
+
  * Group A - A population of `50 patients` receives _Drug A_
  * Group B - A population of `50 patients` receives _Drug B_
  * Group C - A population of `50 patients` receives _Drug C_
 
-Note: There is **no event data** we are modelling the PD data. Each _Treatment Group_ is a `Covariate`.
+Note: There is **no event data** as we are modelling the PD data. Each _Treatment Group_ is a `Covariate`.
 
 ```julia
 # Group A:
@@ -280,7 +320,7 @@ data3 = read_pumas(df3, observations=[:dv_pd], covariates=[:trtgrp_A, :trtgrp_B,
 ```
 
 
-12. A total of `30 patients` receive various doses as follows:
+12. A total of 30 patients receive various doses as follows:
  * Group 1 (Normal Renal Functions) = **7mg/kg** `Q24` hrs with `11` additional doses and the `CrCl` changes at `0 & 144 hours`
  * Group 2 (Medium Renal Functions) = **7mg/kg** `Q36` hrs with `7` additional doses and the `CrCl` changes at `0 & 144 hours`
  * Group 3 (Poor Renal Functions) = **7mg/kg** `Q48` hrs with `5` additional doses and the `CrCl` changes at `0 & 144 hours`
@@ -300,21 +340,30 @@ cvs_poor()   = (Weight=rand(60:120), CrCl = repeat(rand(15:29,2)))
 cvstimes()   = (Weight=[0], CrCl = [0,144])
 
 # Building the Population
-pop1 = map(i -> Subject(id=i, events=ev1, covariates=cvs_normal(), covariates_time=cvstimes(), covariates_direction=:left),1:10)
-pop2 = map(i -> Subject(id=i, events=ev2, covariates=cvs_medium(), covariates_time=cvstimes(), covariates_direction=:left),11:20)
-pop3 = map(i -> Subject(id=i, events=ev3, covariates=cvs_poor(), covariates_time=cvstimes(), covariates_direction=:left),21:30)
+pop1 = map(i -> Subject(id=i, events=ev1,
+                        covariates=cvs_normal(),
+                        covariates_time=cvstimes(),
+                        covariates_direction=:left),1:10)
+pop2 = map(i -> Subject(id=i, events=ev2,
+                        covariates=cvs_medium(),
+                        covariates_time=cvstimes(),
+                        covariates_direction=:left),11:20)
+pop3 = map(i -> Subject(id=i, events=ev3,
+                        covariates=cvs_poor(),
+                        covariates_time=cvstimes(),
+                        covariates_direction=:left),21:30)
 pop  = [pop1;pop2;pop3]
 df1  = DataFrame(pop)
 
 # Adjust dose based on weight
-df1[:amt] .= df1[:amt] .* df1[:Weight]
+df1[!,:amt] .= df1.amt .* df1.Weight
 df1[!,:dv] .= missing
 
 #Read dataset into Pumas
 df = read_pumas(df1, covariates=[:Weight, :CrCl])
 ```
 
-13. A population of `1000 subjects` receive an _IV-Infusion_ of **5mg/kg** for a duration of `0.5 hrs`.
+13. A population of 1000 subjects receive an _IV-Infusion_ of **5mg/kg** for a duration of `0.5 hrs`.
 
 ```julia
 #Build Dosage Regimen
@@ -325,15 +374,15 @@ pop1 = map(i -> Subject(id=i, events=ev1, covariates=(MDRD=rand(77:171), Weight=
 df1  = DataFrame(pop1)
 
 #Calculate the Weight based dose
-df1[:amt] = df1[:amt] .* df1[:Weight]
-df1[:rate] = df1[:amt] ./ 0.5
+df1[!, :amt]  .= df1.amt .* df1.Weight
+df1[!, :rate] .= df1.amt ./ 0.5
 df1[!, :dv] .= missing
 
 #Read dataset into Pumas
 df   = read_pumas(df1, observations=[:dv], covariates=[:MDRD,:Weight])
 ```
 
-14. A population of `20 subjects` receive an _IV-Infusion_ of **700000mcg** over `12 hours`. The covariates are:
+14. A population of 20 subjects receive an _IV-Infusion_ of **700000mcg** over `12 hours`. The covariates are:
  * Billirubin (Tbil) = 100 - 1200
  * Creatine Clearance (CrCl) = 30 - 120
  * CYP1A2 = 0 : Normal , 1 : Poor Metabolizer
@@ -355,7 +404,7 @@ covariate() = (Tbil   = rand(100:1200),
 pop1  = map(i -> Subject(id=i, events=ev1, covariates=covariate()), 1:20)
 ```
 
-15. A population of `30 subjects` receive **3 cycles** of **3 different regimens**, with each cycle as a covariate
+15. A population of 30 subjects receive **3 cycles** of **3 different regimens**, with each cycle as a covariate
  * Regimen 1 - A dose of **80 mg** on-period: `14 days` and off-period: `7 days` (no drug) [Total 3 weeks]
  * Regimen 2 - A dose of **160 mg** mg on-period: `4 days` and off-period: `3 days` (no drug) [Total 3 weeks]
  * Regimen 3 - A dose of **200 mg** on-period: `5 days` and off-period: `2 days` (no drug) [Total 3 weeks]
@@ -379,7 +428,10 @@ covariates()     = (Weight=rand(67:95), Cycle=[1,2,3])
 covariate_time() = (Weight=[0], Cycle=[0,504,1008])
 
 #Build a Population
-pop = map(i -> Subject(id=i, events=evs, covariates=covariates(), covariates_time=covariate_time(), covariates_direction=:left), 1:20)
+pop = map(i -> Subject(id=i, events=evs,
+                    covariates=covariates(),
+                    covariates_time=covariate_time(),
+                    covariates_direction=:left), 1:20)
 
 df1  = DataFrame(pop)
 df1[!, :dv] .= missing
@@ -411,14 +463,16 @@ concs   = vcat(conc_compA, conc_compB)
 #param   = repeat(param, inner=length(conc_compA))
 
 #Build a Population
-pop     = Population(map(i ->Subject(id=i, event_data=false, covariates=(conc = concs[i],drug=drugs[i])), 1:length(concs)))
+pop     = Population(map(i -> Subject(id=i, event_data=false,
+                              covariates=(conc = concs[i], drug=drugs[i])), 1:length(concs)))
 
 #Run Simulation using the Model
 #sim    = map(((subject, paramᵢ),) -> simobs(model, subject, paramᵢ, obstimes=0:6:72), zip(pop, param))
 #df     = DataFrame(sim)
 ```
 
-17. A population of `20 subjects` receive a _Loading Dose_ of **0.1mg/kg** and and a _Maintenance Dose_ of **14.4 mg/kg** for `12 hours`. The covariates are:
+17. A population of 20 subjects receive a _Loading Dose_ of **0.1mg/kg** and and a _Maintenance Dose_ of **14.4 mg/kg** for `12 hours`. The covariates are:
+
  * Weight
  * C-Reactive Protein (CRP)
  * Inter-Ocassion (OCC)
