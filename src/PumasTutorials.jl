@@ -82,21 +82,21 @@ function tutorial_footer(folder=nothing, file=nothing)
     ```
     """)
 
-    ctx = Pkg.API.Context()
-    pkgs = Pkg.Display.status(Pkg.API.Context(), use_as_api=true);
+    # ctx = Pkg.API.Context()
+    # pkgs = Pkg.Display.status(Pkg.API.Context(), use_as_api=true);
 
-    display("text/markdown", """
-    Package Information:
-    """)
+    # display("text/markdown", """
+    # Package Information:
+    # """)
 
-    md = ""
-    md *= "```\nStatus `$(ctx.env.project_file)`\n"
+    # md = ""
+    # md *= "```\nStatus `$(ctx.env.project_file)`\n"
 
-    for pkg in pkgs
-        md *= "[$(pkg.uuid)] $(pkg.name) $(pkg.old.ver)\n"
-    end
-    md *= "```"
-    display("text/markdown", md)
+    # for pkg in pkgs
+    #     md *= "[$(pkg.uuid)] $(pkg.name) $(pkg.old.ver)\n"
+    # end
+    # md *= "```"
+    # display("text/markdown", md)
 end
 
 function open_notebooks()
