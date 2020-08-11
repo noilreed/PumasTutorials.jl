@@ -1,13 +1,13 @@
 ---
 title : Non Compartmental Analysis
-author : Parsshava R Mehta
-date : 19th June 2020
+author : PumasAI
+date : August 2020
 ---
 
 Load the necessary libraries
 
 ```julia
-using Pumas, Plots, CSV, DataFrames, StatsPlots, Statistics
+using PumasTutorials, Pumas, Plots, CSV, DataFrames, StatsPlots, Statistics
 ```
 
 ## Introduction
@@ -26,7 +26,7 @@ In the given dataset
 **Step1:** Load the NCA dataset using the `CSV.read` function and convert it to a Dataframe
 
 ```julia
-data = DataFrame!(CSV.File("NCA_tutorial.csv"))
+data = DataFrame(CSV.File(joinpath(dirname(pathof(PumasTutorials)), "..", "tutorials", "nca", "NCA_tutorial.csv")))
 first(data, 6)
 ```
 
@@ -110,9 +110,7 @@ Calculation of **AUC** at _specific time_ intervals and merge to the final repor
 
 ```julia
 auc0_12   = NCA.auc(pop, interval=(0,12).*timeu, method=:linuplogdown, sigdigits=3) #various other methods are :linear, :linlog
-rename!(auc0_12, Dict(:auc => "auc0_12"))
 auc12_24  = NCA.auc(pop, interval=(12,24).*timeu, method=:linuplogdown, sigdigits=3)
-rename!(auc12_24, Dict(:auc => "auc12_24"))
 final     = innerjoin(report, auc0_12, auc12_24, on = [:id], makeunique=true)
 ```
 
