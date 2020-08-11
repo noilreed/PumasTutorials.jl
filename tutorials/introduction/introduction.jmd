@@ -48,6 +48,7 @@ links below.
 2. [pain_remedication.csv]()
 
 ```julia
+using PumasTutorials
 using Random
 using CSV
 using Pumas
@@ -68,8 +69,8 @@ the name of the variable with _df_ and the `Population` version of that datafram
 be without the _df_ to avoid confusion.
 
 ```julia; results = "hidden"
-pkpain_df = DataFrame!(CSV.File("../../data/intro/pk_painscore.csv", missingstrings=["", "NA", "."]))
-remed_df  = DataFrame!(CSV.File("../../data/intro/pain_remedication.csv", missingstrings=["", "NA", "."]))
+pkpain_df = DataFrame(CSV.File(joinpath(dirname(pathof(PumasTutorials)), "..", "data", "intro", "pk_painscore.csv"), missingstrings=["", "NA", "."]))
+remed_df  = DataFrame(CSV.File(joinpath(dirname(pathof(PumasTutorials)), "..", "data", "intro", "pain_remedication.csv"), missingstrings=["", "NA", "."]))
 ```
 
 Let's filter out the placebo data as we don't need that for the PK analysis.
@@ -292,6 +293,7 @@ pkfit_np = fit(pk_1cmp,
                omegas = (:Ω,))
 ```
 
+
 ```julia
 pretty_table(coeftable(pkfit_np), backend = :html, formatters = ft_round(2,[2]))
 ```
@@ -408,11 +410,8 @@ lrtest(pkfit_1cmp, pkfit_2cmp)
 We should also compare the other metrics and statistics, such `ηshrinkage`, `ϵshrinkage`,
 `aic`, `bic`
 
-#TODO make the code below generate a dataframe or some structure that allows comparison
-```julia; eval=false
-for model in [pkfit_1cmp, pkfit_2cmp]
-  ηshrinkage(model)
-end
+```julia
+pretty_table(DataFrame([(metric=string(f), fit_1cmp=f(pkfit_1cmp), fit_2cmp=f(pkfit_2cmp)) for f in (aic, bic, ϵshrinkage, ηshrinkage)]))
 ```
 
 We next generate some goodness of fit plots to compare which model is performing better.
@@ -421,7 +420,7 @@ To do this, we first `inspect` the diagnostics of our model fit.
 ```julia
 res_inspect_1cmp = DataFrame(inspect(pkfit_1cmp))
 dropmissing!(res_inspect_1cmp)
-pretty_table(first(res_inspect_1cmp, 10), backend = :html,formatters = ft_round(2,[4,5,6,7,8,10,11,12,13,14]))
+pretty_table(first(res_inspect_1cmp, 10), backend = :html, formatters = ft_round(2,[4,5,6,7,8,10,11,12,13,14]))
 ```
 
 ```julia
