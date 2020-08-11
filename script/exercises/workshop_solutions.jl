@@ -7,13 +7,13 @@ single_dose_regimen = DosageRegimen(100, time=0)
 first(single_dose_regimen.data)
 
 
-s1 = Subject(id=1, evs=single_dose_regimen,cvs=(Wt=70,))
+s1 = Subject(id=1, events=single_dose_regimen, covariates=(Wt=70,))
 
 
 choose_covariates() = (Wt = rand(55:80),)
 
 
-pop = Population(map(i -> Subject(id = i,evs = single_dose_regimen, cvs =  choose_covariates()),1:24))
+pop = Population(map(i -> Subject(id = i, events=single_dose_regimen, covariates=choose_covariates()),1:24))
 
 
 pop[1].covariates
@@ -34,7 +34,7 @@ mymodel = @model begin
 
   @pre begin
     CL = tvcl * (Wt/70)^0.75 * exp(η[1])
-    V  = tvv * (Wt/70) * exp(η[2])
+    Vc  = tvv * (Wt/70) * exp(η[2])
     Ka = tvka * exp(η[3])
   end
   @covariates Wt
@@ -46,7 +46,7 @@ mymodel = @model begin
     #end
 
   @derived begin
-      cp = @. 1000*(Central / V)
+      cp = @. 1000*(Central / Vc)
       dv ~ @. Normal(cp, sqrt(cp^2*σ_prop))
     end
 end
@@ -94,10 +94,10 @@ est_df = simdf[.!((simdf.dv .== 0.0) .& (simdf.cmt .==2)),:]
 first(est_df,6)
 
 
-data = read_pumas(est_df ,cvs = [:Wt], dvs=[:dv])
+data = read_pumas(est_df, covariates=[:Wt], observations=[:dv])
 
 
-res = fit(mymodel,data,param,Pumas.FOCEI())
+res = fit(mymodel, data, param, Pumas.FOCEI())
 
 
 infer(res)
