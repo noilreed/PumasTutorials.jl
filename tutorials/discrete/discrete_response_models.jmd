@@ -1,7 +1,6 @@
 ---
 title: Discrete Response Models
-author: Vijay Ivaturi, Chris Rackauckas
-date: July 19th, 2019
+date: August 2020
 ---
 
 # Introduction
@@ -17,7 +16,9 @@ of the Pumas toolchain. In Pumas, to have a discrete distribution as output,
 simply have that your `derived` or `observed` variables come from a discrete
 distribution like a `Poisson` process.
 
-
+```julia
+using PumasTutorials, Pumas, CSV
+```
 
 ## Poisson Response Example
 
@@ -25,7 +26,7 @@ Next let's use a `Poisson` counting process in our model. Here we generate a
 population where everyone is receiving the same doses as a covariate.
 
 ```julia
-pop = Population(map(i -> Subject(id=i,cvs=(dose = i.*10,),time=[0.0]),1:10))
+pop = map(i -> Subject(id=i, covariates=(dose=i.*10,), time=[0.0]), 1:10)
 ```
 
 Now we define our model without dynamics, and directly use the dose information
@@ -68,7 +69,7 @@ Here `dv` is an integer output probabilistically dependent on the dose.
 Let's read the data back in to re-estimate the model parameters
 
 ```julia
-poisson_pop = read_pumas(simdf, dvs=[:dv], cvs=[:dose], event_data=false)
+poisson_pop = read_pumas(simdf, observations=[:dv], covariates=[:dose], event_data=false)
 ```
 
 ```julia
@@ -82,7 +83,7 @@ Next let's use a `NegativeBinomial` counting process in our model. We will use a
 as an example.
 
 ```julia
-pd_poisson = read_pumas(example_data("sim_poisson"), cvs = [:dose], event_data=false)
+pd_poisson = read_pumas(example_data("sim_poisson"), covariates = [:dose], event_data=false)
 ```
 
 Now we define our model without dynamics, and directly use the dose information
@@ -169,8 +170,8 @@ Now, that we made this change, lets read the data into Pumas
 
 ```julia
 data = read_pumas(df,
-  dvs = [:painord],
-  cvs = [:arm, :dose, :conc, :painord,:remed],
+  observations = [:painord],
+  covariates = [:arm, :dose, :conc, :painord, :remed],
   event_data=false)
 ```
 
@@ -226,9 +227,4 @@ and get the paremter precision with
 
 ```julia
 ordinal_res |> infer |> coeftable
-```
-
-```julia{echo=false,skip="notebook"}
-using PumasTutorials
-PumasTutorials.tutorial_footer(WEAVE_ARGS[:folder],WEAVE_ARGS[:file])
 ```
