@@ -132,7 +132,7 @@ pretty_table(auc_cmax_summary, backend = :html;
             formatters = ft_round(3, [3,4,5,6]))
 ```
 
-```julia; eval=false
+```julia
 #TODO unable to get ordered x-axis
 auc_cmax[!,:Dose] .= CategoricalArray(auc_cmax.DOSE)
 #levels!(auc_cmax[!,:Dose], ["5", "20", "80"])
@@ -141,9 +141,7 @@ auc_cmax[!,:Dose] .= CategoricalArray(auc_cmax.DOSE)
 @df auc_cmax groupedboxplot!(:DOSE, :cmax , group=:Dose, label="",
                       marker=(0.3,:orange,stroke(2)), alpha=0.75)
 plot!(size = (600,600), xlabel = "Dose (mg)", ylabel = "Cmax")
-#savefig("./assets/cmaxplot.png")
 ```
-![Plot cmax](./assets/cmaxplot.png)
 
 Dose normalized PK parameters, `cmax` and `aucinf` were
 essentially dose proportional between for 5 mg, 20 mg
@@ -151,7 +149,7 @@ and 80 mg doses. Based on visual inspection of the
 concentration time profiles as seen below, CTMNopain exhibited monophasic decline, and perhaps
 a one compartment model best fits the PK data.
 
-```julia; eval=false
+```julia
 pkpain_noplb_plot_df = filter(x -> !(x.TIME .== 0), pkpain_noplb_df)
 @df pkpain_noplb_plot_df plot(:TIME, :CONC,
                         color=:DOSE, group=:ID, legend=false,
@@ -163,9 +161,7 @@ pkpain_noplb_plot_df = filter(x -> !(x.TIME .== 0), pkpain_noplb_df)
                         xlabel = "Time (hours)", ylabel = "Concentration (ng/mL)",
                         size = (800, 800), guidefontsize = 22,
                         tickfontsize =14)
-savefig("./assets/spaghetti_pk.png")
 ```
-![Plot spaghetti](./assets/spaghetti_pk.png)
 
 ### Pharmacokinetic modeling
 
@@ -241,7 +237,7 @@ Before going to fit the model, let's evaluate some helpful steps.
 
 1. Simulation to check appropriatness of data and model
 
-```julia; eval=false
+```julia
 simpk = simobs(pk_1cmp, pkpain_noplb, init_param(pk_1cmp))
 plot(simpk, xlabel = "Time (hours)", ylabel = "Concentration (ng/mL)",
     size = (800, 800), guidefontsize = 22, label = "Simulated profiles",
@@ -250,9 +246,7 @@ plot(simpk, xlabel = "Time (hours)", ylabel = "Concentration (ng/mL)",
 @df pkpain_noplb_plot_df scatter!(:TIME, :CONC,
                         color=:DOSE, group=:ID, legend=false,
                         alpha=0.5, yaxis = :log, label = "Observed concentrations")
-savefig("./assets/sim1_pk.png")
 ```
-![Plot sims1](./assets/sim1_pk.png)
 
 Our NCA based initial guess on the parameters seem to work well.
 
@@ -262,7 +256,7 @@ Lets change the initial estimate of a couple of the parameters to evaluate the s
 pkparam = (init_param(pk_1cmp)..., tvka=2, tvv = 10)
 ```
 
-```julia; eval=false
+```julia
 simpk = simobs(pk_1cmp,
                pkpain_noplb,
                pkparam)
@@ -273,9 +267,7 @@ plot(simpk, xlabel = "Time (hours)", ylabel = "Concentration (ng/mL)",
 @df pkpain_noplb_plot_df scatter!(:TIME, :CONC,
                         color=:DOSE, group=:ID, legend=false,
                         alpha=0.5, yaxis = :log)
-savefig("./assets/sim2_pk.png")
 ```
-![Plot sims2](./assets/sim2_pk.png)
 
 Changing the `tvka` and decreasing the `tvv`  seemed to make an impact and observations go
 through the simulated lines.
@@ -310,7 +302,7 @@ checking the `loglikelihood` subject wise.
 Below, we are basically checking if the initial estimates for any subject are way off
 that we are unable to compute the initial `loglikelihood`.
 
-```julia; eval=false
+```julia
 lls = []
 for subj in pkpain_noplb
   #println("ID: " , subj.id)
@@ -320,9 +312,7 @@ for subj in pkpain_noplb
                    Pumas.FOCEI()))
 end
 histogram(lls, size = (800,800))
-#savefig("./assets/histlls.png")
 ```
-![Plot lls](./assets/histlls.png)
 
 The distribution of the loglikelihood's suggest no extreme outliers.
 
@@ -411,7 +401,7 @@ We should also compare the other metrics and statistics, such `ηshrinkage`, `ϵ
 `aic`, `bic`
 
 ```julia
-pretty_table(DataFrame([(metric=string(f), fit_1cmp=f(pkfit_1cmp), fit_2cmp=f(pkfit_2cmp)) for f in (aic, bic, ϵshrinkage, ηshrinkage)]))
+DataFrame([(metric=string(f), fit_1cmp=f(pkfit_1cmp), fit_2cmp=f(pkfit_2cmp)) for f in (aic, bic, ϵshrinkage, ηshrinkage)])
 ```
 
 We next generate some goodness of fit plots to compare which model is performing better.
@@ -511,23 +501,19 @@ function gof(res_inspect)
 end
 ```
 
-```julia; eval=false
+```julia
 gof_1cmp = gof(res_inspect_1cmp)
-#savefig("./assets/gof1cmt.png")
 ```
-![Plot gof1cmt](./assets/gof1cmt.png)
 
-```julia; eval=false
+```julia
 gof_2cmp = gof(res_inspect_2cmp)
-#savefig("./assets/gof2cmt.png")
 ```
-![Plot gof2cmt](./assets/gof2cmt.png)
 
 These plots clearly indicate that the 2 compartment model is a better fit
 compared to the one compartment model. We can look at selected sample of individaul
 plots.
 
-```julia; eval=false; results = "hidden"
+```julia; results = "hidden"
 function sample_df(df, nsamples)
     gdf = groupby(df, :id)
     sample_groups = sample(1:length(gdf), nsamples, replace=false)
@@ -538,7 +524,7 @@ Random.seed!(1234)
 res_inspect_2cmp_sampled = sample_df(res_inspect_2cmp,12)
 ```
 
-```julia; eval=false
+```julia
 plot_grouped(
     groupby(res_inspect_2cmp_sampled, :id);
     # needs to be a large size for the plots to
@@ -562,11 +548,9 @@ plot_grouped(
     @df subdf plot!(:time, :CONC_pred, color=:red, linewidth =4)
     @df subdf plot!(:time, :CONC_ipred, color=:blue, linewidth =4)
 end
-#savefig("./assets/indpreds1.png")
 ```
-![Plot indpreds1](./assets/indpreds1.png)
 
-```julia; eval=false
+```julia
 data4_etacov = select(res_inspect_2cmp,["η_1", "η_2", "η_3", "η_4", "η_5", "DOSE"])
 data4_etacov = stack(data4_etacov, ["η_1", "η_2", "η_3", "η_4", "η_5"], "DOSE")
 data4_etacov[!,:variable] .= string.(data4_etacov.variable)
@@ -579,9 +563,7 @@ Plots.abline!(0,0, linewidth=4, color = "black",
               xlabel = "η's", ylabel = "η_values", legendtitle = "Dose (mg)",
               guidefontsize = 22,
               tickfontsize =14, label ="")
-#savefig("./assets/etacov1.png")
 ```
-![Plot etacov1](./assets/etacov1.png)
 
 Clearly,our guess at `tvka` seems off-target. Let's try and estimate `tvka` instead of fixing it to `2`
 
@@ -607,15 +589,13 @@ pretty_table(coeftable(infer(pkfit_2cmp_unfix_ka)), backend = :html, formatters 
 Let's revaluate the goodness of fits and η distribution plots.
 
 Not much change in the general `gof` plots
-```julia; eval=false
+```julia
 res_inspect_2cmp_unfix_ka = DataFrame(inspect(pkfit_2cmp_unfix_ka))
 gof(res_inspect_2cmp_unfix_ka)
-#savefig("./assets/gof2ka.png")
 ```
-![Plot gofka](./assets/gof2ka.png)
 
 But you can see a huge improvement in the `ηka` distribution which is now centered around zero
-```julia; eval=false
+```julia
 data4_etacov = select(res_inspect_2cmp_unfix_ka,["η_1", "η_2", "η_3", "η_4", "η_5", "DOSE"])
 data4_etacov = stack(data4_etacov, ["η_1", "η_2", "η_3", "η_4", "η_5"], "DOSE")
 data4_etacov[!,:variable] .= string.(data4_etacov.variable)
@@ -628,13 +608,11 @@ Plots.abline!(0,0, linewidth=4, color = "black",
               xlabel = "η's", ylabel = "η_values", legendtitle = "Dose (mg)",
               guidefontsize = 22,
               tickfontsize =14, label ="")
-#savefig("./assets/etacov2.png")
 ```
-![Plot etacov2](./assets/etacov2.png)
 
 Finally looking at some individual plots
 
-```julia; eval=false
+```julia
 Random.seed!(1234)
 res_inspect_2cmp_unfixka_sampled = sample_df(res_inspect_2cmp_unfix_ka,12)
 plot_grouped(
@@ -660,16 +638,14 @@ plot_grouped(
     @df subdf plot!(:time, :CONC_pred, color=:red, linewidth =4)
     @df subdf plot!(:time, :CONC_ipred, color=:blue, linewidth =4)
 end
-#savefig("./assets/indplotswka.png")
 ```
-![indplots withka](./assets/indplotswka.png)
 
 The randomly sampled individual fits don't seem good in some individuals, but we
 can evaluate this via a `vpc` to see how to go about.
 
 We can now perform a `vpc` to check.
 
-```julia; eval=false
+```julia
 pk_vpc = vpc(pkfit_2cmp_unfix_ka, 200; dv=:CONC,
              stratify_by = [:DOSE],
             ensemblealg=EnsembleThreads())
@@ -687,9 +663,7 @@ plot(pk_vpc,
     linewidth =10,
      xtickfont = font(25),
      ytickfont = font(25))
-#savefig("./assets/pkvpc.png")
 ```
-![Plot vpc](./assets/pkvpc.png)
 
 The visual predictive check suggests that the model captures the data well across
 all dose levels.
