@@ -1,6 +1,5 @@
 ---
 title: Pumas.jl Workshop Solutions
-author: Chris Rackauckas, Vijay Ivaturi
 ---
 
 # Problem 1: Simulate a first-order absorption model with linear elimination after a 100 mg oral dose in 24 subjects
@@ -22,7 +21,7 @@ first(single_dose_regimen.data)
 to build a single subject
 
 ```julia
-s1 = Subject(id=1, evs=single_dose_regimen,cvs=(Wt=70,))
+s1 = Subject(id=1, events=single_dose_regimen, covariates=(Wt=70,))
 ```
 
 let's first define a function to choose body weight randomly
@@ -34,7 +33,7 @@ choose_covariates() = (Wt = rand(55:80),)
 Then, we use it to generate a population of subjects with a random weight generated from the covariate function above
 
 ```julia
-pop = Population(map(i -> Subject(id = i,evs = single_dose_regimen, cvs =  choose_covariates()),1:24))
+pop = Population(map(i -> Subject(id = i, events=single_dose_regimen, covariates=choose_covariates()),1:24))
 ```
 
 You can view the generated population using by calling a random subject by index and look at
@@ -70,7 +69,7 @@ mymodel = @model begin
 
   @pre begin
     CL = tvcl * (Wt/70)^0.75 * exp(η[1])
-    V  = tvv * (Wt/70) * exp(η[2])
+    Vc  = tvv * (Wt/70) * exp(η[2])
     Ka = tvka * exp(η[3])
   end
   @covariates Wt
@@ -82,7 +81,7 @@ mymodel = @model begin
     #end
 
   @derived begin
-      cp = @. 1000*(Central / V)
+      cp = @. 1000*(Central / Vc)
       dv ~ @. Normal(cp, sqrt(cp^2*σ_prop))
     end
 end
@@ -162,7 +161,6 @@ Or generate the entire NCA report using
 
 ```julia
 report = NCAReport(ncadf)
-report = NCA.to_dataframe(report)
 first(report,6)
 ```
 
@@ -184,12 +182,12 @@ first(est_df,6)
 We can use the `read_pumas` function to prepare the dataset for NLME estimation
 
 ```julia
-data = read_pumas(est_df ,cvs = [:Wt], dvs=[:dv])
+data = read_pumas(est_df, covariates=[:Wt], observations=[:dv])
 ```
 where
 
-* `cvs` takes an array of covariates
-* `dvs` takes an array of the dependent variables
+* `covariates` is a symbol that maps to the columns of covariates
+* `observations` is a symbol that maps to the columns of dependent variables
 * since the dataframe has `time` as the variable, the function does not need a specific input
 
 
@@ -203,7 +201,7 @@ We now use the
 to fit the model.
 
 ```julia
-res = fit(mymodel,data,param,Pumas.FOCEI())
+res = fit(mymodel, data, param, Pumas.FOCEI())
 ```
 
 ## Part 3: Infer the results
