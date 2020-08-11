@@ -85,7 +85,6 @@ cmax = NCA.cmax(ncadf)
 
 
 report = NCAReport(ncadf)
-report = NCA.to_dataframe(report)
 first(report,6)
 
 

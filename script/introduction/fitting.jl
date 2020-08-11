@@ -10,9 +10,9 @@ choose_covariates() = (Wt = rand(55:80),)
 
 
 pop = Population(map(i -> Subject(id = i,
-                                  evs = repeated_dose_regimen,
-                                  obs=(dv=Float64[],),
-                                  cvs = choose_covariates()),
+                                  events = repeated_dose_regimen,
+                                  observations =(dv=Float64[],),
+                                  covariates = choose_covariates()),
                                   1:24))
 
 
@@ -65,19 +65,19 @@ alternative_param = (
     Ω  = Diagonal([0.18,0.04, 0.03]),
     σ_prop = 0.04)
 
-fit(mymodel, read_pumas(DataFrame(obs); cvs=[:Wt]), alternative_param, Pumas.FOCEI())
+fit(mymodel, Subject.(obs), alternative_param, Pumas.FOCEI())
 
 
 infer(result)
 
 
 pop_big = Population(map(i -> Subject(id = i,
-                                  evs = repeated_dose_regimen,
-                                  obs=(dv=Float64[],),
-                                  cvs = choose_covariates()),
+                                  events = repeated_dose_regimen,
+                                  observations =(dv=Float64[],),
+                                  covariates = choose_covariates()),
                                   1:100))
 obs_big = simobs(mymodel, pop_big, param, obstimes=1:1:72)
-result_big = fit(mymodel, read_pumas(DataFrame(obs_big); cvs=[:Wt]), param, Pumas.FOCEI())
+result_big = fit(mymodel, Subject.(obs_big), param, Pumas.FOCEI())
 infer(result_big)
 
 
@@ -96,7 +96,7 @@ mymodel_misspec = @model begin
 
   @pre begin
     CL = cl * (Wt/70)^0.75 * exp(η[1])
-    V = tv * (Wt/70) * exp(η[2])
+    Vc = tv * (Wt/70) * exp(η[2])
     Ka = ka * exp(η[3])
   end
   @covariates Wt
@@ -104,13 +104,20 @@ mymodel_misspec = @model begin
   @dynamics Depots1Central1
 
   @derived begin
-      cp = @. 1000*(Central / V)
+      cp = @. 1000*(Central / Vc)
       dv ~ @. Normal(cp, abs(cp)*σ_prop)
     end
 end
 
 
-result_misspec = fit(mymodel_misspec, read_pumas(DataFrame(obs); cvs=[:Wt]), alternative_param, Pumas.FOCEI())
+alternative_param_no_q = (
+    cl = 0.5,
+    tv = 9.0,
+    ka = 1.3,
+    Ω  = Diagonal([0.18,0.04, 0.03]),
+    σ_prop = 0.04)
+
+result_misspec = fit(mymodel_misspec, Subject.(obs), alternative_param_no_q, Pumas.FOCEI())
 
 
 wres = wresiduals(result)
