@@ -1,7 +1,6 @@
 ---
 title: PBPK in Pumas, A Model for ACAT
-author: Vaibhav Dixit and Chris Rackauckas
-date: 6th November 2018
+date: August 2020
 ---
 
 # Introduction
@@ -13,213 +12,293 @@ using Pumas, LinearAlgebra, DiffEqSensitivity, Distributions, Optim, QuadGK
 
 pbpkmodel = @model begin
     @param begin
-        GER ∈ ConstDomain(0.066)
-        ρ ∈ ConstDomain(5e-6)
-        r ∈ ConstDomain(1)
-        T ∈ ConstDomain(3e-5)
-        d ∈ ConstDomain(1e-4)
-        SST ∈ ConstDomain(5.5)
-        kilST ∈ ConstDomain(0.5)
-        kaST ∈ ConstDomain(14040.00076)
-        kaGU ∈ ConstDomain(14040.000063)
-        kt ∈ ConstDomain(0.035)
-        SGU1 ∈ ConstDomain(5.5)
-        SGU2 ∈ ConstDomain(5.5)
-        SGU3 ∈ ConstDomain(5.5)
-        SGU4 ∈ ConstDomain(5.5)
-        SGU5 ∈ ConstDomain(5.5)
-        SGU6 ∈ ConstDomain(5.5)
-        SGU7 ∈ ConstDomain(5.5)
-        kilGU1 ∈ ConstDomain(0.5 )
-        kilGU2 ∈ ConstDomain(0.5)
-        kilGU3 ∈ ConstDomain(0.5)
-        kilGU4 ∈ ConstDomain(0.5)
-        kilGU5 ∈ ConstDomain(0.5)
-        kilGU6 ∈ ConstDomain(0.5)
-        kilGU7 ∈ ConstDomain(0.5)
-        EHR ∈ ConstDomain(0 )
-        kbil ∈ ConstDomain(0.0)
-        VLI ∈ ConstDomain(1690)
-        Kp ∈ ConstDomain(1.3)
-        ktCO ∈ ConstDomain(0.0007)
-        SCO ∈ ConstDomain(5.5)
-        VCO ∈ ConstDomain(700)
-        kilCO ∈ ConstDomain(0.0007)
-        kaCO ∈ ConstDomain(14040.0000542)
-        CP ∈ ConstDomain(0)
-        QLU ∈ ConstDomain(5233)
-        VLU ∈ ConstDomain(1172)
-        VST1 ∈ ConstDomain(50)
-        VST2 ∈ ConstDomain(154)
-        VGU ∈ ConstDomain(1650)
-        VAR ∈ ConstDomain(1698)
-        AIR ∈ ConstDomain(0.0)
-        VVE ∈ ConstDomain(3396)
-        VIR ∈ ConstDomain(0.0)
-        QBR ∈ ConstDomain(700)
-        VBR ∈ ConstDomain(1450)
-        QLI ∈ ConstDomain(1650)
-        QKI ∈ ConstDomain(1100)
-        QHR ∈ ConstDomain(150)
-        VHR ∈ ConstDomain(310)
-        QMU ∈ ConstDomain(750)
-        VMU ∈ ConstDomain(35000)
-        QAD ∈ ConstDomain(260)
-        VAD ∈ ConstDomain(10000)
-        QSK ∈ ConstDomain(300)
-        VSK ∈ ConstDomain(7800)
-        QBO ∈ ConstDomain(250)
-        VBO ∈ ConstDomain(4579)
-        QTH ∈ ConstDomain(80)
-        VTH ∈ ConstDomain(29)
-        QST ∈ ConstDomain(38)
-        QGU ∈ ConstDomain(1100)
-        Ker ∈ ConstDomain(0.0)
-        QPA ∈ ConstDomain(133)
-        VPA ∈ ConstDomain(77)
-        QSP ∈ ConstDomain(77)
-        VSP ∈ ConstDomain(192)
-        CLint ∈ ConstDomain(0)
-        QHA ∈ ConstDomain(302)
-        VKI ∈ ConstDomain(280)
-        R ∈ ConstDomain(1)
+        GER ∈ RealDomain(init=0.066)
+        ρ ∈ RealDomain(init=5e-6)
+        r ∈ RealDomain(init=1)
+        T ∈ RealDomain(init=3e-5)
+        d ∈ RealDomain(init=1e-4)
+        SST ∈ RealDomain(init=5.5)
+        kilST ∈ RealDomain(init=0.5)
+        kaST ∈ RealDomain(init=14040.00076)
+        kaGU ∈ RealDomain(init=14040.000063)
+        kt ∈ RealDomain(init=0.035)
+        SGU1 ∈ RealDomain(init=5.5)
+        SGU2 ∈ RealDomain(init=5.5)
+        SGU3 ∈ RealDomain(init=5.5)
+        SGU4 ∈ RealDomain(init=5.5)
+        SGU5 ∈ RealDomain(init=5.5)
+        SGU6 ∈ RealDomain(init=5.5)
+        SGU7 ∈ RealDomain(init=5.5)
+        kilGU1 ∈ RealDomain(init=0.5 )
+        kilGU2 ∈ RealDomain(init=0.5)
+        kilGU3 ∈ RealDomain(init=0.5)
+        kilGU4 ∈ RealDomain(init=0.5)
+        kilGU5 ∈ RealDomain(init=0.5)
+        kilGU6 ∈ RealDomain(init=0.5)
+        kilGU7 ∈ RealDomain(init=0.5)
+        EHR ∈ RealDomain(init=0 )
+        kbil ∈ RealDomain(init=0.0)
+        VLI ∈ RealDomain(init=1690)
+        Kp ∈ RealDomain(init=1.3)
+        ktCO ∈ RealDomain(init=0.0007)
+        SCO ∈ RealDomain(init=5.5)
+        VCO ∈ RealDomain(init=700)
+        kilCO ∈ RealDomain(init=0.0007)
+        kaCO ∈ RealDomain(init=14040.0000542)
+        CP ∈ RealDomain(init=0)
+        QLU ∈ RealDomain(init=5233)
+        VLU ∈ RealDomain(init=1172)
+        VST1 ∈ RealDomain(init=50)
+        VST2 ∈ RealDomain(init=154)
+        VGU ∈ RealDomain(init=1650)
+        VAR ∈ RealDomain(init=1698)
+        AIR ∈ RealDomain(init=0.0)
+        VVE ∈ RealDomain(init=3396)
+        VIR ∈ RealDomain(init=0.0)
+        QBR ∈ RealDomain(init=700)
+        VBR ∈ RealDomain(init=1450)
+        QLI ∈ RealDomain(init=1650)
+        QKI ∈ RealDomain(init=1100)
+        QHR ∈ RealDomain(init=150)
+        VHR ∈ RealDomain(init=310)
+        QMU ∈ RealDomain(init=750)
+        VMU ∈ RealDomain(init=35000)
+        QAD ∈ RealDomain(init=260)
+        VAD ∈ RealDomain(init=10000)
+        QSK ∈ RealDomain(init=300)
+        VSK ∈ RealDomain(init=7800)
+        QBO ∈ RealDomain(init=250)
+        VBO ∈ RealDomain(init=4579)
+        QTH ∈ RealDomain(init=80)
+        VTH ∈ RealDomain(init=29)
+        QST ∈ RealDomain(init=38)
+        QGU ∈ RealDomain(init=1100)
+        Ker ∈ RealDomain(init=0.0)
+        QPA ∈ RealDomain(init=133)
+        VPA ∈ RealDomain(init=77)
+        QSP ∈ RealDomain(init=77)
+        VSP ∈ RealDomain(init=192)
+        CLint ∈ RealDomain(init=0)
+        QHA ∈ RealDomain(init=302)
+        VKI ∈ RealDomain(init=280)
+        R ∈ RealDomain(init=1)
     end
 
     @random begin
-        η ~ MvNormal(Matrix(1.0I,2,2))
+        η ~ MvNormal(Matrix(1.0I, 2, 2))
+    end
+
+    @pre begin
+        _GER    = GER
+        _A      = (3*d)/(ρ*r*T)
+        _SST    = SST
+        _VST1   = VST1
+        _kilST  = kilST
+        _kaST   = kaST
+        _kt     = kt
+        _SGU1   = SGU1
+        _SGU2   = SGU2
+        _SGU3   = SGU3
+        _SGU4   = SGU4
+        _SGU5   = SGU5
+        _SGU6   = SGU6
+        _SGU7   = SGU7
+        _VGU    = VGU
+        _kilGU1 = kilGU1
+        _kilGU2 = kilGU2
+        _kilGU3 = kilGU3
+        _kilGU4 = kilGU4
+        _kilGU5 = kilGU5
+        _kilGU6 = kilGU6
+        _kilGU7 = kilGU7
+        _kaGU   = kaGU
+        _EHR    = EHR
+        _kbil   = kbil
+        _VLI    = VLI
+        _Kp     = Kp
+        _ktCO   = ktCO
+        _SCO    = SCO
+        _VCO    = VCO
+        _kilCO  = kilCO
+        _kaCO   = kaCO
+        _CP     = CP
+        _QLU    = QLU
+        _VLU    = VLU
+        _R      = R
+        _VAR    = VAR
+        _AIR    = AIR
+        _VVE    = VVE
+        _QBR    = QBR
+        _QLI    = QLI
+        _QKI    = QKI
+        _QHR    = QHR
+        _QMU    = QMU
+        _QAD    = QAD
+        _QSK    = QSK
+        _QBO    = QBO
+        _QTH    = QTH
+        _VIR    = VIR
+        _VBR    = VBR
+        _VHR    = VHR
+        _VMU    = VMU
+        _VAD    = VAD
+        _VSK    = VSK
+        _VBO    = VBO
+        _VTH    = VTH
+        _QPA    = QPA
+        _VPA    = VPA
+        _QSP    = QSP
+        _VSP    = VSP
+        _VST2   = VST2
+        _QST    = QST
+        _QGU    = QGU
+        _VKI    = VKI
+        _Ker    = Ker
+        _QHA    = QHA
+        _CLint  = CLint
     end
 
     @dynamics begin
         #Absorption compartments
         #Stomach compartment
-        AUNDST' = -GER * AUNDST - (((3*d)/(ρ*r*T)) * AUNDST* (SST - (ADIST/VST1)))
-        ADIST' = -GER * ADIST + (((3*d)/(ρ*r*T)) *AUNDST*(SST - (ADIST/VST1))) - kilST* ADIST -kaST *ADIST
-        ADEGST' = -GER * ADEGST + kilST * ADIST
-        AABSST' = kaST * ADIST
+        AUNDST' = -_GER * AUNDST - (_A * AUNDST * (_SST - (ADIST/_VST1)))
+        ADIST'  = -_GER * ADIST  + (_A * AUNDST * (_SST - (ADIST/_VST1))) - _kilST* ADIST -_kaST *ADIST
+        ADEGST' = -_GER * ADEGST + _kilST * ADIST
+        AABSST' = _kaST * ADIST
 
         #GU1 small intestinal compartment
-        AUNDGU1' = GER * AUNDST - kt * AUNDGU1 - ((3*d)/(ρ*r*T)) * AUNDGU1 *(SGU1 - (ADISGU1/VGU))
-        ADISGU1' = GER * ADIST - kt * ADISGU1 + ((3*d)/(ρ*r*T)) * AUNDGU1 *(SGU1 - (ADISGU1/VGU)) - kilGU1*ADISGU1 - kaGU*ADISGU1 + (EHR*kbil*CLI *VLI)/( Kp)
-        ADEGGU1' = GER * ADEGST - kt * ADEGGU1 + kilGU1 * ADISGU1
-        AABSGU1' = kaGU * ADISGU1
+        AUNDGU1' = _GER * AUNDST - _kt * AUNDGU1 - _A * AUNDGU1 * (_SGU1 - (ADISGU1/_VGU))
+        ADISGU1' = _GER * ADIST  - _kt * ADISGU1 + _A * AUNDGU1 * (_SGU1 - (ADISGU1/_VGU)) - _kilGU1*ADISGU1 - _kaGU*ADISGU1 + (_EHR * _kbil * CLI * _VLI)/_Kp
+        ADEGGU1' = _GER * ADEGST - _kt * ADEGGU1 + _kilGU1 * ADISGU1
+        AABSGU1' = _kaGU * ADISGU1
 
         # Other small intestinal compartments (GU2-GU7)
-        AUNDGU2' = kt * AUNDGU1 - kt * AUNDGU2 -((3*d)/(ρ*r*T)) * AUNDGU2 *(SGU2 - (ADISGU2/VGU))
-        ADISGU2' = kt * ADISGU1 - kt * ADISGU2 +((3*d)/(ρ*r*T)) * AUNDGU2 *(SGU2 - (ADISGU2/VGU)) - kilGU2*ADISGU2 - kaGU*ADISGU2
-        ADEGGU2' = kt*ADEGGU1 - kt*ADEGGU2 + kilGU2 * ADISGU2
-        AABSGU2' = kaGU * ADISGU2
+        AUNDGU2' = _kt * AUNDGU1 - _kt * AUNDGU2 -_A * AUNDGU2 *(_SGU2 - (ADISGU2/_VGU))
+        ADISGU2' = _kt * ADISGU1 - _kt * ADISGU2 +_A * AUNDGU2 *(_SGU2 - (ADISGU2/_VGU)) - _kilGU2*ADISGU2 - _kaGU*ADISGU2
+        ADEGGU2' = _kt*ADEGGU1 - _kt*ADEGGU2 + _kilGU2 * ADISGU2
+        AABSGU2' = _kaGU * ADISGU2
 
-        AUNDGU3' = kt * AUNDGU2 - kt * AUNDGU3 -((3*d)/(ρ*r*T)) * AUNDGU3 *(SGU3 - (ADISGU3/VGU))
-        ADISGU3' = kt * ADISGU2 - kt * ADISGU3 +((3*d)/(ρ*r*T)) * AUNDGU3 *(SGU3 - (ADISGU3/VGU)) - kilGU3*ADISGU3 - kaGU*ADISGU3
-        ADEGGU3' = kt*ADEGGU2 - kt*ADEGGU3 + kilGU3 * ADISGU3
-        AABSGU3' = kaGU * ADISGU3
+        AUNDGU3' = _kt * AUNDGU2 - _kt * AUNDGU3 -_A * AUNDGU3 *(_SGU3 - (ADISGU3/_VGU))
+        ADISGU3' = _kt * ADISGU2 - _kt * ADISGU3 +_A * AUNDGU3 *(_SGU3 - (ADISGU3/_VGU)) - _kilGU3*ADISGU3 - _kaGU*ADISGU3
+        ADEGGU3' = _kt*ADEGGU2 - _kt*ADEGGU3 + _kilGU3 * ADISGU3
+        AABSGU3' = _kaGU * ADISGU3
 
-        AUNDGU4' = kt * AUNDGU3 - kt * AUNDGU4 -((3*d)/(ρ*r*T)) * AUNDGU4 *(SGU4 - (ADISGU4/VGU))
-        ADISGU4' = kt * ADISGU3 - kt * ADISGU4 +((3*d)/(ρ*r*T)) * AUNDGU4 *(SGU4 - (ADISGU4/VGU)) - kilGU4*ADISGU4 - kaGU*ADISGU4
-        ADEGGU4' = kt*ADEGGU3 - kt*ADEGGU4 + kilGU4 * ADISGU4
-        AABSGU4' = kaGU * ADISGU4
+        AUNDGU4' = _kt * AUNDGU3 - _kt * AUNDGU4 -_A * AUNDGU4 *(_SGU4 - (ADISGU4/_VGU))
+        ADISGU4' = _kt * ADISGU3 - _kt * ADISGU4 +_A * AUNDGU4 *(_SGU4 - (ADISGU4/_VGU)) - _kilGU4*ADISGU4 - _kaGU*ADISGU4
+        ADEGGU4' = _kt*ADEGGU3 - _kt*ADEGGU4 + _kilGU4 * ADISGU4
+        AABSGU4' = _kaGU * ADISGU4
 
-        AUNDGU5' = kt * AUNDGU4 - kt * AUNDGU5 -((3*d)/(ρ*r*T)) * AUNDGU5 *(SGU5 - (ADISGU5/VGU))
-        ADISGU5' = kt * ADISGU4 - kt * ADISGU5 +((3*d)/(ρ*r*T)) * AUNDGU5 *(SGU5 - (ADISGU5/VGU)) - kilGU5*ADISGU5 - kaGU*ADISGU5
-        ADEGGU5' = kt*ADEGGU4 - kt*ADEGGU5 + kilGU5 * ADISGU5
-        AABSGU5' = kaGU * ADISGU5
+        AUNDGU5' = _kt * AUNDGU4 - _kt * AUNDGU5 -_A * AUNDGU5 *(_SGU5 - (ADISGU5/_VGU))
+        ADISGU5' = _kt * ADISGU4 - _kt * ADISGU5 +_A * AUNDGU5 *(_SGU5 - (ADISGU5/_VGU)) - _kilGU5*ADISGU5 - _kaGU*ADISGU5
+        ADEGGU5' = _kt*ADEGGU4 - _kt*ADEGGU5 + _kilGU5 * ADISGU5
+        AABSGU5' = _kaGU * ADISGU5
 
-        AUNDGU6' = kt * AUNDGU5 - kt * AUNDGU6 -((3*d)/(ρ*r*T)) * AUNDGU6 *(SGU6 - (ADISGU6/VGU))
-        ADISGU6' = kt * ADISGU5 - kt * ADISGU6 +((3*d)/(ρ*r*T)) * AUNDGU6 *(SGU6 - (ADISGU6/VGU)) - kilGU6*ADISGU6 - kaGU*ADISGU6
-        ADEGGU6' = kt*ADEGGU5 - kt*ADEGGU6 + kilGU6 * ADISGU6
-        AABSGU6' = kaGU * ADISGU6
+        AUNDGU6' = _kt * AUNDGU5 - _kt * AUNDGU6 -_A * AUNDGU6 *(_SGU6 - (ADISGU6/_VGU))
+        ADISGU6' = _kt * ADISGU5 - _kt * ADISGU6 +_A * AUNDGU6 *(_SGU6 - (ADISGU6/_VGU)) - _kilGU6*ADISGU6 - _kaGU*ADISGU6
+        ADEGGU6' = _kt*ADEGGU5 - _kt*ADEGGU6 + _kilGU6 * ADISGU6
+        AABSGU6' = _kaGU * ADISGU6
 
-        AUNDGU7' = kt * AUNDGU6 - kt * AUNDGU7 -((3*d)/(ρ*r*T)) * AUNDGU7 *(SGU7 - (ADISGU7/VGU))
-        ADISGU7' = kt * ADISGU6 - kt * ADISGU7 +((3*d)/(ρ*r*T)) * AUNDGU7 *(SGU7 - (ADISGU7/VGU)) - kilGU7*ADISGU7 - kaGU*ADISGU7
-        ADEGGU7' = kt*ADEGGU6 - kt*ADEGGU7 + kilGU7 * ADISGU7
-        AABSGU7' = kaGU * ADISGU7
+        AUNDGU7' = _kt * AUNDGU6 - _kt * AUNDGU7 -_A * AUNDGU7 *(_SGU7 - (ADISGU7/_VGU))
+        ADISGU7' = _kt * ADISGU6 - _kt * ADISGU7 +_A * AUNDGU7 *(_SGU7 - (ADISGU7/_VGU)) - _kilGU7*ADISGU7 - _kaGU*ADISGU7
+        ADEGGU7' = _kt*ADEGGU6 - _kt*ADEGGU7 + _kilGU7 * ADISGU7
+        AABSGU7' = _kaGU * ADISGU7
 
         # Colon compartment
-        AUNDCO' = kt * AUNDGU7 - ktCO * AUNDCO - ((3*d)/(ρ*r*T)) * AUNDCO * (SCO - (ADISCO/VCO))
-        ADISCO' = kt * ADISGU7 - kt * ADISCO + ((3*d)/(ρ*r*T)) * AUNDCO * (SCO - (ADISCO/VCO)) - kilCO*ADISCO -  kaCO*ADISCO + (CP*CLI*VLI*kbil)/( Kp)
-        ADEGCO' = kt * ADEGGU7 - ktCO * ADEGGU7 + kilCO * ADISCO
-        AABSCO' = kaCO * ADISGU7
+        AUNDCO' = _kt * AUNDGU7 - _ktCO * AUNDCO - _A * AUNDCO * (_SCO - (ADISCO/_VCO))
+        ADISCO' = _kt * ADISGU7 - _kt * ADISCO + _A * AUNDCO * (_SCO - (ADISCO/_VCO)) - _kilCO*ADISCO -  _kaCO*ADISCO + (_CP*CLI*_VLI*_kbil)/_Kp
+        ADEGCO' = _kt * ADEGGU7 - _ktCO * ADEGGU7 + _kilCO * ADISCO
+        AABSCO' = _kaCO * ADISGU7
 
         #Total intestinal absorption (IA)
-        AIA' = kaGU*ADISGU1 + kaGU*ADISGU2 + kaGU*ADISGU3 + kaGU*ADISGU4 + kaGU*ADISGU5 + kaGU*ADISGU6 + kaGU*ADISGU7
+        AIA' = _kaGU*ADISGU1 + _kaGU*ADISGU2 + _kaGU*ADISGU3 + _kaGU*ADISGU4 + _kaGU*ADISGU5 + _kaGU*ADISGU6 + _kaGU*ADISGU7
 
         #Somatic Compartments
         # Lungs
-        CLU' = (QLU/VLU) *(CVE - (CLU*R)/(Kp))
+        CLU' = (_QLU/_VLU) *(CVE - (CLU*_R)/_Kp)
 
         #Arterial blood (AR)
-        CAR' = (1/VAR) * (QLU*(((CLU*R)/(Kp)) -CAR) + AIR)
+        CAR' = (1/_VAR) * (_QLU*(((CLU*_R)/_Kp) -CAR) + _AIR)
 
         # Venous blood (VE)
-        CVE' = (1/VVE) * (((QBR *CBR*R)/( Kp))  + ((QLI *CLI*R)/( Kp)) + ((QKI *CKI*R)/( Kp)) + ((QHR *CHR*R)/( Kp)) + ((QMU *CMU*R)/( Kp)) + ((QAD *CAD*R)/( Kp)) + ((QSK *CSK*R)/( Kp)) + ((QBO *CBO*R)/( Kp)) +((QTH *CTH*R)/( Kp)) - QLU * CVE + VIR)
+        CVE' = (1/_VVE) * (((_QBR *CBR*_R)/_Kp)  + ((_QLI *CLI*_R)/_Kp) + ((_QKI *CKI*_R)/_Kp) + ((_QHR *CHR*_R)/_Kp) + ((_QMU *CMU*_R)/_Kp) + ((_QAD *CAD*_R)/_Kp) + ((_QSK *CSK*_R)/_Kp) + ((_QBO *CBO*_R)/_Kp) +((_QTH *CTH*_R)/_Kp) - _QLU * CVE + _VIR)
 
         #Brain
-        CBR' = (QBR/VBR)* (CAR - (CBR*R)/( Kp))
+        CBR' = (_QBR/_VBR) * (CAR - (CBR*_R)/_Kp)
         #Heart
-        CHR' = (QHR/VHR)* (CAR - (CHR*R)/( Kp))
+        CHR' = (_QHR/_VHR) * (CAR - (CHR*_R)/_Kp)
         #Muscle
-        CMU' = (QMU/VMU)* (CAR - (CMU*R)/( Kp))
+        CMU' = (_QMU/_VMU) * (CAR - (CMU*_R)/_Kp)
         #Adipose
-        CAD' = (QAD/VAD)* (CAR - (CAD*R)/( Kp))
+        CAD' = (_QAD/_VAD) * (CAR - (CAD*_R)/_Kp)
         #Skin
-        CSK' = (QSK/VSK)* (CAR - (CSK*R)/( Kp))
+        CSK' = (_QSK/_VSK) * (CAR - (CSK*_R)/_Kp)
         #Bone
-        CBO' = (QBO/VBO)* (CAR - (CBO*R)/( Kp))
+        CBO' = (_QBO/_VBO) * (CAR - (CBO*_R)/_Kp)
         #Thymus
-        CTH' = (QTH/VTH)* (CAR - (CTH*R)/( Kp))
+        CTH' = (_QTH/_VTH) * (CAR - (CTH*_R)/_Kp)
         #Pancreas
-        CPA' = (QPA/VPA)* (CAR - (CPA*R)/( Kp))
+        CPA' = (_QPA/_VPA) * (CAR - (CPA*_R)/_Kp)
         #Spleen
-        CSP' = (QSP/VSP)* (CAR - (CSP*R)/( Kp))
+        CSP' = (_QSP/_VSP) * (CAR - (CSP*_R)/_Kp)
 
         #Stomach
-        CST' = (1/VST2) * (QST*(CAR - ((CST*R)/(Kp))) + AABSST)
+        CST' = (1/_VST2) * (_QST*(CAR - ((CST*_R)/_Kp)) + AABSST)
         #Gut
-        CGU' = (1/VGU) * (QGU*(CAR - ((CGU*R)/(Kp))) + AIA)
+        CGU' = (1/_VGU) * (_QGU*(CAR - ((CGU*_R)/_Kp)) + AIA)
         #Kidney
-        CKI' = ((1/VKI) * QKI*(CAR - ((CKI*R)/(Kp)))) - ((CKI*Ker)/Kp)
+        CKI' = ((1/_VKI) * _QKI*(CAR - ((CKI*_R)/_Kp))) - ((CKI*_Ker)/_Kp)
         #Liver
-        CLI' = (1/VLI)*(QHA*CAR + ((QGU *CGU*R)/( Kp)) + ((QPA *CPA*R)/( Kp)) + ((QSP *CSP*R)/( Kp)) + ((QST *CST*R)/( Kp)) - ((QLI *CLI*R)/( Kp)) - (CLI*CLint)/Kp )
+        CLI' = (1/_VLI)*(_QHA*CAR + ((_QGU *CGU*_R)/_Kp) + ((_QPA *CPA*_R)/_Kp) + ((_QSP *CSP*_R)/_Kp) + ((_QST *CST*_R)/_Kp) - ((_QLI *CLI*_R)/_Kp) - (CLI*_CLint)/_Kp )
     end
 end
 ```
 
 ```julia
-subject = Subject(evs = DosageRegimen(250,cmt=[1],time=[0.0]))
-fixeffs = (GER = 0.066,ρ = 5e-6,r = 1,T = 3e-5,d = 1e-4,SST = 5.5,kilST = 0.5,kaST = 14040.00076,kaGU = 14040.000063,kt = 0.035,SGU1 = 5.5,SGU2 = 5.5,SGU3 = 5.5,SGU4 = 5.5,SGU5 = 5.5,SGU6 = 5.5,SGU7 = 5.5,kilGU1 = 0.0 ,kilGU2 = 0.0,kilGU3 = 0.0,kilGU4 = 0.0,kilGU5 = 0.0,kilGU6 = 0.0,kilGU7 = 0.0,EHR = 0 ,
-        kbil = 0.0,VLI = 1690,Kp = 1.3,ktCO = 0.0007,SCO = 5.5,VCO = 700,kilCO = 0.0007,kaCO = 14040.0000542,CP = 0,QLU = 5233,VLU = 1172,VST1 = 50,VST2 = 154,VGU = 1650,VAR = 1698,AIR = 0.0,VVE = 3396,VIR = 0.0,QBR = 700,VBR = 1450,QLI = 1650,QKI = 1100,QHR = 150,VHR = 310,QMU = 750,VMU = 35000,QAD = 260,
-        VAD = 10000,QSK = 300,VSK = 7800,QBO = 250,VBO = 4579,QTH = 80,VTH = 29,QST = 38,QGU = 1100,Ker = 10.0,QPA = 133,VPA = 77,QSP = 77,VSP = 192,CLint = 0.315,QHA = 302,VKI = 280,R = 1)
+subject = Subject(events = DosageRegimen(250, cmt=1, time=0.0))
+fixeffs = (
+    GER = 0.066, ρ = 5e-6, r = 1, T = 3e-5, d = 1e-4, SST = 5.5, kilST = 0.5,
+    kaST = 14040.00076, kaGU = 14040.000063, kt = 0.035, SGU1 = 5.5, SGU2 = 5.5,
+    SGU3 = 5.5, SGU4 = 5.5, SGU5 = 5.5, SGU6 = 5.5, SGU7 = 5.5, kilGU1 = 0.0,
+    kilGU2 = 0.0, kilGU3 = 0.0, kilGU4 = 0.0, kilGU5 = 0.0, kilGU6 = 0.0,
+    kilGU7 = 0.0, EHR = 0, kbil = 0.0, VLI = 1690, Kp = 1.3, ktCO = 0.0007,
+    SCO = 5.5, VCO = 700, kilCO = 0.0007, kaCO = 14040.0000542, CP = 0,
+    QLU = 5233, VLU = 1172, VST1 = 50, VST2 = 154, VGU = 1650, VAR = 1698,
+    AIR = 0.0, VVE = 3396, VIR = 0.0, QBR = 700, VBR = 1450, QLI = 1650,
+    QKI = 1100, QHR = 150, VHR = 310, QMU = 750, VMU = 35000, QAD = 260,
+    VAD = 10000, QSK = 300, VSK = 7800, QBO = 250, VBO = 4579, QTH = 80,
+    VTH = 29, QST = 38, QGU = 1100, Ker = 10.0, QPA = 133, VPA = 77, QSP = 77,
+    VSP = 192, CLint = 0.315, QHA = 302, VKI = 280, R = 1)
 
-randeffs = (η = [0.0,0.0])
+randeffs = (η = [0.0,0.0],)
 ```
 
 ```julia
-sol_diffeq = solve(pbpkmodel,subject,fixeffs,randeffs,tspan=(0.0,600.0),progress=true)
+sol_diffeq = solve(pbpkmodel, subject, fixeffs, randeffs, tspan=(0.0,600.0), progress=true)
 ```
 
 ```julia
 using Plots
-plot(sol_diffeq,vars=3)
+plot(sol_diffeq, vars=3)
 ```
 
 # Global Sensitivity Analysis
 
 ```julia
 function sensivity_func(pars)
-    randeffs = (η = [0.0,0.0])
-    sim = solve(pbpkmodel,subject,pars,randeffs,tspan=(0.0,600.0))
-    f = t -> -sim(t;idxs=3)
-    res = optimize(f,0.0,600.0,Brent())
-    i,e = quadgk(f,0.0,600.0)
-    [-Optim.minimum(res),-250/i]
+    randeffs = (η = [0.0, 0.0])
+    sim = solve(pbpkmodel, subject, pars, randeffs, tspan=(0.0,600.0))
+    f = t -> -sim(t; idxs=3)
+    res = optimize(f, 0.0, 600.0, Brent())
+    i,e = quadgk(f, 0.0, 600.0)
+    [-Optim.minimum(res), -250/i]
 end
 
 a = []
 for i in fixeffs
     if i != 0
-        push!(a,[i-0.05*i,i+ 0.05*i])
+        push!(a, [i - 0.05*i, i + 0.05*i])
     else
-        push!(a,[0.0,1e-4])
+        push!(a, [0.0, 1e-4])
     end
 end
 ```
@@ -227,8 +306,13 @@ end
 ```julia
 using Random
 Random.seed!(5)
-m = DiffEqSensitivity.morris_sensitivity(
-                      sensivity_func,a,[10 for i in 1:70];
-                      relative_scale= false,len_trajectory=75,
-                      total_num_trajectory=50,num_trajectory=20)
+m = gsa(
+    sensivity_func,
+    a,
+    [10 for i in 1:70],
+    DiffEqSensitivity.Morris(
+        num_trajectory=20,
+        relative_scale=false,
+        len_trajectory=75,
+        total_num_trajectory=50))
 ```
