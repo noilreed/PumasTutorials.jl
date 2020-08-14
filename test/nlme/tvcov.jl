@@ -248,3 +248,97 @@ df = identity.(df)
   #   # """
   #   end
 end
+
+@testset "tvcov model against hand-rolled" begin
+
+D0=50
+function depots1central1(t, subject)
+  t0 = 0    
+  Ka, CL, V = 0.3, 0.5, 3.0
+
+  expo = 2.0
+
+  weight = map(u->u.weight, subject.covariates.u)
+
+  Ke = CL./V.*(weight./70).^expo
+  v = Ke./Ka .- 1
+
+  Depot0 = 0.0
+  Central0 = 10.0
+
+  Depot05 = D0
+  Central05 = Depot0/v[2]*exp(-Ka*0.5) + (Central0-Depot0/v[2])*exp(-Ke[2]*0.5)
+
+  Depot1 = Depot05*exp(-Ka*0.5)
+  Central1 = Depot05/v[2]*exp(-Ka*0.5) + (Central05-Depot05/v[2])*exp(-Ke[2]*0.5)
+
+  Depot2 = Depot1*exp(-Ka)
+  Central2 = Depot1/v[3]*exp(-Ka) + (Central1-Depot1/v[3])*exp(-Ke[3])
+
+  Depot3 = Depot2*exp(-Ka)
+  Central3 = Depot2/v[4]*exp(-Ka) + (Central2-Depot2/v[4])*exp(-Ke[4])
+
+  if t == t0
+      return (Depot=Depot0, Central=Central0)
+  elseif t < 0.5
+      dt = t - t0
+      return (Depot=Depot0*exp(-Ka*dt), Central=Depot0/v[2]*exp(-Ka*dt)+(Central0-Depot0/v[2])*exp(-Ke[2]*dt))
+  elseif t < 1
+      dt = t - 0.5
+      return (Depot=Depot05*exp(-Ka*dt), Central=Depot05/v[2]*exp(-Ka*dt)+(Central05-Depot05/v[2])*exp(-Ke[2]*dt))
+  elseif t < 2
+      dt = t - 1
+      return (Depot=Depot1*exp(-Ka*dt), Central=Depot1/v[3]*exp(-Ka*dt)+(Central1-Depot1/v[3])*exp(-Ke[3]*dt))
+  else t < 3
+      dt = t - 2
+      return (Depot=Depot2*exp(-Ka*dt), Central=Depot2/v[4]*exp(-Ka*dt)+(Central2-Depot2/v[4])*exp(-Ke[4]*dt))
+  end 
+end
+
+subject = Subject(covariates=(weight=[75.0, 180.0, 60.0, 70.0],), covariates_time=(weight=[0.0,1.0,2.0,3.0],), events=DosageRegimen(DosageRegimen(D0;time=0.5,cmt=:Depot),DosageRegimen(10; cmt=:Central)))
+
+model =  @model begin
+  @covariates weight
+
+  @pre begin
+    Ka = 0.3
+    CL = 0.5*(weight/70)^2
+    Vc = 3.0
+  end
+
+  @dynamics Depots1Central1
+end
+
+model2 =  @model begin
+  @covariates weight
+
+  @pre begin
+    Ka = 0.3
+    CL = 0.5*(weight/70)^2
+    Vc = 3.0
+  end
+
+  @dynamics begin
+    Depot' = -Ka*Depot
+    Central' = Ka*Depot - CL/Vc*Central
+  end
+end
+
+sol_analytical = solve(model, subject, NamedTuple())
+sol_diffeq = solve(model2, subject, NamedTuple(); saveat=[0.0,0.2,0.5,0.75,1.0,1.6,2.0,2.1,3.0], abstol=1e-12, reltol=1e-12)
+sol_hand = t->depots1central1(t, subject)
+
+depot_analytical = map(t->sol_analytical(t).Depot, [0.0,0.2,0.5,0.75,1.0,1.6,2.0,2.1,3.0])
+depot_diffeq = map(t->sol_diffeq(t).Depot, [0.0,0.2,0.5,0.75,1.0,1.6,2.0,2.1,3.0])
+depot_hand = map(t->sol_hand(t).Depot, [0.0,0.2,0.5,0.75,1.0,1.6,2.0,2.1,3.0])
+
+central_analytical = map(t->sol_analytical(t).Central, [0.0,0.2,0.5,0.75,1.0,1.6,2.0,2.1,3.0])
+central_diffeq = map(t->sol_diffeq(t).Central, [0.0,0.2,0.5,0.75,1.0,1.6,2.0,2.1,3.0])
+central_hand = map(t->sol_hand(t).Central, [0.0,0.2,0.5,0.75,1.0,1.6,2.0,2.1,3.0])
+
+@test all(depot_analytical .≈ depot_hand)
+@test all(depot_analytical .≈ depot_diffeq)
+@test all(central_analytical .≈ central_hand)
+@test all(central_analytical .≈ central_diffeq)
+
+end
