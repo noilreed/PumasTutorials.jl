@@ -1,5 +1,7 @@
 ---
 title: Pumas.jl Workshop Solutions
+author: PumasAI
+date: August 2020
 ---
 
 # Problem 1: Simulate a first-order absorption model with linear elimination after a 100 mg oral dose in 24 subjects
@@ -14,7 +16,7 @@ Random.seed!(0)
 ```
 
 ```julia
-single_dose_regimen = DosageRegimen(100, time=0)
+single_dose_regimen = DosageRegimen(100)
 first(single_dose_regimen.data)
 ```
 
@@ -206,7 +208,7 @@ res = fit(mymodel, data, param, Pumas.FOCEI())
 
 ## Part 3: Infer the results
 
-infer provides the model inference
+`infer` provides the model inference
 
 ```julia
 infer(res)
@@ -214,7 +216,7 @@ infer(res)
 
 ## Part 4: Inspect the results
 
-inspect gives you the
+`inspect` gives you the
 * model predictions
 * residuals
 * Empirical Bayes estimates
@@ -230,8 +232,7 @@ first(resids, 6)
 ```
 
 ```julia
-ebes = DataFrame(empirical_bayes(res))
-first(ebes, 6)
+ebes = empirical_bayes(res)
 ```
 
 There is an `inspect` function that provides all the results at once
