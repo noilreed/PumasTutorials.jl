@@ -251,9 +251,9 @@ end
 
 @testset "tvcov model against hand-rolled" begin
 
-D0=50
+D0 = 50
 function depots1central1(t, subject)
-  t0 = 0    
+  t0 = 0
   Ka, CL, V = 0.3, 0.5, 3.0
 
   expo = 2.0
@@ -279,25 +279,25 @@ function depots1central1(t, subject)
   Central3 = Depot2/v[4]*exp(-Ka) + (Central2-Depot2/v[4])*exp(-Ke[4])
 
   if t == t0
-      return (Depot=Depot0, Central=Central0)
+    return (Depot=Depot0, Central=Central0)
   elseif t < 0.5
-      dt = t - t0
-      return (Depot=Depot0*exp(-Ka*dt), Central=Depot0/v[2]*exp(-Ka*dt)+(Central0-Depot0/v[2])*exp(-Ke[2]*dt))
+    dt = t - t0
+    return (Depot=Depot0*exp(-Ka*dt), Central=Depot0/v[2]*exp(-Ka*dt)+(Central0-Depot0/v[2])*exp(-Ke[2]*dt))
   elseif t < 1
-      dt = t - 0.5
-      return (Depot=Depot05*exp(-Ka*dt), Central=Depot05/v[2]*exp(-Ka*dt)+(Central05-Depot05/v[2])*exp(-Ke[2]*dt))
+    dt = t - 0.5
+    return (Depot=Depot05*exp(-Ka*dt), Central=Depot05/v[2]*exp(-Ka*dt)+(Central05-Depot05/v[2])*exp(-Ke[2]*dt))
   elseif t < 2
-      dt = t - 1
-      return (Depot=Depot1*exp(-Ka*dt), Central=Depot1/v[3]*exp(-Ka*dt)+(Central1-Depot1/v[3])*exp(-Ke[3]*dt))
+    dt = t - 1
+    return (Depot=Depot1*exp(-Ka*dt), Central=Depot1/v[3]*exp(-Ka*dt)+(Central1-Depot1/v[3])*exp(-Ke[3]*dt))
   else t < 3
-      dt = t - 2
-      return (Depot=Depot2*exp(-Ka*dt), Central=Depot2/v[4]*exp(-Ka*dt)+(Central2-Depot2/v[4])*exp(-Ke[4]*dt))
-  end 
+    dt = t - 2
+    return (Depot=Depot2*exp(-Ka*dt), Central=Depot2/v[4]*exp(-Ka*dt)+(Central2-Depot2/v[4])*exp(-Ke[4]*dt))
+  end
 end
 
 subject = Subject(covariates=(weight=[75.0, 180.0, 60.0, 70.0],), covariates_time=(weight=[0.0,1.0,2.0,3.0],), events=DosageRegimen(DosageRegimen(D0;time=0.5,cmt=:Depot),DosageRegimen(10; cmt=:Central)))
 
-model =  @model begin
+model_analytical =  @model begin
   @covariates weight
 
   @pre begin
@@ -309,7 +309,25 @@ model =  @model begin
   @dynamics Depots1Central1
 end
 
-model2 =  @model begin
+model_linear =  @model begin
+  @covariates weight
+
+  @pre begin
+    Ka = 0.3
+    CL = 0.5*(weight/70)^2
+    Vc = 3.0
+    A = [-Ka 0.0; Ka -CL/Vc]
+  end
+
+  @init begin
+    Depot   = 0.0
+    Central = 0.0
+  end
+
+  @dynamics LinearODE
+end
+
+model_diffeq =  @model begin
   @covariates weight
 
   @pre begin
@@ -324,21 +342,27 @@ model2 =  @model begin
   end
 end
 
-sol_analytical = solve(model, subject, NamedTuple())
-sol_diffeq = solve(model2, subject, NamedTuple(); saveat=[0.0,0.2,0.5,0.75,1.0,1.6,2.0,2.1,3.0], abstol=1e-12, reltol=1e-12)
+_saveat = [0.0,0.2,0.5,0.75,1.0,1.6,2.0,2.1,3.0]
+sol_analytical = solve(model_analytical, subject, NamedTuple())
+sol_linear = solve(model_linear, subject, NamedTuple())
+sol_diffeq = solve(model_diffeq, subject, NamedTuple(); saveat=_saveat, abstol=1e-12, reltol=1e-12)
 sol_hand = t->depots1central1(t, subject)
 
-depot_analytical = map(t->sol_analytical(t).Depot, [0.0,0.2,0.5,0.75,1.0,1.6,2.0,2.1,3.0])
-depot_diffeq = map(t->sol_diffeq(t).Depot, [0.0,0.2,0.5,0.75,1.0,1.6,2.0,2.1,3.0])
-depot_hand = map(t->sol_hand(t).Depot, [0.0,0.2,0.5,0.75,1.0,1.6,2.0,2.1,3.0])
+depot_analytical = map(t->sol_analytical(t).Depot, _saveat)
+depot_linear     = map(t->sol_linear(t)[1], _saveat)
+depot_diffeq     = map(t->sol_diffeq(t).Depot, _saveat)
+depot_hand       = map(t->sol_hand(t).Depot, _saveat)
 
-central_analytical = map(t->sol_analytical(t).Central, [0.0,0.2,0.5,0.75,1.0,1.6,2.0,2.1,3.0])
-central_diffeq = map(t->sol_diffeq(t).Central, [0.0,0.2,0.5,0.75,1.0,1.6,2.0,2.1,3.0])
-central_hand = map(t->sol_hand(t).Central, [0.0,0.2,0.5,0.75,1.0,1.6,2.0,2.1,3.0])
+central_analytical = map(t->sol_analytical(t).Central, _saveat)
+central_linear     = map(t->sol_linear(t)[2], _saveat)
+central_diffeq = map(t->sol_diffeq(t).Central, _saveat)
+central_hand = map(t->sol_hand(t).Central, _saveat)
 
-@test all(depot_analytical .≈ depot_hand)
-@test all(depot_analytical .≈ depot_diffeq)
-@test all(central_analytical .≈ central_hand)
-@test all(central_analytical .≈ central_diffeq)
+@test depot_analytical ≈ depot_hand
+@test depot_linear     ≈ depot_hand
+@test depot_diffeq     ≈ depot_hand rtol=1e-8
+@test central_analytical ≈ central_hand
+@test central_linear     ≈ central_hand
+@test central_diffeq     ≈ central_hand rtol=1e-8
 
 end

@@ -290,7 +290,7 @@ _pre_req(::Type{LinearODE}) = (:A,)
 _expAt(AΔt::StaticMatrix)  = exp(AΔt)
 _expAt(AΔt::StridedMatrix) = ExponentialUtilities.exp_generic(AΔt)
 function (m::LinearODE)(t, t₀, amounts, doses, pre, rates)
-  p = pre(t₀)
+  p = pre(t)
   amt₀ = amounts + doses   # initial values for cmt's + new doses
   expAt = _expAt(p.A*(t - t₀))
   return expAt*amt₀ + (expAt - I)*(p.A\rates)
