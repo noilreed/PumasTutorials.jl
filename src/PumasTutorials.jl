@@ -40,18 +40,18 @@ function weave_file(folder,file,build_list=(:script,:html,:pdf,:notebook))
   end
 end
 
-function weave_all()
+function weave_all(build_list=(:script,:html,:pdf,:notebook))
   for folder in readdir(joinpath(repo_directory,"tutorials"))
     folder == "test.jmd" && continue
-    weave_folder(folder)
+    weave_folder(folder, build_list)
   end
 end
 
-function weave_folder(folder)
+function weave_folder(folder,build_list=(:script,:html,:pdf,:notebook))
   for file in readdir(joinpath(repo_directory,"tutorials",folder))
     println("Building $(joinpath(folder,file)))")
     try
-      weave_file(folder,file)
+      weave_file(folder,file,build_list)
     catch
     end
   end
