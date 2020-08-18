@@ -1,4 +1,6 @@
 # Pumas.jl
+![](https://pumas.ai/images/products/overview/pumas_overview.svg)
+
 
 [![pipeline status](https://gitlab.com/PumasAI/Pumas-jl/badges/master/pipeline.svg)](https://gitlab.com/PumasAI/Pumas-jl/commits/master)
 [![codecov](https://codecov.io/gh/PumasAI/Pumas.jl/branch/master/graph/badge.svg?token=O3F3YVonX8)](https://codecov.io/gh/PumasAI/Pumas.jl)
