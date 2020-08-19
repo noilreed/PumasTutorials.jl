@@ -394,7 +394,7 @@ end
                     if ci_bands == true
                         ribbon --> [df_sim_quantile[i][!,:middle] .- df_sim_quantile[i][!,:lower],df_sim_quantile[i][!,:upper] .- df_sim_quantile[i][!,:middle]]
                         fillalpha --> 0.2
-                        label --> (i == 1 ? scatterlabel[4] : "")
+                        label --> ((i == 1 && pltno == 1) ? scatterlabel[4] : "")
                     end
 
                     title --> "Stratified on " * string(["$(colnames[j]): $(sim_quantile[1,colinds[j]]) " for j in 1:length(colinds)]...)
