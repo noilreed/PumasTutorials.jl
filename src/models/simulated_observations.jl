@@ -116,11 +116,11 @@ end
     push!(plot_vars,v)
   end
   xguide --> "time"
-  legend --> false
   linewidth --> 3
   yguide --> reshape(names,1,length(names))
   layout --> good_layout(length(names))
-  title --> "Subject ID: $(obs.subject.id)"
+  label --> "Subject ID: $(obs.subject.id)"
+  legend --> false
   t,plot_vars
 end
 
