@@ -765,7 +765,7 @@ end
     findinfluential(fpm::FittedPumasModel, k::Integer=5)
 
 Return a vector of the `k` most influencial observations based on the value of
-the objective function.
+(minus) the log-likelihood function.
 """
 findinfluential(fpm::FittedPumasModel, k::Integer=5) =
   findinfluential(fpm.model, fpm.data, coef(fpm), fpm.approx;
@@ -779,7 +779,7 @@ function findinfluential(
   k=5,
   kwargs...)
 
-  d = [loglikelihood(m, subject, param, approx; kwargs...) for subject in data]
+  d = [-loglikelihood(m, subject, param, approx; kwargs...) for subject in data]
   p = partialsortperm(d, 1:k, rev=true)
   return [(data[pᵢ].id, d[pᵢ]) for pᵢ in p]
 end

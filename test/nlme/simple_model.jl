@@ -160,6 +160,19 @@ Observation records:         Active        Missing
 """
   @test cond(infer(ft)) == 1.0 # should be 1.0... basically testing that it works here
 
+  @testset "#1243 findinfluential" begin
+    @test sprint((io, t) -> show(io, MIME"text/plain"(), t), DataFrame(Pumas.findinfluential(ft))) ==
+    """
+    5×2 DataFrame
+    │ Row │ 1      │ 2       │
+    │     │ String │ Float64 │
+    ├─────┼────────┼─────────┤
+    │ 1   │ 5      │ 5.85222 │
+    │ 2   │ 2      │ 4.92525 │
+    │ 3   │ 9      │ 4.88466 │
+    │ 4   │ 6      │ 4.75922 │
+    │ 5   │ 7      │ 4.51526 │"""
+  end
 
   @testset "unidentified parameter make fit throw" begin
     # Since the data doesn't have a rate column, the rate parameter
