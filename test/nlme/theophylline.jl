@@ -1504,6 +1504,36 @@ end
     @test loglikelihood(theopmodel_laplace, theopp, param, Pumas.LaplaceI()) ≈ -191.9476628317836 atol=1e-3
   end
 
+  @testset "predict" begin
+    pred_df = DataFrame(predict(theopmodel_laplace, theopp, param))
+
+    @test pred_df.dv_pred[1:11] ≈ [
+      0.0000E+00
+      4.2750E+00
+      6.6773E+00
+      7.7546E+00
+      7.5680E+00
+      6.6040E+00
+      5.9760E+00
+      5.1398E+00
+      4.3896E+00
+      3.4538E+00
+      1.3268E+00] rtol=1e-3
+
+    @test pred_df.dv_ipred[1:11] ≈ [
+      0.0000E+00
+      3.6986E+00
+      6.7224E+00
+      9.2841E+00
+      1.0300E+01
+      9.4744E+00
+      8.6081E+00
+      7.4094E+00
+      6.3283E+00
+      4.9792E+00
+      1.9128E+00] rtol=1e-3
+  end
+
   laplace_estimated_params = (
     θ₁ = 1.68975E+00,  #Ka MEAN ABSORPTION RATE CONSTANT for SEX = 1(1/HR)
     θ₂ = 8.54637E-02,  #K MEAN ELIMINATION RATE CONSTANT (1/HR)

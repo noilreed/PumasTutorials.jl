@@ -19,20 +19,63 @@ function StatsBase.predict(
   _predict(model, subject, param, vrandeffsorth; kwargs...)
 end
 
+"""
+    predict(
+      model::PumasModel,
+      population::Union{Subject,Population},
+      param::NamedTuple;
+      [obstimes::AbstractVector,
+      kwargs...]
+    )::Union{SubjectPrediction,Vector{SubjectPrediction}}
+
+Compute population and individual predictions for either the single subject or
+vector of subjects (`Population`) `population` based on `model` and the
+
+population parameters `param`.
+
+If the optional `obstimes` argument is passed then the time points in
+`obstimes` are used for the predictions. Otherwise, the time points of the
+observations for each subject in the `population` are used for the
+predictions.
+
+The function allows for extra keyword arguments to be passed on to e.g. the
+differential equations solver. See the online documentation for more details.
+"""
 function StatsBase.predict(
   model::PumasModel,
   population::Population,
   param::NamedTuple;
   kwargs...)
 
-  map(subject -> predict(model, subject, param, approx; kwargs...), population)
+  map(subject -> predict(model, subject, param; kwargs...), population)
 end
 
+"""
+    predict(
+      fpm::FittedPumasModel,
+      [population::Union{Subject,Population};
+      [obstimes::AbstractVector]
+    )::Union{SubjectPrediction,Vector{SubjectPrediction}}
+
+Compute population and individual predictions for the fitted model `fpm`. By
+default, the predictions are computed for the estimation data but the
+predictions can also be computed for user supplied data by passing either a
+single subject or a vector of subjects (`Population`) as the `population`
+argument.
+
+If the optional `obstimes` argument is passed then the time points in
+`obstimes` are used for the predictions. Otherwise, the time points of the
+observations for each subject in the `population` are used for the
+predictions.
+
+Any optional keyword arguments used when fitting `fpm` are reused when
+computing the predictions.
+"""
 function StatsBase.predict(
   fpm::FittedPumasModel,
-  population::Population=fpm.data,
-  subjects::Union{Nothing, Population}=nothing;
-  nsim=nothing, obstimes=nothing)
+  population::Population=fpm.data;
+  nsim=nothing,
+  obstimes::Union{AbstractVector,Nothing}=nothing)
 
   if !(nsim isa Nothing)
     error("using simulated subjects is not yet implemented.")
@@ -52,6 +95,7 @@ function StatsBase.predict(
     obstimes=obstimes,
     fpm.kwargs...), 1:length(population))
 end
+
 
 function StatsBase.predict(
   fpm::FittedPumasModel,
