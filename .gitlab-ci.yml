@@ -10,9 +10,36 @@ variables:
 
 cache:
   paths:
-    - .julia/compiled/
+    - .julia/compiled/v1.4
+    - html
 
-test:
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BEFORE_SHA != '0000000000000000000000000000000000000000'
+
+# build:introduction:
+#   stage: build
+#   script:
+#     - julia -e 'using InteractiveUtils;
+#                 versioninfo()'
+#     - >
+#       julia --color=yes --project=. -e
+#       'using Pkg;
+#        Pkg.instantiate();
+#        using PumasTutorials;
+#        PumasTutorials.weave_folder("introduction", (:script,:html,))'
+#   artifacts:
+#     paths:
+#       - html
+#     expire_in: 1 week
+#   only:
+#     refs:
+#       - external_pull_requests
+#     changes:
+#       - tutorials/introduction/*
+
+build:pkpd1:
+  stage: build
   script:
     - julia -e 'using InteractiveUtils;
                 versioninfo()'
@@ -20,23 +47,79 @@ test:
       julia --color=yes --project=. -e
       'using Pkg;
        Pkg.instantiate();
-       using PumasTutorials'
-  only:
-  - master
-  - tags
-  - external
-  - pushes
-
-pages:
-  stage: deploy
-  script:
-    - mkdir public/
-    - cp docs/index.html public/
-    - cp docs/resources.css public/
-    - cp docs/CNAME public/
-    - cp -r html public/
+       using PumasTutorials;
+       PumasTutorials.weave_folder("pkpd", (:script,:html,))'
   artifacts:
     paths:
-      - public
-  only:
-  - master
+      - html
+    expire_in: 1 week
+  rules:
+    - changes:
+      - "tutorials/pkpd/absorption_models.jmd"
+      when: manual
+
+build:pkpd2:
+  stage: build
+  script:
+    - julia -e 'using InteractiveUtils;
+                versioninfo()'
+    - >
+      julia --color=yes --project=. -e
+      'using Pkg;
+       Pkg.instantiate();
+       using PumasTutorials;
+       PumasTutorials.weave_folder("pkpd", (:script,:html,))'
+  artifacts:
+    paths:
+      - html
+    expire_in: 1 week
+  rules:
+    - changes:
+      - "tutorials/pkpd/indirect_response_models.jmd"
+      when: manual
+
+# .template: &template
+#   stage: build
+#   script:
+#     - julia -e 'using InteractiveUtils;
+#                 versioninfo()'
+#     - >
+#       julia --color=yes --project=. -e
+#       'using Pkg;
+#        Pkg.instantiate();
+#        using PumasTutorials;
+#        PumasTutorials.weave_folder("$GROUP", (:script,:html,))'
+#   artifacts:
+#     paths:
+#       - html
+#     expire_in: 1 week
+#   only:
+#     refs:
+#       - external_pull_requests
+#     changes:
+#       - tutorials/$GROUP/*
+
+# build:introduction:
+#   <<: *template
+#   variables:
+#     GROUP: "introduction"
+
+# build:pkpd:
+#   <<: *template
+#   variables:
+#     GROUP: "pkpd"
+
+# pages:
+#   stage: deploy
+#   script:
+#     - mkdir public/
+#     - cp docs/index.html public/
+#     - cp docs/resources.css public/
+#     - cp -r html public/
+#   artifacts:
+#     paths:
+#       - public
+#   only:
+#   - master
+#   - tags
+#   - external_pull_requests
