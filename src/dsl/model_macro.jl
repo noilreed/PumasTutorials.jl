@@ -197,56 +197,52 @@ end
 _keys(x) = x
 _keys(x::AbstractDict) = keys(x)
 
+# When evaluating the pre block for a subject at some param and raneffs value
+# we return a Pre struct that contains a closure that takes the Pre struct and
+# time variable as inputs. The Pre struct furthermore contains a dictionary
+# of variables declared in the @cache block. This allows for callbacks that can
+# modify the pre results by altering the variables in the dictionary
+struct Pre{T1,T2}
+  cache::T1
+  tfunc::T2
+end
+
+(pre::Pre)(t::Real) = pre.tfunc(pre, t)
 
 # This function is called in @model to construct the function that returns
-# a function to evaluate the pre block for a subject given parameters
+# a Pre instance to evaluate the pre block for a subject given parameters
 function pre_obj(expr, preexpr, prevars, cacheexpr, cachevars, params, randoms, covariates)
-  prename = Symbol(:PreFunction,hash(expr))
-  prefunc = gensym(:prefunc)
   Ts = [gensym(:T) for i in 1:length(cachevars)]
 
-  constructor = if isempty(cachevars)
-    # Prevent stack overflow by adding a constructor only if there are
-    # cachevars
+  _cachedict = if isempty(cachevars)
     nothing
   else
-    quote
-      function $(esc(prename))(_param,_random,_subject)
-        $(esc(cacheexpr))
-        $(esc(prename))(_param,_random,_subject,$(esc(cachevars...)))
-      end
-    end
+    Expr(:call, [:Dict, [:($(QuoteNode(v)) => $(esc(v))) for v in cachevars]...]...)
   end
 
   quote
-    mutable struct $prename{T1,T2,T3,$(Ts...)} <: PreFunction
-      _param::T1
-      _random::T2
-      _subject::T3
-      $(Expr(:block, [:($(esc(v))::$(Ts[i])) for (i,v) in enumerate(cachevars)]...))
-    end
-
-    $constructor
-
-    function ($prefunc::$(esc(prename)))(t)
-      covar = $prefunc._subject.covariates(t)
-      $(Expr(:escape, :t)) = t
-      $(Expr(:block, [:($(esc(v)) = $prefunc.$v) for v in cachevars]...))
-      $(Expr(:block, [:($(esc(v)) = covar.$v) for v in _keys(covariates)]...))
-      $(Expr(:block, [:($(esc(v)) = $prefunc._param.$v) for v in _keys(params)]...))
-      $(Expr(:block, [:($(esc(v)) = $prefunc._random.$v) for v in _keys(randoms)]...))
-      $(esc(preexpr))
-      $(esc(nt_expr(prevars)))
-    end
-
     # This function is called when defining a differential equations problem
     function (_param::NamedTuple, _random::NamedTuple, _subject::Subject)
+
+      $(esc(cacheexpr))
+      cachedict = $_cachedict
+
+      tfunc = (pre, t) -> begin
+        covar = _subject.covariates(t)
+        $(Expr(:escape, :t)) = t
+        $(Expr(:block, [:($(esc(v)) = pre.cache[$(QuoteNode(v))]) for v in cachevars]...))
+        $(Expr(:block, [:($(esc(v)) = covar.$v) for v in _keys(covariates)]...))
+        $(Expr(:block, [:($(esc(v)) = _param.$v) for v in _keys(params)]...))
+        $(Expr(:block, [:($(esc(v)) = _random.$v) for v in _keys(randoms)]...))
+        $(esc(preexpr))
+        $(esc(nt_expr(prevars)))
+      end
+
       # pre is evaluated at t. All covariates are available in `covar`.
-      $(esc(prename))(_param,_random,_subject)
+      Pre(cachedict, tfunc)
     end
   end
 end
-
 
 function extract_parameter_calls!(expr::Expr,prevars,callvars)
   if expr.head == :call && expr.args[1] ∈ prevars
