@@ -222,3 +222,20 @@ end # begin
   o = fit(theopmodel_solver_fo, theoppnew, param, Pumas.FO(),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
 end # begin
+
+@testset "type unstable pre-block" begin
+  mdl = @model begin
+    @pre begin
+      x = if t == 0
+        1.0
+      else
+        1
+      end
+    end
+  end
+
+  subject = Subject()
+
+  @test DataFrame(icoef(mdl, subject, NamedTuple(), Pumas.NaivePooled(), obstimes=[0.0, 1.0])) ==
+    DataFrame(time=[0.0, 1.0], id=["1", "1"], x = [1.0, 1.0])
+end

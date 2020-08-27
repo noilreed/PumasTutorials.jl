@@ -37,9 +37,9 @@ Tables.columns(cc::ConstantCovar) = map(t -> [t], cc.u)
 _covariates_time(cc::ConstantCovar) = 0.0
 
 """
-  covariates_interpolant(covariates, data, time)
+  covariates_interpolant(covariates, data, time; [interp, covariates_direction])
 
-Creates an interpolation of the time-varying covariate u at time points t using
+Creates an interpolation of the time-varying covariate `u` at time points `t` using
 the interpolation scheme interp from DataInterpolations.jl. Returns a function
 `(t)` that does the interpolation as well as the common time grid for the covariate
 observations. This is safe for values which are not time-varying as well, allowing

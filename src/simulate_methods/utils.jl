@@ -153,6 +153,7 @@ function numtype(x::Tuple)
   end
 end
 numtype(x::NamedTuple) = numtype(values(x))
+numtype(::NamedTuple{(),Tuple{}}) = Float32
 numtype(x::AbstractString) = Float32 # To allow string covariates
 numtype(x::Integer) = Float32
 

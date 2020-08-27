@@ -874,11 +874,12 @@ icoef(
 function icoef(
   model::PumasModel,
   subject::Subject,
-  param::NamedTuple;
-  obstimes=subject.covariates isa ConstantCovar ? nothing : subject.covariates.t,
+  param::NamedTuple,
+  approx::LikelihoodApproximation=Pumas.LaplaceI();
+  obstimes=subject.covariates isa ConstantInterpolationStructArray ? subject.covariates.t : nothing,
   kwargs...)
 
-  vrandeffsorth = Pumas._orth_empirical_bayes(model, subject, param, Pumas.LaplaceI())
+  vrandeffsorth = Pumas._orth_empirical_bayes(model, subject, param, approx)
 
   return _icoef(model, subject, param, vrandeffsorth;
     obstimes=obstimes, kwargs...)
@@ -909,8 +910,18 @@ function _icoef(
   else
     __pre = map(t -> (id=subject.id, _pre(t)...), obstimes)
 
+      # The simple one-liner commented out in below is also more efficient but
+      # can't currently (StructArrays v0.4.4) handle type instability, i.e.
+      # when the types of the fiels in the NamedTuples aren't the same across
+      # elements of the vector. Instead to use DataFrames for now to handle
+      # the promotion
+    __pre_df = DataFrame(__pre)
+    __pre_cols = getfield(__pre_df, :columns)
+    __pre_nt = NamedTuple{(propertynames(__pre_df)...,),Tuple{typeof.(__pre_cols)...}}((__pre_cols...,))
+
     return covariates_interpolant(
-      StructArrays.fieldarrays(StructArray(__pre)),
+      # StructArrays.fieldarrays(StructArray(__pre)),
+      __pre_nt,
       obstimes,
       subject.id;
       covariates_direction=:right)[2]
