@@ -46,11 +46,17 @@ function _build_analytical_problem(
   # We add zero amount doses for all covariate times to ensure that
   # that the coefficient values are constant on each subintercal
   events = copy(subject.events)
+  __cmt = if eltype(events) <: Event{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, Symbol}
+    first(events).cmt
+  else
+    1
+  end
   if subject.covariates isa ConstantInterpolationStructArray
     for t ∈ subject.covariates.t
-      push!(events, Event(0.0,t,1,1))
+      push!(events, Event(0.0,t,1,__cmt))
     end
   end
+  events = identity.(events)
   events = adjust_event(events,col,u0)
   times = unique(map(ev->ev.time, events))
 

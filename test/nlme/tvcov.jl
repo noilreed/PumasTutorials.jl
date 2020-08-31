@@ -295,7 +295,12 @@ function depots1central1(t, subject)
   end
 end
 
-subject = Subject(covariates=(weight=[75.0, 180.0, 60.0, 70.0],), covariates_time=(weight=[0.0,1.0,2.0,3.0],), events=DosageRegimen(DosageRegimen(D0;time=0.5,cmt=:Depot),DosageRegimen(10; cmt=:Central)))
+subject = Subject(
+  covariates=(weight=[75.0, 180.0, 60.0, 70.0],),
+  covariates_time=(weight=[0.0,1.0,2.0,3.0],),
+  events=DosageRegimen(
+    DosageRegimen(D0; time=0.5, cmt=:Depot),
+    DosageRegimen(10; cmt=:Central)))
 
 model_analytical =  @model begin
   @covariates weight
@@ -342,7 +347,7 @@ model_diffeq =  @model begin
   end
 end
 
-_saveat = [0.0,0.2,0.5,0.75,1.0,1.6,2.0,2.1,3.0]
+_saveat = [0.0, 0.2, 0.5, 0.75, 1.0, 1.6, 2.0, 2.1, 3.0]
 sol_analytical = solve(model_analytical, subject, NamedTuple())
 sol_linear = solve(model_linear, subject, NamedTuple())
 sol_diffeq = solve(model_diffeq, subject, NamedTuple(); saveat=_saveat, abstol=1e-12, reltol=1e-12)

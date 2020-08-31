@@ -28,7 +28,7 @@ function _build_diffeq_problem(m::PumasModel, subject::Subject, args...;
   else
     # This branch is only taken in mixed PKPD models where the events have been
     # processed as part of the analytical solution
-    tstops,_cb,d_discontinuities = Float64[],nothing,Float64[]
+    tstops,_cb,d_discontinuities = Float64[],nothing,_empty_d_discontinuities(subject.covariates)
   end
 
   cb = CallbackSet(_cb, callback)
@@ -94,9 +94,11 @@ function build_pkpd_problem(_prob::DiffEqBase.AbstractJumpProblem,set_parameters
                                             _prob.jump_callback,_prob.variable_jumps),tstops
 end
 
+_empty_d_discontinuities(cisa::ConstantInterpolationStructArray) = similar(cisa.t, 0)
+_empty_d_discontinuities(::Any) = SVector((0.0,))
 function ith_subject_cb(pre,datai::Subject,u0,t0,ProbType,saveat,save_discont,continuity)
   if isempty(datai.events)
-    return Float64[], nothing, Float64[]
+    return Float64[], nothing, _empty_d_discontinuities(datai.covariates)
   end
   ss_abstol = 1e-12 # TODO: Make an option
   ss_reltol = 1e-12 # TODO: Make an option
@@ -395,7 +397,6 @@ function ith_subject_cb(pre,datai::Subject,u0,t0,ProbType,saveat,save_discont,co
                               save_positions=save_positions,
                               interp_points=0)
   end
-
   tstops,cb,d_discontinuities
 end
 

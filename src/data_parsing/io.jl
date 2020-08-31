@@ -369,7 +369,7 @@ function build_event_list(regimen::DosageRegimen, event_data::Bool)
     ss   = data[!,:ss][i]
     build_event_list!(events, event_data, t, evid, amt, addl, ii, cmt, rate, ss)
   end
-  sort!(events)
+  sort!(identity.(events))
 end
 
 ###

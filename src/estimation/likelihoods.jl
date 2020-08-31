@@ -58,28 +58,19 @@ function _lpdf(ds::AbstractVector, xs::AbstractVector)
   return l
 end
 
-Base.@pure function _intersect_names(an::Tuple{Vararg{Symbol}}, bn::Tuple{Vararg{Symbol}})
-    names = Symbol[]
-    for n in an
-        if Base.sym_in(n, bn)
-            push!(names, n)
-        end
-    end
-    (names...,)
-end
-
 @generated function _lpdf(ds::NamedTuple{Nds}, xs::NamedTuple{Nxs}) where {Nds, Nxs}
-  _names = _intersect_names(Nds, Nxs)
-  quote
-    names = $_names
-    l = _lpdf(getindex(ds, names[1]), getindex(xs, names[1]))
-    for i in 2:length(names)
-      name = names[i]
-      l += _lpdf(getindex(ds, name), getindex(xs, name))
+  q = Expr(:block)
+  i = 0
+  for n in Nds
+    if Base.sym_in(n, Nxs)
+      ex = :(_lpdf(ds.$n, xs.$n))
+      iszero(i) || (ex = Expr(:call, :(+), Symbol(:l_, i), ex))
+      push!(q.args, Expr(:(=), Symbol(:l_, (i += 1)), ex))
     end
-    return l
   end
-end
+  push!(q.args, Symbol(:l_, i))
+  q
+end    
 
 """
     TimeToEvent{T}
