@@ -66,11 +66,10 @@ observationtimes(sub::Subject) = !isnothing(sub.time) ? sub.time :
                                  (0.0:1.0:(sub.events[end].time+24.0)) :
                                  (0.0:24.0)
 
-
 """
     sol = solve(model::PumasModel, subject::Subject, param,
                 randeffs=sample_randeffs(rng, model, param),
-                saveat = observationtimes(subject),
+                saveat = nothing,
                 args...; kwargs...)
 
 Compute the ODE for model `model`, with parameters `param`, random effects
@@ -88,10 +87,15 @@ function DiffEqBase.solve(
   param::NamedTuple = init_param(model),
   randeffs::Union{Nothing,NamedTuple}=nothing,
   args...;
-  saveat = observationtimes(subject),
+  saveat = nothing,
   callback = nothing,
   rng::AbstractRNG = default_rng(),
   kwargs...)
+  if saveat === nothing
+    # properly dep here
+    Base.depwarn("Calling solve without `saveat` set is deprecated. Please provide the times you wish to save at.", :solve)
+    saveat = observationtimes(subject)
+  end
 
   _randeffs = if randeffs===nothing
     sample_randeffs(rng, model, param)
@@ -141,15 +145,18 @@ function DiffEqBase.solve(
     trajectories = length(population), kwargs...)
 end
 
-
 # This internal function is just so that the collation doesn't need
 # to be repeated in the other API functions
 function _problem(model::PumasModel, subject, col, args...;
                   tspan=nothing, saveat=Float64[], kwargs...)
+                  # should ^ this be a typed time? 
   model.prob === nothing && return NullDEProblem(col)
+
   if tspan === nothing
-    tspan = float.(timespan(subject, tspan, saveat))
+    t₀ = 0 # should be taken from (model, subject)-par
+    tspan = (t₀, nothing)
   end
+  tspan = float.(timespan(subject, tspan, saveat))
 
   if model.prob isa ExplicitModel
     _prob = _build_analytical_problem(model, subject, tspan, col, args...; kwargs...)
@@ -414,12 +421,19 @@ function simobs(
   param::NamedTuple=init_param(model),
   randeffs::Union{Nothing,NamedTuple}=nothing,
   args...;
-  obstimes::AbstractArray=observationtimes(subject),
+  obstimes=nothing,
   callback = nothing,
   saveat=obstimes,
   rng::AbstractRNG=default_rng(),
   kwargs...)
-
+  if obstimes === nothing
+    # properly dep here
+    Base.depwarn("Calling simobs without `obstimes` set is deprecated. Please provide the times you wish to store in the SimulatedObservations.", :simobs)
+    obstimes = observationtimes(subject)
+    if saveat === nothing
+      saveat = obstimes
+    end
+  end
   _randeffs = if randeffs===nothing
     sample_randeffs(rng, model, param)
   else
