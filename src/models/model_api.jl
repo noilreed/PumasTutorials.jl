@@ -92,8 +92,7 @@ function DiffEqBase.solve(
   rng::AbstractRNG = default_rng(),
   kwargs...)
   if saveat === nothing
-    # properly dep here
-    Base.depwarn("Calling solve without `saveat` set is deprecated. Please provide the times you wish to save at.", :solve)
+    # Base.depwarn("Calling solve without `saveat` set is deprecated. Please provide the times you wish to save at.", :solve)
     saveat = observationtimes(subject)
   end
 
@@ -427,8 +426,7 @@ function simobs(
   rng::AbstractRNG=default_rng(),
   kwargs...)
   if obstimes === nothing
-    # properly dep here
-    Base.depwarn("Calling simobs without `obstimes` set is deprecated. Please provide the times you wish to store in the SimulatedObservations.", :simobs)
+    # Base.depwarn("Calling simobs without `obstimes` set is deprecated. Please provide the times you wish to store in the SimulatedObservations.", :simobs)
     obstimes = observationtimes(subject)
     if saveat === nothing
       saveat = obstimes
