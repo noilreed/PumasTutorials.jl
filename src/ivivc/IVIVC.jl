@@ -7,7 +7,7 @@ using ForwardDiff
 using CSV, DataFrames
 using Parameters
 
-@reexport using DataInterpolations, Optim, ..NCA
+@reexport using DataInterpolations, Optim, NCA
 
 abstract type Ivivc end
 

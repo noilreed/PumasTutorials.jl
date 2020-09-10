@@ -26,11 +26,11 @@ import DataInterpolations, ExponentialUtilities, Roots, TransformVariables
 
 @reexport using OrdinaryDiffEq, Unitful
 @reexport using Distributions, DataFrames
+@reexport using NCA
 
 const Numeric = Union{AbstractVector{<:Number}, Number}
 
 function opt_minimizer end
-include("nca/NCA.jl")
 include("ivivc/IVIVC.jl")
 
 include("data_parsing/io.jl")
