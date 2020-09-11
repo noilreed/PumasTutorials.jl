@@ -422,6 +422,14 @@ function dynamics_obj(odename::Tuple{Symbol,Expr}, pre, odevars, callvars, bvars
   end
 end
 
+function options_obj(options, isstatic)
+  options = tuple(options...)
+  options = NamedTuple{first.(options)}(last.(options))
+  _options_obj(;isstatic=isstatic, options...)
+end
+function _options_obj(;isstatic=true, subject_time=false)
+  (isstatic=isstatic, subject_time=subject_time,)
+end
 function convert_rhs_to_Expression(s::Symbol, bvars, dvars, params, t)
   s == t.op.name && return t
   i = findfirst(x->x.op.name == s,dvars)
@@ -660,6 +668,9 @@ macro model(expr)
   observedexpr = Expr(:block)
   bvars = :(begin end)
   callvars  = OrderedSet{Symbol}()
+  options_vars = Set{Symbol}()
+  options = OrderedDict{Symbol, Any}()
+
   local vars, params, randoms, covariates, prevars, preexpr, odeexpr, odevars
   local ode_init, eqs, derivedexpr, derivedvars, observedvars, observedexpr
   local isstatic, bvars, callvars, prevars, preexpr
@@ -713,21 +724,24 @@ macro model(expr)
       observedvars = copy(derivedvars)
     elseif ex.args[1] == Symbol("@observed")
       extract_randvars!(vars, observedvars, observedexpr, add_vars(ex.args[3], bvars))
+    elseif ex.args[1] == Symbol("@options")
+      extract_defs!(options_vars, options, ex.args[3])
     else
       throw(ArgumentError("Invalid macro $(ex.args[1])"))
     end
     #return nothing
   end
-
+  options = options_obj(options, isstatic)
   ex = quote
     x = PumasModel(
     $(param_obj(params)),
     $(random_obj(randoms,params)),
     $(pre_obj(expr,preexpr,prevars,cacheexpr,cachevars,params,randoms,covariates)),
-    $(init_obj(ode_init,odevars,prevars,isstatic,ismixed,odeexpr)),
-    $(dynamics_obj(odeexpr,prevars,odevars,callvars,bvars,eqs,isstatic)),
+    $(init_obj(ode_init,odevars,prevars,options.isstatic,ismixed,odeexpr)),
+    $(dynamics_obj(odeexpr,prevars,odevars,callvars,bvars,eqs,options.isstatic)),
     $(derived_obj(derivedexpr,derivedvars,prevars,odevars,params,randoms)),
-    $(observed_obj(observedexpr,observedvars,prevars,odevars,derivedvars)))
+    $(observed_obj(observedexpr,observedvars,prevars,odevars,derivedvars)),
+    $(options))
     function Base.show(io::IO, ::typeof(x))
       println(io,"PumasModel")
       println(io,"  Parameters: ",$(join(keys(params),", ")))

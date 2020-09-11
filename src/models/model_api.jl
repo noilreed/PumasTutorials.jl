@@ -15,7 +15,7 @@ A model takes the following arguments
 - `derived`: the derived variables and error distributions (param, randeffs, data, ode vals) -> sampling dist
 - `observed`: simulated values from the error model and post processing: (param, randeffs, data, ode vals, samples) -> vals
 """
-mutable struct PumasModel{P,Q,R,S,T,V,W}
+mutable struct PumasModel{P,Q,R,S,T,V,W,O}
   param::P
   random::Q
   pre::R
@@ -23,10 +23,10 @@ mutable struct PumasModel{P,Q,R,S,T,V,W}
   prob::T
   derived::V
   observed::W
+  options::O
 end
-PumasModel(param, random, pre, init, prob, derived) =
-    PumasModel(param, random, pre, init, prob, derived,
-      (col, sol, obstimes, samples, subject) -> samples)
+PumasModel(param, random, pre, init, prob, derived, observed=(col, sol, obstimes, samples, subject) -> samples) =
+    PumasModel(param, random, pre, init, prob, derived, observed, (subject_time=false,))
 
 init_param(model::PumasModel) = init(model.param)
 init_randeffs(model::PumasModel, param) = init(model.random(param))
@@ -41,6 +41,14 @@ sample_randeffs(rng::AbstractRNG, model::PumasModel, param::NamedTuple) = rand(r
 sample_randeffs(model::PumasModel, param::NamedTuple) = sample_randeffs(default_rng(), model, param)
 
 # How long to solve
+function timespan(model::PumasModel)
+  subject_time = model.options.subject_time
+  if subject_time === false
+    return (0, nothing)
+  else
+    return nothing
+  end
+end
 function timespan(sub::Subject, tspan, saveat)
   if isempty(sub.events) && isempty(saveat) && isempty(sub.time) && tspan == (nothing,nothing)
     error("No timespan is given. This means no events, observations, or user chosen time span exist for the subject. Please check whether the data was input correctly.")
@@ -152,10 +160,9 @@ function _problem(model::PumasModel, subject, col, args...;
   model.prob === nothing && return NullDEProblem(col)
 
   if tspan === nothing
-    t₀ = 0 # should be taken from (model, subject)-par
-    tspan = (t₀, nothing)
+    tspan = timespan(model)
+    tspan = float.(timespan(subject, tspan, saveat))
   end
-  tspan = float.(timespan(subject, tspan, saveat))
 
   if model.prob isa ExplicitModel
     _prob = _build_analytical_problem(model, subject, tspan, col, args...; kwargs...)
