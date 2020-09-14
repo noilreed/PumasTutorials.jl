@@ -25,7 +25,7 @@ _covariates_time(cisa::ConstantInterpolationStructArray) = cisa.t
 struct NoCovar end
 (nc::NoCovar)(t) = nothing
 
-_covariates_time(nc::NoCovar) = 0.0
+_covariates_time(nc::NoCovar) = SVector((0.0,))
 
 struct ConstantCovar{C}
   u::C
@@ -34,7 +34,7 @@ end
 
 Tables.columns(cc::ConstantCovar) = map(t -> [t], cc.u)
 
-_covariates_time(cc::ConstantCovar) = 0.0
+_covariates_time(cc::ConstantCovar) = SVector((0.0,))
 
 """
   covariates_interpolant(covariates, data, time; [interp, covariates_direction])

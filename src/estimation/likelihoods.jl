@@ -58,28 +58,19 @@ function _lpdf(ds::AbstractVector, xs::AbstractVector)
   return l
 end
 
-Base.@pure function _intersect_names(an::Tuple{Vararg{Symbol}}, bn::Tuple{Vararg{Symbol}})
-    names = Symbol[]
-    for n in an
-        if Base.sym_in(n, bn)
-            push!(names, n)
-        end
-    end
-    (names...,)
-end
-
 @generated function _lpdf(ds::NamedTuple{Nds}, xs::NamedTuple{Nxs}) where {Nds, Nxs}
-  _names = _intersect_names(Nds, Nxs)
-  quote
-    names = $_names
-    l = _lpdf(getindex(ds, names[1]), getindex(xs, names[1]))
-    for i in 2:length(names)
-      name = names[i]
-      l += _lpdf(getindex(ds, name), getindex(xs, name))
+  q = Expr(:block)
+  i = 0
+  for n in Nds
+    if Base.sym_in(n, Nxs)
+      ex = :(_lpdf(ds.$n, xs.$n))
+      iszero(i) || (ex = Expr(:call, :(+), Symbol(:l_, i), ex))
+      push!(q.args, Expr(:(=), Symbol(:l_, (i += 1)), ex))
     end
-    return l
   end
-end
+  push!(q.args, Symbol(:l_, i))
+  q
+end    
 
 """
     TimeToEvent{T}
@@ -1488,12 +1479,41 @@ function _check_zero_gradient(
         d = TransformVariables.dimension(v)
         j += d
         if i <= j
-          if d == 1
-            throw(ErrorException("gradient of $k is exactly zero. This indicates that $k isn't identified."))
-          else
-            throw(ErrorException("gradient element $(j-i+1) of $k is exactly zero. This indicates that $k isn't identified."))
-          end
+          param = TransformVariables.transform(fixedtrf, vparam)
+          _unindentified_exception(param[k], i, j, d, k)
         end
+      end
+    end
+  end
+end
+
+function _unindentified_exception(::Number, i::Int, j::Int, d::Int, k::Symbol)
+  @assert d == 1
+  throw(ErrorException("gradient is exactly zero in $k. This indicates that $k isn't identified."))
+end
+
+function _unindentified_exception(::Vector, i::Int, j::Int, d::Int, k::Symbol)
+  throw(ErrorException("gradient is exactly zero in $k$(_to_subscript(d - (j - i))). This indicates that $k isn't identified."))
+end
+
+function _unindentified_exception(::PDiagMat, i::Int, j::Int, d::Int, k::Symbol)
+  _i_s = _to_subscript(d - (j - i))
+  throw(ErrorException("gradient is exactly zero in $k$_i_s,$_i_s. This indicates that $k isn't identified."))
+end
+
+function _unindentified_exception(A::PDMat, i::Int, j::Int, d::Int, k::Symbol)
+  _i_linear = d - (j - i)
+  _i, _j = _sub2ind_vech(_i_linear, size(A, 1))
+  _i_s = _to_subscript(_i)
+  _j_s = _to_subscript(_j)
+  throw(ErrorException("gradient is exactly zero in $k$_i_s,$_j_s. This indicates that $k isn't identified."))
+end
+
+function _sub2ind_vech(_i, n)
+  for j in 1:n
+    for i in j:n
+      if _i == i
+        return (i, j)
       end
     end
   end

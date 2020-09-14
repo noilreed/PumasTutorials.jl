@@ -369,7 +369,7 @@ function build_event_list(regimen::DosageRegimen, event_data::Bool)
     ss   = data[!,:ss][i]
     build_event_list!(events, event_data, t, evid, amt, addl, ii, cmt, rate, ss)
   end
-  sort!(events)
+  sort!(identity.(events))
 end
 
 ###
@@ -830,8 +830,8 @@ TreeViews.nodelabel(io::IO, population::Population, i::Integer, mime::MIME"text/
 end
 
 # Convert to NCA types
-import .NCA: NCAPopulation, NCASubject, NCADose
-using .NCA: Formulation, IVBolus, IVInfusion, EV
+import NCA: NCAPopulation, NCASubject, NCADose
+using NCA: Formulation, IVBolus, IVInfusion, EV
 function Base.convert(::Type{NCADose}, ev::Event)
   (ev.evid == Int8(0) || ev.evid == Int8(2) || ev.evid == Int8(3)) && return nothing
   time = ev.time

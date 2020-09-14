@@ -1,4 +1,4 @@
-using Pumas
+using Pumas, NCA, Test
 
 choose_covariates() = (isPM = rand([1, 0]),
                        Wt = rand(55:80))

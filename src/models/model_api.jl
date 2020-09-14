@@ -290,7 +290,7 @@ end
       alg=alg,
       kwargs...)
     # if solution contains NaN return Inf
-    if (sol.retcode != :Success && sol.retcode != :Terminated) ||
+    if (sol.retcode !== :Success && sol.retcode !== :Terminated) ||
       # FIXME! Make this uniform across the two solution types
       # FIXME! obstimes can be empty
       any(x->any(isnan, x), sol isa PKPDAnalyticalSolution ? sol(obstimes[end]) : sol.u[end])

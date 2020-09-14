@@ -177,10 +177,10 @@ Observation records:         Active        Missing
   @testset "unidentified parameter make fit throw" begin
     # Since the data doesn't have a rate column, the rate parameter
     # θᵣ will be completely ignored. This should trigger an exception.
-    unidentified_model = @model begin
+    unidentified_model1 = @model begin
       @param begin
         θ ∈ VectorDomain(1, init=[0.5])
-        θᵣ∈ VectorDomain(1, init=[0.5])
+        θᵣ∈ RealDomain(init=0.5)
         Ω ∈ PDiagDomain(init=[0.04])
         Σ ∈ RealDomain(init=0.1)
       end
@@ -202,16 +202,180 @@ Observation records:         Active        Missing
       @dynamics Central1
 
       @derived begin
-        dv ~ @. Normal(conc,conc*sqrt(Σ)+eps())
+        dv ~ @. Normal(conc, conc*sqrt(Σ)+eps())
       end
     end
 
-    @test_throws ErrorException("gradient of θᵣ is exactly zero. This indicates that θᵣ isn't identified.") fit(
-        unidentified_model,
+    unidentified_model2 = @model begin
+      @param begin
+        θ ∈ VectorDomain(2, init=fill(0.5, 2))
+        Ω ∈ PDiagDomain(init=[0.04])
+        Σ ∈ RealDomain(init=0.1)
+      end
+
+      @random begin
+        η ~ MvNormal(Ω)
+      end
+
+      @pre begin
+        CL = θ[1] * exp(η[1])
+        Vc = 1.0
+      end
+
+      @vars begin
+        conc = Central / Vc
+      end
+
+      @dynamics Central1
+
+      @derived begin
+        dv ~ @. Normal(conc, conc*sqrt(Σ)+eps())
+      end
+    end
+
+    unidentified_model3 = @model begin
+      @param begin
+        θ ∈ VectorDomain(2, init=fill(0.5, 2))
+        Ω ∈ PDiagDomain(init=[0.04])
+        Σ ∈ RealDomain(init=0.1)
+      end
+
+      @random begin
+        η ~ MvNormal(Ω)
+      end
+
+      @pre begin
+        CL = θ[2] * exp(η[1])
+        Vc = 1.0
+      end
+
+      @vars begin
+        conc = Central / Vc
+      end
+
+      @dynamics Central1
+
+      @derived begin
+        dv ~ @. Normal(conc, conc*sqrt(Σ)+eps())
+      end
+    end
+
+    unidentified_model4 = @model begin
+      @param begin
+        Ω ∈ PDiagDomain(init=[0.04])
+        Σ ∈ RealDomain(init=0.1)
+        θ ∈ VectorDomain(2, init=fill(0.5, 2))
+      end
+
+      @random begin
+        η ~ MvNormal(Ω)
+      end
+
+      @pre begin
+        CL = θ[2] * exp(η[1])
+        Vc = 1.0
+      end
+
+      @vars begin
+        conc = Central / Vc
+      end
+
+      @dynamics Central1
+
+      @derived begin
+        dv ~ @. Normal(conc, conc*sqrt(Σ)+eps())
+      end
+    end
+
+    unidentified_model5 = @model begin
+      @param begin
+        θ ∈ RealDomain(init=0.5)
+        Ω ∈ PDiagDomain(init=[0.04])
+        Σ ∈ RealDomain(init=0.1)
+      end
+
+      @random begin
+        η ~ MvNormal(Diagonal([0.04]))
+      end
+
+      @pre begin
+        CL = θ * exp(η[1])
+        Vc = 1.0
+      end
+
+      @vars begin
+        conc = Central / Vc
+      end
+
+      @dynamics Central1
+
+      @derived begin
+        dv ~ @. Normal(conc, conc*sqrt(Σ)+eps())
+      end
+    end
+
+    unidentified_model6 = @model begin
+      @param begin
+        θ ∈ RealDomain(init=0.5)
+        Ω ∈ PSDDomain(init=fill(0.04, 1, 1))
+        Σ ∈ RealDomain(init=0.1)
+      end
+
+      @random begin
+        η ~ MvNormal(Diagonal([0.04]))
+      end
+
+      @pre begin
+        CL = θ * exp(η[1])
+        Vc = 1.0
+      end
+
+      @vars begin
+        conc = Central / Vc
+      end
+
+      @dynamics Central1
+
+      @derived begin
+        dv ~ @. Normal(conc, conc*sqrt(Σ)+eps())
+      end
+    end
+
+    @test_throws ErrorException("gradient is exactly zero in θᵣ. This indicates that θᵣ isn't identified.") fit(
+        unidentified_model1,
         data,
-        init_param(unidentified_model),
-        Pumas.FO(),
-        constantcoef=(θ=[0.5],))
+        init_param(unidentified_model1),
+        Pumas.FO())
+
+    @test_throws ErrorException("gradient is exactly zero in θ₂. This indicates that θ isn't identified.") fit(
+        unidentified_model2,
+        data,
+        init_param(unidentified_model2),
+        Pumas.FO())
+
+    @test_throws ErrorException("gradient is exactly zero in θ₁. This indicates that θ isn't identified.") fit(
+        unidentified_model3,
+        data,
+        init_param(unidentified_model3),
+        Pumas.FO())
+
+    @test_throws ErrorException("gradient is exactly zero in θ₁. This indicates that θ isn't identified.") fit(
+        unidentified_model4,
+        data,
+        init_param(unidentified_model4),
+        Pumas.FO())
+
+    @test_throws ErrorException("gradient is exactly zero in Ω₁,₁. This indicates that Ω isn't identified.") fit(
+        unidentified_model5,
+        data,
+        init_param(unidentified_model5),
+        Pumas.FO())
+
+    @test_throws ErrorException("gradient is exactly zero in Ω₁,₁. This indicates that Ω isn't identified.") fit(
+        unidentified_model6,
+        data,
+        init_param(unidentified_model6),
+        Pumas.FO())
   end
 
   # test for #1043
