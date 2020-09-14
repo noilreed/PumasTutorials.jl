@@ -239,8 +239,8 @@ end
 
   ft = fit(model, pd, param, Pumas.LaplaceI(),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
-  @test 2*Pumas.marginal_nll(ft) ≈ 2145.45032178054 rtol=1e-3 # From NONMEM
-  @test coef(ft).θ               ≈ 1.1412e-02       rtol=1e-2 # From NONMEM
+  @test 2*Pumas.marginal_nll(ft) ≈ 2419.5563281934892 rtol=1e-3 # From NONMEM
+  @test coef(ft).θ               ≈ 5.67E-03       rtol=1e-2 # From NONMEM
 
   @testset "simulate and estiate (round trip)" begin
 
