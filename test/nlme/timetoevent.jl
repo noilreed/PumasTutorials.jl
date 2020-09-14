@@ -235,7 +235,7 @@ end
 
   param = (θ=0.01, ω=sqrt(1e-08))
 
-  @test loglikelihood(model, pd, param, Pumas.LaplaceI()) ≈ -1074.361999154395 rtol=1e-4 # regression test
+  @test 2*loglikelihood(model, pd, param, Pumas.LaplaceI()) ≈ -2496.42671231965  rtol=1e-4 # regression test
 
   ft = fit(model, pd, param, Pumas.LaplaceI(),
     optimize_fn=Pumas.DefaultOptimizeFN(show_trace=false))
