@@ -33,10 +33,9 @@ model = @model begin
     η ~ MvNormal(Ω)
   end
 
-  @covariates isPM Wt
+  @covariates Wt
 
   @pre begin
-    TVCL = isPM == 1 ? θ[1] : θ[4]
     CL = θ[1]*(Wt/70)^0.75*exp(η[1])
     V = θ[2]*(Wt/70)^0.75*exp(η[2])
     Ka = θ[3]*exp(η[3])
@@ -97,7 +96,7 @@ Note that `ev` is of type `DosageRegimen`. Specified like above,
 Let's create a single subject
 
 ```julia
-s1 = Subject(id=1,events=ev,covariates=(isPM=0, Wt=70))
+s1 = Subject(id=1,events=ev,covariates=(Wt=70,))
 for fn in fieldnames(Subject)
     x = getproperty(s1, fn)
     if !isa(x, Nothing)
@@ -144,7 +143,7 @@ plot(obs)
 Now, lets create one more subject, `s2`.
 
 ```julia
-s2 = Subject(id=2,events=ev,covariates=(isPM=1,Wt=70))
+s2 = Subject(id=2,events=ev,covariates=(Wt=70,))
 ```
 
 If we want to simulate both `s1` and `s2` together, we need to bring these subjects together to form a `Population`. A `Population` is
@@ -188,8 +187,7 @@ The second covariate is a continuous covariate where body weight `Wt` impacts
 both `CL` and `V`. Let us now specify covariates to a population of 10 subjects.
 
 ```julia
-choose_covariates() = (isPM = rand([1, 0]),
-                    Wt = rand(55:80))
+choose_covariates() = (Wt = rand(55:80),)
 ```
 `choose_covariates` will randomly choose a `isPM` and an `Wt` between 55-80 kgs
 
@@ -236,7 +234,7 @@ md =  DosageRegimen(100,ii=24,addl=6)
 Let's create a new subject, `s3` with this dosage regimen:
 
 ```julia
-s3 = Subject(id=3,events=md, covariates=(isPM=0,Wt=70))
+s3 = Subject(id=3,events=md, covariates=(Wt=70,))
 ```
 
 and see the results:
@@ -260,7 +258,7 @@ ldmd = DosageRegimen([500,100],cmt=1, time=[0,24], addl=[0,6],ii=[0,24])
 Let's see if this result matches our intuition:
 
 ```julia
-s4 = Subject(id=4, events=ldmd, covariates=(isPM=0,Wt=70))
+s4 = Subject(id=4, events=ldmd, covariates=(Wt=70,))
 obs = simobs(model, s4, fixeffs,obstimes=0:0.1:120)
 plot(obs, ylims=(0,50))
 ```
@@ -314,7 +312,7 @@ inf = DosageRegimen(100, rate=3, cmt=2)
 Now let's simulate a subject undergoing this treatment strategy:
 
 ```julia
-s5 = Subject(id=5, events=inf, covariates=(isPM=0,Wt=70))
+s5 = Subject(id=5, events=inf, covariates=(Wt=70,))
 obs = simobs(model, s5, fixeffs, obstimes=0:0.1:120)
 plot(obs)
 ```
