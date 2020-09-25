@@ -340,25 +340,19 @@ Here we will cover only those features that are different.
 
 ### Defining the population object
 
-The standard requirements of `read_nca` as specified in for the single dose apply. In this mulitple dose example, since subjects
-visit in more than once occasion, we need to use an `occasion=` variable to speify the multiple dose nature.
+The standard requirements of `read_nca` as specified in for the single dose apply.
 
 ```julia
 iv_nca_md = read_nca(iv_sim_md, id=:id, time=:time, conc=:dv, amt=:amt, ii=24timeu,
-    route=:route, occasion=:day,timeu=timeu, concu=concu, amtu=amtu,llq=0.4concu)
+    route=:route, group= :day, timeu=timeu, concu=concu, amtu=amtu,llq=0.4concu)
 ```
-Key features of the syntax above:
-
-* `occasion=:day` provides a way to specify multiple dosing
-
-To check how occasion works, lets calculate the AUC
+Note how the results above are grouped by `day`.
 
 ```julia
 auc = NCA.auc(iv_nca_md,auctype=:last,method=:linear)
 first(auc, 6)
 ```
 
-Note how the results above are grouped by `occasion`
 All other NCA function work on this grouped variable. Let's directly print the NCA report.
 
 ```julia

@@ -58,14 +58,13 @@ The following are the key arguments to this function that maps the column names 
 * dose column (`amt=`),
 * interdose interval (`ii=`) multiplied by the time units,
 * route of administration (`route=`). In this example, since two different formulations were administered, we will specify two different routes of administration.
-* occasion column (`occasion=`) that defines the different dosing events. In this example, occasion 1 is IV administration and occasion 2 is oral administration
-* column  (`occasion=`) needs to be specified (occasion 1 is IV administration and occasion 2 is oral administration).
+* group column (`group=`) In this example, group 1 is IV administration and group 2 is oral administration which are used to group the data set for NCA calculations
 
 There are additional arguments that will be discussed later.
 
 ```julia;include=false
 pop = read_nca(data, id=:ID, time=:time, conc=:DV, amt=:DOSE, ii=24timeu,
-    route=:Formulation, occasion=:OCC,timeu=timeu, concu=concu, amtu=amtu)
+    route=:Formulation, group=:OCC,timeu=timeu, concu=concu, amtu=amtu)
 ```
 Please, note that column mapped to the `route=` argument, in this case the `:Formulation` column can include "iv" or "ev"
 to represent intravenous or extravacular dosing. This is a required format.
@@ -77,7 +76,7 @@ Let's say we want to specify a LLQ value of 0.4 mg/L, then we need to add `llq=0
 
 ```julia;include=false
 pop = read_nca(data, id=:ID, time=:time, conc=:DV, amt=:DOSE, ii=24timeu,
-    route=:Formulation, occasion=:OCC,timeu=timeu, concu=concu, amtu=amtu, lloq=0.4concu)
+    route=:Formulation, group=:OCC,timeu=timeu, concu=concu, amtu=amtu, lloq=0.4concu)
 ```
 
 # Single dose PK parameter calculation
@@ -107,8 +106,8 @@ To compute AUC from time 0 to 12 hours after dose on the first individual :
 NCA.auc(pop[1], interval=(0,12).*timeu)
 ```
 
-Please, note that by specifying `pop[1]` this function returns two values, one for each occasion
-(occasion 1 is IV administration and occasion 2 is oral administration).
+Please, note that by specifying `pop[1]` this function returns two values, one for each group
+(group 1 is IV administration and group 2 is oral administration).
 
 Also note that we need to apply the time unit (`timeu`) to the interval for units compatibility.
 
