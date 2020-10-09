@@ -313,7 +313,7 @@ function extract_dynamics!(vars, odevars, prevars, callvars, ode_init, sym::Symb
   end
 end
 
-function init_obj(ode_init, _odevars, prevars, isstatic, ismixed, odeexpr)
+function init_obj(ode_init, _odevars, prevars, options, ismixed, odeexpr)
   if ismixed
     #in MixedPK, the init should only be the non-PK vars
     pkvars = varnames(getproperty(Pumas,odeexpr[1]))
@@ -326,7 +326,7 @@ function init_obj(ode_init, _odevars, prevars, isstatic, ismixed, odeexpr)
   for p in odevars
     push!(vecexpr, ode_init[p])
   end
-  if isstatic
+  if !options.inplace
     typeexpr = :(Pumas.LabelledArrays.SLArray{Tuple{$(length(odevars))},($(Meta.quot.(odevars)...),)}())
     append!(typeexpr.args,vecexpr)
   else
@@ -344,7 +344,7 @@ function init_obj(ode_init, _odevars, prevars, isstatic, ismixed, odeexpr)
   end
 end
 
-function dynamics_obj(odeexpr::Expr, pre, odevars, callvars, bvars, eqs, isstatic)
+function dynamics_obj(odeexpr::Expr, pre, odevars, callvars, bvars, eqs, options)
   odeexpr == :() && return nothing
 
   # dvars and params are Operations (does params still have to now that pre is "pre-evaluated" in the wrapper function?)
@@ -357,9 +357,9 @@ function dynamics_obj(odeexpr::Expr, pre, odevars, callvars, bvars, eqs, isstati
   W_tname = gensym(:PumasW_tFactFunction)
   funcname = gensym(:PumasODEFunction)
 
-  funcindex = 2 - isstatic
+  funcindex = 2 - !options.inplace
 
-  diffeq = :(ODEProblem{$(!isstatic)}($funcname,nothing,nothing,nothing))
+  diffeq = :(ODEProblem{$(options.inplace)}($funcname,nothing,nothing,nothing))
 
   # DVar - create array of dynamic variables
   # Combines symbols (v's), the Variable constructor and
@@ -399,7 +399,7 @@ function dynamics_obj(odeexpr::Expr, pre, odevars, callvars, bvars, eqs, isstati
   end
 end
 
-function dynamics_obj(odename::Symbol, pre, odevars, callvars, bvars, eqs, isstatic)
+function dynamics_obj(odename::Symbol, pre, odevars, callvars, bvars, eqs, options)
   quote
     for n ∈ _pre_req($odename)
       if n ∉ $pre
@@ -411,10 +411,10 @@ function dynamics_obj(odename::Symbol, pre, odevars, callvars, bvars, eqs, issta
 end
 
 # Mixed PK
-function dynamics_obj(odename::Tuple{Symbol,Expr}, pre, odevars, callvars, bvars, eqs, isstatic)
-  ex1 = dynamics_obj(odename[1], pre, odevars, callvars, bvars, eqs, isstatic)
+function dynamics_obj(odename::Tuple{Symbol,Expr}, pre, odevars, callvars, bvars, eqs, options)
+  ex1 = dynamics_obj(odename[1], pre, odevars, callvars, bvars, eqs, options)
   pkvars = varnames(getproperty(Pumas,odename[1]))
-  ex2 = dynamics_obj(odename[2], [collect(pre);collect(pkvars)], symdiff(pkvars,odevars), callvars, bvars, eqs, isstatic)
+  ex2 = dynamics_obj(odename[2], [collect(pre);collect(pkvars)], symdiff(pkvars,odevars), callvars, bvars, eqs, options)
   quote
     pkprob = $ex1
     prob2 = $ex2
@@ -422,13 +422,16 @@ function dynamics_obj(odename::Tuple{Symbol,Expr}, pre, odevars, callvars, bvars
   end
 end
 
+# The mixing of isstatic and inplace here comes from the
+# fact that isstatic is an internal implementation detail
+# but inplace is the user facing option.
 function options_obj(options, isstatic)
   options = tuple(options...)
   options = NamedTuple{first.(options)}(last.(options))
-  _options_obj(;isstatic=isstatic, options...)
+  _options_obj(;inplace=!isstatic, options...)
 end
-function _options_obj(;isstatic=true, subject_time=false)
-  (isstatic=isstatic, subject_time=subject_time,)
+function _options_obj(;inplace=false, subject_time=false)
+  (inplace=inplace, subject_time=subject_time,)
 end
 function convert_rhs_to_Expression(s::Symbol, bvars, dvars, params, t)
   s == t.op.name && return t
@@ -737,8 +740,8 @@ macro model(expr)
     $(param_obj(params)),
     $(random_obj(randoms,params)),
     $(pre_obj(expr,preexpr,prevars,cacheexpr,cachevars,params,randoms,covariates)),
-    $(init_obj(ode_init,odevars,prevars,options.isstatic,ismixed,odeexpr)),
-    $(dynamics_obj(odeexpr,prevars,odevars,callvars,bvars,eqs,options.isstatic)),
+    $(init_obj(ode_init,odevars,prevars,options,ismixed,odeexpr)),
+    $(dynamics_obj(odeexpr,prevars,odevars,callvars,bvars,eqs,options)),
     $(derived_obj(derivedexpr,derivedvars,prevars,odevars,params,randoms)),
     $(observed_obj(observedexpr,observedvars,prevars,odevars,derivedvars)),
     $(options))
