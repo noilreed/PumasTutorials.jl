@@ -8,7 +8,7 @@ showing how to do pharmaceutical modeling and simulation with Pumas.jl.
 - Introduction
   - [Introduction to Pumas](https://tutorials.pumas.ai/html/introduction/introduction.html)
   - [Generating and Simulating Populations](https://tutorials.pumas.ai/html/introduction/simulating_populations.html)
-  - [Introduction to Noncompartmental Analysis (NCA)](https://tutorials.pumas.ai/html/nca/basic_nca.html)
+  - [Introduction to Noncompartmental Analysis (NCA)](https://tutorials.pumas.ai/html/nca/nca_introduction.html)
 - Workshop Materials
   - [Workshop Exercises](https://tutorials.pumas.ai/html/exercises/workshop_exercises.html)
   - [Workshop Exercise Solutions](https://tutorials.pumas.ai/html/exercises/workshop_solutions.html)
