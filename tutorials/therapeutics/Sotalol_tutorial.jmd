@@ -1,11 +1,14 @@
 ---
 title : Accelerated sotalol dosing stratgies
-author : Elyes Dahmane, Vijay Ivaturi
-date :  August 10, 2019
+date: `j Date(now())`
 ---
 
+```julia; echo = false
+using Dates
+```
+
 ```julia
-using Pumas, LinearAlgebra, Plots, StatsPlots, CategoricalArrays
+using Pumas, Plots, StatsPlots, CategoricalArrays
 ```
 
 ```julia
@@ -95,14 +98,15 @@ parameters_PKPD = ( θ =     [1.0667, #bioav
 ```
 
 ```julia
-randeffs = (η = zeros(9),)
+randeffs = (η = zeros(5),)
 ```
 
 ## Traditional dosing strategy and time to stable QTc
 
-Given the model above, let us first simulate a traditional dosing strategy that is used to initiate patients on sotalol -  80 mg BID
+Given the model above, let us first simulate a traditional dosing strategy that
+is used to initiate patients on sotalol -  80 mg BID
 
-**set up the dosing regiment**
+**set up the dosing regimen**
 
 ```julia
 reg_PO_80 = DosageRegimen(80, cmt=1, time=0, ii=12, addl=5, rate=0)
@@ -112,13 +116,13 @@ reg_PO_80_CKI = DosageRegimen(80, cmt=1, time=0, ii=24, addl=5, rate=0)
 **create a single subject**
 
 ```julia
-s1 = Subject(id=1, evs=reg_PO_80, cvs = (BW = 70, CKI=0))
+s1 = Subject(id=1, events=reg_PO_80, covariates = (BW = 70, CKI=0))
 ```
 
 ```julia
 bidpo=simobs(sotalol_PKPD_model, s1, parameters_PKPD,randeffs)
-plot(bidpo, obsnames = [:cp,:qtc],
-    color=[2 3],lw=2,
+plot(bidpo, obsnames = [:cp,:qtc], size = (800, 600),
+    color=[2 3],lw=4,
     xticks = 0:12:96, title = "Subject 1 - 80 mg PO")
 ```
 
@@ -126,18 +130,18 @@ The top panel shows that it takes about 5-6 doses or 3 days to reach steady-stat
 Similarly, it takes abuot 3 days for the QTc to stabilize to its new steady-state value.
 
 
-The approved bioequivalent intravenous dose of sotalol (75 mg) on the other hand is given as a 5-hour infusion that
-is tedious.
+The approved bioequivalent intravenous dose of sotalol (75 mg) on the
+other hand is given as a 5-hour infusion that is tedious.
 
 ```julia
 reg_IV_75 = DosageRegimen(75,cmt=2,time=0,rate=75/5, ii=12, addl=5)
-s2 = Subject(id=1, evs=reg_IV_75, cvs = (BW = 70, CKI=0))
+s2 = Subject(id=1, events=reg_IV_75, covariates = (BW = 70, CKI=0))
 ```
 
 ```julia
 bidiv=simobs(sotalol_PKPD_model, s2, parameters_PKPD, randeffs)
-plot(bidiv, obsnames = [:cp,:qtc],
-    color=[2 3],lw=2,
+plot(bidiv, obsnames = [:cp,:qtc],size = (800, 600),
+    color=[2 3],lw=4,
     xticks = 0:12:96, title = "Subject 2 - 75 mg IV")
 ```
 
@@ -176,18 +180,25 @@ reg_IVPO_80 = DosageRegimen([40,80,80], cmt=[2,1,1],
                             time=[0,1,12], ii=[0,0,12],
                             addl=[0,0,4], rate=[40/1,0,0])
 reg_PO_80 = DosageRegimen(80, cmt=1, time=0, ii=12, addl=5, rate=0)
-s3_po = Subject(id=3, evs=reg_PO_80, cvs = (BW = 70, CKI=0))
-s3 = Subject(id=3, evs=reg_IVPO_80, cvs=(BW = 70, CKI=0, dose=["iv1","po","po"], reg="IV_PO_80mg"))
+s3_po = Subject(id=3, events=reg_PO_80, covariates = (BW = 70, CKI=0))
+s3 = Subject(id=3, events=reg_IVPO_80,
+            covariates=(BW = [70, 70, 70], CKI=[0, 0, 0],
+            dose=["iv1","po","po"], reg=["IV_PO_80mg","IV_PO_80mg","IV_PO_80mg"]),
+            covariates_time = [0, 1, 12],covariates_direction = :left)
 ```
 
 ```julia
 reg1_po=simobs(sotalol_PKPD_model, s3_po, parameters_PKPD, randeffs)
-reg1=simobs(sotalol_PKPD_model, s3, parameters_PKPD,randeffs)
-plot(reg1, obsnames = [:cp,:qtc],
-    color=[2 3],lw=2,
+reg1=simobs(sotalol_PKPD_model, s3, parameters_PKPD,randeffs,obstimes=0:0.01:96)
+
+reg1df = DataFrame(reg1)
+dropmissing!(reg1df,:cp)
+@df reg1df plot(:time, :cp, group=:dose, linecolor=[:brown :blue], linewidth=4)
+plot(reg1, obsnames = [:cp,:qtc], size = (800, 600),
+    color=[2 3],lw=4,
     xticks = 0:12:96, title = "Subject 3 - Regimen 1")
-plot!(reg1_po, obsnames = [:cp,:qtc],
-    color=[4],lw=2, linestyle = [:dot],
+plot!(reg1_po, obsnames = [:cp,:qtc],size = (800, 600),
+    color=[4],lw=4, linestyle = [:dot],
     xticks = 0:12:96, title = "Subject 3 - Regimen 1")
 ```
 
@@ -199,18 +210,20 @@ reg_IVPO_120 = DosageRegimen([40,20,120,120], cmt=[2,2,1,1],
                             time=[0,1,1.5,12],ii=[0,0,0,12],
                             addl=[0,0,0,4], rate=[40/1,20/0.5,0,0])
 reg_PO_120 = DosageRegimen(120, cmt=1, time=0, ii=12, addl=5, rate=0)
-s4_po = Subject(id=4, evs=reg_PO_120, cvs = (BW = 70, CKI=0))
-s4 = Subject(id=4, evs=reg_IVPO_120, cvs=(BW = 70, CKI=0, dose=["iv1","iv2","po","po"]))
+s4_po = Subject(id=4, events=reg_PO_120, covariates = (BW = 70, CKI=0))
+s4 = Subject(id=4, events= reg_IVPO_120,
+            covariates=(BW = [70, 70, 70, 70], CKI=[0,0,0,0],
+            dose=["iv1","iv2","po","po"]),covariates_time = [0,1,1.5,12])
 ```
 
 ```julia
 reg2_po=simobs(sotalol_PKPD_model, s4_po, parameters_PKPD, randeffs)
 reg2=simobs(sotalol_PKPD_model, s4, parameters_PKPD,randeffs)
-plot(reg2, obsnames = [:cp,:qtc],
-    color=[2 3],lw=2,
+plot(reg2, obsnames = [:cp,:qtc],size = (800, 600),
+    color=[2 3],lw=4,
     xticks = 0:12:96, title = "Subject 4 - Regimen 2")
-plot!(reg2_po, obsnames = [:cp,:qtc],
-    color=[4],lw=2, linestyle = [:dot],
+plot!(reg2_po, obsnames = [:cp,:qtc],size = (800, 600),
+    color=[4],lw=4, linestyle = [:dot],
     xticks = 0:12:96, title = "Subject 4 - Regimen 2")
 ```
 
@@ -221,8 +234,10 @@ reg_IVPO_160 = DosageRegimen([40,20,20,160,160], cmt=[2,2,2,1,1],
                             time=[0,1,1.5,2,12],ii=[0,0,0,0,12],
                             addl=[0,0,0,0,4], rate=[40/1,20/0.5,20/0.5,0,0])
 reg_PO_160 = DosageRegimen(160, cmt=1, time=0, ii=12, addl=5, rate=0)
-s5_po = Subject(id=5, evs=reg_PO_160, cvs = (BW = 70, CKI=0))
-s5 = Subject(id=5, evs=reg_IVPO_160, cvs=(BW = 70, CKI=0, dose=["iv1","iv2","iv3","po","po"]))
+s5_po = Subject(id=5, events=reg_PO_160, covariates = (BW = 70, CKI=0))
+s5 = Subject(id=5, events=reg_IVPO_160,
+            covariates=(BW = fill(70, 5), CKI=fill(0, 5), dose=["iv1","iv2","iv3","po","po"]),
+            covariates_time = [0,1,1.5,2,12])
 ```
 
 ```julia
@@ -253,20 +268,26 @@ regimen.
 
 
 ```julia
-pop5 = Population(map(i -> Subject(id=i, evs=reg_IVPO_160, cvs=(BW = round.(rand(Normal(70, 10))), CKI=0, dose=["iv1","iv2","iv3","po","po"])), 1:1000))
-sim_pop=simobs(sotalol_PKPD_model, pop5, parameters_PKPD, parallel_type=Pumas.Serial)
-plot(sim_pop, obsnames = [:cp,:qtc],
-    color=[2 3],lw=0.025,seriesalpha =0.2,
+pop5 = Population(map(i -> Subject(id=i, events=reg_IVPO_160,
+      covariates=(BW = fill(round.(rand(Normal(70, 10))),5),
+      CKI=fill(0,5), dose=["iv1","iv2","iv3","po","po"]), covariates_time = [0,1,1.5,2,12]), 1:1000))
+sim_pop=simobs(sotalol_PKPD_model, pop5, parameters_PKPD)
+plot(sim_pop, obsnames = [:cp,:qtc], size = (800,600),
+    lw=0.25,
     xticks = 0:12:96, title = "Population Simulation - Regimen 3")
 ```
 
-However, our interest is to evaluate if the change from baseline QTc is greater than 30 msec
+However, our interest is to evaluate if the change from baseline
+QTc is greater than 30 msec
 
 ```julia
 simdf = DataFrame(sim_pop, include_events=false, include_covariates=false)
 foo = by(simdf, :id, :cp => maximum)
 bar = join(simdf, foo, on = :id)
-bar.bins = cut(bar.cp_maximum,5)
+bar.bins = string.(cut(bar.cp_maximum,5))
+```
+```julia
+CSV.write("./data/simpop.csv", sim_pop)
 ```
 
 ```julia;
