@@ -1,0 +1,158 @@
+---
+title : PK13 - Bolus plus constant rate infusion
+date: `j Date(now())`
+css: ../../assets/resources.css
+---
+
+```julia; echo = false
+using Dates
+```
+
+### Background
+
+  * Structural model        - Two compartment model with first order elimination
+  * Route of administration - IV-Bolus and IV-Infusion given simultaneously
+  * Dosage Regimen          - 400 μg/kg IV-Bolus and 800 μg/kg IV-Infusion for 26 mins at _time=0_
+  * Number of Subjects      - 1
+
+![pk13](https://user-images.githubusercontent.com/62205585/79003400-2a08e100-7b70-11ea-8936-a6fdeada62f4.png)
+
+### Learning Outcome
+
+  * Write the differential equation for a _two-compartment model_ in terms of Clearance and Volume
+  * Simulate data for both a bolus dose follwed by a constatnt rate infusion regimen
+  * Administration of _loading dose_  helps to achieve _therapeutic concentrations_ faster
+
+### Objective
+
+The objective of this exercise is to fit data from a bolus follwed by a constant rate
+ infusion using different model to provide a best fit to the data.
+
+### Libraries
+
+call the "necessary" libraries to get started
+
+```julia
+using Pumas
+using Plots
+using CSV
+using StatsPlots
+using Random
+```
+### Model
+
+The given data follows a two compartment model in which the IV Bolus and IV-Infusion are administered at `time=0`
+
+```julia
+pk_13           = @model begin
+  @param begin
+    tvcl        ∈ RealDomain(lower=0)
+    tvvc        ∈ RealDomain(lower=0)
+    tvq         ∈ RealDomain(lower=0)
+    tvvp        ∈ RealDomain(lower=0)
+    Ω           ∈ PDiagDomain(4)
+    tvCMixRatio ∈ RealDomain(lower=0)
+    σ²_prop     ∈ RealDomain(lower=0)
+    σ²_add      ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η           ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Cl          = tvcl * exp(η[1])
+    Vc          = tvvc * exp(η[2])
+    Q           = tvq * exp(η[3])
+    Vp          = tvvp * exp(η[4])
+  end
+
+  @dynamics begin
+    Central'    = -(Cl/Vc)*Central -(Q/Vc)*Central +(Q/Vp)*Peripheral
+    Peripheral' = (Q/Vc)*Central -(Q/Vp)*Peripheral
+  end
+
+  @derived begin
+    cp          = @. Central/Vc
+    dv          ~ @. Normal(cp, sqrt((cp*tvCMixRatio*σ²_prop)^2 + σ²_add^2))
+  end
+end
+```
+
+### Parameters
+
+  * Cl - Clearance of central compartment (L/min/kg)
+  * Vc - Volume of central compartment (L/kg)
+  * Q  - Inter-compartmental clearance (L/min/kg)
+  * Vp - Volume of peripheral compartment (L/kg)
+  * Ω  - Between Subject Variability
+  * CMixRatio - Scaling factor
+  * σ - Residual Unexplained Variability
+
+```julia
+param = ( tvcl        = 0.344708,
+          tvvc        = 2.8946,
+          tvq         = 0.178392,
+          tvvp        = 2.18368,
+          Ω           = Diagonal([0.0, 0.0, 0.0, 0.0]),
+          tvCMixRatio = 1.00693,
+          σ²_prop     = 0.0571079,
+          σ²_add      = 0.1)
+```
+
+### Dosage Regimen
+
+  * Single dose of 400 μg/kg given as IV-Bolus at `time=0`
+  * Single dose of 800 μg/kg given as an IV-Infusion for _26 mins_ at `time=0`
+
+```julia
+ev1  = DosageRegimen(400, time=0, cmt=1)
+ev2  = DosageRegimen(800, time=0, cmt=1, rate=30.769)
+ev3  = DosageRegimen(ev1,ev2)
+sub1 = Subject(id=1, events=ev3)
+```
+
+### Simulation
+
+We will simulate the plasma concentration at the pre specified time points.
+
+```julia; results="hidden"
+Random.seed!(123)
+sim_sub1 = simobs(pk_13, sub1, param, obstimes=[2,5,10,15,20,25,30,33,35,37,40,45,50,60,70,90,110,120,150])
+```
+
+### DataFrame and Plot
+
+Convert the simulation to a datframe and use the dataframe to make your necessary plots
+
+```julia
+df1 = DataFrame(sim_sub1)
+@df df1 plot(:time, :cp, yaxis=:log,
+              title="Plasma Concentration vs Time", xlabel="Time (min)", ylabel="Concentration (ug/L)",
+              label= "PRED Conc", color=[:blue],linewidth=3,
+              xlims=(0,160), xticks=[0,20,40,60,80,100,120,140,160], ylims=(0.1,200))
+@df df1 scatter!(:time, :dv, label="OBS Conc", color=[:red])
+```
+
+
+```julia; echo=false, eval=false
+par = ( tvcl        = 0.344708,
+        tvvc        = 2.8946,
+        tvq         = 0.178392,
+        tvvp        = 2.18368,
+        Ω           = Diagonal([0.09, 0.04, 0.0225, 0.0125]),
+        tvCMixRatio = 1.00693,
+        σ²_prop     = 0.0571079,
+        σ²_add      = 0.2)
+
+ev   = DosageRegimen([400,800], time=0, cmt=1, duration=[0,26])
+pop  = map(i -> Subject(id=i,events=ev), 1:48)
+
+Random.seed!(1234)
+pop_sim = simobs(pk_13, pop, par, obstimes=[2,5,10,15,20,25,30,33,35,37,40,45,50,60,70,90,110,120,150])
+plot(pop_sim)
+
+df_sim = DataFrame(pop_sim)
+
+CSV.write("./data/generated/pk_13.csv", df_sim);
+```

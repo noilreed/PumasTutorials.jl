@@ -1,0 +1,217 @@
+---
+title : Exercise PK09 - Modeling of fraction absorbed and nonlinear bioavailability across the liver, Simulataneous fitting of Intravenous and Oral data
+date: `j Date(now())`
+css: ../../assets/resources.css
+---
+
+```julia; echo = false
+using Dates
+```
+
+### Background
+
+  * Structural model - Two compartment model with non-linear elimination from hepatic compartment
+  * Route of administration - Oral and IV on seperate ocassion
+  * Dosage Regimen - 2 μmol/kg : IV and 6 μmol/kg : Oral
+  * Number of Subjects - 1
+
+![PK09_Part_2](https://user-images.githubusercontent.com/62241298/78966656-074ddc80-7b1e-11ea-9ccf-daec232683ac.png)
+
+### Learning Outcomes
+
+Semi-physiologic model with elimination from hepatic compartment and dose administered by IV bolus.
+ The drug follows atwo compartment model. This data was modeled taking into account the heaptic
+ elimination component and hepatic blood flow. Hepatic distribution and elimination from liver
+ is modeled as an additional compartment with physiological values of blood flow reported from
+ literature. Oral dose administered into a Depot. This Depot compartment was connected to the
+ liver compartment.This study was conducted in parameters with Oral suspension of 6 μmol/kg and
+ IV bolus of 2 μmol/kg.
+
+### Objective
+
+The exercise aims to simulate data using a two compartment model and an additional
+ hepatic compartment. The elimination is non-linear metabolic clearance from the liver.
+ In case of oral administration the administered dose reaches hepatic compartment
+ with a lag-time.
+
+### Libraries
+
+call the "necessary" libraries to get started
+
+```julia
+using Pumas
+using Plots
+using CSV
+using StatsPlots
+using Random
+```
+
+### Model
+
+This model is written for both Oral and IV dosing regimen
+
+```julia
+pk_09           = @model begin
+  @param begin
+    tvvc        ∈ RealDomain(lower=0)
+    tvq         ∈ RealDomain(lower=0)
+    tvvp        ∈ RealDomain(lower=0)
+    tvvmax      ∈ RealDomain(lower=0)
+    tvkm        ∈ RealDomain(lower=0)
+    tvka        ∈ RealDomain(lower=0)
+    tvtlag      ∈ RealDomain(lower=0)
+    tvfa        ∈ RealDomain(lower=0)
+    Ω           ∈ PDiagDomain(8)
+    σ²_prop     ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η           ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Vc          = tvvc * exp(η[1])
+    Q           = tvq * exp(η[2])
+    Vp          = tvvp * exp(η[3])
+    Vmax        = tvvmax * exp(η[4])
+    Km          = tvkm * exp(η[5])
+    Ka          = tvka * exp(η[6])
+    lags        = (Depot = tvtlag * exp(η[7]),)
+    bioav       = (Depot = tvfa * exp(η[8]),)
+    Qh          = 3.3
+    Vh          = 0.02
+  end
+
+  @vars begin
+    VMKM       := Vmax*(Hepatic/Vh)/(Km + (Hepatic/Vh))
+  end
+
+  @dynamics begin
+    Depot'      = - Ka*Depot
+    Hepatic'    =   Ka*Depot -(Qh/Vh)*Hepatic + (Qh/Vc)*Central - VMKM
+    Central'    =  (Qh/Vh)*Hepatic - (Qh/Vc)*Central -(Q/Vc)*Central + (Q/Vp)*Peripheral
+    Peripheral' =  (Q/Vc)*Central - (Q/Vp)*Peripheral
+  end
+
+  @derived begin
+    cp          = @. Central/Vc
+    dv          ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
+  end
+end
+```
+
+### Parameters
+
+Parameters provided for simulation. tv represents the typical value for parameters.
+
+ * Vc - Volume of Central Compartment (L/kg)
+ * Q - Intercompartmental Clearance (L/kg)
+ * Vp - Volume of Peripheral Compartment (L/kg)
+ * Vmax - Maximum Metabolic Rate (μmol/hr/kg)
+ * Km - Michaelis Menton Constant (μmol/L)
+ * Ka - Absorption Rate Constant (hr⁻¹)
+ * fa - Fraction of drug absorbed
+ * tlag - lag time (hr)
+
+```julia
+param = (tvvc    = 0.34,
+         tvq     = 1.84,
+         tvvp    = 0.38,
+         tvvmax  = 0.13,
+         tvkm    = 0.31,
+         tvka    = 11.3,
+         tvfa    = 0.38,
+         tvtlag  = 0.062,
+         Ω       = Diagonal([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]),
+         σ²_prop = 0.00)
+```
+
+### Dosage Regimen
+
+##### Oral
+
+Dose of **6 μmol/kg** is administered orally at `time=0`
+
+```julia
+ev1  = DosageRegimen(6, time=0, cmt=:Depot)
+sub1 = Subject(id=1,events=ev1)
+```
+
+##### IV
+
+Dose of **2 μmol/kg** is administered as IV-bolus at `time=0`
+
+```julia
+ev2  = DosageRegimen(2, time=0, cmt=:Central)
+sub2 = Subject(id=2, events=ev2)
+```
+
+### Simulation
+
+##### Oral
+
+```julia; results="hidden"
+Random.seed!(123)
+sim_sub1_oral = simobs(pk_09,sub1,param,obstimes=[0.08333,0.25,0.5,1,2,4,6,8,23])
+df1_sub1_oral = DataFrame(sim_sub1_oral)
+```
+
+##### IV
+
+```julia; results="hidden"
+Random.seed!(123)
+sim_sub2_iv = simobs(pk_09,sub2,param,obstimes=[0.0056,0.03333,0.13333,0.25,0.75,1,2,3,4,6,8,10,12,15,20,23])
+df2_sub2_iv = DataFrame(sim_sub2_iv)
+```
+
+### Plots
+
+Combined plot of Oral and IV data
+
+```julia
+@df df1_sub1_oral plot(:time, :cp, yaxis=:log,
+                        xticks=[0,5,10,15,20,25], xlims=(-0.2,25), yticks=[0.01,0.1,1,10], ylims=(0.01,10),
+                        title = "Plasma Concentration vs Time", label = "Pred - Conc Oral",
+                        xlabel = "Time (hr)", ylabel = "Concentration (ug/L)", linewidth=3)
+@df df1_sub1_oral scatter!(:time, :dv, label = "Obs - Conc Oral")
+@df df2_sub2_iv plot!(:time, :cp, yaxis=:log, label = "Pred - Conc IV", linewidth=3)
+@df df2_sub2_iv scatter!(:time, :dv, label = "Obs - Conc IV")
+```
+
+
+```julia; echo=false, eval=false
+par = (tvvc    = 0.34,
+       tvq     = 1.84,
+       tvvp    = 0.38,
+       tvvmax  = 0.13,
+       tvkm    = 0.31,
+       tvka    = 11.3,
+       tvfa    = 0.38,
+       tvtlag  = 0.062,
+       Ω       = Diagonal([0.0081,0.044,0.0081,0.0121,0.184,0.0225,0.0009,0.0025]),
+       σ²_prop = 0.0152)
+
+## Oral
+ev1      = DosageRegimen(6, time=0, cmt=:Depot)
+pop_oral = map(i -> Subject(id=i,events=ev1), 1:30)
+
+Random.seed!(1234)
+sim_pop_oral = simobs(pk_09,pop_oral,par,obstimes=[0.08333,0.25,0.5,1,2,4,6,8,23])
+plot(sim_pop_oral)
+df_pop_oral = DataFrame(sim_pop_oral)
+df_pop_oral[!, :route] .= "Oral"
+
+## IV
+ev2      = DosageRegimen(2, time=0, cmt=:Central)
+pop_iv = map(i -> Subject(id=i,events=ev2), 1:30)
+
+Random.seed!(1234)
+sim_pop_iv = simobs(pk_09,pop_iv,par,obstimes=[0.0056,0.03333,0.13333,0.25,0.75,1,2,3,4,6,8,10,12,15,20,23])
+plot(sim_pop_iv)
+df_pop_iv = DataFrame(sim_pop_iv)
+df_pop_iv[!, :route] .= "IV"
+
+df_sim = vcat(df_pop_oral,df_pop_iv)
+
+CSV.write("./data/pharma_data/pk_09.csv", df_sim)
+```

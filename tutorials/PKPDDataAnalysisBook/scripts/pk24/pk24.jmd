@@ -1,0 +1,170 @@
+---
+title: Exercise PK24 - Nonlinear kinetics - Flow 2
+date: `j Date(now())`
+css: ../../assets/resources.css
+---
+
+```julia; echo = false
+using Dates
+```
+
+### Background
+
+Following info:
+
+* Structural model - Multi-compartment(three) model with concentration dependant clearance
+* Route of administration - IV infusion
+* Dosage Regimen - One IV infusion dose of 10mg/kg given for 2 hrs.
+* Number of Subjects - 1
+
+![Graphical representation of the model](https://user-images.githubusercontent.com/62243111/79658656-1fce8e80-81d1-11ea-930f-a332f06222c0.PNG)
+
+### Learning Outcomes
+
+This exercise explains about the Multi-compartment model following concentration dependant clearnce.
+
+### Objectives
+
+In this tutorial you will learn:
+  * To build a multi-compartment with concentration dependant clearance.
+  * To simulate the data for one subject given Iv infusion for 2 hrs.
+
+### Libraries
+
+Call the "necessary" libraries to get started.
+
+```julia
+using Pumas
+using Plots
+using CSV
+using StatsPlots
+using Random
+```
+
+### Model
+
+This model contains three compartments (Central, shallow and deep) and the clearance is
+dependant on the change in  plasma concentration due to the drug which is known to
+reduce cardiac output and hepatic blood flow with increase in plasma concentration.
+The change in clearance can be accounted by the equation: CL= CLo-A(Central/Vc)
+where A is proportionality constant between CL and C
+
+```julia
+PK24                = @model begin
+    @param begin
+        tvvc        ∈ RealDomain(lower=0)
+        tvclo       ∈ RealDomain(lower=0)
+        tvq1        ∈ RealDomain(lower=0)
+        tvq2        ∈ RealDomain(lower=0)
+        tvvp1       ∈ RealDomain(lower=0)
+        tvvp2       ∈ RealDomain(lower=0)
+        tva         ∈ RealDomain(lower=0)
+        Ω           ∈ PDiagDomain(7)
+        σ_prop      ∈ RealDomain(lower=0)
+    end
+    @random begin
+        η           ~ MvNormal(Ω)
+    end
+    @pre begin
+        Vc          = tvvc*exp(η[1])
+        CLo         = tvclo*exp(η[2])
+        Q1          = tvq1*exp(η[3])
+        Q2          = tvq2*exp(η[4])
+        Vp1         = tvvp1*exp(η[5])
+        Vp2         = tvvp2*exp(η[6])
+        A           = 1000*tva*exp(η[7])
+    end
+
+    @dynamics begin
+        Central'    =  - (CLo -(A * (Central/Vc))) * (Central/Vc) - Q1*(Central/Vc) + Q1*(Shallow/Vp1) - Q2*(Central/Vc) + Q2*(Deep/Vp2)
+        Shallow'    =    Q1*(Central/Vc) - Q1*(Shallow/Vp1)
+        Deep'       =    Q2*(Central/Vc) - Q2*(Deep/Vp2)
+    end
+
+    @derived begin
+        cp         = @. 1000*Central/Vc
+        dv         ~ @. Normal(cp, sqrt(cp^2*σ_prop))
+    end
+end
+```
+
+### Parameters
+
+The parameters are as given below. `tv` represents the typical value for parameters.
+
+
+  * Vc  - Volume of Central Compartment(L/kg)
+  * CLo - Clearance(L/hr/kg)
+  * Q1  - Inter-compartmental (Shallow) Clearance(L/hr/kg)
+  * Q2  - Inter-compartmental (Deep) Clearance(L/hr/kg)
+  * Vp1 - Volume of Shallow Compartment(L/kg)
+  * Vp2 - Volume of Deep Compartment(L/kg)
+  * A   - proportionality constant Between Cp and CL(L2/hr/μg/kg)
+  * Ω   - Between Subject Variability
+  * σ   - Residual error (for plasma conc)
+
+```julia
+param = ( tvvc  = 0.68,
+          tvclo = 6.61,
+          tvq1  = 5.94,
+          tvq2  = 0.93,
+          tvvp1 = 1.77,
+          tvvp2 = 3.20,
+          tva   = 0.0025,
+          Ω     = Diagonal([0.0,0.0,0.0,0.0,0.0,0.0,0.0]),
+          σ_prop= 0.004)
+```
+
+### DosageRegimen
+
+To Build the dosage regimen for one subject given IV infusion of 10mg/kg for 2hrs.
+
+```julia
+DR = DosageRegimen(10, time= 0, cmt= 1, duration=2)
+s1 = Subject(id=1, events=DR)
+```
+
+### Simulation
+
+To simulate the data with specific data points.
+
+```julia; results="hidden"
+sim_sub1 = simobs(PK24,s1,param,obstimes= 0.1:0.01:8)
+```
+
+### DataFrame & Plot
+
+##### PK Data
+
+```julia
+DF    = DataFrame(sim_sub1)
+DF_dv = filter(x -> x.time in [0.25, 0.5, 0.75, 1.05, 1.25, 1.49, 1.75, 1.99, 2.16, 2.35, 2.4, 2.65, 2.81, 2.95, 3.11, 3.56, 4.15, 6, 7],DF)
+@df DF plot(:time, :cp, color= [:blue], linewidth=4, label= "PRED", ylabel="Concentration(ug/L)", xlabel="Time(hr)", title= "Plasma conc vs time")
+@df DF_dv scatter!(:time, :dv,color= [:red], label= "Obs-Cp")
+```
+
+```julia; echo = false, eval=false
+parameters       = (tvvc  = 0.68,
+                    tvclo = 6.61,
+                    tvq1  = 5.94,
+                    tvq2  = 0.93,
+                    tvvp1 = 1.77,
+                    tvvp2 = 3.20,
+                    tva   = 0.0025,
+                    Ω     = Diagonal([0.02,0.0,0.02,0.04,0.02,0.02,0.0]),
+                    σ_prop= 0.039)
+
+DR = DosageRegimen(10, time= 0, cmt= 1, duration=2)
+pop = map(i -> Subject(id=i, events = DR), 1:45)
+
+Random.seed!(1234)
+
+ss = simobs(PK24,pop,parameters,obstimes= [0.25, 0.5, 0.75, 1.05, 1.25, 1.49, 1.75, 1.99, 2.16, 2.35, 2.4, 2.65, 2.81, 2.95, 3.11, 3.56, 4.15, 6, 7]);
+plot(ss)
+#sim_pop = (PK24,pop,parameters,obstimes=[0.25, 0.5, 0.75, 1.05, 1.25, 1.49, 1.75, 1.99, 2.16, 2.35, 2.4, 2.65, 2.81, 2.95, 3.11, 3.56, 4.15, 6, 7])
+
+#ss_pop = filter(x -> x.time in [0.25, 0.5, 0.75, 1.05, 1.25, 1.49, 1.75, 1.99, 2.16, 2.35, 2.4, 2.65, 2.81, 2.95, 3.11, 3.56, 4.15, 6, 7],ss)
+
+df_sim = DataFrame(ss)
+CSV.write("./data/generated/pk_24.csv", df_sim)
+```
