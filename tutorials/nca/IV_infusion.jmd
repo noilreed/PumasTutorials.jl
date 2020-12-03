@@ -1,11 +1,11 @@
 ---
 title : Non-Compartmental Analysis - IV infusion
-author : Beatriz Guglieri-Lopez, Vijay Ivaturi
-date:  August 26, 2019
+author : PumasAI
+date:  December, 2020
 ---
 
 ```julia
-using Pumas, LinearAlgebra, Plots, Query, PumasTutorials
+using Pumas, LinearAlgebra, Plots, PumasTutorials
 ```
 
 ## Introduction
@@ -41,17 +41,17 @@ iv = @model begin
 
   @pre begin
     CL = tvcl * (Wt/70)^0.75 * exp(η[1])
-    V  = tvv * (Wt/70) * exp(η[2])
+    Vc = tvv * (Wt/70) * exp(η[2])
     duration = (Central = dur,)
   end
 
   @covariates Wt
 
-  @dynamics ImmediateAbsorptionModel
+  @dynamics Central1
 
   @derived begin
-      cp := @. (Central / V)
-      foo ~ @. Normal(cp, sqrt(cp^2*σ_prop))
+      cp := @. (Central / Vc)
+      dv ~ @. Normal(cp, sqrt(cp^2*σ_prop))
     end
 end
 
@@ -69,18 +69,16 @@ choose_covariates() = (wt = rand(55:80))
 
 ```julia;results = "hidden"
 sd = DosageRegimen(2000, time=0, rate=-2) # setup single dose regimen
-sd_population =  Population(map(i -> Subject(id=i, evs=sd, cvs = (Wt = choose_covariates(),)),1:24)) # generate population
+sd_population = map(i -> Subject(id=i, events=sd, covariates = (Wt = choose_covariates(),)), 1:24) # generate population
 sd_obstimes = [0, 0.25, 0.5, 0.75, 1, 2, 4, 8, 12, 16, 20, 22, 24] # sampling times
 
 obs = simobs(iv, sd_population, param, obstimes=sd_obstimes)
-iv_sim_sd = DataFrame(obs)|>
-          @filter(!(_.evid<0)) |>
-          @filter(!(_.time == 0 && _.evid == 0)) |>
-          @mutate(cmt = 1, duration=1) |>
-          @mutate(route = "iv") |>
-          DataFrame
-data = read_pumas(iv_sim_sd,cvs=[:Wt,:route])
-o = fit(iv,data,param,Pumas.FOCEI())
+iv_sim_sd = DataFrame(obs)
+filter!(t -> t.evid >= 0 || (t.time == 0 && t.evid == 0), iv_sim_sd)
+transform!(iv_sim_sd, :id => (t -> 1) => :cmt)
+transform!(iv_sim_sd, :id => (t -> 1) => :duration)
+transform!(iv_sim_sd, :id => (t -> "iv") => :route)
+transform!(iv_sim_sd, :id => (t -> 24) => :ii)
 ```
 
 
@@ -103,9 +101,9 @@ In the case of the infusion, the `read_nca` function should
 * carry the name of the column that contains the duration of the infusion (`duration=`).
 
 ```julia; include=false
-pop = read_nca(iv_sim_sd, id=:id, time=:time, conc=:dv, amt=:amt, ii=24timeu,
-    route=:route, duration=:duration,timeu=timeu,
-    concu=concu, amtu=amtu,lloq=0.4concu)
+pop = read_nca(iv_sim_sd, id=:id, time=:time, conc=:dv, amt=:amt, ii=:ii,
+    route=:route, duration=:duration, timeu=timeu,
+    concu=concu, amtu=amtu, lloq=0.4concu)
 ```
 Note that in the above syntanx:
 
@@ -124,7 +122,7 @@ plot(pop)
 ### `NCA.auc`
 
 ```julia
-NCA.auc(pop,auctype=:last,method=:linear)
+NCA.auc(pop, auctype=:last, method=:linear)
 ```
 To change the methods to log-linear trapezoidal (`method=:linuplogdown`) or to linear-log (`method=:linlog`) one can use
 
@@ -172,7 +170,7 @@ cmax = NCA.cmax(pop[1])
 If we want dose-normalized Cmax for that same subject:
 
 ```julia
- NCA.normalizedose(cmax,pop[1])
+ NCA.normalizedose(cmax, pop[1])
 ```
 This can be used on any parameter that can be dose normalized.
 
@@ -212,22 +210,16 @@ all the above mentioned pharmacokinetic parameters.
 
 ```julia
 report = NCAReport(pop)
-report = NCA.to_dataframe(report)
 ```
 
 By default, the AUC and AUMC reported are observed. If predicted PK parameters are needed instead, the following code should be used:
 
 ```julia
-report = NCAReport(pop,pred=true)
-report = NCA.to_dataframe(report)
+report = NCAReport(pop, pred=true)
 ```
 
 Finally, we can save this data frame as a csv file if desired.
 
 ```julia;eval=false
 CSV.write("./tutorials/nca/report_SD_IV_infusion.csv", report)
-```
-```julia
-using PumasTutorials
-PumasTutorials.tutorial_footer(WEAVE_ARGS[:folder],WEAVE_ARGS[:file])
 ```
