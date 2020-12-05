@@ -1,0 +1,464 @@
+---
+title: Exercise PK03 - Estimation of One Compartment Model with both 1st and 0 order absorption
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+ * For this fitting exercise we wil learn how to fit a first-order absorption model
+    and a zero-order absorption model. The first-order model inlcudes a *lag* time.
+    We will compare the two models based on the diagnostic plots plots.
+
+The basic workflow for the estimation process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of the data
+
+An oral highly polar drug is given to a total of **90 subjects**. Each patient
+ receives an oral dose of *20mg* at time=0 and a total of 12 PK samples are collected
+ at 0.5, 1, 1.5, 2, 3, 4, 5, 6, 7, 8, 9, 10 hrs.
+
+The following are the units of the dataset:
+
+ * Time (time) = hrs
+ * Concentration (dv) = ug/L
+ * Dose (amt) = mg
+
+```julia
+pk03_data_df = CSV.read("/Users/Parsshava/Desktop/Julia/PumasTutorials.jl/tutorials/PKPDDataAnalysisBook/pk03_fit/pk_03.csv",
+  DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary statistics of the data
+
+```julia
+stats_pk03_data = describe(pk03_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+A plot of **Concentration vs Time**
+
+```julia
+pk_data_plot = dropmissing(pk03_data_df, :dv)
+@df pk_data_plot plot(:time, :dv, group=:id,label=false,
+                        xlabel = "Time (hrs)", ylabel="Concentration (ug/L)",
+                        xticks = [0,1,2,3,4,5,6,7,8,9,10],
+                        size = (600, 600), guidefontsize = 12,
+                        title = "Concentration vs Time")
+```
+
+## NCA Analysis
+
+We will now perform an NCA analysis to get the initial estimates for the fitting
+ of the given data. The route column will need to be included to indicate the dosing
+ is extravascular `ev`. The *read_nca* function input requires the route to be
+ stated as either ev for extravascular, this will help to compute the parameters
+ correctly. The concentrations are in `ug/L`, so we will need to convert the `amt` in *micrograms*
+ before we parse the data to the *read_nca* function. We will create a new column called `dose(ug)`
+ which we will use for all subsequent analysis.
+
+```julia, results="hidden"
+pk03_data_df[!, :dose] = ifelse.(pk03_data_df.amt .== 20, 20000, 0)
+pk03_data_df[:, :route] .= "ev"
+```
+
+Now, map the data variables to the `read_nca` function that prepares the data for
+ NCA analysis. You can even type `?read_nca` in the REPL and get more information on the
+ mapping of the
+
+```julia
+pk03_nca = read_nca(pk03_data_df,
+                    id     = :id,
+                    time   = :time,
+                    amt    = :dose,
+                    conc   = :dv,
+                    route  = :route)
+```
+
+A full NCAReport is generated, we will then perform summary statistics of the
+required parameters to obtain the Mean, GeometricMean, and SD
+
+```julia
+pk03_nca_report = NCAReport(pk03_nca, sigdig=3)
+```
+
+Perform the `Summary Statistics` for the required NCA Parameters
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk03_nca_report, [:id, :vz_f_obs, :cl_f_obs, :kel, :half_life, :tmax, :tlag])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_f_obs, :cl_f_obs, :kel, :half_life, :tmax, :tlag,], [:id])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+We can obtain the Ka value from 0.693/(*tmax*/4) i.e **Ka = 0.7 hr⁻¹**
+
+## Pharmacokinetic Modelling
+
+#### Read the dataset into read_pumas()
+
+First we will try to fit the data to a first-order absorption model. In this case
+ the `rate` should be set to `zero`. So we will map the `rate` column to the dataset.
+
+```julia`
+## Read dataset to Pumas
+pk03_data_first = read_pumas(pk03_data_df,
+                             id           = :id,
+                             time         = :time,
+                             observations = [:dv],
+                             amt          = :dose,
+                             evid         = :evid,
+                             cmt          = :cmt,
+                             rate         = :rate)
+```
+
+##### First-order Absorption Model with Lag Time
+
+The @dynamics block is written as analytical solutions, you can also specify them as
+ differential equations as shown.
+
+```julia
+pk_03_first  = @model begin
+  @param begin
+    tvka     ∈ RealDomain(lower=0)
+    tvcl     ∈ RealDomain(lower=0)
+    tvvc     ∈ RealDomain(lower=0)
+    tvtlag   ∈ RealDomain(lower=0)
+    Ω        ∈ PDiagDomain(3)
+    σ²_prop  ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η        ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Ka       = tvka * exp(η[1])
+    CL       = tvcl * exp(η[2])
+    Vc       = tvvc * exp(η[3])
+    lags     = (Depot = tvtlag,)
+  end
+
+  @dynamics Depots1Central1
+    #Depot'   = -Ka*Depot
+    #Central' =  Ka*Depot - (CL/Vc)*Central
+  #end
+
+  @derived begin
+    cp       = @. (Central/Vc)
+    dv       ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
+  end
+end
+```
+
+The initial parameters are obtained from NCA analysis.
+
+```julia
+pk03_param_first = ( tvka     = 0.7,
+                     tvcl     = 48,
+                     tvvc     = 98,
+                     tvtlag   = 0.2,
+                     Ω        = Diagonal([0.04,0.04,0.04]),
+                     σ²_prop  = 0.05)
+```
+
+Before we start with fitting the data, we will simulate the data with the initial
+ estimates of the parameters we have obtained from the NCA analysis. This will help
+ us to evaluate the appropiatness of the model.
+
+```julia
+sim    = simobs(pk_03_first, pk03_data_first, pk03_param_first)
+sim_df = DataFrame(sim)
+
+@df sim_df plot(:time, :dv, group=:id,
+                     xlabel = "Time (hrs)", ylabel = "Concentration (ug/L)",
+                     title = "Concentration vs Time",
+                     size = (600, 600), guidefontsize = 12,
+                     label = "", alpha=0.2)
+@df pk03_data_df scatter!(:time, :dv, alpha=0.5,
+                           label = "Observed concentrations", legend=false)
+```
+
+The first-order absorption model does not seem like a good fit for the data. We
+ will still use it for comparison with the zero-order model
+
+##### Naive Pooled
+
+A quick estimation of the mean parameters can be done by performing a `NaivePooled`
+ Analysis. This will give us a good judgemnt of the parameters obtained from NCA
+ Analysis and provide better inital estimates for the fitting.
+
+```julia
+pk03_fit_first_nv  = @time fit(pk_03_first, pk03_data_first, pk03_param_first,
+                                Pumas.NaivePooled(), ensemlblealg=EnsembleThreads(),
+                                omegas=(:Ω,))
+
+coeftable(pk03_fit_first_nv)
+```
+
+The results of the NaivePooled estimates match closely to our initial estimates
+ from NCA analysis, except the tvlag parameter is very small and hence was not accurately
+ predicted. We will now use the mean estimates from the NaivePooled Analysis
+ for fitting the data and obatining the Between Subject Variability on the parameters.
+
+```julia
+pk03_fit_first_focei = @time fit(pk_03_first, pk03_data_first, pk03_param_first,
+                                 Pumas.FOCEI(), ensemlblealg=EnsembleThreads())
+
+coeftable(pk03_fit_first_focei)
+```
+
+We will generate a few goodness of fit plots to compare which model is performing
+ better. We will first inspect the diagnostics of our models.
+
+```julia
+## Inspect
+pk03_inspect_first_focei = inspect(pk03_fit_first_focei) |> DataFrame
+```
+
+## Diagnostic Plots
+
+#### Goodness of Fit Plots for the First-order Absorption Model
+
+The fits of the first-order absorption model are not good. Hence we will now try
+ a different model with a zero-order absorption.
+
+```julia
+theme(:wong2)
+
+function gof(pktvp_mr_inspect_run2)
+  p1 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+      p1,
+      :dv_pred, :dv;
+      ylabel = "Observed dv (ug/L)",
+      xlabel = "Population Predicted (ug/L)",
+      label = "",
+      legend=false,
+  )
+  Plots.abline!(p1,  1, 0; primary = false, color=:red, linewidth=4)
+
+  #
+  p2 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p2,
+    :dv_ipred, :dv;
+    ylabel = "Observed dv (ug/L)",
+    xlabel = "Individual Predicted (ug/L)",
+    label = "",
+    legend=false,
+  )
+  Plots.abline!(p2, 1, 0; primary = false, color=:red, linewidth=4)
+
+  p3 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p3,
+    :time, :dv_wres;
+    xlabel = "Time (hr)",
+    ylabel = "Conditional Weighted Residuals",
+     legend=false
+  )
+  Plots.abline!(p3, 0, 0; primary = false, color=:red, linewidth=4)
+
+  p4 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+   p4,
+   :dv_pred, :dv_wres,
+   xlabel = "Population Predicted (ug/L)",
+   ylabel = "Conditional Weighted Residuals",
+   legend=false
+  )
+  Plots.abline!(p4, 0, 0; primary = false, color=:red, linewidth=4)
+
+  return plot(p1,p2,p3,p4; size = (1000, 1000))
+end
+
+gof(pk03_inspect_first_focei)
+```
+
+##### Zero-order Absorption Model
+
+For the zero-order model we have to set the `rate = -2` and then read the dataset
+ again for the zer-order model.
+
+```julia
+pk03_data_df[!, :rate_zero] = ifelse.(pk03_data_df.time .== 0, -2, 0)
+
+## Read datset to Pumas
+pk03_data_zero = read_pumas(pk03_data_df,
+                             id           = :id,
+                             time         = :time,
+                             observations = [:dv],
+                             amt          = :dose,
+                             evid         = :evid,
+                             cmt          = :cmt,
+                             rate         = :rate_zero)
+```
+
+```julia
+pk_03_zero   = @model begin
+  @param begin
+    tvcl     ∈ RealDomain(lower=0)
+    tvvc     ∈ RealDomain(lower=0)
+    tvTabs   ∈ RealDomain(lower=0)
+    Ω        ∈ PDiagDomain(2)
+    σ²_prop  ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η        ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    CL       = tvcl * exp(η[1])
+    Vc       = tvvc * exp(η[2])
+    duration = (Central = tvTabs,) #* exp(η[3]),)
+  end
+
+  @dynamics Central1
+    #Central' =  - (Cl/Vc)*Central
+  #end
+
+  @derived begin
+    cp       = @. (Central/Vc)
+    dv       ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
+  end
+end
+```
+
+We will set the parameters for tvcl and tvvc from the final estimates of the first-order
+ FOCEI fit. The tvTabs can be set to an initial value of 3.5 from the plot of
+ concentration vs time. We can see that the `tmax` is around 4.
+
+```julia
+pk03_param_zero = ( tvcl     = 48,
+                    tvvc     = 101,
+                    tvTabs   = 4,
+                    Ω        = Diagonal([0.07,0.02]),
+                    σ²_prop  = 0.05)
+```
+
+We will simulate the zero-order model and plot the observed data on it to see
+ the fit of the model.
+
+```julia
+sim    = simobs(pk_03_zero, pk03_data_zero, pk03_param_zero)
+sim_df = DataFrame(sim)
+
+@df sim_df plot(:time, :dv, group=:id,
+                     xlabel = "Time (hrs)", ylabel = "Concentration (ug/L)",
+                     title = "Concentration vs Time",
+                     size = (600, 600), guidefontsize = 12,
+                     label = "", alpha=0.2)
+@df pk03_data_df scatter!(:time, :dv, alpha=0.5,
+                           label = "Observed concentrations", legend=false)
+```
+
+We have dropped the `eta` on tvTabs since it was not estimated with good precision.
+
+```julia
+pk03_fit_zero_focei = @time fit(pk_03_zero, pk03_data_zero, pk03_param_zero,
+                                 Pumas.FOCEI(), ensemlblealg=EnsembleThreads())
+
+coeftable(pk03_fit_zero_focei)
+```
+
+We will now obtain the parameter precision of the zero-order model.
+
+```julia
+pk03_infer_zero_focei = coeftable(infer(pk03_fit_zero_focei))
+```
+
+```julia
+pk03_inspect_zero_focei = inspect(pk03_fit_zero_focei) |> DataFrame
+```
+
+Goodness of Fit Plot for the Zero-order Model. The fits looks better for the zero-order model.
+
+```julia
+gof(pk03_inspect_zero_focei)
+```
+
+Lets compare the estimates for the two models first-oder and zero-order.
+
+```julia
+@pipe outerjoin(coeftable(pk03_fit_zero_focei),
+               coeftable(pk03_fit_first_focei), on = :parameter, makeunique = true) |>
+ rename!(_, :estimate => :pk03_zero_order, :estimate_1 => :pk03_first_order)
+```
+
+We will compare the other metrics and statistics, such as aic and bic. The aic and
+ bic values are lower for the zero-order model which indicates a better fit of the
+ model.
+
+```julia
+DataFrame([(metric=string(f), fit_zero_order=f(pk03_fit_zero_focei), fit_first_order=f(pk03_fit_first_focei)) for f in (aic, bic)])
+```
+
+Clearly the model with a zero-order absorption is a better fit to the given data.
+
+```julia
+data03_etacov = select(pk03_inspect_zero_focei,["η_1", "η_2"])
+data03_etacov = stack(data03_etacov, ["η_1", "η_2"])
+data03_etacov[!,:variable] .= string.(data03_etacov.variable)
+@df data03_etacov groupedviolin(:variable,:value,
+                               alpha =0.5, legend=false)
+@df data03_etacov groupedboxplot!(:variable,:value,
+                               alpha =0.5, label ="")
+Plots.abline!(0,0, linewidth=4, color = "black",
+              size = (600, 600),
+              xlabel = "η's", ylabel = "η_values",
+              guidefontsize = 22,
+              tickfontsize =14, label ="")
+```
+
+We will perform a validation of the final model using `VPC` check.
+
+```julia
+pk_vpc = vpc(pk03_fit_zero_focei, 400; dv=:dv,
+             ensemblealg=EnsembleThreads())
+
+plot(pk_vpc,
+    size=(800,800), xlabel="Time after dose (hours)",
+    ylabel = "Concentration (ug/L)" ,
+    titlefontsize=20,guidefontsize=20,
+    markersize=7, markeralpha = 0.5, markercolor =:grey,
+    observations = true,
+    observed_quantiles = true,
+    simquantile_medians = true,
+    ci_bands = true,
+    legend=true, legendfontsize = 12,
+    titlefontcolor = :blue,
+    linewidth =5,
+     xtickfont = font(20),
+     ytickfont = font(20))
+```
