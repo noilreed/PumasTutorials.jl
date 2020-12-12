@@ -1,0 +1,410 @@
+---
+title : Exercise PK08 - Estimation of Two-Compartmental Model
+date: `j Date(now())`
+---
+
+## Objectives
+
+In this exercise you will learn how to fit the given data to a one-compartment
+ model and also a two-compartment model. We will decide how to discriminate between
+ the models using diagnostic plots and `AIC` and `BIC` values. The basic workflow for
+ the estimation process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using Pumas
+using PumasTutorials
+using Random
+using CSV
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of the data
+
+A 100 μg bolus dose of drug-X is given intravenously for a total of **68 patients**.
+ PK samples are collected at the following time points `0.08, 0.25, 0.5, 0.75, 1,
+ 1.33, 1.67, 2, 2.5, 3.07, 3.5, 4.03, 5, 7, 11, 23, 29, 35, 47.25 hrs`. A total of 19
+ samples are collected from each patient.
+
+The following are the units of the dataset:
+
+ * Time (time) = hrs
+ * Plasma Concentration (dv) = μg/L
+ * Dose (amt) = μg
+
+```julia
+pk08_data_df = CSV.read("/Users/Parsshava/Desktop/Julia/PumasTutorials.jl/tutorials/PKPDDataAnalysisBook/pk08_fit/pk_08.csv",
+ DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk08_data = describe(pk08_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+Plot of Plasma **Concentration vs Time**
+
+```julia
+@df pk08_data_df plot(:time, :dv,
+                group=:id, label=false, yaxis=:log,
+                xlabel="Time (hr)", ylabel="Concentration (ug/L)",
+                size = (600, 600), guidefontsize = 12,
+                title = "Concentration vs Time")
+```
+
+## NCA Analysis
+
+We will now perform an NCA analysis to get the initial estimates for the fitting
+ of the given data. We will include a route column to specify that dosing is
+ intravenous `iv`. The *read_nca()* function input requires the route to be stated
+ as `iv` for intravenous.
+
+```julia; results="hidden"
+pk08_data_df[:,:route] .= "iv"
+```
+
+Now, map the data variables to the read_nca function that prepares the data for NCA analysis.
+
+```julia
+pk08_nca = read_nca(pk08_data_df,
+                    id     = :id,
+                    time   = :time,
+                    amt    = :amt,
+                    conc   = :dv,
+                    route  = :route)
+```
+
+A full `NCAReport` is generated, we will then perform summary statistics of the
+required parameters to obtain the **Mean, GeometricMean, and SD**
+
+```julia
+pk08_nca_report = NCAReport(pk08_nca, sigdig=3)
+```
+
+Perform the `Summary Statistics` for the required NCA Parameters
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk08_nca_report, [:id, :vz_obs, :cl_obs, :aucinf_obs])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_obs, :cl_obs, :aucinf_obs], [:id])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:occasion, :variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk08_data = read_pumas(pk08_data_df,
+                       id           = :id,
+                       time         = :time,
+                       amt          = :amt,
+                       evid         = :evid,
+                       cmt          = :cmt,
+                       observations = [:dv])
+```
+
+##### One Compartment Model
+
+```julia
+pk_08_1cmt      = @model begin
+  @param begin
+    tvcl        ∈ RealDomain(lower=0)
+    tvvc        ∈ RealDomain(lower=0)
+    Ω           ∈ PDiagDomain(2)
+    σ²_prop     ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η           ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    CL          = tvcl * exp(η[1])
+    Vc          = tvvc * exp(η[2])
+  end
+
+  @dynamics Central1
+    #Central'    = -(CL/Vc)*Central
+
+  @derived begin
+    cp          = @. Central/Vc
+    dv          ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
+  end
+end
+```
+
+The initial parameters are obtained from NCA analysis.
+
+```julia
+param_est_1cmt = ( tvcl = 6,
+                   tvvc = 106,
+                   Ω    = Diagonal([0.06,0.04]),
+                   σ²_prop = 0.02)
+```
+
+Before we start with fitting the data, we will simulate the data with the initial
+ estimates of the parameters we have obtained from the NCA analysis. This will
+ help us to evaluate the appropiatness of the model.
+
+```julia
+Random.seed!(1234)
+simpk    = simobs(pk_08_1cmt, pk08_data, param_est_1cmt)
+simpk_df = DataFrame(simpk)
+
+@df simpk_df plot(:time, :dv, group=:id, yaxis=:log,
+                     xlabel = "Time (hrs)", ylabel = "Concentration (ug/L)",
+                     title = "Concentration vs Time",
+                     size = (600, 600), guidefontsize = 12,
+                     label = "", alpha=0.2)
+@df pk08_data_df scatter!(:time, :dv, alpha=0.3, yaxis = :log,
+                          label = "Observed concentrations", legend=false)
+```
+
+## NaivePooled Analysis
+
+A quick estimation of the mean parameters can be done by performing a NaivePooled
+ Analysis. This will give us a good judgemnt of the parameters obtained from NCA
+ Analysis and provide better inital estimates for the fitting.
+
+```julia
+pk08_1cmt_fit_nv = fit(pk_08_1cmt, pk08_data, param_est_1cmt,
+                       Pumas.NaivePooled(), ensemblealg=EnsembleThreads(),
+                       omegas = (:Ω,))
+
+coeftable(pk08_1cmt_fit_nv)
+```
+
+The results of the NaivePooled estimates match closely to our initial estimates from
+ NCA analysis. We will now use the mean estimates from the NaivePooled Analysis for
+ fitting the data and obatining the Between Subject Variability on the parameters.
+
+```julia
+pk08_1cmt_fit_focei = fit(pk_08_1cmt, pk08_data, param_est_1cmt,
+                       Pumas.FOCEI(), ensemblealg=EnsembleThreads())
+
+coeftable(pk08_1cmt_fit_focei)
+```
+
+##### Two Compartment Model
+
+We will now try to fit a two-compartment model and check if it the model fits better
+ to the data.
+
+```julia
+pk_08_2cmt      = @model begin
+  @param begin
+    tvcl        ∈ RealDomain(lower=0)
+    tvvc        ∈ RealDomain(lower=0)
+    tvq         ∈ RealDomain(lower=0)
+    tvvp        ∈ RealDomain(lower=0)
+    Ω           ∈ PDiagDomain(3)
+    σ²_prop     ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η           ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    CL          = tvcl * exp(η[1])
+    Vc          = tvvc * exp(η[2])
+    Vp          = tvvp * exp(η[3])
+    Q           = tvq
+  end
+
+  @dynamics Central1Periph1
+    #Central'    = -(Cl/Vc)*Central - (Q/Vc)*Central + (Q/Vp)*Peripheral
+    #Peripheral' =  (Q/Vc)*Central  - (Q/Vp)*Peripheral
+  #end
+
+  @derived begin
+    cp          = @. Central/Vc
+    dv          ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
+  end
+end
+```
+
+We will use the estimates obtained from the one compartment model and split the
+ Volume of Distribution between the two comparments.
+
+```julia
+param_est_2cmt = ( tvcl = 6,
+                   tvvc = 48,
+                   tvq  = 6,
+                   tvvp = 48,
+                   Ω    = Diagonal([0.04,0.04,0.04]),
+                   σ²_prop = 0.12)
+```
+
+We will now run FOCEI on the two-compartment model
+
+```julia
+pk08_2cmt_fit_focei = fit(pk_08_2cmt, pk08_data, param_est_2cmt,
+                       Pumas.FOCEI(), ensemblealg=EnsembleThreads())
+
+coeftable(pk08_2cmt_fit_focei)
+```
+
+We will now obtain the parameter precision of the two-compartment model.
+
+```julia
+pk08_2cmt_infer_focei = coeftable(infer(pk08_2cmt_fit_focei))
+```
+
+We will compare the parameters of both the models
+
+```julia
+param_comp_df = @pipe leftjoin(coeftable(pk08_2cmt_fit_focei),
+                coeftable(pk08_1cmt_fit_focei), on = :parameter, makeunique = true) |>
+                rename!(_, :estimate => :pk2cmp, :estimate_1 => :pk1cmp)
+```
+
+We will perform a likelihood ratio test to compare the nested model. From the
+ P-value it is clear the model with a two-compartment is a better fit.
+
+```julia
+lrtest(pk08_1cmt_fit_focei, pk08_2cmt_fit_focei)
+```
+
+We will compare the other metrics and statistics, such as aic and bic. Clearly the
+ two-compartment model is a better fit.
+
+```julia
+DataFrame([(metric=string(f), fit_2cmp=f(pk08_2cmt_fit_focei),
+              fit_1cmp=f(pk08_1cmt_fit_focei)) for f in (aic, bic)])
+```
+
+## Diagnostic Plots
+
+##### Goodness of Fit Plots
+
+We will generate a few goodness of fit plots to compare which model is performing better.
+ We will first inspect the diagnostics of our models.
+
+```julia, echo=false
+pk08_1cmt_inspect_focei = inspect(pk08_1cmt_fit_focei) |> DataFrame
+pk08_2cmt_inspect_focei = inspect(pk08_2cmt_fit_focei) |> DataFrame
+```
+
+##### One-Compartment
+
+```julia
+theme(:wong2)
+
+function gof(pkfit_1cmt_inspect)
+  p1 = plot()
+  @df pkfit_1cmt_inspect scatter!(
+      p1,
+      :dv_pred, :dv;
+      ylabel = "Observed Conc (ug/L)",
+      xlabel = "Population Predicted (ug/L)",
+      label = "",
+      legend=false,
+  )
+  Plots.abline!(p1,  1, 0; primary = false, color=:red, linewidth=4)
+
+  #
+  p2 = plot()
+  @df pkfit_1cmt_inspect scatter!(
+    p2,
+    :dv_ipred, :dv;
+    ylabel = "Observed Conc (ug/L)",
+    xlabel = "Individual Predicted (ug/L)",
+    label = "",
+    legend=false,
+  )
+  Plots.abline!(p2, 1, 0; primary = false, color=:red, linewidth=4)
+
+  p3 = plot()
+  @df pkfit_1cmt_inspect scatter!(
+    p3,
+    :time, :dv_wres;
+    xlabel = "Time (h)",
+    ylabel = "Conditional Weighted Residuals",
+     legend=false
+  )
+  Plots.abline!(p3, 0, 0; primary = false, color=:red, linewidth=4)
+
+  p4 = plot()
+  @df pkfit_1cmt_inspect scatter!(
+   p4,
+   :dv_pred, :dv_wres,
+   xlabel = "Population Predicted (ug/L)",
+   ylabel = "Conditional Weighted Residuals",
+   legend=false
+  )
+  Plots.abline!(p4, 0, 0; primary = false, color=:red, linewidth=4)
+
+  return plot(p1,p2,p3,p4; size = (1000, 1000))
+end
+
+gof(pk08_1cmt_inspect_focei)
+```
+
+##### Two-Compartment
+
+Clearly, the teo-compartment model is a better fit to the given data.
+
+```julia
+gof(pk08_2cmt_inspect_focei)
+```
+
+##### η - Distribution
+
+```julia
+data08_etacov = select(pk08_2cmt_inspect_focei, ["η_1", "η_2", "η_3"])
+data08_etacov = stack(data08_etacov, ["η_1", "η_2", "η_3"])
+data08_etacov[!,:variable] .= string.(data08_etacov.variable)
+@df data08_etacov groupedviolin(:variable,:value, alpha =0.5, label=false)
+@df data08_etacov groupedboxplot!(:variable,:value,alpha =0.5, label =false)
+Plots.abline!(0,0, linewidth=4, color = "black",
+              size = (1000, 1000),
+              xlabel = "η's", ylabel = "η_values", legendtitle = "",
+              guidefontsize = 22,
+              tickfontsize =14, label =false)
+```
+
+### Validation
+
+We will perform a validation of the final model using VPC check.
+
+```julia
+pk_vpc = vpc(pk08_2cmt_fit_focei, 200; dv=:dv,
+             ensemblealg=EnsembleThreads())
+
+plot(pk_vpc,
+      size=(800,800), xlabel="Time after dose (hours)",
+      ylabel = "Concentration (ug/L)" ,
+      title ="Visual Predictive Check",
+      titlefontsize=20, guidefontsize=20,
+      markersize=5, markeralpha = 0.4, markercolor =:grey,
+      observations = true,
+      observed_quantiles = true,
+      simquantile_medians = true,
+      ci_bands = true,
+      legend=true, legendfontsize = 20,
+      titlefontcolor = :blue,
+      linewidth =5,
+      xtickfont = font(25),
+      ytickfont = font(25))
+```
