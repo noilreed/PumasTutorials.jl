@@ -40,7 +40,7 @@ model504bayes = @model begin
 
      Ω ~ InverseWishart(4, diagm(fill(0.04, 2)) .* (4 + 2 + 1))
 
-     σ   ~ InverseGamma(1/2, 0.05*(1 + 1 + 1)/2)
+     σ²  ~ InverseGamma(3/2, 0.05*(3 + 1 + 1)/2)
      #σ ~ Gamma(1.0, 0.05)
 
  end
@@ -74,15 +74,20 @@ model504bayes = @model begin
 
  @derived begin
      μ := @. Conc
-     DV ~ @. Normal(μ, σ)
+     DV ~ @. Normal(μ, σ²)
 
  end
 end
 
+_initpars = (
+  θ = [0.7, 3.0, 0.8, 0.8, -0.1, 0.1, 0.7, 0.7],
+  Ω = [0.1 0.001; 0.001 0.1],
+  σ² = 0.5)
+
 @time model504bayes_fit = fit(
   model504bayes,
   data_pop,
-  init_param(model504bayes),
+  _initpars,
   Pumas.BayesMCMC();
   nsamples=10000, nadapts=1000)
 
