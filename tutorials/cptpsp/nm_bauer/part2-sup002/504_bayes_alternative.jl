@@ -27,7 +27,7 @@ data_pop = read_pumas(data,
 
 
 
-model504bayes = @model begin
+model504bayes_alternative = @model begin
  @param begin
      θ ~ Constrained(
       MvNormal(
@@ -55,22 +55,24 @@ model504bayes = @model begin
      MU_1 = LCL
      MU_2 = LV
      CL = exp(MU_1+η[1])
-     V = exp(MU_2+η[2])
+     Vc = exp(MU_2+η[2])
 
  end
 
  @init begin
-     Cent  = 0
+     Central  = 0
  end
 
  @vars begin
-     Conc=Cent/V
+     Conc=Central/Vc
 
  end
 
- @dynamics begin
-     Cent' = -(CL/V)*Cent
- end
+ #@dynamics begin
+ #     Cent' = -(CL/V)*Cent
+ #end
+
+ @dynamics Central1
 
  @derived begin
      μ := @. Conc
@@ -84,11 +86,25 @@ _initpars = (
   Ω = [0.1 0.001; 0.001 0.1],
   σ² = 0.5)
 
-@time model504bayes_fit = fit(
-  model504bayes,
+@time model504bayes_alternative_fit = fit(
+  model504bayes_alternative,
   data_pop,
-  init_param(model504bayes),
+  _initpars,
   Pumas.BayesMCMC();
   nsamples=10000, nadapts=1000)
 
-model504bayes_fit
+model504bayes_alternative_fit
+
+chains = plot(Pumas.Chains(model504bayes_alternative_fit))
+
+
+@time model504bayes_alternative_fit_noinit = fit(
+  model504bayes_alternative,
+  data_pop,
+  init_param(model504bayes_alternative),
+  Pumas.BayesMCMC();
+  nsamples=10000, nadapts=1000)
+
+model504bayes_alternative_fit_noinit
+
+chains = plot(Pumas.Chains(model504bayes_alternative_fit_noinit))

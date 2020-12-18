@@ -2,7 +2,7 @@ using Pumas
 using CSV
 #using Plots
 using StaticArrays
-#using StatsPlots
+using StatsPlots
 #using Dates
 #using Pipe
 
@@ -92,3 +92,5 @@ _initpars = (
   nsamples=10000, nadapts=1000)
 
 model504bayes_fit
+
+chains = plot(Pumas.Chains(model504bayes_fit))
