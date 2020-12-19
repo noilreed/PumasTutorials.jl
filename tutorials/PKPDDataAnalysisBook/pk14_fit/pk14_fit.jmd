@@ -1,0 +1,386 @@
+---
+title : Exercise PK14 - Fitting Multi-compartment oral data
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise we will learn about the impact of weighting on data. This help us
+ understand the importance of weighting and how it improves the parameter precision.
+ We continue to refine and analyze the outputs to get the best model to fit the data.
+ We will compare the models based on the `diagnostic plots` and `statistics`.
+
+The basic workflow for the estimation process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of the data
+
+A new cardiovascular drug is given to a total of **68 subjects**. The drug is given
+  orally at a dose of *23,158 μg*. PK samples are collected at the following time
+  points `0.08, 0.16, 0.25, 0.5, 1, 1.5, 2, 3, 4, 6, 8, 12, 24, 25 hrs`. A total of
+  14 samples are collected from each patient.
+
+The following are the units of the dataset:
+
+ * Time (time) = hrs
+ * Plasma Concentration (dv) = μg/L
+ * Dose (amt) = μg
+
+```julia
+pk14_data_df = CSV.read("/Users/Parsshava/Desktop/Julia/PumasTutorials.jl/tutorials/PKPDDataAnalysisBook/pk14_fit/pk_14.csv",
+ DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk14_data = describe(pk14_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+Plot of Concentration vs Time
+
+```julia
+pk_data_plot = dropmissing(pk14_data_df, :dv)
+@df pk_data_plot plot(:time, :dv, group=:id, yaxis=:log, label=false,
+                      xlabel="Time (hr)", ylabel="Concentration (ug/L)",
+                      size = (600, 600), guidefontsize = 12,
+                      title = "Concentration vs Time")
+```
+
+## NCA Analysis
+
+We will now perform an NCA analysis to get the initial estimates for the fitting
+ of the given data. The route column will need to be included to indicate the dosing
+ is extravascular `ev`. The *read_nca* function input requires the route to be
+ stated as `ev` for extravascular, this will help to compute the parameters correctly.
+
+```julia; results="hidden"
+pk14_data_df[:, :route] .= "ev"
+```
+
+Now, map the data variables to the *read_nca* function that prepares the data for
+ NCA analysis. You can even type *?read_nca* in the REPL and get more information
+ on the mapping of the data.
+
+```julia
+pk14_nca = read_nca(pk14_data_df,
+                    id     = :id,
+                    time   = :time,
+                    amt    = :amt,
+                    conc   = :dv,
+                    route  = :route)
+```
+
+A full NCAReport is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean, GeometricMean, and SD**
+
+```julia
+pk14_nca_report = NCAReport(pk14_nca, sigdig=3)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk14_nca_report, [:id, :vz_f_obs, :cl_f_obs, :aucinf_obs, :kel, :half_life, :tmax, :tlag])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_f_obs, :cl_f_obs, :aucinf_obs, :kel, :half_life, :tmax, :tlag,], [:id])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+We can obtain the Ka value from 0.693/(*tmax*/4) i.e **Ka = 7.07 hr⁻¹**
+
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+We will try to fit a two-compartment model to the given data. Initially we will fit
+ the data without any weighting scheme.
+
+```julia
+pk14_data = read_pumas(pk14_data_df,
+                        id           = :id,
+                        time         = :time,
+                        observations = [:dv],
+                        amt          = :amt,
+                        evid         = :evid,
+                        cmt          = :cmt)
+```
+
+##### Two Compartment Model without Weighting
+
+```julia
+pk_14_2cmt      = @model begin
+  @param begin
+    tvka        ∈ RealDomain(lower=0)
+    tvvc        ∈ RealDomain(lower=0)
+    tvvp        ∈ RealDomain(lower=0)
+    tvcl        ∈ RealDomain(lower=0)
+    tvq         ∈ RealDomain(lower=0)
+    tvlag       ∈ RealDomain(lower=0)
+    Ω           ∈ PDiagDomain(4)
+    σ²_prop     ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η           ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Ka          = tvka * exp(η[1])
+    Vc          = tvvc * exp(η[2])
+    Vp          = tvvp * exp(η[3])
+    CL          = tvcl * exp(η[4])
+    Q           = tvq
+    lags        = (Depot = tvlag,)
+  end
+
+  @dynamics Depots1Central1Periph1
+    #Depot'      = -Ka*Depot
+    #Central'    =  Ka*Depot - (Cl/Vc)*Central + (Q/Vp)*Peripheral - (Q/Vc)*Central
+    #Peripheral' =  (Q/Vc)*Central - (Q/Vp)*Peripheral
+  #end
+
+  @derived begin
+    cp          = @. Central/Vc
+    dv          ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
+  end
+end
+```
+
+The initial parameters are obtained from NCA analysis. For the Volume of distribution
+ we will split the NCA obtained value between the two-compartments. We will provide a
+ lower value for the inter-compartmental clearance.
+
+```julia
+param_est = ( tvka    = 7,
+              tvvc    = 292,
+              tvcl    = 54,
+              tvq     = 20,
+              tvvp    = 292,
+              tvlag   = 0.05,
+              Ω       = Diagonal([0.04,0.04,0.04,0.04]),
+              σ²_prop = 0.04)
+```
+
+##### FOCEI
+
+We will now try to fit the data using `FOCEI`. We will fix the the weighting
+ and lag parameters.
+
+```julia
+pk_14_fit_2cmt = @time fit(pk_14_2cmt, pk14_data, param_est,
+                      Pumas.FOCEI(), ensemblealg=EnsembleThreads(),
+                      constantcoef=(σ²_prop=0.0001, tvlag=0.00001,))
+
+coeftable(pk_14_fit_2cmt)
+```
+
+We will generate a few goodness of fit plots to check the trends in the model.
+ We will first inspect the diagnostics of our models.
+
+```julia
+pk_14_inspect_2cmt = inspect(pk_14_fit_2cmt) |> DataFrame
+```
+
+## Diagnostic Plots
+
+##### Goodness of Fit Plots
+
+ * Two-compartment Model, without weighting
+
+```julia
+theme(:wong2)
+
+function gof(pktvp_mr_inspect_run2)
+  p1 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+      p1,
+      :dv_pred, :dv;
+      ylabel = "Observed dv (ug/L)",
+      xlabel = "Population Predicted (ug/L)",
+      label = "",
+      legend=false,
+  )
+  Plots.abline!(p1,  1, 0; primary = false, color=:red, linewidth=4)
+
+  #
+  p2 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p2,
+    :dv_ipred, :dv;
+    ylabel = "Observed dv (ug/L)",
+    xlabel = "Individual Predicted (ug/L)",
+    label = "",
+    legend=false,
+  )
+  Plots.abline!(p2, 1, 0; primary = false, color=:red, linewidth=4)
+
+  p3 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p3,
+    :time, :dv_wres;
+    xlabel = "Time (h)",
+    ylabel = "Conditional Weighted Residuals",
+     legend=false
+  )
+  Plots.abline!(p3, 0, 0; primary = false, color=:red, linewidth=4)
+
+  p4 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+   p4,
+   :dv_pred, :dv_wres,
+   xlabel = "Population Predicted (ug/L)",
+   ylabel = "Conditional Weighted Residuals",
+   legend=false
+  )
+  Plots.abline!(p4, 0, 0; primary = false, color=:red, linewidth=4)
+
+  return plot(p1,p2,p3,p4; size = (1000, 1000))
+end
+
+gof(pk_14_inspect_2cmt)
+```
+
+We can see that the `Individual Predicted vs Observed Concentrations` are highly
+ correlated. But, there are trends at higher concentrations on the weighted residual
+ plots. Now we will try to include a constant weighting scheme in the model and
+ check for trends in the residuals. We will use the same inital estimates we used
+ for the previous fit, in this we will only include the proportional weighting scheme.
+ We will keep the `tvlag` parameter constant.
+
+```julia
+pk_14_fit_2cmt_prop = @time fit(pk_14_2cmt, pk14_data, param_est,
+                      Pumas.FOCEI(), ensemblealg=EnsembleThreads(),
+                      constantcoef=(tvlag=0.000001,))
+
+
+coeftable(pk_14_fit_2cmt_prop)
+```
+
+We will inspect the data and plot the diagnostic plots.
+
+```julia
+pk_14_inspect_2cmt_prop = inspect(pk_14_fit_2cmt_prop) |> DataFrame
+```
+
+ * Two-compartment model **without lag-time**.
+
+```julia
+gof(pk_14_inspect_2cmt_prop)
+```
+
+We will use the estimates from the previous fit for the current estimation. This
+ time we will estimate the `lag` parameter.
+
+```julia
+param_est_lag = ( tvka     = 5,
+                   tvvc    = 83,
+                   tvcl    = 59,
+                   tvq     = 11,
+                   tvvp    = 104,
+                   tvlag   = 0.05,
+                   Ω       = Diagonal([0.04,0.02,0.03,0.01]),
+                   σ²_prop = 0.11)
+
+pk_14_fit_2cmt_prop_lag = @time fit(pk_14_2cmt, pk14_data, param_est_lag,
+                          Pumas.FOCEI(), ensemblealg=EnsembleThreads())
+
+
+coeftable(pk_14_fit_2cmt_prop_lag)
+```
+
+We will now obtain the parameter precision of the two-compartment model **with lag time**.
+
+```julia
+pk_14_infer_2cmt_prop_lag = coeftable(infer(pk_14_fit_2cmt_prop_lag))
+```
+
+```julia
+pk_14_inspect_2cmt_prop_lag = inspect(pk_14_fit_2cmt_prop_lag) |> DataFrame
+```
+
+ * Two-compartment model `with lag time`.
+
+```julia
+gof(pk_14_inspect_2cmt_prop_lag)
+```
+
+We can see the residual plots with the lag time are a better fit to the data. We
+ will compare the other metrics and statistics, such as `AIC` and `BIC`. Clearly,
+ the model with `lag time` fits the data better.
+
+```julia
+DataFrame([(metric=string(f), fit_2cmt_nolag=f(pk_14_fit_2cmt_prop), fit_2cmt_lag=f(pk_14_fit_2cmt_prop_lag)) for f in (aic, bic)])
+```
+
+## η-Distribution
+
+```julia
+data14_etacov = select(pk_14_inspect_2cmt_prop_lag,["η_1", "η_2", "η_3", "η_4"])
+data14_etacov = stack(data14_etacov, ["η_1", "η_2", "η_3", "η_4"])
+data14_etacov[!,:variable] .= string.(data14_etacov.variable)
+@df data14_etacov groupedviolin(:variable,:value,
+                               alpha =0.5, legend=false)
+@df data14_etacov groupedboxplot!(:variable,:value,
+                               alpha =0.5, label ="")
+Plots.abline!(0,0, linewidth=4, color = "black",
+              size = (600, 600),
+              xlabel = "η's", ylabel = "η_values",
+              guidefontsize = 22,
+              tickfontsize =14, label ="")
+```
+
+## Validation
+
+We will perform a validation of the final model using Visual Predictive Check.
+
+```julia
+pk_vpc = vpc(pk_14_fit_2cmt_prop_lag, 200; dv=:dv,
+             ensemblealg=EnsembleSerial())
+
+plot(pk_vpc,
+    size=(800,800), xlabel="Time after dose (hours)",
+    ylabel = "Concentration (ug/L)" ,
+    titlefontsize=20,guidefontsize=20,
+    markersize=7, markeralpha = 0.5, markercolor =:grey,
+    observations = true,
+    observed_quantiles = true,
+    simquantile_medians = true,
+    ci_bands = true,
+    legend=true, legendfontsize = 12,
+    titlefontcolor = :blue,
+    linewidth = 5,
+     xtickfont = font(20),
+     ytickfont = font(20))
+```
