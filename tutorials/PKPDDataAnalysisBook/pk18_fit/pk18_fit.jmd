@@ -1,0 +1,539 @@
+---
+title : Exercise PK18 - Capacity II - Fitting Ethanol kinetics
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise you will learn how to go from data to insight. Following which
+ you can assess goodness-of-fit plots, and interpret the outputs.  In this exercise
+ ethanol is given is an infusion and the samples are collected accordingly. We will
+ try to fit a **non-linear elimination model**. Since the system is dealing with
+ non-linear kinetics we will have to provide good initial estimates, so that we
+ do not end up in a local minimum.
+
+The basic workflow of the estimation process is
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using GLM
+```
+
+## Description of the data
+
+Ethanol is given as an Intravenous Infusion at a dose of **0.4 g/kg** over *30 mins*.
+ Plasma samples are obtained in parallel with expired air every 5th min for 6 hours.
+ We know that etahnol is known to exhibit capacity-limited kinetics. Samples are
+ collected at `5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 70, 75, 80, 85, 90,
+ 95, 105, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155, 160, 165, 170, 175, 180,
+ 190, 195, 200, 205, 210, 215, 220, 225, 230, 235, 240, 255, 270, 285, 300, 315, 330,
+ 345, 360 mins`.
+
+The following are the units of the dataset:
+
+ * Time (time) = mins
+ * Plasma Concentration (dv) = g/L
+ * Dose (amt) = g
+
+```julia
+pk18_data_df = CSV.read("/Users/Parsshava/Desktop/Julia/PumasTutorials.jl/tutorials/PKPDDataAnalysisBook/pk18_fit/pk_18.csv",
+  DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary statistics of the data
+
+```julia
+stats_pk18_data = describe(pk18_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv, :amt])
+```
+
+## Exploratory Plots of the given data
+
+ * Plot of Plasma Concentration vs Time
+
+```julia
+pk_data_plot_plasma = dropmissing(pk18_data_df, :dv)
+@df pk_data_plot_plasma plot(:time, :dv, group=:id, yaxis=:log, label=false,
+                             xlabel="Time (mins)", ylabel="Concentration (g/L)",
+                             size = (600, 600), guidefontsize = 12,
+                             title = "Concentrations vs Time")
+```
+
+## NCA Analysis
+
+We will now perform an NCA analysis to get the initial estimates for the fitting
+ of the given data. We will include a `route` column to specify that dosing is an
+ infusion `inf`.  The read_nca() function input requires the route to be stated
+ as `inf` for an infusion.
+
+```julia; results="hidden"
+pk18_data_df[:, :route] .= "inf"
+```
+
+Now, map the data variables to the *read_nca* function that prepares the data for
+ NCA analysis. We will map the `duration` column to the required variable since the
+ drug is given as an infusion.
+
+```julia
+pk18_nca = read_nca(pk18_data_df,
+                    id       = :id,
+                    time     = :time,
+                    amt      = :amt,
+                    conc     = :dv,
+                    duration = :duration,
+                    route    = :route)
+```
+
+A full NCAReport is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean, GeometricMean, and SD**
+
+```julia
+pk18_nca_report = NCAReport(pk18_nca, sigdig=3)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk18_nca_report, [:id, :vz_obs, :cl_obs, :kel, :half_life, :vss_obs])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_obs, :cl_obs, :kel, :half_life, :vss_obs], [:id])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+We have obtained the initial estimates for `Volume of Distribution`. We will split
+ the volume between the two compartments. The clearance of the drug is *0.17 L/min*.
+ At very low concentration of 0.1 g/L , Cl = Vmax/(Km+C). From this we will calculate
+ Vmax and Km.
+
+We will calculate the mean of the time points and this will help us calculate the
+ slope for A and B.
+
+```julia
+pk18_slope = select(pk18_data_df, [:id, :time, :dv])
+pk18_slope_stacked = stack(pk18_slope, [:dv], [:id, :time])
+pk18_slope_summary = combine(groupby(pk18_slope,[:time]),
+                             [col => fun for col in [:dv]
+                             for fun in [mean, geomean, std]])
+```
+
+Plot of the mean concentration at the respective time points
+
+```julia
+@df pk18_slope_summary plot(:time, :dv_geomean, yaxis=:log, label=false,
+                             xlabel="Time (mins)", ylabel="Concentration (g/L)",
+                             size = (600, 400), guidefontsize = 12, linewidth=3,
+                             title = "Mean Concentration vs Time")
+```
+
+Calculate the SLOPE A, filter values less than 250 mins
+
+```julia
+pk18_slopeA_df = filter(x -> x.time < 250, pk18_slope_summary)
+ols_slopA = lm(@formula(dv_geomean ~ time), pk18_slopeA_df)
+```
+
+Calculate the SLOPE B, filter values greater than 250 mins
+
+```julia
+pk18_slopeB_df = filter(x -> x.time > 250, pk18_slope_summary)
+ols_slopeB = lm(@formula(dv_geomean ~ time), pk18_slopeB_df)
+```
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk_data      = read_pumas(pk18_data_df,
+                          id           = :id,
+                          time         = :time,
+                          observations = [:dv],
+                          amt          = :amt,
+                          evid         = :evid,
+                          cmt          = :cmt,
+                          rate         = :rate)
+```
+
+##### Two-compartment Linear Model
+
+```julia
+pk_18_lm        = @model  begin
+  @param begin
+    tvcl        ∈ RealDomain(lower=0)
+    tvQ         ∈ RealDomain(lower=0)
+    tvvc        ∈ RealDomain(lower=0)
+    tvvp        ∈ RealDomain(lower=0)
+    Ω           ∈ PDiagDomain(4)
+    σ²_prop     ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η           ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    CL          = tvcl * exp(η[1])
+    Q           = tvQ * exp(η[2])
+    Vc          = tvvc * exp(η[3])
+    Vp          = tvvp * exp(η[4])
+  end
+
+  @dynamics Central1Periph1
+    #Central'    = - (Cl/Vc * Central + (Q/Vp) * Peripheral - (Q/Vc) * Central
+    #Peripheral' = - (Q/Vp) * Peripheral + (Q/Vc) * Central
+  #end
+
+  @derived begin
+    cp         = @. Central/Vc
+    dv         ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
+  end
+end
+```
+
+We will use the initial estimates obtained from the NCA Analysis
+
+```julia
+param_est_lm = (tvcl       = 0.17,
+                tvQ        = 1,
+                tvvc       = 5,
+                tvvp       = 15,
+                Ω          = Diagonal([0.04,0.04,0.04,0.04]),
+                σ²_prop    = 0.04)
+```
+
+##### NaivePooled Analysis
+
+A quick estimation of the mean parameters can be done by performing a NaivePooled
+ Analysis. This will give us a good judgemnt of the parameters obtained from NCA
+ Analysis and provide better inital estimates for the fitting.
+
+```julia
+pk_18_lm_fit_nv = @time fit(pk_18_lm, pk_data, param_est_lm,
+                      Pumas.NaivePooled(), ensemblealg = EnsembleThreads(),
+                      omegas=(:Ω,))
+
+coeftable(pk_18_lm_fit_nv)
+```
+
+We will now try to fit a two-compartment linear model using `FOCEI`
+
+```julia
+pk_18_lm_fit = @time fit(pk_18_lm, pk_data, param_est_lm,
+                      Pumas.FOCEI(), ensemblealg = EnsembleThreads())
+
+coeftable(pk_18_lm_fit)
+```
+
+We will generate a few goodness of fit plots to check the trends in the model.
+ We will first `inspect` the diagnostics of our models.
+
+```julia
+pk_18_lm_inspect = inspect(pk_18_lm_fit) |> DataFrame
+```
+
+## Diagnostic Plots
+
+##### Goodness of Fit Plots
+
+ * Two-compartment Model with Linear Elimination
+
+```julia
+theme(:wong2)
+
+function gof(pktvp_mr_inspect_run2)
+  p1 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+      p1,
+      :dv_pred, :dv;
+      ylabel = "Observed dv (g/L)",
+      xlabel = "Population Predicted (g/L)",
+      label = "",
+      legend=false,
+  )
+  Plots.abline!(p1,  1, 0; primary = false, color=:red, linewidth=4)
+
+  #
+  p2 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p2,
+    :dv_ipred, :dv;
+    ylabel = "Observed dv (g/L)",
+    xlabel = "Individual Predicted (g/L)",
+    label = "",
+    legend=false,
+  )
+  Plots.abline!(p2, 1, 0; primary = false, color=:red, linewidth=4)
+
+  p3 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p3,
+    :time, :dv_wres;
+    xlabel = "Time (mins)",
+    ylabel = "Conditional Weighted Residuals",
+     legend=false
+  )
+  Plots.abline!(p3, 0, 0; primary = false, color=:red, linewidth=4)
+
+  p4 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+   p4,
+   :dv_pred, :dv_wres,
+   xlabel = "Population Predicted (g/L)",
+   ylabel = "Conditional Weighted Residuals",
+   legend=false
+  )
+  Plots.abline!(p4, 0, 0; primary = false, color=:red, linewidth=4)
+
+  return plot(p1,p2,p3,p4; size = (1000, 1000))
+end
+
+gof(pk_18_lm_inspect)
+```
+
+##### Two-compartment Non-linear Model
+
+```julia
+pk_18_nm        = @model  begin
+  @param begin
+    tvvmax      ∈ RealDomain(lower=0)
+    tvkm        ∈ RealDomain(lower=0)
+    tvQ         ∈ RealDomain(lower=0)
+    tvvc        ∈ RealDomain(lower=0)
+    tvvp        ∈ RealDomain(lower=0)
+    Ω           ∈ PDiagDomain(4)
+    σ²_prop     ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η           ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Vmax        = tvvmax * exp(η[1])
+    Km          = tvkm
+    Q           = tvQ * exp(η[2])
+    Vc          = tvvc * exp(η[3])
+    Vp          = tvvp * exp(η[4])
+  end
+
+  @dynamics begin
+    Central'    = - (Vmax/(Km+(Central/Vc))) * Central/Vc + (Q/Vp) * Peripheral - (Q/Vc) * Central
+    Peripheral' = - (Q/Vp) * Peripheral + (Q/Vc) * Central
+  end
+
+  @derived begin
+    cp         = @. Central/Vc
+    dv         ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
+  end
+end
+```
+
+We will use the inital parameters we have obtained.
+
+```julia
+param_est_nm = (tvvmax     = 0.098,
+                tvkm       = 0.049,
+                tvQ        = 1,
+                tvvc       = 5,
+                tvvp       = 15,
+                Ω          = Diagonal([0.04,0.04,0.04,0.04]),
+                σ²_prop    = 0.04)
+```
+
+##### NaivePooled Analysis
+
+A quick estimation of the mean parameters can be done by performing a NaivePooled
+ Analysis. This will give us a good judgemnt of the parameters obtained from NCA
+ Analysis and provide better inital estimates for the fitting.
+
+```julia
+pk_18_nm_fit_nv = @time fit(pk_18_nm, pk_data, param_est_nm,
+                      Pumas.NaivePooled(), ensemblealg = EnsembleThreads(),
+                      omegas=(:Ω,))
+
+coeftable(pk_18_nm_fit_nv)
+```
+
+We will now fit the model using `FOCEI`
+
+```julia
+pk_18_nm_fit = @time fit(pk_18_nm, pk_data, param_est_nm,
+                      Pumas.FOCEI(), ensemblealg = EnsembleThreads())
+
+coeftable(pk_18_nm_fit)
+```
+
+We will now obtain the parameter precision of the model.
+
+```julia
+pk_18_nm_infer = coeftable(infer(pk_18_nm_fit))
+```
+
+We will generate a few goodness of fit plots to check the trends in the model.
+ We will first inspect the diagnostics of our models.
+
+```julia
+pk_18_nm_inspect = inspect(pk_18_nm_fit) |> DataFrame
+```
+
+ * Two-compartment Model with Non-linear Elimination
+
+```julia
+gof(pk_18_nm_inspect)
+```
+
+##### Correlation Plot
+
+```julia
+@df pk_18_nm_inspect corrplot([:η_1 :η_2 :η_3 :η_4],
+                             size = (800, 800), guidefontsize = 12,
+                             tickfontsize =8)
+```
+
+We will compare the other metrics and statistics, such as aic and bic. Clearly the
+ **two-compartment model with non-linear elimination** is a better fit.
+
+```julia
+DataFrame([(metric=string(f), fit_linear_model=f(pk_18_lm_fit),
+              fit_non_linear_model=f(pk_18_nm_fit)) for f in (aic, bic)])
+```
+
+##### η-Distribution
+
+```julia
+data18_etacov = select(pk_18_nm_inspect,["η_1", "η_2", "η_3", "η_4"])
+data18_etacov = stack(data18_etacov, ["η_1", "η_2", "η_3", "η_4"])
+data18_etacov[!,:variable] .= string.(data18_etacov.variable)
+@df data18_etacov groupedviolin(:variable,:value,
+                               alpha =0.5, legend=false)
+@df data18_etacov groupedboxplot!(:variable,:value,
+                               alpha =0.5, label ="")
+Plots.abline!(0,0, linewidth=4, color = "black",
+              size = (600, 600),
+              xlabel = "η's", ylabel = "η_values",
+              guidefontsize = 22,
+              tickfontsize =14, label ="")
+```
+
+## Validation
+
+We will perform a validation of the final model using a Visual Predictive Check.
+
+```julia
+pk_vpc_plasma = vpc(pk_18_nm_fit, 200; dv=:dv,
+                    ensemblealg=EnsembleSerial())
+
+plot(pk_vpc_plasma,
+    size=(800,800), xlabel="Time after dose (mins)",
+    ylabel = "Concentration (g/L)" , yaxis=:log,
+    titlefontsize=20,guidefontsize=20,
+    markersize=7, markeralpha = 0.5, markercolor =:grey,
+    observations = true,
+    observed_quantiles = true,
+    simquantile_medians = true,
+    ci_bands = true,
+    legend=:bottomleft, legendfontsize = 12,
+    titlefontcolor = :blue,
+    linewidth = 5,
+     xtickfont = font(20),
+     ytickfont = font(20))
+```
+
+## Simulation of Bioavailability
+
+We will use the non-linear model for simulation of `Bioavailability`
+
+```julia
+pk_18_sim       = @model  begin
+  @param begin
+    tvvmax      ∈ RealDomain(lower=0)
+    tvkm        ∈ RealDomain(lower=0)
+    tvQ         ∈ RealDomain(lower=0)
+    tvvc        ∈ RealDomain(lower=0)
+    tvvp        ∈ RealDomain(lower=0)
+  end
+
+  @pre begin
+    Vmax        = tvvmax
+    Km          = tvkm
+    Q           = tvQ
+    Vc          = tvvc
+    Vp          = tvvp
+    Qh          = 1.4 #L/min - Blood Flow to Liver
+  end
+
+  @dynamics begin
+    Central'    = - (Vmax/(Km+(Central/Vc))) * Central/Vc + (Q/Vp) * Peripheral - (Q/Vc) * Central
+    Peripheral' = - (Q/Vp) * Peripheral + (Q/Vc) * Central
+  end
+
+  @derived begin
+    cp         = @. Central/Vc
+    Fh         = @. Qh/(Qh+(Vmax/(Km+cp)))
+  end
+end
+```
+
+We will use the final parameters we have obtained.
+
+```julia
+param_sim_nm = (tvvmax     = 0.0806,
+                tvkm       = 0.0140,
+                tvQ        = 1.338,
+                tvvc       = 9.4236,
+                tvvp       = 30.662)
+```
+
+A dose of **0.4g/Kg** (i.e.,28g for a 70Kg healthy individual), infused over a
+ time span of `30 minutes` is given to a single subject.
+
+```julia
+ev1   = DosageRegimen(28,time=0, cmt=1, duration=30)
+sub1  = Subject(id=1,events=ev1)
+```
+
+We will simulate the Bioavailabiltity.
+
+```julia; results="hidden"
+Random.seed!(1234)
+sim_sub = simobs(pk_18_sim,sub1,param_sim_nm,obstimes=0:0.01:360)
+df1     = DataFrame(sim_sub)
+filter!(x -> x.time != 0.0, df1)
+df1[!, :Fh] .= df1.Fh .* 100
+```
+
+From the plot we can observe that at lower concentrations of the drug the Bioavailability
+ is low and at higher concentrations the Bioavailability reaches a value of `90%`.
+ This is the reason why we require higher quantities of drinks with low ethanol
+ content to produce the necessary pharmacological effect.
+
+```julia
+@df df1 plot(:cp, :Fh, xaxis=:log, linewidth=3,
+             size = (600, 400), guidefontsize = 12, color="red", label=false,
+             xlabel="Concentration (g/L)", ylabel="Bioavailability (%)",
+             xlims=(0.001,1), xticks=[0.001,0.01,0.1,1],
+             ylims=(0,100), yticks=[0,10,20,30,40,50,60,70,80,90,100])
+```
