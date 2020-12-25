@@ -1,0 +1,678 @@
+---
+title : Exercise PK19 - Fitting Metabolite Kinetics - Capacity III
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise you will learn how to build a model using plasma and metabolite
+  compartment and then fit the given data using the same. In this we fit both a
+  linear elimination and a capacity limited elimination model. You will learn how
+  to obtain initial parameter estimates for the fitting process. We will continue
+  to refine and analyze the outputs to get the best model to fit the data. We will
+  compare the models based on the `diagnostic plots` and `statistics`.
+
+The basic workflow for the estimation process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of the data
+
+Three dose levels of **10, 50, 300 μmol/kg** are administered to the patients. In
+ each dose group 20 patients are administered with the given dose and PK samples are
+ collected. PK samples are collected at `5, 10, 20, 30, 60, 90, 120, 180, 300 mins`.
+ From the collected samples we have obtained both the drug and metabolite concentrations.
+
+The following are the units of the dataset:
+
+ * Time (time) = mins
+ * Plasma Concentrations (dv_cp) = μmol/L
+ * Metabolite Concentrations (dv_met) = μmol/L
+ * Dose (amt) = μmol/kg
+
+```julia
+pk19_data_df = CSV.read("/Users/Parsshava/Desktop/Julia/PumasTutorials.jl/tutorials/PKPDDataAnalysisBook/pk19_fit/pk_19.csv",
+  DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk19_data = describe(pk19_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv_cp,:dv_met])
+```
+
+## Exploratory Plots of the given data
+
+* Plot of Plasma Concentration vs Time
+
+```julia
+pk_data_plot = dropmissing(pk19_data_df, :dv_cp)
+@df pk_data_plot plot(:time, :dv_cp, group=:id, color=:dose, yaxis=:log, label=false,
+                      xlabel="Time (min)", ylabel="Concentration (umol/L)",
+                      guidefontsize = 12, size = (600, 600), alpha=0.5,
+                      title = "Plasma Concentrations vs Time")
+```
+
+ * Plot of Metabolite Concentration vs Time
+
+```julia
+pk_data_plot = dropmissing(pk19_data_df, :dv_met)
+@df pk_data_plot plot(:time, :dv_met, group=:id, color=:dose, yaxis=:log, label=false,
+                      xlabel="Time (min)", ylabel="Concentration (umol/L)",
+                      title = "Metabolite Concentrations vs Time",
+                      size = (600, 600), guidefontsize = 12, alpha=0.5)
+```
+
+## NCA Analysis
+
+We will now perform an NCA Analysis to get initial estimates of the data for the
+ fitting of the given data. We will include a route column to specify that dosing
+ is an intravenous bolus `iv`. The *read_nca()* function input requires the route
+ to be stated as `iv` for an intravenous bolus, this will help to compute the
+ parameters correctly.
+
+```julia; results="hidden"
+pk19_data_df[:, :route] .= "iv"
+```
+
+We will perform an NCA of the `Plasma Concentrations`. We have grouped it by _dose_,
+ this will help us in understanding the difference between the doses and help
+ with plotting.
+
+```julia
+pk19_nca_plasma = read_nca(pk19_data_df,
+                            id       = :id,
+                            time     = :time,
+                            amt      = :amt,
+                            conc     = :dv_cp,
+                            route    = :route,
+                            group    = [:dose])
+```
+
+A `full NCAReport` is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean, GeometricMean, and SD**
+
+```julia
+pk19_nca_plasma_report = NCAReport(pk19_nca_plasma, sigdig=3)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters.
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_plasma_df = select(pk19_nca_plasma_report, [:id, :vz_obs, :cl_obs, :kel, :half_life,
+   :vss_obs, :aucinf_obs, :aucinf_dn_obs, :dose])
+
+## Stack the data for easy computation
+stats_nca_plasma_stacked = stack(stats_nca_plasma_df, [:vz_obs, :cl_obs, :kel, :half_life,
+   :vss_obs, :aucinf_obs, :aucinf_dn_obs], [:id, :dose])
+stats_nca_plasma_summary = combine(groupby(stats_nca_plasma_stacked,[:dose, :variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+We can see that as the Dose increases the Clearance of the drug _decreases_. Similarly,
+ the half-life of the drug is also increasing. Overall, there is an increase in the
+  AUC of the drug which is **not proportional** with dose. This indicates that there
+  is a non-linear clearance of the drug. We will plot AUC vs Dose and see the
+  relationship
+
+```julia
+auc = select(pk19_nca_plasma_report, [:id, :dose, :aucinf_obs, :aucinf_dn_obs])
+#TODO unable to get ordered x-axis
+auc[!,:Dose] .= CategoricalArray(auc.dose)
+@df auc groupedviolin(:dose, :aucinf_obs, group=:Dose,
+                      marker=(0.2,:blue,stroke(0)))
+@df auc groupedboxplot!(:dose, :aucinf_obs, group=:Dose, label="",
+                      marker=(0.1,:orange,stroke(2)), alpha=0.5)
+plot!(size = (600,600), xlabel = "Dose (umol/kg)", ylabel = "AUC", legend=:topleft,
+   guidefontsize = 16, alpha=0.5)
+```
+
+The highest dose of the `300 umol/kg` gives an AUC that is **99% higher** than the AUC value at
+ the lowest dose of 10 mg. We will plot a Dose Normalized AUC and see a visual
+  inspection of they are equal.
+
+```julia
+@df auc groupedviolin(:dose, :aucinf_dn_obs, group=:Dose,
+                      marker=(0.2,:blue,stroke(0)))
+@df auc groupedboxplot!(:dose, :aucinf_dn_obs, group=:Dose, label="",
+                      marker=(0.1,:orange,stroke(2)), alpha=0.5)
+plot!(size = (600,600), xlabel = "Dose (umol/kg)", ylabel = "AUC-Dose Normalized", legend=:topleft,
+  guidefontsize = 16, alpha=0.5)
+```
+
+The `Dose Normalized AUC` are not similar and thus indicating a clear trend of
+ **capacity limited elimination**
+
+We will perform an NCA Analysis of the Metabolite Concentrations.
+
+```julia
+met_df = select(pk19_data_df, :id, :time, :dv_met, :dose, :evid)
+filter!(x -> x.time != 0, met_df)
+
+pk19_nca_met = read_nca(met_df,
+                        id       = :id,
+                        time     = :time,
+                        conc     = :dv_met,
+                        group    = [:dose])
+```
+
+A full NCA Report is generated.
+
+```julia
+pk19_nca_met = NCAReport(pk19_nca_met)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_met_df = select(pk19_nca_met, [:id, :kel, :half_life, :aucinf_obs, :dose])
+
+## Stack the data for easy computation
+stats_nca_met_stacked = stack(stats_nca_met_df, [:kel, :half_life, :aucinf_obs], [:id, :dose])
+stats_nca_met_summary = combine(groupby(stats_nca_met_stacked,[:dose, :variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+We plotted the AUC of Metabolite vs Dose, we can see that with increasing Doses
+ the AUC is not linear and does not increase propotionally. Thus the Clearance of
+  the drug and formation of metabolite is **capacity-limited**
+
+```julia
+stats_nca_met_df[!,:Dose] .= CategoricalArray(stats_nca_met_df.dose)
+@df stats_nca_met_df groupedviolin(:dose, :aucinf_obs, group=:Dose,
+                      marker=(0.2,:blue,stroke(0)))
+@df stats_nca_met_df groupedboxplot!(:dose, :aucinf_obs, group=:Dose, label="",
+                      marker=(0.1,:orange,stroke(2)), alpha=0.5)
+plot!(size = (600,600), xlabel = "Dose (umol/kg)", ylabel = "AUC - Metabolite",
+              legend=:topleft, title = "AUC of Metabolite vs Dose",
+               guidefontsize = 16, alpha=0.5)
+```
+
+##### Dose Normalized Conc
+
+We will now plot Dose-Normalized Concentrations of Plasma and Metabolite vs Time.
+ We can note the change in half-life with increasing concentrations.
+
+```julia
+pk19_dose_norm = select(pk19_data_df, [:id, :time, :dv_cp, :dv_met, :dose])
+pk19_dose_norm_stacked = stack(pk19_dose_norm, [:dv_cp, :dv_met], [:id, :time, :dose])
+pk19_dose_norm_summary = combine(groupby(pk19_dose_norm_stacked,[:dose, :time, :variable]),
+                                [col => fun for col in [:value]
+                                for fun in [mean, geomean, std]])
+```
+
+We will `Normalize` the concentrations with dose.
+
+```julia; results="hidden"
+pk19_dose_norm_summary[:, :dose_norm_conc] .= pk19_dose_norm_summary.value_geomean ./ pk19_dose_norm_summary.dose
+```
+
+ * Plot of Dose Normalized Concentrations of Plasma, Metabolite vs Time
+
+For the metabolite concentrations, the lowest produces the highest normalized
+  concentrations.
+
+```julia
+dose_norm_plasma = filter(x -> x.variable == "dv_cp", pk19_dose_norm_summary)
+p1 = @df dose_norm_plasma plot(:time, :dose_norm_conc, yaxis=:log, group=:dose,
+                                xlabel="Time (mins)", ylabel="Dose Norm Concentration (umol/L)",
+                                title = "Plasma - Dose Normalized")
+
+dose_norm_met = filter(x -> x.variable == "dv_met", pk19_dose_norm_summary)
+p2 = @df dose_norm_met plot(:time, :dose_norm_conc, yaxis=:log, group=:dose,
+                            xlabel="Time (mins)", ylabel="Dose Norm Concentration (umol/L)",
+                            title = "Metabolite - Dose Normalized")
+
+plot(p1,p2; size = (800, 400), linewidth=3)
+```
+
+ * Calculation for Vmax and Km
+
+The average Clearance obtained from NCA for 10, 50 & 300 μmol/kg are **0.03, 0.02 & 0.01 L/min/kg**
+ respectively. Average Clearance *Clavg = AUC/time interval*
+
+```julia
+DataFrame(Clavg10 = [362.814 / 300], Clavg50 = [2422.23 / 300], Clavg300 = [21564.1/300])
+```
+
+Using the average conc for each dose level, we can calculate the Vmax and Km
+ by using the equation **Clavg = Vmax / (Km+Cp)**.
+
+
+The final estimates for model are as follows:
+ * Central Volume of Distribution (Vc) = **1.3 L/kg**
+ * Peripheral Volume of Distribution (Vt) = **1.3 L/kg**
+ * Intercompartmental Clearance (Q) = **0.1 L/min/kg** (Obtained from previous studies)
+ * Maximum Velocity of Reaction (Vmax) = **1.4μmol/min/kg**
+ * Michaelis-Menten Constant (Km) = **15 μmol/L**
+ * Rate of Elimination of Metabolite = **0.07 min⁻¹**
+ * Volume of Metabolite Compartment = **0.7 L/kg**
+
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk_data = read_pumas(pk19_data_df,
+                      id           = :id,
+                      time         = :time,
+                      observations = [:dv_cp, :dv_met],
+                      amt          = :amt,
+                      evid         = :evid,
+                      cmt          = :cmt)
+```
+
+##### Two-compartment Model with Non-linear formation of Metabolite
+
+The drug exhibits a two-compartment model, we have a metabolite compartment since
+ drug is converted to a metabolite and excreted. We have incorporated a capacity
+ limited clearance of the drug. The metabolite has a seperate volume of distribution.
+
+```julia
+pk_19_nm        = @model begin
+  @param begin
+    tvvc        ∈ RealDomain(lower=0)
+    tvvp        ∈ RealDomain(lower=0)
+    tvq         ∈ RealDomain(lower=0)
+    tvvmax      ∈ RealDomain(lower=0)
+    tvkm        ∈ RealDomain(lower=0)
+    tvkme       ∈ RealDomain(lower=0)
+    tvvme       ∈ RealDomain(lower=0)
+    Ω           ∈ PDiagDomain(7)
+    σ²_prop_cp  ∈ RealDomain(lower=0)
+    σ²_prop_met ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η           ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Vc          = tvvc * exp(η[1])
+    Vp          = tvvp * exp(η[2])
+    Q           = tvq * exp(η[3])
+    Vmax        = tvvmax * exp(η[4])
+    Km          = tvkm * exp(η[5])
+    Kme         = tvkme * exp(η[6])
+    Vme         = tvvme * exp(η[7])
+  end
+
+  @vars begin
+    VMKM       := Vmax/(Km+(Central/Vc))
+  end
+
+  @dynamics begin
+    Central'    = -VMKM*(Central/Vc) - (Q/Vc)*Central + (Q/Vp)*Peripheral
+    Peripheral' =  (Q/Vc)*Central - (Q/Vp)*Peripheral
+    Metabolite' =  VMKM*(Central/Vc) - Kme*Metabolite
+  end
+
+  @derived begin
+    cp          = @. Central/Vc
+    dv_cp       ~ @. Normal(cp, sqrt(cp^2*σ²_prop_cp))
+    met         = @. Metabolite/Vme
+    dv_met      ~ @. Normal(met, sqrt(met^2*σ²_prop_met))
+  end
+end
+```
+
+We will use the initial estimates we have obtained from the NCA Analysis and
+ other derived values.
+
+```julia
+param_est_nm = ( tvvc        = 1.3,
+                 tvvp        = 1.3,
+                 tvq         = 0.1,
+                 tvvmax      = 1.4,
+                 tvkm        = 15,
+                 tvkme       = 0.07,
+                 tvvme       = 0.7,
+                 Ω           = Diagonal([0.04,0.04,0.04,0.04,0.04,0.04,0.04]),
+                 σ²_prop_cp  = 0.04,
+                 σ²_prop_met = 0.04)
+```
+
+##### NaivePooled Analysis
+
+A quick estimation of the mean parameters can be done by performing a NaivePooled
+ Analysis. This will give us a good judgemnt of the parameters obtained from NCA
+ Analysis and provide better inital estimates for the fitting.
+
+```julia
+pk_19_nm_fit_nv = @time fit(pk_19_nm, pk_data, param_est_nm,
+                      Pumas.NaivePooled(), ensemblealg=EnsembleThreads(),
+                      omegas=(:Ω,))
+
+coeftable(pk_19_nm_fit_nv)
+```
+
+Our estimates from the NaivePooled Analysis are not very accurate but close so that
+  we can avoid a local minima during the fitting process. We will fit the data using
+  `FOCEI`.
+
+```julia
+pk_19_nm_fit = @time fit(pk_19_nm, pk_data, param_est_nm,
+                      Pumas.FOCEI(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_19_nm_fit)
+```
+
+We will obtain the `precision` of the parameters
+
+
+```julia
+pk_19_nm_infer = coeftable(infer(pk_19_nm_fit))
+```
+
+We will `inspect` the diagnostics of the model before we go for the goodness of
+ fit plots.
+
+```julia
+pk_19_nm_inspect = inspect(pk_19_nm_fit) |> DataFrame
+```
+
+##### Two-compartment Model with Non-linear formation of Metabolite
+
+We will also try to fit a linear elimination process of the drug. In this model
+ the conversion of parent drug to metabolite is a linear process.
+
+```julia
+pk_19_lm        = @model begin
+  @param begin
+    tvvc        ∈ RealDomain(lower=0)
+    tvvp        ∈ RealDomain(lower=0)
+    tvq         ∈ RealDomain(lower=0)
+    tvcl        ∈ RealDomain(lower=0)
+    tvkme       ∈ RealDomain(lower=0)
+    tvvme       ∈ RealDomain(lower=0)
+    Ω           ∈ PDiagDomain(6)
+    σ²_prop_cp  ∈ RealDomain(lower=0)
+    σ²_prop_met ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η           ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Vc          = tvvc * exp(η[1])
+    Vp          = tvvp * exp(η[2])
+    Q           = tvq * exp(η[3])
+    Cl          = tvcl * exp(η[4])
+    Kme         = tvkme * exp(η[5])
+    Vme         = tvvme * exp(η[6])
+  end
+
+  @dynamics begin
+    Central'    = -(Cl/Vc)*Central - (Q/Vc)*Central + (Q/Vp)*Peripheral
+    Peripheral' =  (Q/Vc)*Central - (Q/Vp)*Peripheral
+    Metabolite' =  (Cl/Vc)*Central - Kme*Metabolite
+  end
+
+  @derived begin
+    cp          = @. Central/Vc
+    dv_cp       ~ @. Normal(cp, sqrt(cp^2*σ²_prop_cp))
+    met         = @. Metabolite/Vme
+    dv_met      ~ @. Normal(met, sqrt(met^2*σ²_prop_met))
+  end
+end
+```
+
+We will use the estimates we have obtained from the previous fitting of the non-linear
+ model.
+
+```julia
+param_est_lm  = ( tvvc        = 1.0,
+                  tvvp        = 1.9,
+                  tvq         = 0.1,
+                  tvcl        = 0.9,
+                  tvkme       = 0.14,
+                  tvvme       = 0.29,
+                  Ω           = Diagonal([0.04,0.01,0.09,0.04,0.02,0.05]),
+                  σ²_prop_cp  = 0.04,
+                  σ²_prop_met = 0.06)
+```
+
+We will fit the data using `FOCEI`
+
+```julia
+pk_19_lm_fit = @time fit(pk_19_lm, pk_data, param_est_lm,
+                      Pumas.FOCEI(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_19_lm_fit)
+```
+
+We will `inspect` the diagnostics of the model
+
+```julia
+pk_19_lm_inspect = inspect(pk_19_lm_fit) |> DataFrame
+```
+
+We will compare other metrics and statistics, such as `aic` and `bic`. Clearly
+ the two-compartment model with **non-linear metabolite formation** is a better fit.
+
+```julia
+DataFrame([(metric=string(f), fit_linear_model=f(pk_19_lm_fit),
+              fit_non_linear_model=f(pk_19_nm_fit)) for f in (aic, bic)])
+```
+
+## Diagnostic Plots
+
+##### Goodness of Fit Plots
+
+ * Plasma Concentration - NonLinear Model
+
+```julia
+theme(:wong2)
+
+function gof_plasma(pktvp_mr_inspect_run2)
+  p1 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+      p1,
+      :dv_cp_pred, :dv_cp;
+      ylabel = "Observed dv (umol/L)",
+      xlabel = "Population Predicted (umol/L)",
+      label = "",
+      legend=false,
+  )
+  Plots.abline!(p1,  1, 0; primary = false, color=:red, linewidth=4)
+
+  #
+  p2 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p2,
+    :dv_cp_ipred, :dv_cp;
+    ylabel = "Observed Plasma` Conc (umol/L)",
+    xlabel = "Individual Predicted (umol/L)",
+    label = "",
+    legend=false,
+  )
+  Plots.abline!(p2, 1, 0; primary = false, color=:red, linewidth=4)
+
+  p3 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p3,
+    :time, :dv_cp_wres;
+    xlabel = "Time (min)",
+    ylabel = "Conditional Weighted Residuals",
+     legend=false
+  )
+  Plots.abline!(p3, 0, 0; primary = false, color=:red, linewidth=4)
+
+  p4 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+   p4,
+   :dv_cp_pred, :dv_cp_wres,
+   xlabel = "Population Predicted (umol/L)",
+   ylabel = "Conditional Weighted Residuals",
+   legend=false
+  )
+  Plots.abline!(p4, 0, 0; primary = false, color=:red, linewidth=4)
+
+  return plot(p1,p2,p3,p4; size = (1000, 1000))
+end
+
+gof_plasma(pk_19_nm_inspect)
+```
+
+* Plasma Concentration - Linear Model
+
+```julia
+gof_plasma(pk_19_lm_inspect)
+```
+
+* Metabolite Concentrations - NonLinear Model
+
+```julia
+theme(:wong2)
+
+function gof_met(pktvp_mr_inspect_run2)
+ p1 = plot()
+ @df pktvp_mr_inspect_run2 scatter!(
+     p1,
+     :dv_met_pred, :dv_met;
+     ylabel = "Observed Metabolite Conc (umol/L)",
+     xlabel = "Population Predicted (umol/L)",
+     label = "",
+     legend=false,
+ )
+ Plots.abline!(p1,  1, 0; primary = false, color=:red, linewidth=4)
+
+ #
+ p2 = plot()
+ @df pktvp_mr_inspect_run2 scatter!(
+   p2,
+   :dv_met_ipred, :dv_met;
+   ylabel = "Observed Metabolite Conc (umol/L)",
+   xlabel = "Individual Predicted (umol/L)",
+   label = "",
+   legend=false,
+ )
+ Plots.abline!(p2, 1, 0; primary = false, color=:red, linewidth=4)
+
+ p3 = plot()
+ @df pktvp_mr_inspect_run2 scatter!(
+   p3,
+   :time, :dv_met_wres;
+   xlabel = "Time (min)",
+   ylabel = "Conditional Weighted Residuals",
+    legend=false
+ )
+ Plots.abline!(p3, 0, 0; primary = false, color=:red, linewidth=4)
+
+ p4 = plot()
+ @df pktvp_mr_inspect_run2 scatter!(
+  p4,
+  :dv_met_pred, :dv_met_wres,
+  xlabel = "Population Predicted (umol/L)",
+  ylabel = "Conditional Weighted Residuals",
+  legend=false
+ )
+ Plots.abline!(p4, 0, 0; primary = false, color=:red, linewidth=4)
+
+ return plot(p1,p2,p3,p4; size = (1000, 1000))
+end
+
+gof_met(pk_19_nm_inspect)
+```
+
+ * Metabolite Concentrations - Linear Model
+
+```julia
+gof_met(pk_19_lm_inspect)
+```
+
+## η-Distribution
+
+ * NonLinear Model
+
+```julia
+data19_etacov = select(pk_19_nm_inspect,["η_1", "η_2", "η_3", "η_4", "η_5", "η_6", "η_7"])
+data19_etacov = stack(data19_etacov, ["η_1", "η_2", "η_3", "η_4", "η_5", "η_6", "η_7"])
+data19_etacov[!,:variable] .= string.(data19_etacov.variable)
+@df data19_etacov groupedviolin(:variable,:value,
+                               alpha =0.5, legend=false)
+@df data19_etacov groupedboxplot!(:variable,:value,
+                               alpha =0.5, label ="")
+Plots.abline!(0,0, linewidth=4, color = "black",
+              size = (600, 600),
+              xlabel = "η's", ylabel = "η_values",
+              guidefontsize = 22,
+              tickfontsize =14, label ="")
+```
+
+## Validation
+
+We will perform a validation of the final model using a Visual Predictive Check.
+
+ * Plasma Concentrations
+
+```julia
+pk_vpc_plasma = vpc(pk_19_nm_fit, 200; dv=:dv_cp,
+                    ensemblealg=EnsembleSerial())
+
+plot(pk_vpc_plasma,
+    size=(800,800), xlabel="Time after dose (mins)",
+    ylabel = "Concentration (umol/L)" , yaxis=:log,
+    titlefontsize=20,guidefontsize=20,
+    markersize=7, markeralpha = 0.5, markercolor =:grey,
+    observations = true,
+    observed_quantiles = true,
+    simquantile_medians = true,
+    ci_bands = true,
+    legend=:bottomleft, legendfontsize = 12,
+    titlefontcolor = :blue,
+    linewidth = 5,
+     xtickfont = font(20),
+     ytickfont = font(20))
+```
+
+ * Metabolite Concentrations
+
+```julia
+pk_vpc_metabolite = vpc(pk_19_nm_fit, 200; dv=:dv_met,
+                    ensemblealg=EnsembleSerial())
+
+plot(pk_vpc_metabolite,
+    size=(800,800), xlabel="Time after dose (mins)",
+    ylabel = "Concentration (umol/L)" ,
+    titlefontsize=20,guidefontsize=20,
+    markersize=7, markeralpha = 0.5, markercolor =:grey,
+    observations = true,
+    observed_quantiles = true,
+    simquantile_medians = true,
+    ci_bands = true,
+    legend=true, legendfontsize = 12,
+    titlefontcolor = :blue,
+    linewidth = 5,
+    xtickfont = font(20),
+    ytickfont = font(20))
+```
