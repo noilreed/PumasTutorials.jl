@@ -1,0 +1,436 @@
+---
+title: Exercise PK30 - Turnover I - Fitting SC - Dosing of hormone
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise we will learn about the **turnover models**. In this exercise there
+ is an endogenous synthesis of the drug and hence there are initial concentrations
+ of the drug that need to be considered while modeling. Thus we will include a
+ zero-order constant synthesis of the drug in the body along with actual administration
+ of the drug. We will continue to refine and analyze the outputs to get the best
+ model to fit the data. We will compare the models based on the `diagnostic plots`
+ and `statistics`.
+
+The basic workflow for the estimation process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of the data
+
+The drug (hormone) is given subcutaneously at a dose of **40 μg/kg once**. It is to be noted
+ that there is endogenous production of the drug and we have captured the initial
+ concentration of the drug at `time=0`. PK samples are collected at time `0, 2, 3,
+ 4, 5, 6, 8, 10, 15, 24, 32, 48, 72 hrs`.
+
+The following are the units of the dataset:
+
+ * Time (time) = hrs
+ * Plasma Concentrations (dv) = μg/L
+ * Dose (amt) = μg/kg
+
+```julia
+pk30_data_df = CSV.read("/Users/Parsshava/Desktop/Julia/PumasTutorials.jl/tutorials/PKPDDataAnalysisBook/pk30_fit/pk_30.csv",
+  DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk30_data = describe(pk30_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+ * Plot of Plasma Concentration vs Time
+
+```julia
+pk_data_plot = dropmissing(pk30_data_df, :dv)
+@df pk_data_plot plot(:time, :dv, group=:id, label=false,
+                      xlabel="Time (hr)", ylabel="Concentration (ug/L)",
+                      guidefontsize = 12, size = (600, 600),
+                      title = "Concentrations vs Time")
+```
+
+## NCA Analysis
+
+We will now perform an NCA Analysis to get initial estimates of the data for the
+ fitting of the given data. We will include a route column to specify that dosing
+ is extravascular `ev`. The **read_nca()** function input requires the route to be
+ stated as `ev` for an extravascular, this will help to compute the parameters correctly.
+
+```julia; results="hidden"
+pk30_data_df[:, :route] .= "ev"
+```
+
+Now, map the data variables to the *read_nca* function that prepares the data for
+ NCA analysis. You can even type **?read_nca** in the REPL and get more information
+ on the mapping of the data.
+
+```julia
+transform!(groupby(pk30_data_df, :id), :dv => (x -> x .- x[2]) => :dv_nca)
+
+pk30_nca = read_nca(pk30_data_df,
+                    id       = :id,
+                    time     = :time,
+                    amt      = :amt,
+                    conc     = :dv_nca,
+                    route    = :route)
+```
+
+A full NCAReport is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean, GeometricMean, and SD**
+
+```julia
+pk30_nca_report = NCAReport(pk30_nca, sigdig=3)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters
+
+```julia
+## Select the required parameters from the NCA Report
+dropmissing!(pk30_nca_report)
+stats_nca_plasma_df = select(pk30_nca_report, [:id, :vz_f_obs, :cl_f_obs, :kel, :half_life, :aucinf_obs, :tmax])
+
+## Stack the data for easy computation
+stats_nca_plasma_stacked = stack(stats_nca_plasma_df, [:vz_f_obs, :cl_f_obs, :kel, :half_life, :aucinf_obs, :tmax], [:id])
+stats_nca_plasma_summary = combine(groupby(stats_nca_plasma_stacked,[:variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+We will take the mean of the baseline concentration for calculation of _Synthesis_.
+
+```julia
+stats_time_plasma_summary = combine(groupby(pk30_data_df,[:time, :evid]),
+                            [col => fun for col in [:dv]
+                            for fun in [mean, std]])
+stats_time_plasma_summary[2,:]
+```
+
+We can obtain the Ka value from the equation (0.693/(_tmax_/4)), i.e **Ka = 1.02 hr⁻¹**.
+ The Synthesis value from Average Baseline Conc (C0) = Synthesis / Cl, i.e **Synthesis = 0.58 ug/hr**
+
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk_data      = read_pumas(pk30_data_df,
+                          id           = :id,
+                          time         = :time,
+                          observations = [:dv],
+                          amt          = :amt,
+                          evid         = :evid,
+                          cmt          = :cmt)
+```
+
+##### One-Compartment Absorption Model with Intial Synthesis - Proprtional Error Model
+
+This is a one-compartment absorption model with initial baseline concentrations
+ due to synthesis within the body at a constant rate. Thus we will build a model
+ with **endogenous synthesis** at a `constant rate` in the body.
+
+* Proportional Error Model
+
+```julia
+pk_30_prop      = @model begin
+  @param begin
+    tvka        ∈ RealDomain(lower=0)
+    tvcl        ∈ RealDomain(lower=0)
+    tvsynthesis ∈ RealDomain(lower=0)
+    tvvc        ∈ RealDomain(lower=0)
+    Ω           ∈ PDiagDomain(4)
+    σ²_prop     ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η           ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Ka          = tvka * exp(η[1])
+    Cl          = tvcl * exp(η[2])
+    Synthesis   = tvsynthesis * exp(η[3])
+    Vc          = tvvc * exp(η[4])
+  end
+
+  @init begin
+    Central     = Synthesis/(Cl/Vc) # Concentration at Baseline = Turnover Rate / Cl of hormone
+  end
+
+  @dynamics begin
+    Depot'      = - Ka * Depot
+    Central'    =   Ka * Depot + Synthesis - (Cl/Vc) * Central
+  end
+
+  @derived begin
+    cp          = @. Central/Vc
+    dv          ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
+  end
+end
+```
+
+We will use the `initial estimates` we have obtained from the NCA Analysis and other
+ derived values.
+
+```julia
+param_est_prop = ( tvka         = 1.01,
+                   tvcl         = 0.02,
+                   tvsynthesis  = 0.58,
+                   tvvc         = 0.2,
+                   Ω            = Diagonal([0.04,0.04,0.04,0.04]),
+                   σ²_prop      = 0.02 )
+```
+
+##### NaivePooled Analysis
+
+A quick estimation of the mean parameters can be done by performing a NaivePooled
+ Analysis. This will give us a good judgemnt of the parameters obtained from NCA
+ Analysis and provide better inital estimates for the fitting.
+
+```julia
+pk_30_fit_nv = @time fit(pk_30_prop, pk_data, param_est_prop,
+                     Pumas.NaivePooled(), ensemblealg=EnsembleThreads(),
+                     omegas=(:Ω,))
+
+coeftable(pk_30_fit_nv)
+```
+
+Our estimates from the NaivePooled Analysis close to the initial estimates obtained
+ from the NCA analysis. We will fit the data using `FOCEI`.
+
+```julia
+pk_30_prop_fit = @time fit(pk_30_prop, pk_data, param_est_prop,
+                      Pumas.FOCEI(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_30_prop_fit)
+```
+
+We will obtain the `precision` of the parameters
+
+```julia
+pk_30_prop_infer = coeftable(infer(pk_30_prop_fit))
+```
+
+We will `inspect` the diagnostics of the model before we go for the goodness of fit plots.
+
+```julia
+pk_30_prop_inspect = inspect(pk_30_prop_fit) |> DataFrame
+```
+
+##### One-Compartment Absorption Model with Intial Synthesis - Additive Error Model
+
+```julia
+pk_30_add      = @model begin
+  @param begin
+    tvka        ∈ RealDomain(lower=0)
+    tvcl        ∈ RealDomain(lower=0)
+    tvsynthesis ∈ RealDomain(lower=0)
+    tvvc        ∈ RealDomain(lower=0)
+    Ω           ∈ PDiagDomain(4)
+    σ_add       ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η           ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Ka          = tvka * exp(η[1])
+    Cl          = tvcl * exp(η[2])
+    Synthesis   = tvsynthesis * exp(η[3])
+    Vc          = tvvc * exp(η[4])
+  end
+
+  @init begin
+    Central     = Synthesis/(Cl/Vc) # Concentration at Baseline = Turnover Rate (0.78) / Cl of hormone (0.028)
+  end
+
+  @dynamics begin
+    Depot'      = -Ka * Depot
+    Central'    =  Ka * Depot + Synthesis - (Cl/Vc) * Central
+  end
+
+  @derived begin
+    cp          = @. Central/Vc
+    dv          ~ @. Normal(cp, σ_add)
+  end
+end
+```
+
+We will use the `initial estimates` we have obtained from the NCA Analysis and other
+ derived values.
+
+```julia
+param_est_add  = ( tvka         = 1.01,
+                   tvcl         = 0.1,
+                   tvsynthesis  = 0.7,
+                   tvvc         = 0.3,
+                   Ω            = Diagonal([0.04,0.04,0.04,0.04]),
+                   σ_add        = 5)
+```
+
+We will fit the data using the `FOCEI` Method
+
+```julia
+pk_30_add_fit = @time fit(pk_30_add, pk_data, param_est_add,
+                      Pumas.FOCEI(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_30_add_fit)
+```
+
+We will obtain the `precision` of the parameters
+
+```julia
+pk_30_add_infer = coeftable(infer(pk_30_add_fit))
+```
+
+We will `inspect` the diagnostics of the model before we go for the goodness of fit plots.
+
+```julia
+pk_30_add_inspect = inspect(pk_30_add_fit) |> DataFrame
+```
+
+We will compare other metrics and statistics, such as aic and bic. Clearly the
+ **additive error model** is a better fit.
+
+```julia
+DataFrame([(metric=string(f), fit_prop_model=f(pk_30_prop_fit),
+              fit_add_model=f(pk_30_add_fit)) for f in (aic, bic)])
+```
+
+## Diagnostic Plots
+
+##### Goodness of Fit Plots
+
+ * Proportional Error Model
+
+```julia
+theme(:wong2)
+
+function gof(pktvp_mr_inspect_run2)
+  p1 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+      p1,
+      :dv_pred, :dv;
+      ylabel = "Observed dv (ug/L)",
+      xlabel = "Population Predicted (ug/L)",
+      label = "",
+      legend=false,
+  )
+  Plots.abline!(p1,  1, 0; primary = false, color=:red, linewidth=4)
+
+  #
+  p2 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p2,
+    :dv_ipred, :dv;
+    ylabel = "Observed Plasma` Conc (ug/L)",
+    xlabel = "Individual Predicted (ug/L)",
+    label = "",
+    legend=false,
+  )
+  Plots.abline!(p2, 1, 0; primary = false, color=:red, linewidth=4)
+
+  p3 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p3,
+    :time, :dv_wres;
+    xlabel = "Time (hr)",
+    ylabel = "Conditional Weighted Residuals",
+     legend=false
+  )
+  Plots.abline!(p3, 0, 0; primary = false, color=:red, linewidth=4)
+
+  p4 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+   p4,
+   :dv_pred, :dv_wres,
+   xlabel = "Population Predicted (ug/L)",
+   ylabel = "Conditional Weighted Residuals",
+   legend=false
+  )
+  Plots.abline!(p4, 0, 0; primary = false, color=:red, linewidth=4)
+
+  return plot(p1,p2,p3,p4; size = (1000, 1000))
+end
+
+gof(pk_30_prop_inspect)
+```
+
+ * Additive Error Model
+
+```julia
+gof(pk_30_add_inspect)
+```
+
+Clearly the weighted residual plots show a trend when we try the Proportional error
+ model. There are no trends in the Additive error model and thus the best fit for
+ the given data is the Additive error model
+
+##### η-Distribution
+
+```julia
+data30_etacov = select(pk_30_add_inspect,["η_1", "η_2", "η_3", "η_4"])
+data30_etacov = stack(data30_etacov, ["η_1", "η_2", "η_3", "η_4"])
+data30_etacov[!,:variable] .= string.(data30_etacov.variable)
+@df data30_etacov groupedviolin(:variable,:value,
+                               alpha =0.5, legend=false)
+@df data30_etacov groupedboxplot!(:variable,:value,
+                               alpha =0.5, label ="")
+Plots.abline!(0,0, linewidth=4, color = "black",
+              size = (600, 600),
+              xlabel = "η's", ylabel = "η_values",
+              guidefontsize = 22,
+              tickfontsize =14, label ="")
+```
+
+## Validation
+
+We will perform a validation of the final model using a `Visual Predictive Check`.
+
+```julia
+pk_vpc = vpc(pk_30_add_fit, 200; dv=:dv,
+              ensemblealg=EnsembleSerial())
+
+plot(pk_vpc,
+    size=(800,800), xlabel="Time after dose (hr)",
+    ylabel = "Concentration (ug/L)" ,
+    titlefontsize=20, guidefontsize=20,
+    markersize=7, markeralpha = 0.5, markercolor =:grey,
+    observations = true,
+    observed_quantiles = true,
+    simquantile_medians = true,
+    ci_bands = true,
+    legend=true, legendfontsize = 12,
+    titlefontcolor = :blue,
+    linewidth = 5,
+     xtickfont = font(20),
+     ytickfont = font(20))
+```
