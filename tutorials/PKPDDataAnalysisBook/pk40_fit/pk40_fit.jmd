@@ -1,0 +1,334 @@
+---
+title : Exercise PK40 - Fitting Enterohepatic Recirculation
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise you will learn how to analyze data that shows an enterohepatic
+ recirculation of the drug. In this we model only one release of the bile into
+ the gut from where it is absorbed. There is **zero-order** release of the drug from
+ the `bile compartment`.
+
+The basic workflow for the estimation process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of the data
+
+An intravenous bolus dose of 5617.3 μg of a new compound which is known to exhibit
+ enterohepatic recirculation (EHC) is administered. The PK samples are collected
+ at `0.03, 0.083, 0.15, 0.17, 0.33, 0.5, 0.67, 0.83, 1, 1.5, 2, 4, 6, 8, 10, 10.5,
+ 11, 11.5, 12, 12.5, 13, 15, 16, 17, 18, 20, 24, 26, 28, 30, 32, 36 hrs`.
+
+The following are the units of the dataset:
+
+ * Time (time) = hrs
+ * Plasma Concentration (dv) = μg/L
+ * Dose (amt) = μg
+
+```julia
+pk40_data_df = CSV.read("/Users/Parsshava/Desktop/Julia/PumasTutorials.jl/tutorials/PKPDDataAnalysisBook/pk40_fit/pk_40.csv",
+    DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk40_data = describe(pk40_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+ * Plot of Concentration vs Time
+
+```julia
+pk_data_plot = dropmissing(pk40_data_df, :dv)
+@df pk_data_plot plot(:time, :dv, group=:id, yaxis=:log, label=false,
+                      xlabel="Time (hr)", ylabel="Concentration (ug/L)",
+                      size = (600, 600), guidefontsize = 12,
+                      title = "Concentration vs Time")
+```
+
+From the Concentrations vs Time plot we can see that there is a _rise in concentration_
+ at around 10 hours after the intial fall.
+
+## NCA Analysis
+
+We will perform an `NCA Analysis` to obtain a few initial estimates of the parameters
+ for the fitting of the given data. We will include a `route` column so that we have
+  descent value for the initial estimates.
+
+```julia; results="hidden"
+pk40_data_df[:, :route] .= "iv"
+```
+
+Now, map the data variables to the *read_nca* function that prepares the data for
+ NCA analysis. You can even type **?read_nca** in the REPL and get more information
+ on the mapping of the data.
+
+```julia
+pk40_nca = read_nca(pk40_data_df,
+                    id     = :id,
+                    time   = :time,
+                    amt    = :amt,
+                    conc   = :dv,
+                    route  = :route)
+```
+
+A full NCAReport is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean, GeometricMean, and SD**
+
+```julia
+pk40_nca_report = NCAReport(pk40_nca, sigdig=3)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk40_nca_report, [:id, :vz_obs, :cl_obs, :aucinf_obs, :kel, :half_life, :tmax])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_obs, :cl_obs, :aucinf_obs, :kel, :half_life, :tmax], [:id])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+* We will **split the volume of distribution** between the two compartment to use as
+   initial estimates for our analysis.
+* For the Clearance we will assign a **higher value** to the intercompartmental
+   clearance (Q) since we can see the initial rapid decline in concentrations.
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk40_est_df = filter(x -> (!(x.time == 0  && x.evid == 0.0)), pk40_data_df)
+
+pk40_data = read_pumas(pk40_est_df,
+                        id           = :id,
+                        time         = :time,
+                        observations = [:dv],
+                        amt          = :amt,
+                        evid         = :evid)
+```
+
+###### Enterohepatic Recirculation Model
+
+```julia
+pk_40            = @model begin
+   @param begin
+     tvcl        ∈ RealDomain(lower=0, upper=50)
+     tvvc        ∈ RealDomain(lower=0, upper=100)
+     tvvp        ∈ RealDomain(lower=0, upper=150)
+     tvQ         ∈ RealDomain(lower=0, upper=100)
+     tvka        ∈ RealDomain(lower=0, upper=10)
+     tvklg       ∈ RealDomain(lower=0, upper=10)
+     tvτ         ∈ RealDomain(lower=0, upper=10)
+     Ω           ∈ PDiagDomain(5)
+     σ²_prop     ∈ RealDomain(lower=0)
+   end
+
+   @random begin
+     η           ~ MvNormal(Ω)
+   end
+
+   @pre begin
+     Cl          = tvcl * exp(η[1])
+     Vc          = tvvc * exp(η[2])
+     Vp          = tvvp * exp(η[3])
+     Q           = tvQ
+     Ka          = tvka * exp(η[4])
+     Klg         = tvklg
+     τ           = tvτ * exp(η[5])
+     Kempt       = (t>10 && t<(10+τ))*(1/τ)
+
+   end
+
+   @dynamics begin
+     Central'    = Ka*Depot - (Cl/Vc)*Central + (Q/Vp)*Peripheral - (Q/Vc)*Central - Klg*Central
+     Peripheral' = (Q/Vc)*Central - (Q/Vp)*Peripheral
+     Bile'       = Klg*Central - Bile*Kempt
+     Depot'      = Bile*Kempt - Ka*Depot
+   end
+
+   @derived begin
+     cp          = @. Central/Vc
+     dv          ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
+   end
+end
+```
+
+We have obtained a few initial estimates from the NCA analysis.
+
+```julia
+param_est =  (tvcl    = 1.2,
+              tvvc    = 15,
+              tvvp    = 20,
+              tvQ     = 5,
+              tvka    = 2.3,
+              tvklg   = 0.7,
+              tvτ     = 2.8,
+              Ω       = Diagonal([0.01,0.02,0.03,0.01,0.01]),
+              σ²_prop = 0.01)
+```
+
+##### NaivePooled Analysis
+
+A quick estimation of the mean parameters can be done by performing a NaivePooled
+ Analysis. This will give us a good judgemnt of the initial parameters for the fitting.
+
+```julia
+pk_40_fit_nv = @time fit(pk_40, pk40_data, param_est,
+                           Pumas.NaivePooled(), ensemblealg = EnsembleThreads(),
+                           omegas=(:Ω,))
+
+coeftable(pk_40_fit_nv)
+```
+
+Our initial estimates are close to the NaivePooled estimates. We will fit the
+ data using `FOCEI`
+
+```julia
+pk_40_fit = @time fit(pk_40, pk40_data, param_est,
+                        Pumas.FOCEI(), ensemblealg = EnsembleThreads())
+
+coeftable(pk_40_fit)
+```
+
+We will now obtain the parameter `precision` of the model.
+
+```julia
+pk_40_infer = coeftable(infer(pk_40_fit))
+```
+
+We will generate a few goodness of fit plots to check the trends in the model.
+ We will first `inspect` the diagnostics of our models.
+
+```julia
+pk_40_inspect = inspect(pk_40_fit) |> DataFrame
+```
+
+## Diagnostic Plots
+
+##### Goodness of Fit Plots
+
+```julia
+theme(:wong2)
+
+function gof(pktvp_mr_inspect_run2)
+  p1 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+      p1,
+      :dv_pred, :dv;
+      ylabel = "Observed dv (ug/L)",
+      xlabel = "Population Predicted (ug/L)",
+      label = "",
+      legend=false,
+  )
+  Plots.abline!(p1,  1, 0; primary = false, color=:red, linewidth=4)
+
+  #
+  p2 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p2,
+    :dv_ipred, :dv;
+    ylabel = "Observed dv (ug/L)",
+    xlabel = "Individual Predicted (ug/L)",
+    label = "",
+    legend=false,
+  )
+  Plots.abline!(p2, 1, 0; primary = false, color=:red, linewidth=4)
+
+  p3 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p3,
+    :time, :dv_wres;
+    xlabel = "Time (hrs)",
+    ylabel = "Conditional Weighted Residuals",
+     legend=false
+  )
+  Plots.abline!(p3, 0, 0; primary = false, color=:red, linewidth=4)
+
+  p4 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+   p4,
+   :dv_pred, :dv_wres,
+   xlabel = "Population Predicted (ug/L)",
+   ylabel = "Conditional Weighted Residuals",
+   legend=false
+  )
+  Plots.abline!(p4, 0, 0; primary = false, color=:red, linewidth=4)
+
+  return plot(p1,p2,p3,p4; size = (1000, 1000))
+end
+
+gof(pk_40_inspect)
+```
+
+##### η-Distribution
+
+```julia
+data40_etacov = select(pk_40_inspect,["η_1", "η_2", "η_3", "η_4", "η_5"])
+data40_etacov = stack(data40_etacov, ["η_1", "η_2", "η_3", "η_4", "η_5"])
+data40_etacov[!,:variable] .= string.(data40_etacov.variable)
+@df data40_etacov groupedviolin(:variable,:value,
+                               alpha =0.5, legend=false)
+@df data40_etacov groupedboxplot!(:variable,:value,
+                               alpha =0.5, label ="")
+Plots.abline!(0,0, linewidth=4, color = "black",
+              size = (600, 600),
+              xlabel = "η's", ylabel = "η_values",
+              guidefontsize = 22,
+              tickfontsize =14, label ="")
+```
+
+## Validation
+
+We will perform a validation of the final model using `Visual Predictive Check`.
+
+```julia
+pk_vpc = vpc(pk_40_fit, 200; dv=:dv,
+              ensemblealg=EnsembleSerial())
+
+plot(pk_vpc,
+    size=(800,800), xlabel="Time after dose (hrs)",
+    ylabel = "Concentration (ug/L)" ,
+    titlefontsize=20,guidefontsize=20, yaxis=:log,
+    markersize=7, markeralpha = 0.5, markercolor =:grey,
+    observations = true,
+    observed_quantiles = true,
+    simquantile_medians = true,
+    ci_bands = true,
+    legend=true, legendfontsize = 12,
+    titlefontcolor = :blue,
+    linewidth = 5,
+     xtickfont = font(20),
+     ytickfont = font(20))
+```
