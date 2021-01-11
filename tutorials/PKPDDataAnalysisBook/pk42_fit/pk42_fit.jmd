@@ -1,0 +1,349 @@
+---
+title: Exercise PK42 - Fitting Saturable absorption via transporters
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+In this exercise you will learn how to model non-linear absorption kinetics. We
+ assume that the nonlinear absoprtion is due to saturable transport mechanism.
+ As the dose increases the time to absorption keeps on increasing. Thus we will
+ learn about a system with nonlinear absorption and linear elimination.
+
+The basic workflow for the estimation process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+```
+
+## Description of the data
+
+In this exercise each subject recieves a dose of **10mg, 30mg & 90mg** on three
+  different occasions. Samples are collected on each occasion. The samples are
+  collected at `5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 70, 75, 80, 85,
+  90, 95, 105, 110, 115, 120, 150, 180, 210, 240, 300, 360 mins`.
+
+The following are the units of the dataset:
+
+ * Time (time) = mins
+ * Plasma Concentrations (dv) = μg/L
+ * Dose (amt) = μg
+ * Occasion (1 : Dose 90mg, 2 : Dose = 30mg, 3 : Dose = 10mg)
+
+```julia
+pk42_data_df = CSV.read("/Users/Parsshava/Desktop/Julia/PumasTutorials.jl/tutorials/PKPDDataAnalysisBook/pk42_fit/pk_42.csv",
+    DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk42_data = describe(pk42_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+ * Plot of Concentration vs Time
+
+```julia
+pk_data_plot = dropmissing(pk42_data_df, :dv)
+filter!(x -> x.dv >= 0.1, pk_data_plot)
+@df pk_data_plot plot(:time, :dv, group=(:id,:Occasion), yaxis=:log, color=:Occasion, label=false,
+                      xlabel="Time (mins)", ylabel="Concentration (ug/L)",
+                      size = (600, 600), guidefontsize = 12,
+                      title = "Concentrations vs Time")
+```
+
+We can see the shift to the right in peak plasma concentration with increasing doses.
+
+## NCA Analysis
+
+We will now perform an NCA analysis to get the initial estimates for fitting
+ of the given data. The route column will need to be included to indicate the dosing
+ is extravascular `ev`. The *read_nca* function input requires the route to be stated
+ as ev for extravascular, this will help to compute the parameters correctly.
+
+```julia; results="hidden"
+pk42_data_df[:, :route] .= "ev"
+```
+
+Now, map the data variables to the *read_nca* function that prepares the data for
+ NCA analysis. You can even type **?read_nca** in the REPL and get more information
+ on the mapping of the data. We will group the data by `Occasion`.
+
+```julia
+pk42_nca = read_nca(pk42_data_df,
+                   id     = :id,
+                   time   = :time,
+                   amt    = :amt,
+                   conc   = :dv,
+                   route  = :route,
+                   group  = [:Occasion])
+```
+
+A full NCAReport is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean, Geometric Mean, and SD**
+
+```julia
+pk42_nca_report = NCAReport(pk42_nca, sigdig=3)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters
+
+```julia
+dropmissing!(pk42_nca_report)
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk42_nca_report, [:id, :vz_f_obs, :cl_f_obs, :half_life, :tmax, :cmax, :aucinf_obs, :aucinf_dn_obs, :Occasion])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_f_obs, :cl_f_obs, :half_life, :tmax, :cmax, :aucinf_obs, :aucinf_dn_obs], [:id, :Occasion])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:Occasion, :variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+We can see that the dose-normalized AUC's are not very different for each dose.
+ Thus it is clear that the elimination of the drug is linear. For such a system
+  with **complete absorption** the dose-normalized AUC's should not be different.
+
+We will calculate the **Ka** for each of the doses.
+ * Dose - 10mg , 0.693(_tmax_/4) = **0.923 min⁻¹**
+ * Dose - 30mg , = **2.252 min⁻¹**
+ * Dose - 90mg, = **9.58 min⁻¹**
+
+From this we can see that at higher dose there is saturable absorption.
+
+From previous studies we have estimated the initial parameters to be
+ _Vc = 5.2 L, Q = 1.1 L/min, Vp = 40 L & Cl = 2.2 L/min_.
+
+ * The lowest dose of **10mg does not show non-linearity** thus we assume the Km value
+    to be 10,000 μg.
+ * Vmax = Css * Cl, i.e **Vmax = 770 μg/min**
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk42_data = read_pumas(pk42_data_df,
+                        id           = :id,
+                        time         = :time,
+                        observations = [:dv],
+                        amt          = :amt,
+                        evid         = :evid,
+                        cmt          = :cmt,
+                        covariates   = [:Occasion])
+```
+
+##### Two-compartment model with Saturable Absorption
+
+```julia
+pk_42           = @model begin
+  @param begin
+    tvvmax      ∈ RealDomain(lower=0)
+    tvkm        ∈ RealDomain(lower=0)
+    tvvc        ∈ RealDomain(lower=0)
+    tvvp        ∈ RealDomain(lower=0)
+    tvq         ∈ RealDomain(lower=0)
+    tvcl        ∈ RealDomain(lower=0)
+    Ω           ∈ PDiagDomain(4)
+    σ_add       ∈ RealDomain(lower=0)
+  end
+
+  @covariates Occasion
+
+  @random begin
+    η           ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Vmax        = tvvmax * exp(η[1])
+    Km          = tvkm * exp(η[2])
+    Vc          = tvvc * exp(η[3])
+    Vp          = tvvp
+    Q           = tvq
+    CL          = tvcl * exp(η[4])
+  end
+
+  @vars begin
+    VMKM        = Vmax/(Km+Depot)
+  end
+
+  @dynamics begin
+    Depot'      = -VMKM*Depot
+    Central'    =  VMKM*Depot -CL*(Central/Vc) - (Q/Vc)*Central + (Q/Vp)*Peripheral
+    Peripheral' =  (Q/Vc)*Central - (Q/Vp)*Peripheral
+  end
+
+  @derived begin
+    cp          = @. Central/Vc
+    dv          ~ @. Normal(cp, σ_add)
+  end
+end
+```
+
+We have obtained the initial estimates from `NCA` and few from previous studies.
+
+```julia
+param_est = (tvvmax = 770,
+             tvkm   = 10000,
+             tvvc   = 5.2,
+             tvvp   = 40,
+             tvq    = 1.1,
+             tvcl   = 2.2,
+             Ω      = Diagonal([0.02, 0.02, 0.02, 0.01]),
+             σ_add  = 0.01)
+```
+
+##### NaivePooled Analysis
+
+A quick estimation of the mean parameters can be done by performing a NaivePooled
+ Analysis. This will give us a good judgemnt of the inital estimates for the fitting.
+
+```julia
+pk_42_fit_nv = @time fit(pk_42, pk42_data, param_est,
+                          Pumas.NaivePooled(), ensemblealg=EnsembleThreads(),
+                          omegas=(:Ω,))
+
+coeftable(pk_42_fit_nv)
+```
+
+We see that the initial estimates we found are close to the NaivePooled
+ Analysis. We will estimate using `FOCEI`.
+
+```julia
+pk_42_fit = @time fit(pk_42, pk42_data, param_est,
+                      Pumas.FOCEI(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_42_fit)
+```
+
+We will obtain the `precision` of the parameters
+
+```julia
+pk_42_infer   = coeftable(infer(pk_42_fit))
+```
+
+We will `inspect` the diagnostics of the model before we go for the goodness of fit plots.
+
+```julia
+pk_42_inspect = inspect(pk_42_fit) |> DataFrame
+```
+
+## Diagnostic Plots
+
+##### Goodness of Fit Plots
+
+```julia
+theme(:wong2)
+
+function gof(pktvp_mr_inspect_run2)
+  p1 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+      p1,
+      :dv_pred, :dv;
+      ylabel = "Observed dv (ug/L)",
+      xlabel = "Population Predicted (ug/L)",
+      label = "",
+      legend=false,
+  )
+  Plots.abline!(p1,  1, 0; primary = false, color=:red, linewidth=4)
+
+  #
+  p2 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p2,
+    :dv_ipred, :dv;
+    ylabel = "Observed Plasma` Conc (ug/L)",
+    xlabel = "Individual Predicted (ug/L)",
+    label = "",
+    legend=false,
+  )
+  Plots.abline!(p2, 1, 0; primary = false, color=:red, linewidth=4)
+
+  p3 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p3,
+    :time, :dv_wres;
+    xlabel = "Time (mins)",
+    ylabel = "Conditional Weighted Residuals",
+     legend=false
+  )
+  Plots.abline!(p3, 0, 0; primary = false, color=:red, linewidth=4)
+
+  p4 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+   p4,
+   :dv_pred, :dv_wres,
+   xlabel = "Population Predicted (ug/L)",
+   ylabel = "Conditional Weighted Residuals",
+   legend=false
+  )
+  Plots.abline!(p4, 0, 0; primary = false, color=:red, linewidth=4)
+
+  return plot(p1,p2,p3,p4; size = (1000, 1000))
+end
+
+gof(pk_42_inspect)
+```
+
+##### η-Distribution
+
+```julia
+dropmissing!(pk_42_inspect)
+unique!(pk_42_inspect, :id)
+data42_etacov = select(pk_42_inspect,["η_1", "η_2", "η_3", "η_4"])
+data42_etacov = stack(data42_etacov, ["η_1", "η_2", "η_3", "η_4"])
+data42_etacov[!,:variable] .= string.(data42_etacov.variable)
+@df data42_etacov groupedviolin(:variable, :value,
+                               alpha =0.5, legend=false)
+@df data42_etacov groupedboxplot!(:variable, :value,
+                               alpha =0.5, label ="")
+Plots.abline!(0,0, linewidth=4, color = "black",
+              size = (800, 800),
+              xlabel = "η's", ylabel = "η_values",
+              guidefontsize = 22,
+              tickfontsize =14, label ="")
+```
+
+## Validation
+
+We will perform a validation of the final model using a `Visual Predictive Check`.
+
+```julia
+pk_vpc = vpc(pk_42_fit, 200; dv=:dv,
+              ensemblealg = EnsembleSerial())
+
+plot(pk_vpc,
+    size=(1000,1000), xlabel="Time after dose (mins)",
+    ylabel = "Concentration (ug/L)" ,
+    titlefontsize=20,guidefontsize=20,
+    markersize=7, markeralpha = 0.5, markercolor =:grey,
+    observations = true,
+    observed_quantiles = true,
+    simquantile_medians = true,
+    ci_bands = true,
+    legend=true, legendfontsize = 12,
+    titlefontcolor = :blue,
+    linewidth = 5,
+    xtickfont = font(20),
+    ytickfont = font(20))
+```
