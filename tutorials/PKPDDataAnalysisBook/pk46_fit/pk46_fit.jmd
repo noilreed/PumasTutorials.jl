@@ -1,0 +1,330 @@
+---
+title : Exercise 46 - Fitting Long Infusion Short Half Life
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise we will learn how to analyze a dataset for a drug which has a **short half-life**
+ which is given as an _extended constant rate infusion_. We will use the
+ initial parameters obtained from `NCA` Analysis and use that for the estimation
+ of the same parameters using FOCEI. The basic workflow of the estimation process is
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of the data
+
+A dose of **500000 μg** of drug is given as an `Infusion` for a long period of time (2016 hrs).
+ PK samples are collected at times `0.5, 24, 96, 168, 672, 2016, 2016.5, 2017, 2018 hrs`.
+
+The following are the units of the dataset:
+
+  * Time (time) = hrs
+  * Plasma Concentrations (dv) = μg/L
+  * Dose (amt) = μg
+
+```julia
+pk46_data_df = CSV.read("/Users/Parsshava/Desktop/Julia/PumasTutorials.jl/tutorials/PKPDDataAnalysisBook/pk46_fit/pk_46.csv",
+ DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary statistics of the data
+
+```julia
+stats_pk46_data = describe(pk46_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+ * Plot of Concentration vs Time
+
+The drug is given as a long-infusion for over 2016 hours.
+
+```julia
+pk_data_plot = dropmissing(pk46_data_df, :dv)
+@df pk_data_plot plot(:time, :dv, group=:id, label=false,
+                      xlabel="Time (hr)", ylabel="Concentration (ug/L)",
+                      size = (600, 600), guidefontsize = 12,
+                      title = "Concentration vs Time")
+```
+
+We will plot the **Mean Concentration at each time point vs Time**. This will help us
+ to get a clear understanding of the Long-infusion.
+
+```julia
+pk46_mean_time = select(pk46_data_df, [:id, :time, :dv])
+pk46_summary = combine(groupby(pk46_mean_time,[:time]),
+                         [col => fun for col in [:dv]
+                         for fun in [mean,std]])
+
+```
+
+ * Plot of Mean Concentration vs Time
+
+```julia
+@df pk46_summary plot(:time, :dv_mean, label=false, linewidth=3,
+                      xlabel="Time (hr)", ylabel="Concentration (ug/L)",
+                      size = (600, 600), guidefontsize = 12,
+                      title = "Concentration vs Time")
+```
+
+## NCA Analysis
+
+We will now perform an NCA analysis to get the initial estimates for the fitting
+ of the given data. The **read_nca()** function input requires the route to be
+ stated as `inf` for infusion. We will calculate the `duration` of since the drug
+ is given as an infusion and this will help to calculate the parameters accurately.
+
+```julia; results="hidden"
+pk46_data_df[:, :route] .= "inf"
+pk46_data_df[:, :duration] .= pk46_data_df.amt ./ pk46_data_df.rate
+```
+
+Now, map the data variables to the **read_nca** function that prepares the data
+ for NCA analysis. You can even type **?read_nca** in the REPL and get more
+ information on the mapping of the variables.
+
+```julia
+pk46_nca = read_nca(pk46_data_df,
+                    id       = :id,
+                    time     = :time,
+                    amt      = :amt,
+                    conc     = :dv,
+                    route    = :route,
+                    duration = :duration)
+```
+
+A `full NCAReport` is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean and SD**
+
+```julia
+pk46_nca_report = NCAReport(pk46_nca, sigdig=3)
+```
+
+Perform the `Summary Statistics` for the required NCA Parameters
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk46_nca_report, [:id, :vz_obs, :cl_obs, :kel, :half_life, :aucinf_obs, :mrtinf_obs, :aumcinf_obs])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_obs, :cl_obs, :kel, :half_life, :aucinf_obs, :aumcinf_obs, :mrtinf_obs], [:id])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, std]])
+```
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk46_data = read_pumas(pk46_data_df,
+                       id           = :id,
+                       time         = :time,
+                       observations = [:dv],
+                       amt          = :amt,
+                       evid         = :evid,
+                       cmt          = :cmt,
+                       rate         = :rate)
+```
+
+##### One-Compartment Model
+
+```julia
+pk_46         = @model begin
+    @param begin
+      tvvss   ∈ RealDomain(lower=0)
+      tvcl    ∈ RealDomain(lower=0)
+      Ω       ∈ PDiagDomain(2)
+      σ_add   ∈ RealDomain(lower=0)
+    end
+
+    @random begin
+      η       ~ MvNormal(Ω)
+    end
+
+    @pre begin
+      Vss     = tvvss * exp(η[1])
+      Cl      = tvcl * exp(η[2])
+    end
+
+    @dynamics begin
+      Central' =  - (Cl/Vss)*Central
+    end
+
+    @derived begin
+      cp       = @. Central/Vss
+      dv       ~ @. Normal(cp, σ_add)
+    end
+end
+```
+
+We have obtained the initial estimates from `NCA Analysis`
+
+```julia
+param_est = ( tvvss  = 38,
+              tvcl   = 60,
+              Ω      = Diagonal([0.02,0.02]),
+              σ_add  = 0.2)
+```
+
+##### Naive Pooled
+
+A quick estimation of the mean parameters can be done by performing a NaivePooled
+ Analysis. This will give us a good judgemnt of the parameters obtained for better
+ inital estimates of the fitting.
+
+```julia
+pk_46_fit_nv = @time fit(pk_46, pk46_data, param_est,
+                           Pumas.NaivePooled(), ensemblealg = EnsembleThreads(),
+                           omegas=(:Ω,))
+
+coeftable(pk_46_fit_nv)
+```
+
+##### FOCEI
+
+We will now use the initial estimates from the NaivePooled Analysis for fitting the
+ data and obatining the Between Subject Variability (BSV) on the parameters.
+
+```julia
+pk_46_fit = @time fit(pk_46, pk46_data, param_est,
+                       Pumas.FOCEI(), ensemblealg = EnsembleThreads())
+
+coeftable(pk_46_fit)
+```
+
+We will obtain the `precision` of the parameters
+
+```julia
+pk_46_infer = coeftable(infer(pk_46_fit))
+```
+
+We will `inspect` the diagnostics of the model before we go for the goodness of
+ fit plots.
+
+```julia
+pk_46_inspect = inspect(pk_46_fit) |> DataFrame
+```
+
+## Diagnostic Plots
+
+##### Goodness of Fit Plots
+
+```julia
+theme(:wong2)
+
+function gof(pktvp_mr_inspect_run2)
+  p1 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+      p1,
+      :dv_pred, :dv;
+      ylabel = "Observed dv (ug/L)",
+      xlabel = "Population Predicted (ug/L)",
+      label = "",
+      legend=false,
+  )
+  Plots.abline!(p1,  1, 0; primary = false, color=:red, linewidth=4)
+
+  #
+  p2 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p2,
+    :dv_ipred, :dv;
+    ylabel = "Observed dv (ug/L)",
+    xlabel = "Individual Predicted (ug/L)",
+    label = "",
+    legend=false,
+  )
+  Plots.abline!(p2, 1, 0; primary = false, color=:red, linewidth=4)
+
+  p3 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p3,
+    :time, :dv_wres;
+    xlabel = "Time (hr)",
+    ylabel = "Conditional Weighted Residuals",
+     legend=false
+  )
+  Plots.abline!(p3, 0, 0; primary = false, color=:red, linewidth=4)
+
+  p4 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+   p4,
+   :dv_pred, :dv_wres,
+   xlabel = "Population Predicted (ug/L)",
+   ylabel = "Conditional Weighted Residuals",
+   legend=false
+  )
+  Plots.abline!(p4, 0, 0; primary = false, color=:red, linewidth=4)
+
+  return plot(p1,p2,p3,p4; size = (1000, 1000))
+end
+
+gof(pk_46_inspect)
+```
+
+##### η-Distribution
+
+```julia
+data46_etacov = select(pk_46_inspect,["η_1", "η_2"])
+data46_etacov = stack(data46_etacov, ["η_1", "η_2"])
+data46_etacov[!,:variable] .= string.(data46_etacov.variable)
+@df data46_etacov groupedviolin(:variable,:value,
+                               alpha =0.5, legend=false)
+@df data46_etacov groupedboxplot!(:variable,:value,
+                               alpha =0.5, label ="")
+Plots.abline!(0,0, linewidth=4, color = "black",
+              size = (600, 600),
+              xlabel = "η's", ylabel = "η_values",
+              guidefontsize = 22,
+              tickfontsize =14, label ="")
+```
+
+## Validation
+
+We will perform a validation of the final model using a `Visual Predictive Check`.
+
+```julia
+pk_vpc = vpc(pk_46_fit, 200; dv=:dv,
+              ensemblealg=EnsembleSerial())
+
+plot(pk_vpc,
+     size=(800,800), xlabel="Time after dose (hrs)",
+     ylabel = "Concentration (ug/L)" ,
+     titlefontsize=20,guidefontsize=20,
+     markersize=7, markeralpha = 0.5, markercolor =:grey,
+     observations = true,
+     observed_quantiles = true,
+     simquantile_medians = true,
+     ci_bands = true,
+     legend=:bottomleft, legendfontsize = 12,
+     titlefontcolor = :blue,
+     linewidth = 5,
+     xtickfont = font(20),
+     ytickfont = font(20))
+```
