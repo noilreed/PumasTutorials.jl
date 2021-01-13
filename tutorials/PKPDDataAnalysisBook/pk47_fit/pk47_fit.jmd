@@ -1,0 +1,292 @@
+---
+title : Exercise PK47 - Plasma Protein Binding Modeling
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exericse we will use _in vitro_ data generated from protein binding in
+ human plasma based on two different protein concentrations for two compounds
+ "A" & "B". We will fit the data for both compounds simultaneously in one single
+ run. By simultaneously using a low and high binding protein concentrations we can
+ obtain higher parameter precision. The basic workflow of the estimation process is
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. Initial Estimates
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of the data
+
+_In vitro_ data is generated from human plasma binding of two compounds A and B.
+ The protein concentrations used for **Compound A are 0.3 and 50** and for
+ **Compound 0.1 and 10**.
+
+The following are the units of the dataset:
+
+  * Time (time) = hrs
+  * Free Fraction (dv) = %
+  * Unbound oncentration (dose) = μg
+  * Total Protein Concentration (Pt)
+  * Compound = "A" & "B"
+
+```julia
+pk47_data_df = CSV.read("/Users/Parsshava/Desktop/Julia/PumasTutorials.jl/tutorials/PKPDDataAnalysisBook/pk47_fit/pk_47.csv",
+    DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk47_data = describe(pk47_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+ * Plot of Unbound Concentration (Free Concentration) vs Free Fraction - Compound A
+
+```julia
+pk_data_plot_A = filter(x -> x.Compound == "A", pk47_data_df)
+@df pk_data_plot_A plot(:dose, :dv, group=:id, xaxis=:log, label=false,
+                        xlabel="Unbound Concentration (dv)", ylabel="Free Fraction (%)",
+                        size = (600, 400), guidefontsize = 12,
+                        title = "Free Fraction vs Unbound Concentration - Compound A")
+```
+
+ * Plot of Unbound Concentration (Free Concentration) vs Free Fraction - Compound B
+
+```julia
+pk_data_plot_B = filter(x -> x.Compound == "B", pk47_data_df)
+@df pk_data_plot_B plot(:dose, :dv, group=:id, xaxis=:log, label=false,
+                        xlabel="Unbound Concentration (dv)", ylabel="Free Fraction (%)",
+                        size = (600, 400), guidefontsize = 12,
+                        title = "Free Fraction vs Unbound Concentration - Compound B")
+```
+
+## Initial Estimates
+
+ * Protein Concentrations tested are **0.3 and 50** for `Compound A`.
+ * Protein Concentrations tested are **0.1 and 10** for `Compound B`.
+ * We assume the no of binding sites (n) to be `2`, and using the known value for
+    total protein concentration (Pt) to be `50`, and observed free fraction (fu)
+    to be `0.15` in the formula fu = 1/1+Ka.n.Pt, i.e **Ka_A = 6** . We use the
+    same formula even for Compound B.
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk47_data = read_pumas(pk47_data_df,
+                       observations = [:dv],
+                       covariates   = [:dose, :Pt, :Compound],
+                       event_data   = false)
+```
+
+##### Protein Binding Model
+
+```julia
+pk_47       = @model begin
+  @param begin
+    tvka_A  ∈ RealDomain(lower=0)
+    tvka_B  ∈ RealDomain(lower=0)
+    tvn_A   ∈ RealDomain(lower=0)
+    tvn_B   ∈ RealDomain(lower=0)
+    Ω       ∈ PDiagDomain(4)
+    σ_add_A ∈ RealDomain(lower=0)
+    σ_add_B ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η       ~ MvNormal(Ω)
+  end
+
+  @covariates dose Pt Compound
+
+  @pre begin
+    _Compound = Compound
+    _dose   = dose
+    _Pt     = Pt
+    Ka      = _Compound == "A" ? tvka_A * exp(η[1]) : tvka_B * exp(η[2])
+    n       = _Compound == "A" ? tvn_A * exp(η[3]) : tvn_B * exp(η[4])
+    isComp  = _Compound != "B"
+  end
+
+  @vars begin
+    fu      = (1-(1/(1+(_dose/(n*_Pt))+(1/(Ka*n*_Pt)))))*100
+  end
+
+  @derived begin
+    dv      = @. Normal(fu, ifelse(isComp, σ_add_A, σ_add_B))
+  end
+end
+```
+
+We will use the initial estimates we have derived earlier for the fitting process.
+
+```julia
+param_est = (tvka_A   = 6,
+             tvn_A    = 2,
+             tvka_B   = 10,
+             tvn_B    = 2,
+             Ω        = Diagonal([0.04, 0.04, 0.04, 0.04]),
+             σ_add_A  = 1,
+             σ_add_B  = 3)
+```
+
+##### Naive Pooled
+
+A quick estimation of the mean parameters can be done by performing a NaivePooled
+ Analysis. This will give us a good judgemnt of the parameters obtained for better
+ inital estimates of the fitting.
+
+```julia
+pk_47_fit_nv = @time fit(pk_47, pk47_data, param_est,
+                           Pumas.NaivePooled(), ensemblealg = EnsembleThreads(),
+                           omegas=(:Ω,))
+
+coeftable(pk_47_fit_nv)
+```
+
+##### FOCEI
+
+We will now use the initial estimates from the NaivePooled Analysis for fitting the
+ data and obatining the Between Subject Variability (BSV) on the parameters.
+
+```julia
+pk_47_fit = @time fit(pk_47, pk47_data, param_est,
+                       Pumas.FOCEI(), ensemblealg = EnsembleThreads())
+
+coeftable(pk_47_fit)
+```
+
+We will obtain the `precision` of the parameters
+
+```julia
+pk_47_infer = coeftable(infer(pk_47_fit))
+```
+
+We will `inspect` the diagnostics of the model before we go for the goodness of
+ fit plots.
+
+```julia
+pk_47_inspect = inspect(pk_47_fit) |> DataFrame
+```
+
+## Diagnostic Plots
+
+##### Goodness of Fit Plots
+
+```julia
+theme(:wong2)
+
+function gof(pktvp_mr_inspect_run2)
+  p1 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+      p1,
+      :dv_pred, :dv;
+      ylabel = "Observed dv (ug/L)",
+      xlabel = "Population Predicted (ug/L)",
+      label = "",
+      legend=false,
+  )
+  Plots.abline!(p1,  1, 0; primary = false, color=:red, linewidth=4)
+
+  #
+  p2 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p2,
+    :dv_ipred, :dv;
+    ylabel = "Observed dv (ug/L)",
+    xlabel = "Individual Predicted (ug/L)",
+    label = "",
+    legend=false,
+  )
+  Plots.abline!(p2, 1, 0; primary = false, color=:red, linewidth=4)
+
+  p3 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p3,
+    :time, :dv_wres;
+    xlabel = "Time (hr)",
+    ylabel = "Conditional Weighted Residuals",
+     legend=false
+  )
+  Plots.abline!(p3, 0, 0; primary = false, color=:red, linewidth=4)
+
+  p4 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+   p4,
+   :dv_pred, :dv_wres,
+   xlabel = "Population Predicted (ug/L)",
+   ylabel = "Conditional Weighted Residuals",
+   legend=false
+  )
+  Plots.abline!(p4, 0, 0; primary = false, color=:red, linewidth=4)
+
+  return plot(p1,p2,p3,p4; size = (1000, 1000))
+end
+
+gof(pk_47_inspect)
+```
+
+##### η-Distribution
+
+```julia
+data47_etacov = select(pk_47_inspect,["η_1", "η_2", "η_3", "η_4"])
+data47_etacov = stack(data47_etacov, ["η_1", "η_2", "η_3", "η_4"])
+data47_etacov[!,:variable] .= string.(data47_etacov.variable)
+@df data47_etacov groupedviolin(:variable,:value,
+                               alpha =0.5, legend=false)
+@df data47_etacov groupedboxplot!(:variable,:value,
+                               alpha =0.5, label ="")
+Plots.abline!(0,0, linewidth=4, color = "black",
+              size = (600, 600),
+              xlabel = "η's", ylabel = "η_values",
+              guidefontsize = 22,
+              tickfontsize =14, label ="")
+```
+
+## Validation
+
+We will perform a validation of the final model using a Visual Predictive Check.
+
+```julia
+pk_vpc = vpc(pk_47_fit, 200; dv=:dv,
+              ensemblealg=EnsembleSerial())
+
+plot(pk_vpc,
+     size=(800,800), xlabel="Time after dose (hrs)",
+     ylabel = "Concentration (ug/L)" ,
+     titlefontsize=20,guidefontsize=20,
+     markersize=7, markeralpha = 0.5, markercolor =:grey,
+     observations = true,
+     observed_quantiles = true,
+     simquantile_medians = true,
+     ci_bands = true,
+     legend=:bottomleft, legendfontsize = 12,
+     titlefontcolor = :blue,
+     linewidth = 5,
+     xtickfont = font(20),
+     ytickfont = font(20))
+```
