@@ -1,0 +1,518 @@
+---
+title : Exercise PK48 - Fitting One Compartment Michaelis Menten Kinetics, Drug and Metabolite in Urine
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise we will learn how to analyze a dataset with plasma concentration
+ and urine excretion of parent and metabolite. We will simultaneously `fit` all
+ the data to obtain better estimate of the parameters. The basic
+ workflow of the estimation process is
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of the data
+
+A dose of **500 μmol** of drug is given as an `Intravenous` bolus. Plasma Concentrations
+ were measured along with plasma and metabolite amounts in urine for 15 hours.
+ PK samples are collected at `1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 15 hrs` for both
+ plasma and urine.
+
+The following are the units of the dataset:
+
+  * Time (time) = hrs
+  * Plasma Concentrations (dv) = μM
+  * Parent Amount in Urine (dv_aep) = μmol
+  * Metabolite Amount in Urine (dv_aem) = μmol
+  * Dose (amt) = μmol
+
+```julia
+pk48_data_df = CSV.read("/Users/Parsshava/Desktop/Julia/PumasTutorials.jl/tutorials/PKPDDataAnalysisBook/pk48_fit/pk_48.csv",
+ DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary statistics of the data
+
+```julia
+stats_pk48_data = describe(pk48_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv, :dv_aep, :dv_aem])
+```
+
+## Exploratory Plots of the given data
+
+ * Plasma Concentration vs Time
+
+```julia
+pk_data_plot = dropmissing(pk48_data_df, :dv)
+@df pk_data_plot plot(:time, :dv, yaxis=:log, group=:id, label=false,
+                      xlabel="Time (hr)", ylabel="Concentration (ug/L)",
+                      size = (600, 600), guidefontsize = 12,
+                      title = "Concentration vs Time")
+```
+
+ * Parent Urine Amount
+
+```julia
+@df pk_data_plot plot(:time, :dv_aep, yaxis=:log, group=:id, label=false,
+                      xlabel="Time (hr)", ylabel="Parent Amount (umol)",
+                      size = (600, 600), guidefontsize = 12,
+                      title = "Parent Amount vs Time")
+```
+
+ * Metabolite Urine Amount
+
+```julia
+@df pk_data_plot plot(:time, :dv_aem, yaxis=:log, group=:id, label=false,
+                      xlabel="Time (hr)", ylabel="Metabolite Amount (umol)",
+                      size = (600, 600), guidefontsize = 12,
+                      title = "Metabolite Amount vs Time")
+```
+
+## NCA Analysis
+
+We will now perform an NCA analysis to get the initial estimates for the fitting
+ of the given data. The **read_nca()** function input requires the route to be
+ stated as `iv` for intravenous. This will help to calculate the parameters accurately.
+
+```julia, results="hidden"
+pk48_data_df[:, :route] .= "iv"
+```
+
+Now, map the data variables to the **read_nca** function that prepares the data
+ for NCA analysis. You can even type **?read_nca** in the REPL and get more
+ information on mapping of the variables.
+
+```julia
+pk48_nca = read_nca(pk48_data_df,
+                    id       = :id,
+                    time     = :time,
+                    amt      = :amt,
+                    conc     = :dv,
+                    route    = :route)
+```
+
+A `full NCAReport` is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean, GeoMean and SD**. We will also calculate
+ the AUC10_15 for calculation of Renal Clearance (Clr)
+
+```julia
+pk48_nca_report = NCAReport(pk48_nca, sigdig=3)
+pauc10_15 = NCA.auc(pk48_nca, interval=(10,15), method=:linuplogdown, sigdigits=3)
+pk48_nca_merge = outerjoin(pk48_nca_report, pauc10_15, on=[:id], makeunique=true)
+```
+
+Perform the `Summary Statistics` for the required NCA Parameters
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk48_nca_merge, [:id, :vz_obs, :cl_obs, :kel, :half_life, :aucinf_obs, :auc10_15, :mrtinf_obs, :aumcinf_obs])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_obs, :cl_obs, :kel, :half_life, :aucinf_obs, :auc10_15, :aumcinf_obs, :mrtinf_obs], [:id])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+ * We have obatined the initial estimates for **Volume of Distribution and Clearance**.
+ * We will obtain the renal clearance for using the formula Au10_15/AUC10_15, i.e
+    **Clr = 2.3 L/hr**
+ * For the Km value we will estimate it to be **2 μM** from the graph where the
+    terminal the linear phase starts.
+ * Since the total plasma clearance is estimated to be `6.24 L/hr` we will estimate
+    Vmax from the formula _Vmax/Km~Cl_ , i.e **Vmax = 12.48 μmol/hr**
+
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk48_data = read_pumas(pk48_data_df,
+                        id           = :id,
+                        time         = :time,
+                        observations = [:dv, :dv_aep, :dv_aem],
+                        amt          = :amt,
+                        evid         = :evid,
+                        cmt          = :cmt)
+```
+
+##### One-Compartment Model with Parent and Metabolite Urine Compartment
+
+In this model the parent drug is converted to metabolite. The metabolite is then
+ excreted instantaneously via the kidney. Thus the following model has a urine parent
+  compartment and urine metabolite compartment.
+
+```julia
+pk_48        = @model begin
+  @param begin
+    tvvmax   ∈ RealDomain(lower=0)
+    tvkm     ∈ RealDomain(lower=0)
+    tvclr    ∈ RealDomain(lower=0)
+    tvvc     ∈ RealDomain(lower=0)
+    Ω        ∈ PDiagDomain(4)
+    σ²_prop  ∈ RealDomain(lower=0)
+    σ_add_p  ∈ RealDomain(lower=0)
+    σ_add_m  ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η        ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Vmax     = tvvmax * exp(η[1])
+    Km       = tvkm * exp(η[2])
+    Clr      = tvclr * exp(η[3])
+    Vc       = tvvc * exp(η[4])
+  end
+
+  @vars begin
+    VMKM    := Vmax*(Central/Vc)/(Km + (Central/Vc))
+  end
+
+  @dynamics begin
+    Central' = -VMKM - (Clr/Vc)* Central
+    UrineP'  =  (Clr/Vc) * Central
+    UrineM'  =  VMKM
+  end
+
+  @derived begin
+    cp       = @. Central/Vc
+    ae_p     = @. UrineP
+    ae_m     = @. UrineM
+    dv       ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
+    dv_aep   ~ @. Normal(ae_p, σ_add_p)
+    dv_aem   ~ @. Normal(ae_m, σ_add_m)
+  end
+end
+```
+
+We will use the initial estimates from `NCA Analysis` and few other derivations
+
+```julia
+param_est = (tvvmax    = 12.48,
+             tvkm      = 2,
+             tvclr     = 2.3,
+             tvvc      = 12.76,
+             Ω         = Diagonal([0.02,0.02,0.02,0.02]),
+             σ²_prop   = 0.01,
+             σ_add_p   = 2,
+             σ_add_m   = 3)
+```
+
+##### Naive Pooled
+
+A quick estimation of the mean parameters can be done by performing a NaivePooled
+ Analysis. This will give us a good judgement of the parameters obtained for better
+ inital estimates of the fitting.
+
+```julia
+pk_48_fit_nv = @time fit(pk_48, pk48_data, param_est,
+                           Pumas.NaivePooled(), ensemblealg = EnsembleThreads(),
+                           omegas=(:Ω,))
+
+coeftable(pk_48_fit_nv)
+```
+
+##### FOCEI
+
+We can see that the initial estmates obtained from `NCA` and other derivations are
+ not close to the NaivePooled estimates but we will use them for `FOCEI` and
+ let the system come to a local minimum and obatin the Between Subject Variability
+ (BSV) on the parameters.
+
+```julia
+pk_48_fit = @time fit(pk_48, pk48_data, param_est,
+                      Pumas.FOCEI(), ensemblealg = EnsembleThreads())
+
+coeftable(pk_48_fit)
+```
+
+We will obtain the `precision` of the parameters
+
+```julia
+pk_48_infer = coeftable(infer(pk_48_fit))
+```
+
+We will `inspect` the diagnostics of the model before we go for the goodness of
+ fit plots.
+
+```julia
+pk_48_inspect = inspect(pk_48_fit) |> DataFrame
+```
+
+## Diagnostic Plots
+
+##### Goodness of Fit Plots
+
+ * Plasma Concentration
+
+```julia
+theme(:wong2)
+
+function gof_plasma(pktvp_mr_inspect_run2)
+  p1 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+      p1,
+      :dv_pred, :dv;
+      ylabel = "Observed dv (uM)",
+      xlabel = "Population Predicted (uM)",
+      label = "",
+      legend=false,
+  )
+  Plots.abline!(p1,  1, 0; primary = false, color=:red, linewidth=4)
+
+  #
+  p2 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p2,
+    :dv_ipred, :dv;
+    ylabel = "Observed dv (uM)",
+    xlabel = "Individual Predicted (uM)",
+    label = "",
+    legend=false,
+  )
+  Plots.abline!(p2, 1, 0; primary = false, color=:red, linewidth=4)
+
+  p3 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p3,
+    :time, :dv_wres;
+    xlabel = "Time (hr)",
+    ylabel = "Conditional Weighted Residuals",
+     legend=false
+  )
+  Plots.abline!(p3, 0, 0; primary = false, color=:red, linewidth=4)
+
+  p4 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+   p4,
+   :dv_pred, :dv_wres,
+   xlabel = "Population Predicted (uM)",
+   ylabel = "Conditional Weighted Residuals",
+   legend=false
+  )
+  Plots.abline!(p4, 0, 0; primary = false, color=:red, linewidth=4)
+
+  return plot(p1,p2,p3,p4; size = (1000, 1000))
+end
+
+gof_plasma(pk_48_inspect)
+```
+
+ * Urine Parent Concentration
+
+```julia
+function gof_parent_urine(pktvp_mr_inspect_run2)
+  p1 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+      p1,
+      :dv_aep_pred, :dv_aep;
+      ylabel = "Observed dv_aep (umol)",
+      xlabel = "Population Predicted (umol)",
+      label = "",
+      legend=false,
+  )
+  Plots.abline!(p1,  1, 0; primary = false, color=:red, linewidth=4)
+
+  #
+  p2 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p2,
+    :dv_aep_ipred, :dv_aep;
+    ylabel = "Observed dv_aep (umol)",
+    xlabel = "Individual Predicted (umol)",
+    label = "",
+    legend=false,
+  )
+  Plots.abline!(p2, 1, 0; primary = false, color=:red, linewidth=4)
+
+  p3 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p3,
+    :time, :dv_aep_wres;
+    xlabel = "Time (hr)",
+    ylabel = "Conditional Weighted Residuals",
+     legend=false
+  )
+  Plots.abline!(p3, 0, 0; primary = false, color=:red, linewidth=4)
+
+  p4 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+   p4,
+   :dv_aep_pred, :dv_aep_wres,
+   xlabel = "Population Predicted (umol)",
+   ylabel = "Conditional Weighted Residuals",
+   legend=false
+  )
+  Plots.abline!(p4, 0, 0; primary = false, color=:red, linewidth=4)
+
+  return plot(p1,p2,p3,p4; size = (1000, 1000))
+end
+
+gof_parent_urine(pk_48_inspect)
+```
+
+ * Urine Metabolite Concentration
+
+```julia
+function gof_met_urine(pktvp_mr_inspect_run2)
+  p1 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+      p1,
+      :dv_aem_pred, :dv_aem;
+      ylabel = "Observed dv_aem (umol)",
+      xlabel = "Population Predicted (umol)",
+      label = "",
+      legend=false,
+  )
+  Plots.abline!(p1,  1, 0; primary = false, color=:red, linewidth=4)
+
+  #
+  p2 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p2,
+    :dv_aem_ipred, :dv_aem;
+    ylabel = "Observed dv_aem (umol)",
+    xlabel = "Individual Predicted (umol)",
+    label = "",
+    legend=false,
+  )
+  Plots.abline!(p2, 1, 0; primary = false, color=:red, linewidth=4)
+
+  p3 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p3,
+    :time, :dv_aem_wres;
+    xlabel = "Time (hr)",
+    ylabel = "Conditional Weighted Residuals",
+     legend=false
+  )
+  Plots.abline!(p3, 0, 0; primary = false, color=:red, linewidth=4)
+
+  p4 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+   p4,
+   :dv_aem_pred, :dv_aem_wres,
+   xlabel = "Population Predicted (umol)",
+   ylabel = "Conditional Weighted Residuals",
+   legend=false
+  )
+  Plots.abline!(p4, 0, 0; primary = false, color=:red, linewidth=4)
+
+  return plot(p1,p2,p3,p4; size = (1000, 1000))
+end
+
+gof_met_urine(pk_48_inspect)
+```
+
+##### η-Distribution
+
+```julia
+data48_etacov = select(pk_48_inspect,["η_1", "η_2", "η_3", "η_4"])
+data48_etacov = stack(data48_etacov, ["η_1", "η_2", "η_3", "η_4"])
+data48_etacov[!,:variable] .= string.(data48_etacov.variable)
+@df data48_etacov groupedviolin(:variable,:value,
+                               alpha =0.5, legend=false)
+@df data48_etacov groupedboxplot!(:variable,:value,
+                               alpha =0.5, label ="")
+Plots.abline!(0,0, linewidth=4, color = "black",
+              size = (600, 600),
+              xlabel = "η's", ylabel = "η_values",
+              guidefontsize = 22,
+              tickfontsize =14, label ="")
+```
+
+## Validation
+
+We will perform a validation of the final model using a `Visual Predictive Check`.
+
+ * Plasma Concentration
+
+```julia
+pk_vpc_plasma = vpc(pk_48_fit, 200; dv=:dv,
+                ensemblealg=EnsembleSerial())
+
+plot(pk_vpc_plasma,
+     size=(800,800), xlabel="Time after dose (hrs)",
+     ylabel = "Plasma Concentration (uM)" ,
+     titlefontsize=20, guidefontsize=20,
+     markersize = 7, markeralpha = 0.5, markercolor = :grey,
+     observations = true,
+     observed_quantiles = true,
+     simquantile_medians = true,
+     ci_bands = true,
+     legend = :topright, legendfontsize = 12,
+     titlefontcolor = :blue,
+     linewidth = 5,
+     xtickfont = font(20),
+     ytickfont = font(20))
+```
+
+ * Urine Parent Amount
+
+```julia
+pk_vpc_parent_urine = vpc(pk_48_fit, 200; dv=:dv_aep,
+                          ensemblealg=EnsembleSerial())
+
+plot(pk_vpc_parent_urine,
+     size=(800,800), xlabel="Time after dose (hrs)",
+     ylabel = "Urine Parent Amount (umol)" ,
+     titlefontsize=20,guidefontsize=20,
+     markersize=7, markeralpha = 0.5, markercolor =:grey,
+     observations = true,
+     observed_quantiles = true,
+     simquantile_medians = true,
+     ci_bands = true,
+     legend=:bottomright, legendfontsize = 12,
+     titlefontcolor = :blue,
+     linewidth = 5,
+     xtickfont = font(20),
+     ytickfont = font(20))
+```
+
+ * Urine Metabolite Amount
+
+```julia
+pk_vpc_met_urine = vpc(pk_48_fit, 200; dv=:dv_aem,
+                          ensemblealg=EnsembleSerial())
+
+plot(pk_vpc_met_urine,
+     size=(800,800), xlabel="Time after dose (hrs)",
+     ylabel = "Urine Metabolite Amount (umol)" ,
+     titlefontsize=20,guidefontsize=20,
+     markersize=7, markeralpha = 0.5, markercolor =:grey,
+     observations = true,
+     observed_quantiles = true,
+     simquantile_medians = true,
+     ci_bands = true,
+     legend=:bottomright, legendfontsize = 12,
+     titlefontcolor = :blue,
+     linewidth = 5,
+     xtickfont = font(20),
+     ytickfont = font(20))
+```
