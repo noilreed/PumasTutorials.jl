@@ -1,0 +1,436 @@
+---
+title: Exercise PK49 - Fitting Turnover IV - Factor II data in healthy volunteers
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+In this exercise we will learn to analyse the coagulation Factor II and model it
+  to estimate the turnover kinetics. In most endogenous substances, the amount and
+  concentration of coagulation Factor II is a difference between the _rate of synthesis_
+  and _rate of degradation_. We will estimate both the synthesis rate and clearance
+  of factor II  simultaneously.
+
+The basic workflow of the estimation process is
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of the data
+
+A dose of 400 mg is given as a constant IV Infusion over a period of 19 mins (0.316 hrs)
+ and plasma samples of _Factor II_ were collected at `0.01, 0.05, 0.08, 0.16, 0.25,
+ 0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 15, 18, 24, 32, 48, 72, 96, 144 hrs`.
+
+The following are the units of the dataset:
+
+  * Time (time) = hrs
+  * Plasma Concentrations (dv) = mg/L
+  * Dose (amt) = mg
+
+```julia
+pk49_data_df = CSV.read("/Users/Parsshava/Desktop/Julia/PumasTutorials.jl/tutorials/PKPDDataAnalysisBook/pk49_fit/pk_49.csv",
+ DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk49_data = describe(pk49_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+ * Plot of Concentration vs Time
+
+```julia
+pk_data_plot = dropmissing(pk49_data_df, :dv)
+@df pk_data_plot plot(:time, :dv, group=:id, label=false,
+                      xlabel="Time (hr)", ylabel="Concentration (mg/L)",
+                      size = (600, 600), guidefontsize = 12,
+                      title = "Concentration vs Time")
+```
+
+We will calculate the mean concentration at each of the time points.
+
+```julia
+stats_mean_time = combine(groupby(pk_data_plot,[:time]),
+                            [col => fun for col in [:dv]
+                            for fun in [mean, geomean, std]])
+```
+
+ * Plot of Mean Concentration vs Time
+
+```julia
+@df stats_mean_time plot(:time, :dv_mean, label=false, linewidth=3,
+                      xlabel="Time (hr)", ylabel="Concentration (mg/L)",
+                      size = (600, 600), guidefontsize = 12,
+                      title = "Mean Concentration vs Time")
+```
+
+## NCA Analysis
+
+We will now perform an NCA Analysis to get initial estimates of the data for
+ fitting of the given data. We will include a route column to specify that dosing
+ is an infusion `inf`. The **read_nca()** function input requires the route to
+ be stated as `inf` for an infusion, this will help to compute the parameters
+ correctly.
+
+We will calculate the `duration` of the dosing interval from the _amount_ and _rate_
+
+```julia, results="hidden"
+pk49_data_df[:, :route] .= "inf"
+pk49_data_df[:, :duration] .= pk49_data_df.amt ./ pk49_data_df.rate
+```
+
+Since there is endogenous production of coagulation Factor II, we will subtract the last
+ concentration from all the concentrations to calculate the parameters using
+ `NCA`
+
+```julia
+transform!(groupby(pk49_data_df, :id), :dv => (x -> x .- x[25]) => :dv_nca)
+
+pk49_nca = read_nca(pk49_data_df,
+                    id       = :id,
+                    time     = :time,
+                    amt      = :amt,
+                    conc     = :dv_nca,
+                    duration = :duration,
+                    route    = :route)
+```
+
+A full NCAReport is generated, we will then perform summary statistics of the
+  required parameters to obtain the **Mean, GeometricMean, and SD**
+
+```julia
+pk49_nca_report = NCAReport(pk49_nca, sigdig=3)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters
+
+```julia
+dropmissing!(pk49_nca_report)
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk49_nca_report, [:id, :vz_obs, :cl_obs, :aucinf_obs, :kel, :half_life, :clast])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_obs, :cl_obs, :aucinf_obs, :kel, :half_life, :clast], [:id])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+ * We have calculated the `Volume of Distribution` and `Clearance` from the NCA
+    Analysis
+ * To calculate the `Synthesis` we use the formula Css = Synthesis/Cl, i.e
+    **Synthesis = 14.95 mg/hr**
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk49_data = read_pumas(pk49_data_df,
+                        id           = :id,
+                        time         = :time,
+                        observations = [:dv],
+                        amt          = :amt,
+                        evid         = :evid,
+                        rate         = :rate,
+                        cmt          = :cmt)
+```
+
+##### One-Compartment Model with Endogenous Synthesis of drug
+
+```julia
+pk_49_1cmt       = @model begin
+  @param begin
+    tvcl         ∈ RealDomain(lower=0)
+    tvvc         ∈ RealDomain(lower=0)
+    tvsynthesis  ∈ RealDomain(lower=0)
+    Ω            ∈ PDiagDomain(2)
+    σ_add        ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η            ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    CL           = tvcl * exp(η[1])
+    Vc           = tvvc
+    Synthesis    = tvsynthesis * exp(η[2])
+  end
+
+  @init begin
+    Central      = Synthesis/(CL/Vc) #we add Vc here because we want it in "amount". not conc.
+  end
+
+   @dynamics begin
+     Central'    = Synthesis - (CL/Vc)*Central
+   end
+
+   @derived begin
+     cp          = @. Central/Vc
+     dv          ~ @. Normal(cp, σ_add)
+   end
+end
+```
+
+We have obtained the initial estimates from `NCA Analysis` and other derivations.
+
+```julia
+param_est_1cmt = ( tvcl        = 0.1,
+                   tvvc        = 3.9,
+                   tvsynthesis = 14.95,
+                   Ω           = Diagonal([0.02,0.02]),
+                   σ_add       = 6)
+```
+
+##### NaivePooled Analysis
+
+A quick estimation of the mean parameters can be done by performing a NaivePooled
+ Analysis. This will give us a good judgement of the parameters obtained from NCA
+ Analysis and provide better inital estimates for the fitting.
+
+```julia
+pk_49_1cmt_fit_nv = @time fit(pk_49_1cmt, pk49_data, param_est_1cmt,
+                      Pumas.NaivePooled(), ensemblealg=EnsembleThreads(),
+                      omegas=(:Ω,))
+
+coeftable(pk_49_1cmt_fit_nv)
+```
+
+We see that the initial estimates are close to the NaivePooled Analysis.
+ We will use them for estimation and let the system find the best
+ local minima using `FOCEI`
+
+```julia
+pk_49_1cmt_fit = @time fit(pk_49_1cmt, pk49_data, param_est_1cmt,
+                      Pumas.FOCEI(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_49_1cmt_fit)
+```
+
+We will obtain the `precision` of the parameters
+
+```julia
+pk_49_1cmt_infer = coeftable(infer(pk_49_1cmt_fit))
+```
+
+We will `inspect` the diagnostics of the model before we go for the goodness of
+ fit plots.
+
+```julia
+pk_49_1cmt_inspect = inspect(pk_49_1cmt_fit) |> DataFrame
+```
+
+## Diagnostic Plots
+
+##### Goodness of Fit Plots
+
+```julia
+theme(:wong2)
+
+function gof(pktvp_mr_inspect_run2)
+  p1 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+      p1,
+      :dv_pred, :dv;
+      ylabel = "Observed dv (mg/L)",
+      xlabel = "Population Predicted (mg/L)",
+      label = "",
+      legend=false,
+  )
+  Plots.abline!(p1,  1, 0; primary = false, color=:red, linewidth=4)
+
+  #
+  p2 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p2,
+    :dv_ipred, :dv;
+    ylabel = "Observed dv (mg/L)",
+    xlabel = "Individual Predicted (mg/L)",
+    label = "",
+    legend=false,
+  )
+  Plots.abline!(p2, 1, 0; primary = false, color=:red, linewidth=4)
+
+  p3 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p3,
+    :time, :dv_wres;
+    xlabel = "Time (hr)",
+    ylabel = "Conditional Weighted Residuals",
+     legend=false
+  )
+  Plots.abline!(p3, 0, 0; primary = false, color=:red, linewidth=4)
+
+  p4 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+   p4,
+   :dv_pred, :dv_wres,
+   xlabel = "Population Predicted (mg/L)",
+   ylabel = "Conditional Weighted Residuals",
+   legend=false
+  )
+  Plots.abline!(p4, 0, 0; primary = false, color=:red, linewidth=4)
+
+  return plot(p1,p2,p3,p4; size = (1000, 1000))
+end
+
+gof(pk_49_1cmt_inspect)
+```
+
+##### Two-Compartment Model with Endogenous Synthesis of drug
+
+```julia
+pk_49_2cmt       = @model begin
+  @param begin
+    tvcl         ∈ RealDomain(lower=0)
+    tvvc         ∈ RealDomain(lower=0)
+    tvq          ∈ RealDomain(lower=0)
+    tvvp         ∈ RealDomain(lower=0)
+    tvsynthesis  ∈ RealDomain(lower=0)
+    Ω            ∈ PDiagDomain(4)
+    σ_add        ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η            ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    CL           = tvcl * exp(η[1])
+    Vc           = tvvc
+    Vp           = tvvp * exp(η[2])
+    Q            = tvq * exp(η[3])
+    Synthesis    = tvsynthesis * exp(η[4])
+  end
+
+  @init begin
+    Central      = Synthesis/(CL/Vc) #we add Vc here because we want it in "amount". not conc.
+  end
+
+   @dynamics begin
+     Central'    = Synthesis - (CL/Vc)*Central - (Q/Vc)*Central + (Q/Vp)*Peripheral
+     Peripheral' = (Q/Vc)*Central - (Q/Vp)*Peripheral
+   end
+
+   @derived begin
+     cp          = @. Central/Vc
+     dv          ~ @. Normal(cp, σ_add)
+   end
+end
+```
+
+We will use the final estimates from the one-compartment model and split the
+ volume of distribution between the two-compartments. We will use these initial
+ estimates for analysis.
+
+```julia
+param_est_2cmt = ( tvcl        = 0.141,
+                   tvvc        = 1.75,
+                   tvq         = 0.141,
+                   tvvp        = 1.75,
+                   tvsynthesis = 15.2,
+                   Ω           = Diagonal([0.02,0.02,0.02,0.02]),
+                   σ_add       = 6)
+```
+
+We will now fit the data using `FOCEI`.
+
+```julia
+pk_49_2cmt_fit = @time fit(pk_49_2cmt, pk49_data, param_est_2cmt,
+                           Pumas.FOCEI(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_49_2cmt_fit)
+```
+
+We will `inspect` the diagnostics of the model before we go for the goodness of fit plots.
+
+```julia
+pk_49_2cmt_inspect = inspect(pk_49_2cmt_fit) |> DataFrame
+```
+
+##### Goodness of Fit Plot
+
+```julia
+gof(pk_49_2cmt_inspect)
+```
+
+We will `compare` the values of both the one-compartment and two-compartment model.
+
+```julia
+@pipe leftjoin(coeftable(pk_49_2cmt_fit),
+               coeftable(pk_49_1cmt_fit), on = :parameter, makeunique = true) |>
+  rename!(_, :estimate => :pk2cmp, :estimate_1 => :pk1cmp)
+```
+
+We will compare other metrics and statistics, such as `aic` and `bic`. The aic and bic
+ values are **lower for the one-compartment model** which indicates a better fit of the model.
+
+```julia
+DataFrame([(metric=string(f), fit_1cmp=f(pk_49_1cmt_fit), fit_2cmp=f(pk_49_2cmt_fit)) for f in (aic, bic)])
+```
+
+##### η-Distribution
+
+```julia
+data49_etacov = select(pk_49_1cmt_inspect,["η_1", "η_2"])
+data49_etacov = stack(data49_etacov, ["η_1", "η_2"])
+data49_etacov[!,:variable] .= string.(data49_etacov.variable)
+@df data49_etacov groupedviolin(:variable,:value,
+                               alpha =0.5, legend=false)
+@df data49_etacov groupedboxplot!(:variable,:value,
+                               alpha =0.5, label ="")
+Plots.abline!(0,0, linewidth=4, color = "black",
+              size = (600, 600),
+              xlabel = "η's", ylabel = "η_values",
+              guidefontsize = 22,
+              tickfontsize =14, label ="")
+```
+
+## Validation
+
+We will perform a validation of the final model using a `Visual Predictive Check`.
+
+```julia
+pk_vpc = vpc(pk_49_1cmt_fit, 200; dv=:dv,
+              ensemblealg=EnsembleSerial())
+
+plot(pk_vpc,
+     size=(800,800), xlabel="Time after dose (hrs)",
+     ylabel = "Concentration (mg/L)" ,
+     titlefontsize=20,guidefontsize=20,
+     markersize=7, markeralpha = 0.5, markercolor =:grey,
+     observations = true,
+     observed_quantiles = true,
+     simquantile_medians = true,
+     ci_bands = true,
+     legend=true, legendfontsize = 12,
+     titlefontcolor = :blue,
+     linewidth = 5,
+     xtickfont = font(20),
+     ytickfont = font(20))
+```
