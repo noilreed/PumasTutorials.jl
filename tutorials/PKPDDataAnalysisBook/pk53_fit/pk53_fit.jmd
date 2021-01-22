@@ -1,0 +1,332 @@
+---
+title : Exercise PK53 - Fitting Linear Antibody Kinetics
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise you will learn how to model **multiple intravenous infusions**. The
+ drug is a large molecular compound and thus has a very long half-life.
+
+The basic workflow for the estimation process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of the data
+
+A group of 18 monkeys received a multiple intravenous infusion dose escalating
+ regimen as shown below:
+
+ * Dose 1:- 0.77 μmol/kg (0 to 25 mins) given as an IV-infusion at `time=0`
+ * Dose 2:- 7.7 μmol/kg (72.17 to 72.67 hrs) given as an IV-infusion at `time=72.17`
+ * Dose 3:- 77 μmol/kg (144.17 to 144.67 hrs) given as an IV-infusion at `time=144.17`
+ * Dose 4:- 257 μmol/kg (216.6 to 217 hrs) given as an IV-infusion at `time=216.6`
+ * Dose 5:- 771 μmol/kg (288.52 to 289.02 hrs)  given as an IV-infusion at `time=288.52`
+
+PK samples are collected at `72.67, 74.17, 78.17, 84.17, 96.17, 120.17, 144.17,
+ 144.67, 146.17, 150.17, 156.17, 168.17, 192.17, 216.17, 217, 218.5, 222.5, 228.5,
+ 240.5, 264.5, 288.5, 289.02, 290.5, 294.5, 300.5, 312.5, 336.5, 360.5, 483.92, 651.25,
+ 983.92, 1751.92 hrs`
+
+The following are the units of the dataset:
+
+ * Time (time) = hrs
+ * Plasma Concentrations (dv) = μmol/L
+ * Dose (amt) = μmol/kg
+
+```julia
+pk53_data_df = CSV.read("/Users/Parsshava/Desktop/Julia/PumasTutorials.jl/tutorials/PKPDDataAnalysisBook/pk53_fit/pk_53.csv", DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk53_data = describe(pk53_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+* Plot of Plasma Concentration vs Time
+
+```julia
+pk_data_plot = dropmissing(pk53_data_df, :dv)
+@df pk_data_plot plot(:time, :dv, group=:id, yaxis=:log, label=false,
+                      xlabel="Time (hrs)", ylabel="Concentration (umol/L)",
+                      guidefontsize = 12, size = (600, 600),
+                      title = "Plasma Concentrations vs Time")
+```
+
+ * Plot of Mean Plasma Concentration vs Time
+
+```julia
+plasma_mean = combine(groupby(pk_data_plot,[:time]),
+                            [col => fun for col in [:dv]
+                            for fun in [mean, geomean, std]])
+
+@df plasma_mean plot(:time, :dv_mean, yaxis=:log, label=false,
+                      xlabel="Time (hrs)", ylabel="Concentration (umol/L)",
+                      guidefontsize = 12, size = (600, 600), linewidth=2,
+                      title = "Mean Plasma Concentrations vs Time")
+```
+
+We can see an initial drop in concentration at the stop of infusion, this indicates
+ that the drug follows a `two-compartment model`
+
+## NCA Analysis
+
+We will perform an `NCA Analysis` to obtain a few parameters. Now, map the data
+ variables to the *read_nca* function that prepares the data for NCA analysis.
+ You can even type **?read_nca** in the REPL and get more information on the
+ mapping of the data.
+
+```julia
+pk53_data_nca = select(pk53_data_df, :id, :time, :dv)
+dropmissing!(pk53_data_nca)
+
+pk53_nca = read_nca(pk53_data_nca,
+                    id     = :id,
+                    time   = :time,
+                    conc   = :dv)
+```
+
+A full NCAReport is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean, GeometricMean, and SD**
+
+```julia
+pk53_nca_report = NCAReport(pk53_nca, sigdig=3)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk53_nca_report, [:id, :aucinf_obs, :kel, :half_life])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:aucinf_obs, :kel, :half_life], [:id])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+We can see that the drug has a **long half-life** of 478 hrs.
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk53_data = read_pumas(pk53_data_df,
+                      id           = :id,
+                      time         = :time,
+                      observations = [:dv],
+                      amt          = :amt,
+                      evid         = :evid,
+                      rate         = :rate,
+                      cmt          = :cmt)
+```
+
+##### Two-Compartment Model
+
+```julia
+pk_53          = @model begin
+  @param begin
+    tvvc       ∈ RealDomain(lower=0)
+    tvvp       ∈ RealDomain(lower=0)
+    tvcl       ∈ RealDomain(lower=0)
+    tvq        ∈ RealDomain(lower=0)
+    Ω          ∈ PDiagDomain(3)
+    σ²_prop    ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η          ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Vc         = tvvc * exp(η[1])
+    Vp         = tvvp
+    CL         = tvcl * exp(η[2])
+    Q          = tvq * exp(η[3])
+  end
+
+  @dynamics Central1Periph1
+    #Central'   = -(Q/Vc)*Central +(Q/Vp)*Peripheral -(CL/Vc)*Central
+    #Peripheral'=  (Q/Vc)*Central -(Q/Vp)*Peripheral
+  #end
+
+  @derived begin
+    cp         = @. Central/Vc
+    dv         ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
+  end
+end
+```
+
+We have obtained the initial parameters `graphically`.
+
+```julia
+param_est = ( tvvc    = 3,
+              tvvp    = 2,
+              tvcl    = 0.01,
+              tvq     = 0.02,
+              Ω       = Diagonal([0.02,0.02,0.02]),
+              σ²_prop = 0.02)
+```
+
+##### NaivePooled Analysis
+
+A quick estimation of the mean parameters can be done by performing a `NaivePooled Analysis`.
+ This will give us a good judgemnt of the parameters obtained from NCA Analysis
+ and provide better inital estimates for the fitting.
+
+```julia
+pk_53_fit_nv = @time fit(pk_53, pk53_data, param_est,
+                           Pumas.NaivePooled(), ensemblealg = EnsembleThreads(),
+                           omegas=(:Ω,))
+
+coeftable(pk_53_fit_nv)
+```
+
+##### FOCEI
+
+We will estimate performing using `FOCEI`
+
+```julia
+pk_53_fit = @time fit(pk_53, pk53_data, param_est,
+                        Pumas.FOCEI(), ensemblealg = EnsembleThreads())
+
+coeftable(pk_53_fit)
+```
+
+We will obtain the `precision` of the parameters
+
+```julia
+pk_53_infer = coeftable(infer(pk_53_fit))
+```
+
+We will `inspect` the diagnostics of the model before we go for the goodness of fit plots.
+
+```julia
+pk_53_inspect = inspect(pk_53_fit) |> DataFrame
+```
+
+## Diagnostic Plots
+
+##### Goodness of Fit Plots
+
+```julia
+theme(:wong2)
+
+function gof(pktvp_mr_inspect_run2)
+  p1 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+      p1,
+      :dv_pred, :dv;
+      ylabel = "Observed dv (umol/L)",
+      xlabel = "Population Predicted (umol/L)",
+      label = "",
+      legend=false,
+  )
+  Plots.abline!(p1,  1, 0; primary = false, color=:red, linewidth=4)
+
+  #
+  p2 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p2,
+    :dv_ipred, :dv;
+    ylabel = "Observed dv (umol/L)",
+    xlabel = "Individual Predicted (umol/L)",
+    label = "",
+    legend=false,
+  )
+  Plots.abline!(p2, 1, 0; primary = false, color=:red, linewidth=4)
+
+  p3 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p3,
+    :time, :dv_wres;
+    xlabel = "Time (mins)",
+    ylabel = "Conditional Weighted Residuals",
+     legend=false
+  )
+  Plots.abline!(p3, 0, 0; primary = false, color=:red, linewidth=4)
+
+  p4 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+   p4,
+   :dv_pred, :dv_wres,
+   xlabel = "Population Predicted (umol/L)",
+   ylabel = "Conditional Weighted Residuals",
+   legend=false
+  )
+  Plots.abline!(p4, 0, 0; primary = false, color=:red, linewidth=4)
+
+  return plot(p1,p2,p3,p4; size = (1000, 1000))
+end
+
+gof(pk_53_inspect)
+```
+
+##### η-Distribution
+
+```julia
+data53_etacov = select(pk_53_inspect,["η_1", "η_2", "η_3"])
+data53_etacov = stack(data53_etacov, ["η_1", "η_2", "η_3"])
+data53_etacov[!,:variable] .= string.(data53_etacov.variable)
+@df data53_etacov groupedviolin(:variable,:value,
+                               alpha =0.5, legend=false)
+@df data53_etacov groupedboxplot!(:variable,:value,
+                               alpha =0.5, label ="")
+Plots.abline!(0,0, linewidth=4, color = "black",
+              size = (600, 600),
+              xlabel = "η's", ylabel = "η_values",
+              guidefontsize = 22,
+              tickfontsize =14, label ="")
+```
+
+## Validation
+
+We will perform a validation of the final model using `Visual Predictive Check`.
+
+```julia
+pk_vpc = vpc(pk_53_fit, 200; dv=:dv,
+              ensemblealg=EnsembleSerial())
+
+plot(pk_vpc,
+    size=(800,800), xlabel="Time after dose (hrs)",
+    ylabel = "Concentration (umol/L)" ,
+    titlefontsize=20,guidefontsize=20, yaxis=:log,
+    markersize=7, markeralpha = 0.5, markercolor =:grey,
+    observations = true,
+    observed_quantiles = true,
+    simquantile_medians = true,
+    ci_bands = true,
+    legend=true, legendfontsize = 12,
+    titlefontcolor = :blue,
+    linewidth = 5,
+     xtickfont = font(20),
+     ytickfont = font(20))
+```
