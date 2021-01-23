@@ -1,0 +1,406 @@
+---
+title : Exercise PK22 - Fitting Non Linear Kinetics - Auto Induction
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise we will learn how to build a **feedback model for auto-induction**. We
+  will also estimate the apparent fractional turnover rate for the enzyme. A nice
+  feature of the feedback model is that concentration is counterbalanced by enzymatic
+  activity. Thus, it helps us to model multiple dose regimens, which is a prerequisite
+  mechanically oriented models.
+
+The basic workflow for the estimation process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of data
+
+A total of 22 patients where administered a constant rate infusion of **120 mg** for
+  over `1 hour` followed by nine consecutive constant rate infusions of **40 mg** for
+  over `30 mins`. Each dose is seperated by a time interval of `8 hrs`. Plasma samples
+  are collected at `0.25, 0.5, 1, 1.25, 1.5, 3, 5, 7, 7.75, 8.5, 15.75, 16.5, 23.99,
+  24.5, 31.75, 32.5, 39.75, 40.5, 47.99, 48.5, 55.75, 56.5, 63.75, 64.5, 72, 72.25,
+  72.5, 72.75, 73, 73.5, 74.5, 76.5, 78.5, 80.5, 84.5, 90.5, 96 hours`. Extensive
+  samples are collected for the first and the last dose.
+
+The following are the units of the dataset:
+
+ * Time (time) = hrs
+ * Plasma Concentrations (dv) = μg/L
+ * Dose (amt) = μg
+
+```julia
+pk22_data_df = CSV.read("/Users/Parsshava/Desktop/Julia/PumasTutorials.jl/tutorials/PKPDDataAnalysisBook/pk22_fit/pk_22.csv", DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+pretty_table(first(pk22_data_df,10), backend = :html)
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk22_data = describe(pk22_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+* Plot of Plasma Concentration vs Time
+
+```julia
+pk_data_plot = dropmissing(pk22_data_df, :dv)
+@df pk_data_plot plot(:time, :dv, group=:id, label=false,
+                      xlabel="Time (hr)", ylabel="Concentration (ug/L)",
+                      guidefontsize = 12, size = (600, 600),
+                      title = "Plasma Concentrations vs Time")
+```
+
+ * Plot of Mean Concentration vs Time
+
+```julia
+plasma_mean = combine(groupby(pk22_data_df,[:time]),
+                            [col => fun for col in [:dv]
+                            for fun in [mean, geomean, std]])
+dropmissing!(plasma_mean)
+
+@df plasma_mean plot(:time, :dv_mean, label=false,
+                      xlabel="Time (hr)", ylabel="Concentration (ug/L)",
+                      guidefontsize = 12, size = (600, 600), linewidth=2,
+                      title = "Mean Plasma Concentrations vs Time")
+```
+
+## NCA Analysis
+
+We will now perform an NCA Analysis to get initial estimates of the data for the
+ fitting of the given data. We will include a `route` column to specify that dosing
+ is an intravenous infusion `inf`. The *read_nca()* function input requires the route
+ to be stated as `inf` for an intravenous infusion, this will help to compute the
+ parameters correctly.
+
+```julia; results="hidden"
+pk22_data_df[:, :route] .= "inf"
+```
+
+Now, map the data variables to the *read_nca* function that prepares the data for
+ NCA analysis. You can even type **?read_nca** in the REPL and get more information
+ on the mapping of the data.
+
+```julia
+pk22_data_df[:, :duration] .= pk22_data_df.amt ./ pk22_data_df.rate
+
+pk22_nca = read_nca(pk22_data_df,
+                    id       = :id,
+                    time     = :time,
+                    amt      = :amt,
+                    conc     = :dv,
+                    route    = :route)
+```
+
+A `full NCAReport` is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean, GeometricMean, and SD**
+
+```julia
+pk22_nca_report = NCAReport(pk22_nca, sigdig=3)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters.
+
+```julia
+dropmissing!(pk22_nca_report)
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk22_nca_report, [:id, :vz_obs, :cl_obs, :aucinf_obs, :kel, :half_life, :cmax])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_obs, :cl_obs, :aucinf_obs, :kel, :half_life, :cmax], [:id])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+ * The Volume of Distribution of Central Compartment is estimated to be **Vc = 120 L**
+ * The Volume of Distribution of Peripheral Compartment is estimated to be **Vp = 27 L**
+
+
+We will calculate the **AUC from time 63.75 hrs to 72 hrs**. This used for the calculation
+ of Cl(E). We will filter the data and pass it through the **read_nca** function.
+
+```julia
+pk22_nca_63_72 = filter(x -> x.time >= 63.75 && x.time < 72.0, pk22_data_df)
+dropmissing!(pk22_nca_63_72, :dv)
+select!(pk22_nca_63_72, :id, :time, :dv)
+
+pk22_nca_63_72 = read_nca(pk22_nca_63_72,
+                          id       = :id,
+                          time     = :time,
+                          conc     = :dv)
+```
+
+Calculate the `AUC last` from time 63.75 to 72 hrs.
+
+```julia
+pauc_63_72 = NCA.auclast(pk22_nca_63_72)
+describe(pauc_63_72)
+```
+
+ * We will obtain the Clearance(E) between the time interval `63.75 hrs and 72 hrs`
+    using the formula Dose40/AUC63.75_72, i.e **Cl(E) = 14.538**
+
+ * Using the above we will calculate Cls using the Cls = (14.538 - 8.2)*(8.25/2752),
+    i.e **Cls = 0.019 L/hr**
+
+ * We will caclulate E0 using the formula Cls.E0 = Cl, i.e **E0 = 472**
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk22_data = read_pumas(pk22_data_df,
+                      id           = :id,
+                      time         = :time,
+                      observations = [:dv],
+                      amt          = :amt,
+                      evid         = :evid,
+                      rate         = :rate,
+                      cmt          = :cmt)
+```
+
+##### Two-compartment Drug Model & One-Compartment Enzyme Model
+
+The model involves a feedback where the link is provided by the drug concentration
+ and clearance between the two-compartment drug model and once-compartment enzyme model.
+ The intial concentration of the enzyme is also included as E0. When there is no drug
+ concentration the initial level of enzyme is E0. There is a time dependent change
+ in Clearance. To further simplify the equation we assume the **input and output rate constants**
+ for the Enzyme Compartment are the same.
+
+```julia
+pk_22            = @model  begin
+   @param begin
+     tvcls       ∈ RealDomain(lower=0)
+     tvvc        ∈ RealDomain(lower=0)
+     tvvp        ∈ RealDomain(lower=0)
+     tvq         ∈ RealDomain(lower=0)
+     tvkout      ∈ RealDomain(lower=0)
+     tvE0        ∈ RealDomain(lower=0)
+     Ω           ∈ PDiagDomain(6)
+     σ²_prop     ∈ RealDomain(lower=0)
+   end
+
+   @random begin
+     η           ~ MvNormal(Ω)
+   end
+
+   @pre begin
+     Cls         = tvcls * exp(η[1])
+     Vc          = tvvc * exp(η[2])
+     Vp          = tvvp * exp(η[3])
+     Q           = tvq * exp(η[4])
+     Kout        = tvkout * exp(η[5])
+     E0          = tvE0 * exp(η[6])
+   end
+
+   @init begin
+     Enzyme      = (Kout/Kout)+ E0
+   end
+
+   @dynamics begin
+     Central'    = -(Cls/Vc) * Central * Enzyme + (Q/Vp) * Peripheral - (Q/Vc) * Central
+     Peripheral' =  (Q/Vc) * Central - (Q/Vp) * Peripheral
+     Enzyme'     =  Kout * (E0+Central/Vc) -  Kout * Enzyme
+   end
+
+   @derived begin
+     cp          = @. Central/Vc
+     dv          ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
+   end
+end
+```
+
+We have obtained the initial estimates from the `NCA Analysis` and other derivations.
+
+```julia
+param_est = ( tvcls    = 0.019,
+              tvvc     = 120,
+              tvvp     = 27,
+              tvq      = 120,
+              tvkout   = 0.03,
+              tvE0     = 472,
+              Ω         = Diagonal([0.04,0.04,0.02,0.04,0.02,0.02]),
+              σ²_prop   = 0.01)
+```
+
+##### NaivePooled Analysis
+
+A quick estimation of the mean parameters can be done by performing a NaivePooled
+ Analysis. This will give us a good judgemnt of the parameters obtained from NCA
+ Analysis and provide better inital estimates for the fitting.
+
+```julia
+pk_22_fit_nv = @time fit(pk_22, pk22_data, param_est,
+                          Pumas.NaivePooled(), ensemblealg=EnsembleThreads(),
+                          omegas=(:Ω,))
+
+coeftable(pk_22_fit_nv)
+```
+
+##### FOCEI
+
+We will now use the initial estimates from the NaivePooled Analysis for fitting the
+ data and obatining the Between Subject Variability (BSV) on the parameters. We will
+ estimate the data using `FOCEI`
+
+```julia
+param_est_nv = ( tvcls    = 0.03,
+                 tvvc     = 150,
+                 tvvp     = 59,
+                 tvq      = 78,
+                 tvkout   = 0.024,
+                 tvE0     = 128,
+                 Ω         = Diagonal([0.04,0.04,0.02,0.04,0.02,0.02]),
+                 σ²_prop   = 0.02)
+
+pk_22_fit = @time fit(pk_22, pk22_data, param_est_nv,
+                      Pumas.FOCEI(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_22_fit)
+```
+
+We will obtain the `precision` of the parameters
+
+```julia
+pk_22_infer   = coeftable(infer(pk_22_fit))
+```
+
+We will `inspect` the diagnostics of the model before we go for the goodness of
+ fit plots.
+
+```julia
+pk_22_inspect = inspect(pk_22_fit) |> DataFrame
+```
+
+## Diagnostic Plots
+
+##### Goodness of Fit Plots
+
+```julia
+theme(:wong2)
+
+function gof(pktvp_mr_inspect_run2)
+  p1 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+      p1,
+      :dv_pred, :dv;
+      ylabel = "Observed dv (ug/L)",
+      xlabel = "Population Predicted (ug/L)",
+      label = "",
+      legend=false,
+  )
+  Plots.abline!(p1,  1, 0; primary = false, color=:red, linewidth=4)
+
+  #
+  p2 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p2,
+    :dv_ipred, :dv;
+    ylabel = "Observed Plasma Conc (ug/L)",
+    xlabel = "Individual Predicted (ug/L)",
+    label = "",
+    legend=false,
+  )
+  Plots.abline!(p2, 1, 0; primary = false, color=:red, linewidth=4)
+
+  p3 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p3,
+    :time, :dv_wres;
+    xlabel = "Time (hr)",
+    ylabel = "Conditional Weighted Residuals",
+     legend=false
+  )
+  Plots.abline!(p3, 0, 0; primary = false, color=:red, linewidth=4)
+
+  p4 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+   p4,
+   :dv_pred, :dv_wres,
+   xlabel = "Population Predicted (ug/L)",
+   ylabel = "Conditional Weighted Residuals",
+   legend=false
+  )
+  Plots.abline!(p4, 0, 0; primary = false, color=:red, linewidth=4)
+
+  return plot(p1,p2,p3,p4; size = (1000, 1000))
+end
+
+gof(pk_22_inspect)
+```
+
+##### Correlation Plots
+
+```julia
+@df pk_22_inspect corrplot([:η_1 :η_2 :η_3 :η_4 :η_5 :η_6], size = (1200, 1200))
+```
+
+##### η-Distribution
+
+```julia
+data22_etacov = select(pk_22_inspect,["η_1", "η_2", "η_3", "η_4", "η_5", "η_6"])
+data22_etacov = stack(data22_etacov, ["η_1", "η_2", "η_3", "η_4", "η_5", "η_6"])
+data22_etacov[!,:variable] .= string.(data22_etacov.variable)
+@df data22_etacov groupedviolin(:variable,:value,
+                               alpha =0.5, legend=false)
+@df data22_etacov groupedboxplot!(:variable,:value,
+                               alpha =0.5, label ="")
+Plots.abline!(0,0, linewidth=4, color = "black",
+              size = (800, 800),
+              xlabel = "η's", ylabel = "η_values",
+              guidefontsize = 22,
+              tickfontsize =14, label ="")
+```
+
+## Validation
+
+We will perform a validation of the final model using a `Visual Predictive Check`.
+
+```julia
+pk_vpc = vpc(pk_22_fit, 200; dv=:dv,
+              ensemblealg=EnsembleSerial())
+
+plot(pk_vpc,
+    size=(800,800), xlabel="Time after dose (hr)",
+    ylabel = "Concentration (ug/L)" ,
+    titlefontsize=20,guidefontsize=20,
+    markersize=7, markeralpha = 0.5, markercolor =:grey,
+    observations = true,
+    observed_quantiles = true,
+    simquantile_medians = true,
+    ci_bands = true,
+    legend=true, legendfontsize = 12,
+    titlefontcolor = :blue,
+    linewidth = 5,
+    xtickfont = font(20),
+    ytickfont = font(20))
+```
