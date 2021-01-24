@@ -1,0 +1,433 @@
+---
+title: Exercise PK24 - Fitting Nonlinear kinetics - Flow 2
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise you will learn how to model nonlinear kinetics with respect to flow.
+ We will model a **flow dependent system** in which there will be a changes in the
+ perfusion of the eliminating organ depending on the concentration. The drug is
+ known to reduce cardiac output and hepatic blood flow when the concentration increases.
+ We make certain assumptions between the flow and concentration.
+
+The basic workflow for the estimation process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+using GLM
+```
+
+## Description of the data
+
+A intravenous infusion of **10mg/kg (10000 μg)** is administered for over `2 hours`
+ to a total of 45 subjects. Blood samples are drawn at frequent intervals at times
+ `0.25, 0.5, 0.75, 1.05, 1.25, 1.49, 1.75, 1.99, 2.16, 2.35, 2.4, 2.65, 2.81, 2.95,
+ 3.11, 3.56, 4.15, 6, 7 hrs`.
+
+The following are the units of the dataset:
+
+  * Time (time) = hrs
+  * Plasma Concentrations (dv) = μg/L
+  * Dose (amt) = μg/kg
+
+```julia
+pk24_data_df = CSV.read("/Users/Parsshava/Desktop/Julia/PumasTutorials.jl/tutorials/PKPDDataAnalysisBook/pk24_fit/pk_24.csv", DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+pretty_table(first(pk24_data_df,20), backend = :html)
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk24_data = describe(pk24_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+ * Plot the **Concentration vs Time**
+
+```julia
+pk_data_plot = dropmissing(pk24_data_df, :dv)
+@df pk_data_plot plot(:time, :dv, group=:id, label=false,
+                       xlabel="Time (hr)", ylabel="Concentration (ug/L)",
+                       size = (600, 600), guidefontsize = 14,
+                       title = "Plasma Concentration vs Time")
+```
+
+ * Plot of **Mean Concentration vs Time**
+
+```julia
+plasma_mean = combine(groupby(pk24_data_df,[:time]),
+                             [col => fun for col in [:dv]
+                             for fun in [mean, geomean, std]])
+plasma_mean[:, :dv_geomean_ln] .= log.(plasma_mean.dv_geomean)
+
+@df plasma_mean plot(:time, :dv_geomean, label=false,
+                       xlabel="Time (hr)", ylabel="Concentration (ug/L)",
+                       size = (600, 600), guidefontsize = 14, linewidth=2,
+                       title = "Plasma Concentration vs Time")
+
+```
+
+## NCA Analysis
+
+We will perform an `NCA Analysis` of the given data to obtain a few initial estimates
+ for the estmation process. We will include a `route` column to indicate that the
+ dosing is an intravenous infusion `inf`. We will calculation the duration of
+ infusion from the amount and rate.
+
+```julia, results="hidden"
+pk24_data_df[:, :route] .= "inf"
+pk24_data_df[:, :duration] .= pk24_data_df.amt ./ pk24_data_df.rate
+```
+
+Now, map the data variables to the `read_nca` function that prepares the data for
+ NCA analysis. You can even type `?read_nca` in the REPL and get more information
+ on the mapping of the required variables.
+
+```julia
+pk24_nca = read_nca(pk24_data_df,
+                    id       = :id,
+                    time     = :time,
+                    amt      = :amt,
+                    conc     = :dv,
+                    duration = :duration,
+                    route    = :route)
+```
+
+A full NCAReport is generated, we will then perform summary statistics of the
+required parameters to obtain the **Mean, GeometricMean, and SD**
+
+```julia
+pk24_nca_report = NCAReport(pk24_nca, sigdig=3)
+```
+
+Perform the `Summary Statistics` for the required NCA Parameters
+
+```julia
+dropmissing!(pk24_nca_report)
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk24_nca_report, [:id, :vz_obs, :cl_obs, :aucinf_obs, :kel, :half_life])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_obs, :cl_obs, :aucinf_obs, :kel, :half_life], [:id])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+From the `NCA Analysis` we will set the initial estimates for the estimation.
+
+ * The Volume of Distribution is split between the three compartments, thus we will
+    split them between the three compartment.
+ *  The Clearance is lower for the Shallow Compartment than for the Deep and Central
+    Compartment.
+
+## Pharmacokinetic Modeling
+
+##### Read Dataset in Pumas
+
+```julia
+pk24_data = read_pumas(pk24_data_df,
+                        id           = :id,
+                        time         = :time,
+                        observations = [:dv],
+                        amt          = :amt,
+                        evid         = :evid,
+                        rate         = :rate,
+                        cmt          = :cmt)
+```
+
+##### Static Model
+
+```julia
+pk_24_static    = @model begin
+  @param begin
+    tvvc        ∈ RealDomain(lower=0, upper=2)
+    tvclo       ∈ RealDomain(lower=0, upper=20)
+    tvq1        ∈ RealDomain(lower=0, upper=20)
+    tvq2        ∈ RealDomain(lower=0, upper=5)
+    tvvp1       ∈ RealDomain(lower=0, upper=20)
+    tvvp2       ∈ RealDomain(lower=0, upper=20)
+    Ω           ∈ PDiagDomain(4)
+    σ_prop      ∈ RealDomain(lower=0)
+    end
+
+  @random begin
+    η           ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Vc          = tvvc
+    CLo         = tvclo
+    Q1          = tvq1*exp(η[1])
+    Q2          = tvq2*exp(η[2])
+    Vp1         = tvvp1*exp(η[3])
+    Vp2         = tvvp2*exp(η[4])
+  end
+
+  @dynamics begin
+    Central'   =  - CLo*(Central/Vc) - Q1*(Central/Vc) + Q1*(Shallow/Vp1) - Q2*(Central/Vc) + Q2*(Deep/Vp2)
+    Shallow'   =    Q1*(Central/Vc) - Q1*(Shallow/Vp1)
+    Deep'      =    Q2*(Central/Vc) - Q2*(Deep/Vp2)
+  end
+
+  @derived begin
+    cp         = @. Central/Vc
+    dv         ~ @. Normal(cp, sqrt(cp^2*σ_prop))
+  end
+end
+```
+
+We have obtained the parameters from the `NCA Analysis`.
+
+```julia
+param_est_static  = (tvvc  = 0.5,
+                     tvclo = 4.5,
+                     tvq1  = 4.5,
+                     tvq2  = 1,
+                     tvvp1 = 4,
+                     tvvp2 = 6,
+                     Ω     = Diagonal([0.02,0.02,0.04,0.02]),
+                     σ_prop= 0.02)
+```
+
+##### Naive Pooled
+
+A quick estimation of the mean parameters can be done by performing a `NaivePooled`
+ Analysis. This will give us a good judgemnt of the parameters obtained from NCA
+ Analysis and provide better inital estimates for the fitting.
+
+```julia
+pk_24_static_fit_nv = @time fit(pk_24_static, pk24_data, param_est_static,
+                           Pumas.NaivePooled(), ensemblealg = EnsembleThreads(),
+                           omegas=(:Ω,))
+
+coeftable(pk_24_static_fit_nv)
+```
+
+We will fit the data using `FOCEI`.
+
+```julia
+pk_24_static_fit = @time fit(pk_24_static, pk24_data, param_est_static,
+                           Pumas.FOCEI(), ensemblealg = EnsembleThreads())
+
+coeftable(pk_24_static_fit)
+```
+
+We will `inspect` the diagnostics of the model before we go for the goodness of fit plots.
+
+```julia
+pk_24_static_inspect = inspect(pk_24_static_fit) |> DataFrame
+```
+
+## Diagnostic Plots
+
+##### Goodness of Fit Plots
+
+```julia
+theme(:wong2)
+
+function gof(pktvp_mr_inspect_run2)
+  p1 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+      p1,
+      :dv_pred, :dv;
+      ylabel = "Observed dv (ug/L)",
+      xlabel = "Population Predicted (ug/L)",
+      label = "",
+      legend=false,
+  )
+  Plots.abline!(p1,  1, 0; primary = false, color=:red, linewidth=4)
+
+  #
+  p2 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p2,
+    :dv_ipred, :dv;
+    ylabel = "Observed dv (ug/L)",
+    xlabel = "Individual Predicted (ug/L)",
+    label = "",
+    legend=false,
+  )
+  Plots.abline!(p2, 1, 0; primary = false, color=:red, linewidth=4)
+
+  p3 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p3,
+    :time, :dv_wres;
+    xlabel = "Time (hr)",
+    ylabel = "Conditional Weighted Residuals",
+     legend=false
+  )
+  Plots.abline!(p3, 0, 0; primary = false, color=:red, linewidth=4)
+
+  p4 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+   p4,
+   :dv_pred, :dv_wres,
+   xlabel = "Population Predicted (ug/L)",
+   ylabel = "Conditional Weighted Residuals",
+   legend=false
+  )
+  Plots.abline!(p4, 0, 0; primary = false, color=:red, linewidth=4)
+
+  return plot(p1,p2,p3,p4; size = (1000, 1000))
+end
+
+gof(pk_24_static_inspect)
+```
+
+##### Flow Model
+
+```julia
+pk_24_flow      = @model begin
+  @param begin
+    tvvc        ∈ RealDomain(lower=0, upper=5)
+    tvclo       ∈ RealDomain(lower=0, upper=20)
+    tvq1        ∈ RealDomain(lower=0, upper=20)
+    tvq2        ∈ RealDomain(lower=0, upper=5)
+    tvvp1       ∈ RealDomain(lower=0, upper=20)
+    tvvp2       ∈ RealDomain(lower=0, upper=20)
+    tva         ∈ RealDomain(lower=0, upper=5)
+    Ω           ∈ PDiagDomain(4)
+    σ_prop      ∈ RealDomain(lower=0)
+    end
+
+  @random begin
+    η           ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Vc          = tvvc
+    CLo         = tvclo
+    Q1          = tvq1*exp(η[1])
+    Q2          = tvq2*exp(η[2])
+    Vp1         = tvvp1*exp(η[3])
+    Vp2         = tvvp2*exp(η[4])
+    A           = tva
+  end
+
+  @dynamics begin
+    Central'   =  - (CLo -(A * (Central/Vc))) * (Central/Vc) - Q1*(Central/Vc) + Q1*(Shallow/Vp1) - Q2*(Central/Vc) + Q2*(Deep/Vp2)
+    Shallow'   =    Q1*(Central/Vc) - Q1*(Shallow/Vp1)
+    Deep'      =    Q2*(Central/Vc) - Q2*(Deep/Vp2)
+  end
+
+  @derived begin
+    cp         = @. Central/Vc
+    dv         ~ @. Normal(cp, sqrt(cp^2*σ_prop))
+  end
+end
+```
+
+We will use the estimates we have obtained from the `static model`
+
+```julia
+param_est_flow = (tvvc  = 0.5,
+                  tvclo = 6.0,
+                  tvq1  = 5.1,
+                  tvq2  = 0.9,
+                  tvvp1 = 1.5,
+                  tvvp2 = 3.1,
+                  tva   = 0.0025,
+                  Ω     = Diagonal([0.02,0.02,0.04,0.02]),
+                  σ_prop= 0.02)
+```
+
+We will now estimate the flow model using `FOCEI`.
+
+```julia
+pk_24_flow_fit = @time fit(pk_24_flow, pk24_data, param_est_flow,
+                       Pumas.FOCEI(), ensemblealg = EnsembleThreads())
+
+coeftable(pk_24_flow_fit)
+```
+
+We will obtain the `precision` of the parameters
+
+```julia
+pk_24_flow_infer = coeftable(infer(pk_24_flow_fit))
+```
+
+We will `inspect` the diagnostics of the model before we go for the goodness of fit plots.
+
+```julia
+pk_24_flow_inspect = inspect(pk_24_flow_fit) |> DataFrame
+```
+
+##### Goodness of Fit Plots
+
+```julia
+gof(pk_24_flow_inspect)
+```
+
+We will compare the other metrics and statistics, such as `aic` and `bic`. The aic and
+ bic values are lower for the **flow model** which indicates a better fit of the
+ model.
+
+```julia
+DataFrame([(metric=string(f), Static_Model=f(pk_24_static_fit), Flow_Model=f(pk_24_flow_fit)) for f in (aic, bic)])
+```
+
+##### η-Distribution
+
+```julia
+data24_etacov = select(pk_24_flow_inspect,["η_1", "η_2", "η_3", "η_4"])
+data24_etacov = stack(data24_etacov, ["η_1", "η_2", "η_3", "η_4"])
+data24_etacov[!,:variable] .= string.(data24_etacov.variable)
+@df data24_etacov groupedviolin(:variable,:value,
+                               alpha =0.5, legend=false)
+@df data24_etacov groupedboxplot!(:variable,:value,
+                               alpha =0.5, label ="")
+Plots.abline!(0,0, linewidth=4, color = "black",
+              size = (600, 600),
+              xlabel = "η's", ylabel = "η_values",
+              guidefontsize = 22,
+              tickfontsize =14, label ="")
+```
+
+## Validation
+
+We will perform a validation of the final model using a `Visual Predictive Check`.
+
+```julia
+pk_vpc = vpc(pk_24_flow_fit, 200; dv=:dv,
+              ensemblealg=EnsembleSerial())
+
+plot(pk_vpc,
+     size=(800,800), xlabel="Time after dose (hrs)",
+     ylabel = "Concentration (ug/L)",
+     titlefontsize=20,guidefontsize=20,
+     markersize=7, markeralpha = 0.5, markercolor =:grey,
+     observations = true,
+     observed_quantiles = true,
+     simquantile_medians = true,
+     ci_bands = true,
+     legend=true, legendfontsize = 12,
+     titlefontcolor = :blue,
+     linewidth = 5,
+     xtickfont = font(20),
+     ytickfont = font(20))
+```
