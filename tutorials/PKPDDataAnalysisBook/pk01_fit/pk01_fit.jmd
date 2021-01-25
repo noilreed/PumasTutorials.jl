@@ -1,0 +1,395 @@
+---
+title : Exercise PK01 - Fitting One Compartment Intravenous Bolus Dosing
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise you will learn how to model the data for single subjects and
+ then analyze the outputs to make further clinical interpretations. We will also
+ estimate the secondary parameters. We will analyse the data using `Analytical
+ Solutions`.
+
+The basic workflow for the estimation process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Simulation - Derived Parameters
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+```
+
+## Description of the data
+
+In this exercise each each subject is administered a dose of **10 mg** of the
+ drug as an `intravenous bolus`. Two `male` and two `female` subjects are administered
+ the drug. PK samples are collected at the various time points `10 ,20, 30, 40, 50,
+ 60, 70, 90, 110, 150 mins`
+
+The following are the units of the dataset:
+
+ * Time (time) = mins
+ * Plasma Concentrations (dv) = μg/L
+ * Dose (amt) = mg
+ * Sex (1 : Males, 2 : Females)
+
+```julia
+pk01_data_df = CSV.read("/Users/Parsshava/Desktop/Julia/PumasTutorials.jl/tutorials/PKPDDataAnalysisBook/pk01_fit/pk_01.csv",
+    DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk01_data = describe(pk01_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+ * Plot of Concentration vs Time
+
+**Male Subjects**
+
+```julia
+pk_data_M_plot = filter(x -> x.sex == 1, pk01_data_df)
+@df pk_data_M_plot plot(:time, :dv, group=:id, yaxis=:log, label=false,
+                      xlabel="Time (mins)", ylabel="Concentration (ug/L)",
+                      size = (600, 600), guidefontsize = 12, linewidth=3,
+                      title = "Plasma Concentrations vs Time")
+```
+
+**Female Subjects**
+
+```julia
+pk_data_F_plot = filter(x -> x.sex == 2, pk01_data_df)
+@df pk_data_F_plot plot(:time, :dv, group=:id, yaxis=:log, label=false,
+                      xlabel="Time (mins)", ylabel="Concentration (ug/L)",
+                      size = (600, 600), guidefontsize = 12, linewidth=3,
+                      title = "Plasma Concentrations vs Time")
+```
+
+## NCA Analysis
+
+We will now perform an NCA analysis to get the initial estimates for fitting
+ of the given data. The route column will need to be included to indicate the dosing
+ is intravenous `iv`. The *read_nca* function input requires the route to be stated
+ as iv for intravenous, this will help to compute the parameters correctly.
+
+```julia; results="hidden"
+pk01_data_df[:, :route] .= "iv"
+```
+
+Now, map the data variables to the *read_nca* function that prepares the data for
+ NCA analysis. You can even type **?read_nca** in the REPL and get more information
+ on the mapping of the data. We will group the data by `class`.
+
+```julia
+pk01_data_df[:, :dose] .= pk01_data_df.amt .* 1000
+
+pk01_nca = read_nca(pk01_data_df,
+                   id     = :id,
+                   time   = :time,
+                   amt    = :dose,
+                   conc   = :dv,
+                   route  = :route,
+                   group  = [:sex])
+```
+
+A full NCAReport is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean, Geometric Mean, and SD**
+
+```julia
+pk01_nca_report = NCAReport(pk01_nca, sigdig=3)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk01_nca_report, [:id, :sex, :vz_obs, :cl_obs, :kel, :half_life, :cmax, :aucinf_obs])
+```
+
+## Pharmacokinetic Modelling
+
+```julia
+pk_01        = @model begin
+  @param begin
+    tvcl     ∈ RealDomain(lower=0)
+    tvvc     ∈ RealDomain(lower=0)
+    σ_add    ∈ RealDomain(lower=0)
+  end
+
+  @pre begin
+    CL       = tvcl
+    Vc       = tvvc
+  end
+
+  @dynamics Central1
+    #Central' = -(CL/Vc)*Central
+
+  @derived begin
+    cp       = @. 1000*(Central/Vc)
+    dv       ~ @. Normal(cp, σ_add)
+  end
+end
+```
+
+##### Read the dataset into read_pumas()
+
+##### Subject 1
+
+```julia
+pk01_sub1 = filter(x -> x.id==1, pk01_data_df)
+
+pk01_sub1_data = read_pumas(pk01_sub1,
+                            id           = :id,
+                            time         = :time,
+                            observations = [:dv],
+                            amt          = :amt,
+                            evid         = :evid,
+                            cmt          = :cmt)
+```
+
+We will use the initial estimates we have obtained from `NCA Analysis`
+
+```julia
+param_est_sub1 = (tvcl  = 0.1,
+                  tvvc  = 7.4,
+                  σ_add = 10)
+```
+
+We will use the `Naive Pooled Analysis` for estimation. Since we are estimating
+ the parameters for a single subject.
+
+```julia
+pk_01_sub1_fit = @time fit(pk_01, pk01_sub1_data, param_est_sub1,
+                           Pumas.NaivePooled(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_01_sub1_fit)
+```
+
+We will estimate the `precision` of the parameters.
+
+```julia
+pk_01_sub1_infer   = coeftable(infer(pk_01_sub1_fit))
+select!(pk_01_sub1_infer, :parameter, :estimate, :se)
+```
+
+##### Subject 2
+
+```julia
+pk01_sub2 = filter(x -> x.id==2, pk01_data_df)
+
+pk01_sub2_data = read_pumas(pk01_sub2,
+                            id           = :id,
+                            time         = :time,
+                            observations = [:dv],
+                            amt          = :amt,
+                            evid         = :evid,
+                            cmt          = :cmt)
+```
+
+We will use the initial estimates we have obtained from `NCA Analysis`
+
+```julia
+param_est_sub2 = (tvcl  = 0.2,
+                  tvvc  = 7.8,
+                  σ_add = 10)
+```
+
+We will use the `Naive Pooled Analysis` for estimation. Since we are estimating
+ the parameters for a single subject.
+
+```julia
+pk_01_sub2_fit = @time fit(pk_01, pk01_sub2_data, param_est_sub2,
+                           Pumas.NaivePooled(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_01_sub2_fit)
+```
+
+We will estimate the `precision` of the parameters.
+
+```julia
+pk_01_sub2_infer   = coeftable(infer(pk_01_sub2_fit))
+select!(pk_01_sub2_infer, :parameter, :estimate, :se)
+```
+
+##### Subject 3
+
+```julia
+pk01_sub3 = filter(x -> x.id==3, pk01_data_df)
+
+pk01_sub3_data = read_pumas(pk01_sub3,
+                            id           = :id,
+                            time         = :time,
+                            observations = [:dv],
+                            amt          = :amt,
+                            evid         = :evid,
+                            cmt          = :cmt)
+```
+
+We will use the initial estimates we have obtained from `NCA Analysis`
+
+```julia
+param_est_sub3 = (tvcl  = 0.2,
+                  tvvc  = 7.5,
+                  σ_add = 5)
+```
+
+We will use the `Naive Pooled Analysis` for estimation. Since we are estimating
+ the parameters for a single subject.
+
+```julia
+pk_01_sub3_fit = @time fit(pk_01, pk01_sub3_data, param_est_sub3,
+                           Pumas.NaivePooled(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_01_sub3_fit)
+```
+
+We will estimate the `precision` of the parameters.
+
+```julia
+pk_01_sub3_infer   = coeftable(infer(pk_01_sub3_fit))
+select!(pk_01_sub3_infer, :parameter, :estimate, :se)
+```
+
+##### Subject 4
+
+```julia
+pk01_sub4 = filter(x -> x.id==4, pk01_data_df)
+
+pk01_sub4_data = read_pumas(pk01_sub4,
+                            id           = :id,
+                            time         = :time,
+                            observations = [:dv],
+                            amt          = :amt,
+                            evid         = :evid,
+                            cmt          = :cmt)
+```
+
+We will use the initial estimates we have obtained from `NCA Analysis`
+
+```julia
+param_est_sub4 = (tvcl  = 0.27,
+                  tvvc  = 17,
+                  σ_add = 5)
+```
+
+We will use the `Naive Pooled Analysis` for estimation. Since we are estimating
+ the parameters for a single subject.
+
+```julia
+pk_01_sub4_fit = @time fit(pk_01, pk01_sub4_data, param_est_sub4,
+                           Pumas.NaivePooled(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_01_sub4_fit)
+```
+
+We will estimate the `precision` of the parameters.
+
+```julia
+pk_01_sub4_infer   = coeftable(infer(pk_01_sub4_fit))
+select!(pk_01_sub4_infer, :parameter, :estimate, :se)
+```
+
+## Final Parameters
+
+```julia
+@pipe outerjoin(coeftable(pk_01_sub1_fit),
+                coeftable(pk_01_sub2_fit),
+                coeftable(pk_01_sub3_fit),
+                coeftable(pk_01_sub4_fit), on = :parameter, makeunique = true) |>
+  rename!(_, :estimate => :Subject1, :estimate_1 => :Subject2, :estimate_2 => :Subject3, :estimate_3 => :Subject4)
+```
+
+## Simulation to obtain certain derived parameters
+
+We will use the **final estimates** from the previous model and use them to
+ simulate certain derived parameters. We have included the required parameters in the
+ @derived block.
+
+```julia
+pk_01_sim     = @model begin
+  @param begin
+    tvcl      ∈ RealDomain(lower=0)
+    tvvc      ∈ RealDomain(lower=0)
+    σ_add     ∈ RealDomain(lower=0)
+  end
+
+  @pre begin
+    CL        = tvcl
+    Vc        = tvvc
+  end
+
+  @dynamics Central1
+
+  @derived begin
+    cp        = @. 1000*(Central/Vc)
+    dv        ~ @. Normal(cp, σ_add)
+    nca      := @nca cp
+    auc       = NCA.auc(nca)
+    aumc      = NCA.aumc(nca)
+    half_life = NCA.thalf(nca)
+    mrt       = NCA.mrt(nca)
+  end
+end
+```
+
+We will the read the dataset in the pumas and set the `dv` column to **missing**
+ for simulation
+
+```julia
+pk01_data_df[!, :dv] .= missing
+
+pk01_sim_data = read_pumas(pk01_data_df,
+                           id           = :id,
+                           time         = :time,
+                           observations = [:dv],
+                           amt          = :amt,
+                           evid         = :evid,
+                           cmt          = :cmt)
+```
+
+These are the `final parameters` we have obtained from the fitting of the single
+ subject.
+
+```julia, results="hidden"
+param_sub1 = (tvcl=0.11756, tvvc=7.63138, σ_add=17.9359)
+param_sub2 = (tvcl=0.27255, tvvc=8.91321, σ_add=21.4664)
+param_sub3 = (tvcl=0.236072, tvvc=7.87772, σ_add=6.92425)
+param_sub4 = (tvcl=0.276751, tvvc=17.4701, σ_add=7.31714)
+
+param_sim=vcat(param_sub1,param_sub2,param_sub3,param_sub4)
+```
+
+##### Simulation
+
+```julia, results="hidden"
+Random.seed!(123)
+pk01_sim    = map(((subject, param_simᵢ),) -> simobs(pk_01_sim, subject, param_simᵢ, obstimes=[0,10,20,30,40,50,60,70,90,110,150]),
+ zip(pk01_sim_data, param_sim))
+```
+
+#### DataFrame of the Derived Parameters
+
+```julia
+pk01_sim_df = DataFrame(pk01_sim)
+filter!(x -> (x.time==0 && x.evid==0), pk01_sim_df)
+select!(pk01_sim_df, :id, :auc, :aumc, :half_life, :mrt)
+```
