@@ -1,0 +1,356 @@
+---
+title : Exercise PK2 - Fitting One Compartment Oral Dosing
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise we will learn how to model oral data using a first-order input
+ **with and without lag-time**. In general for a drug to appear in the plasma it
+ has to undergo the process of disintegration, dissolution of the drug into gut
+ fluid and the transport of the drug across the gut lumen. All steps account for
+  lag time that we will try to incoporate in the model.
+
+The basic workflow for the estimation process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of the data
+
+An oral dose of **100 μg** is given to a total of `72 subjects`. PK samples are
+ obtained at the various time points `10, 15, 20, 30, 40, 60, 90, 120, 180, 210,
+ 240, 300, 360 mins`.
+
+The following are the units of the dataset:
+
+ * Time (time) = mins
+ * Plasma Concentrations (dv) = μg/L
+ * Dose (amt) = μg
+
+```julia
+pk02_data_df = CSV.read("/Users/Parsshava/Desktop/Julia/PumasTutorials.jl/tutorials/PKPDDataAnalysisBook/pk02_fit/pk_02.csv",
+  DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk02_data = describe(pk02_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+* Plot of Plasma Concentration vs Time
+
+```julia
+pk_data_plot = dropmissing(pk02_data_df, :dv)
+@df pk_data_plot plot(:time, :dv, group=:id, label=false,
+                      xlabel="Time (mins)", ylabel="Concentration (ug/L)",
+                      guidefontsize = 12, size = (600, 500),
+                      title = "Plasma Concentrations vs Time")
+```
+
+We can see that there is a `lag` in the concentration before the first measurable
+ concentration is seen in the plasma.
+
+## NCA Analysis
+
+We will now perform an NCA analysis to get the initial estimates for the fitting
+  of the given data. The **read_nca()** function input requires the route to be
+  stated as `ev` for extravascular. This will help to compute the parameters
+  correctly.
+
+```julia, results="hidden"
+pk02_data_df[:, :route] .= "ev"
+```
+
+Now, map the data variables to the *read_nca* function that prepares the data for
+ NCA analysis. You can even type **?read_nca** in the REPL and get more information
+ on the mapping of the data.
+
+```julia
+pk02_nca = read_nca(pk02_data_df,
+                     id     = :id,
+                     time   = :time,
+                     amt    = :amt,
+                     conc   = :dv,
+                     route  = :route)
+```
+
+A full NCAReport is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean, GeometricMean, and SD**
+
+```julia
+pk02_nca_report = NCAReport(pk02_nca, sigdig=3)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk02_nca_report, [:id, :vz_f_obs, :cl_f_obs, :aucinf_obs, :kel, :tmax, :tlag, :half_life])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_f_obs, :cl_f_obs, :aucinf_obs, :kel, :tmax, :tlag, :half_life], [:id])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:variable]),
+                             [col => fun for col in [:value]
+                             for fun in [mean, geomean, std]])
+```
+
+ We have obtained the mean `NCA Statistics` for a few parameters and the others can be calculated as below:
+
+  * We will obtain the Ka value from 0.693/(tmax/4) i.e **Ka = 0.039**
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+We will set the `0` concentrations to `missing`
+
+```julia
+pk02_est_df = filter(x -> (!(x.time==0 && x.evid==0)), pk02_data_df)
+recode!(pk02_est_df[!, :dv], 0.0=>missing)
+
+pk02_data = read_pumas(pk02_est_df,
+                       id           = :id,
+                       time         = :time,
+                       observations = [:dv],
+                       amt          = :amt,
+                       evid         = :evid,
+                       rate         = :rate,
+                       cmt          = :cmt)
+```
+
+##### One-Compartment Model
+
+```julia
+pk_02        = @model begin
+  @param begin
+    tvka     ∈ RealDomain(lower=0)
+    tvkel    ∈ RealDomain(lower=0)
+    tvvc     ∈ RealDomain(lower=0)
+    tvlag    ∈ RealDomain(lower=0)
+    Ω        ∈ PDiagDomain(3)
+    σ²_prop  ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η        ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Ka       = tvka * exp(η[1])
+    Kel      = tvkel * exp(η[2])
+    Vc       = tvvc * exp(η[3])
+    lags     = (Depot=tvlag,)
+  end
+
+  @dynamics begin
+    Depot'   = -Ka*Depot
+    Central' =  Ka*Depot - Kel*Central
+  end
+
+  @derived begin
+    cp      = @. Central/Vc
+    dv      ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
+  end
+end
+```
+
+We will use the inital estimates we have obtained from the `NCA Analysis` and other
+ derivations.
+
+```julia
+param_est = (tvka    = 0.039,
+             tvkel   = 0.0083,
+             tvvc    = 33,
+             tvlag   = 15,
+             Ω       = Diagonal([0.01, 0.01, 0.01]),
+             σ²_prop = 0.01)
+```
+
+A quick estimation of the mean parameters can be done by performing a `NaivePooled
+ Analysis`. This will give us a good judgemnt of the parameters obtained from NCA
+ Analysis and provide better inital estimates for the fitting.
+
+```julia
+pk_02_fit_nv = @time fit(pk_02, pk02_data, param_est,
+                           Pumas.NaivePooled(), ensemblealg = EnsembleThreads(),
+                           omegas=(:Ω,))
+
+coeftable(pk_02_fit_nv)
+```
+
+##### Without Lag-time
+
+The results of the NaivePooled estimates match closely to our initial estimates
+ from NCA analysis. We will now estimate the Between Subject Variability (BSV)
+ using the `FOCEI` method.
+
+```julia
+pk_02_nolag_fit = @time fit(pk_02, pk02_data, param_est,
+                            Pumas.FOCEI(), ensemblealg = EnsembleThreads(),
+                            constantcoef=(tvlag=0.000001,))
+
+coeftable(pk_02_nolag_fit)
+```
+
+##### With Lag Time
+
+```julia
+pk_02_lag_fit = @time fit(pk_02, pk02_data, param_est,
+                            Pumas.FOCEI(), ensemblealg = EnsembleThreads())
+
+coeftable(pk_02_lag_fit)
+```
+
+We will now obtain the parameter `precision` of the model.
+
+```julia
+pk_02_lag_infer = coeftable(infer(pk_02_lag_fit))
+```
+
+We will generate a few goodness of fit plots to compare which model is performing
+ better. We will first `inspect` the diagnostics of our models.
+
+```julia, results="hidden"
+pk_02_nolag_inspect = inspect(pk_02_nolag_fit) |> DataFrame
+pk_02_lag_inspect = inspect(pk_02_lag_fit) |> DataFrame
+```
+
+## Diagnostic Plots
+
+##### Goodness of Fit Plots
+
+**Without Lag time**
+
+```julia
+theme(:wong2)
+
+function gof(pktvp_mr_inspect_run2)
+  p1 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+      p1,
+      :dv_pred, :dv;
+      ylabel = "Observed dv (ug/L)",
+      xlabel = "Population Predicted (ug/L)",
+      label = "",
+      legend=false,
+  )
+  Plots.abline!(p1,  1, 0; primary = false, color=:red, linewidth=4)
+
+  #
+  p2 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p2,
+    :dv_ipred, :dv;
+    ylabel = "Observed dv (ug/L)",
+    xlabel = "Individual Predicted (ug/L)",
+    label = "",
+    legend=false,
+  )
+  Plots.abline!(p2, 1, 0; primary = false, color=:red, linewidth=4)
+
+  p3 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p3,
+    :time, :dv_wres;
+    xlabel = "Time (mins)",
+    ylabel = "Conditional Weighted Residuals",
+     legend=false
+  )
+  Plots.abline!(p3, 0, 0; primary = false, color=:red, linewidth=4)
+
+  p4 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+   p4,
+   :dv_pred, :dv_wres,
+   xlabel = "Population Predicted (ug/L)",
+   ylabel = "Conditional Weighted Residuals",
+   legend=false
+  )
+  Plots.abline!(p4, 0, 0; primary = false, color=:red, linewidth=4)
+
+  return plot(p1,p2,p3,p4; size = (1000, 1000))
+end
+
+gof(pk_02_nolag_inspect)
+```
+
+**With Lag Time**
+
+```julia
+gof(pk_02_lag_inspect)
+```
+
+We will compare other metrics and statistics, such as `aic` and `bic`. The aic
+ and bic values are clearly _lower_ for the model **with lagtime** which indicates
+ a better fit of the model.
+
+```julia
+DataFrame([(metric=string(f), fit_nolag=f(pk_02_nolag_fit), fit_lag=f(pk_02_lag_fit)) for f in (aic, bic)])
+```
+
+##### η-Distribution
+
+```julia
+data02_etacov = select(pk_02_lag_inspect,["η_1", "η_2", "η_3"])
+data02_etacov = stack(data02_etacov, ["η_1", "η_2", "η_3"])
+data02_etacov[!,:variable] .= string.(data02_etacov.variable)
+@df data02_etacov groupedviolin(:variable,:value,
+                               alpha =0.5, legend=false)
+@df data02_etacov groupedboxplot!(:variable,:value,
+                               alpha =0.5, label ="")
+Plots.abline!(0,0, linewidth=4, color = "black",
+              size = (1000, 1000),
+              xlabel = "η's", ylabel = "η_values",
+              guidefontsize = 22,
+              tickfontsize =14, label ="")
+```
+
+## Validation
+
+We will perform a validation of the final model using VPC check.
+
+```julia
+pk_vpc = vpc(pk_02_lag_fit, 200; dv=:dv,
+             ensemblealg=EnsembleThreads())
+
+plot(pk_vpc,
+    size=(800,800), xlabel="Time after dose (mins)",
+    ylabel = "Concentration (ug/L)" ,
+    titlefontsize=20,guidefontsize=20,
+    markersize=7, markeralpha = 0.5, markercolor =:grey,
+    observations = true,
+    observed_quantiles = true,
+    simquantile_medians = true,
+    ci_bands = true,
+    legend=true, legendfontsize = 12,
+    titlefontcolor = :blue,
+    linewidth =5,
+    xtickfont = font(20),
+    ytickfont = font(20))
+```
