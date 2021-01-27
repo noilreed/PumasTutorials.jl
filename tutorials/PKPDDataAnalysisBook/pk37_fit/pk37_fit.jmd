@@ -1,0 +1,509 @@
+---
+title: Exercise PK37 - Fitting In vitro/In vivo Extrapolation I
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise you will learn how to model _in vitro_ concentrations. A new drug
+ is developed for hypertension and hence we require to obtain the bioavailability,
+ an expirement is performed using human microsomes. This will help us to obtain the
+ Vmax and Km.
+
+The basic workflow for the estimation process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. Pharmacokinetic modelling
+ 4. Diagnostic Plots
+ 5. Validation
+ 6. Simulation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+```
+
+## Description of the given data
+
+In this experiment `55 human microsome` samples are tested at various concentrations
+  at `0.02, 0.05, 0.1, 0.2, 0.5, 1, 10, 20, 50, 100, 180, 200, 250, 500, 1000, 2000`.
+
+The following are the units of the dataset:
+
+ * Time (time) = mins
+ * Rate (dv_rate) = umol/g/min
+ * Substrate Concentration (Conc) = μM
+
+```julia
+pk37_data_df = CSV.read("/Users/Parsshava/Desktop/Julia/PumasTutorials.jl/tutorials/PKPDDataAnalysisBook/pk37_fit/pk_37.csv",
+    DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk37_data = describe(pk37_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv_rate])
+```
+
+## Exploratory Plots of the given data
+
+ * Plot of Rate vs Substrate Concentration
+
+```julia
+pk_data_plot = dropmissing(pk37_data_df, :dv_rate)
+@df pk_data_plot plot(:Conc, :dv_rate, group=:id, label=false,
+                      xlabel="Concentration (uM)", ylabel="Rate (umol/g/min)",
+                      size = (600, 600), guidefontsize = 12,
+                      title = "Rate vs Concentration")
+```
+
+ * Plot of Rate vs Substrate Concentration - Log Scale
+
+```julia
+@df pk_data_plot plot(:Conc, :dv_rate, group=:id, xaxis=:log, label=false,
+                      xlabel="Concentration (uM)", ylabel="Rate (umol/g/min)",
+                      size = (600, 600), guidefontsize = 12,
+                      title = "Rate vs Concentration")
+```
+
+ * Plot of Mean Rate vs Substrate Concentration
+
+```julia
+plasma_mean = combine(groupby(pk37_data_df,[:Conc]),
+                             [col => fun for col in [:dv_rate]
+                             for fun in [mean, std]])
+
+@df plasma_mean plot(:Conc, :dv_rate_mean, label=false,
+                      xlabel="Concentration (uM)", ylabel="Rate (umol/g/min)",
+                      size = (600, 500), guidefontsize = 12, linewidth=3,
+                      title = "Rate vs Concentration")
+```
+
+ * Plot of Mean Rate vs Substrate Concentration - Log Scale
+
+```julia
+@df plasma_mean plot(:Conc, :dv_rate_mean, xaxis=:log, label=false,
+                      xlabel="Concentration (uM)", ylabel="Rate (umol/g/min)",
+                      size = (600, 500), guidefontsize = 12, linewidth=3,
+                      title = "Rate vs Concentration")
+```
+
+We will use the `graphical representation` for the initial parameter estimates for
+ the fitiing of the given data.
+
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk37_data = read_pumas(pk37_data_df,
+                        id           = :id,
+                        time         = :time,
+                        observations = [:dv_rate],
+                        covariates   = [:Conc],
+                        event_data   = false)
+```
+
+##### Single-Enzyme System
+
+```julia
+pk_37_one   = @model begin
+  @param begin
+    tvvmax1 ∈ RealDomain(lower=0)
+    tvkm1   ∈ RealDomain(lower=0)
+    Ω       ∈ PDiagDomain(2)
+    σ_add   ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η       ~ MvNormal(Ω)
+  end
+
+  @covariates Conc
+
+  @pre begin
+    Vmax1   = tvvmax1 * exp(η[1])
+    Km1     = tvkm1 * exp(η[2])
+    _Conc   = Conc
+  end
+
+  @derived begin
+    rate    = @. Vmax1*_Conc/(Km1+_Conc)
+    dv_rate ~ @. Normal(rate, σ_add)
+  end
+end
+```
+
+We have obtained the initial estimates from the Mean Rate vs Concentration plot.
+
+```julia
+param_est_one = ( tvvmax1 = 3,
+                  tvkm1   = 250,
+                  Ω       = Diagonal([0.04,0.02]),
+                  σ_add   = 0.05)
+```
+
+##### NaivePooled Analysis
+
+A quick estimation of the mean parameters can be done by performing a NaivePooled
+ Analysis. This will give us a good judgemnt of the parameters obtained graphically
+ and provide better inital estimates for the fitting.
+
+```julia
+pk_37_one_fit_nv = @time fit(pk_37_one, pk37_data, param_est_one,
+                            Pumas.NaivePooled(), ensemblealg=EnsembleThreads(),
+                            omegas=(:Ω,))
+
+coeftable(pk_37_one_fit_nv)
+```
+
+We will now fit the data using `FOCEI`
+
+```julia
+pk_37_one_fit = @time fit(pk_37_one, pk37_data, param_est_one,
+                          Pumas.FOCEI(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_37_one_fit)
+```
+
+We will `inspect` the diagnostics of the model before we go for the goodness of fit plots.
+
+```julia
+pk_37_one_inspect = inspect(pk_37_one_fit) |> DataFrame
+```
+
+## Diagnostic Plots
+
+##### Goodness of Fit Plots
+
+```julia
+theme(:wong2)
+
+function gof(pktvp_mr_inspect_run2)
+  p1 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+      p1,
+      :dv_rate_pred, :dv_rate;
+      ylabel = "Observed dv_rate (ug/L)",
+      xlabel = "Population Predicted (ug/L)",
+      label = "",
+      legend=false,
+  )
+  Plots.abline!(p1,  1, 0; primary = false, color=:red, linewidth=4)
+
+  #
+  p2 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p2,
+    :dv_rate_ipred, :dv_rate;
+    ylabel = "Observed Plasma` Conc (ug/L)",
+    xlabel = "Individual Predicted (ug/L)",
+    label = "",
+    legend=false,
+  )
+  Plots.abline!(p2, 1, 0; primary = false, color=:red, linewidth=4)
+
+  p3 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p3,
+    :time, :dv_rate_wres;
+    xlabel = "Time (mins)",
+    ylabel = "Conditional Weighted Residuals",
+     legend=false
+  )
+  Plots.abline!(p3, 0, 0; primary = false, color=:red, linewidth=4)
+
+  p4 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+   p4,
+   :dv_rate_pred, :dv_rate_wres,
+   xlabel = "Population Predicted (ug/L)",
+   ylabel = "Conditional Weighted Residuals",
+   legend=false
+  )
+  Plots.abline!(p4, 0, 0; primary = false, color=:red, linewidth=4)
+
+  return plot(p1,p2,p3,p4; size = (1000, 1000))
+end
+
+gof(pk_37_one_inspect)
+```
+
+##### Double-Enzyme System with Proportional Error
+
+```julia
+pk_37_two_prop = @model begin
+  @param begin
+    tvvmax1 ∈ RealDomain(lower=0)
+    tvkm1   ∈ RealDomain(lower=0)
+    tvvmax2 ∈ RealDomain(lower=0)
+    tvkm2   ∈ RealDomain(lower=0)
+    Ω       ∈ PDiagDomain(3)
+    σ²_prop ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η       ~ MvNormal(Ω)
+  end
+
+  @covariates Conc
+
+  @pre begin
+    Vmax1   = tvvmax1 * exp(η[1])
+    Km1     = tvkm1 * exp(η[2])
+    Vmax2   = tvvmax2 * exp(η[3])
+    Km2     = tvkm2
+    _Conc   = Conc
+  end
+
+  @derived begin
+    rate    = @. ((Vmax1*_Conc/(Km1+_Conc)) + (Vmax2*_Conc/(Km2+_Conc)))
+    dv_rate ~ @. Normal(rate, sqrt(rate^2*σ²_prop))
+  end
+end
+```
+
+Initial Estimates
+
+```julia
+param_two_prop_est = ( tvvmax1 = 3,
+                       tvkm1   = 250,
+                       tvvmax2 = 0.5,
+                       tvkm2   = 2,
+                       Ω       = Diagonal([0.04,0.02,0.02]),
+                       σ²_prop = 0.001)
+```
+
+We will now fit the data using `FOCEI`
+
+```julia
+pk_37_two_prop_fit = @time fit(pk_37_two_prop, pk37_data, param_two_prop_est,
+                               Pumas.FOCEI(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_37_two_prop_fit)
+```
+
+We will `inspect` the diagnostics of the model before we go for the goodness of fit plots.
+
+```julia
+pk_37_two_prop_inspect = inspect(pk_37_two_prop_fit) |> DataFrame
+```
+
+ * Goodness of Fit Plots
+
+```julia
+gof(pk_37_two_prop_inspect)
+```
+
+##### Double-Enzyme System with Additive Error
+
+```julia
+pk_37_two_add = @model begin
+  @param begin
+    tvvmax1 ∈ RealDomain(lower=0)
+    tvkm1   ∈ RealDomain(lower=0)
+    tvvmax2 ∈ RealDomain(lower=0)
+    tvkm2   ∈ RealDomain(lower=0)
+    Ω       ∈ PDiagDomain(3)
+    σ_add   ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η       ~ MvNormal(Ω)
+  end
+
+  @covariates Conc
+
+  @pre begin
+    Vmax1   = tvvmax1 * exp(η[1])
+    Km1     = tvkm1 * exp(η[2])
+    Vmax2   = tvvmax2 * exp(η[3])
+    Km2     = tvkm2
+    _Conc   = Conc
+  end
+
+  @derived begin
+    rate    = @. ((Vmax1*_Conc/(Km1+_Conc)) + (Vmax2*_Conc/(Km2+_Conc)))
+    dv_rate ~ @. Normal(rate, σ_add)
+  end
+end
+```
+
+Initial Estimates
+
+```julia
+param_two_add_est = ( tvvmax1 = 3,
+                      tvkm1   = 250,
+                      tvvmax2 = 0.5,
+                      tvkm2   = 2,
+                      Ω       = Diagonal([0.04,0.02,0.02]),
+                      σ_add   = 0.05)
+```
+
+We will fit the data using `FOCEI`
+
+```julia
+pk_37_two_add_fit = @time fit(pk_37_two_add, pk37_data, param_two_add_est,
+                      Pumas.FOCEI(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_37_two_add_fit)
+```
+
+We will obtain the `precision` of the parameters
+
+```julia
+pk_37_two_add_infer = coeftable(infer(pk_37_two_add_fit))
+```
+
+We will `inspect` the diagnostics of the model before we go for the goodness of fit plots.
+
+```julia
+pk_37_two_add_inspect = inspect(pk_37_two_add_fit) |> DataFrame
+```
+
+ * Goodness of fit plots
+
+```julia
+gof(pk_37_two_add_inspect)
+```
+
+We will compare other metrics and statistics, such as aic and bic. The aic
+ and bic values are **lower for the double-enzyme model with additive error**
+ which indicates a better fit of the model.
+
+```julia
+DataFrame([(metric=string(f), fit_single_enz=f(pk_37_one_fit), fit_double_enz_prop=f(pk_37_two_prop_fit),
+ fit_double_enz_add=f(pk_37_two_add_fit)) for f in (aic, bic)])
+```
+
+##### η-Distribution
+
+```julia
+data20_etacov = select(pk_37_two_add_inspect,["η_1", "η_2", "η_3"])
+data20_etacov = stack(data20_etacov, ["η_1", "η_2", "η_3"])
+data20_etacov[!,:variable] .= string.(data20_etacov.variable)
+@df data20_etacov groupedviolin(:variable,:value,
+                               alpha =0.5, legend=false)
+@df data20_etacov groupedboxplot!(:variable,:value,
+                               alpha =0.5, label ="")
+Plots.abline!(0,0, linewidth=4, color = "black",
+              size = (800, 800),
+              xlabel = "η's", ylabel = "η_values",
+              guidefontsize = 22,
+              tickfontsize =14, label ="")
+```
+
+## Validation
+
+We will perform a validation of the final model using a `Visual Predictive Check`.
+
+```julia
+pk_vpc = vpc(pk_37_two_add_fit, 200; dv=:dv_rate, idv=:Conc,
+              ensemblealg=EnsembleSerial())
+
+plot(pk_vpc,
+    size=(800,800), xlabel="Time after dose (mins)",
+    ylabel = "Concentration (uM)" ,
+    titlefontsize=20,guidefontsize=20,
+    markersize=7, markeralpha = 0.5, markercolor =:grey,
+    observations = true,
+    observed_quantiles = true,
+    simquantile_medians = true,
+    ci_bands = true,
+    legend=true, legendfontsize = 12,
+    titlefontcolor = :blue,
+    linewidth = 5,
+    xtickfont = font(20),
+    ytickfont = font(20))
+```
+
+## Simulation
+
+We will Simulate the extraction of the drug using the final estimates we have
+ obtained from the fitting of the given data.
+
+```julia
+pk_37_sim   = @model begin
+  @param begin
+    tvvmax1 ∈ RealDomain(lower=0)
+    tvkm1   ∈ RealDomain(lower=0)
+    tvvmax2 ∈ RealDomain(lower=0)
+    tvkm2   ∈ RealDomain(lower=0)
+  end
+
+  @covariates Conc
+
+  @pre begin
+    Vmax1   = tvvmax1
+    Km1     = tvkm1
+    Vmax2   = tvvmax2
+    Km2     = tvkm2
+    Qh      = 1.5 ## L/min (100ml/min/100g)
+    _Conc   = Conc
+  end
+
+  @derived begin
+    Clint    = @. ((Vmax1*77*1.5/(Km1+_Conc)) + (Vmax2*77*1.5/(Km2+_Conc)))
+    Clh      = @. Qh*(Clint/(Qh+Clint))
+    Eh       = @. Clint/(Qh+Clint)
+    Fh       = @. Qh/(Qh+Clint)
+  end
+end
+```
+
+Final estimates obtained from the fitting of the given data.
+
+```julia
+param_sim = ( tvvmax1 = 2.5187,
+              tvkm1   = 245.01,
+              tvvmax2 = 0.21031,
+              tvkm2   = 1.8474)
+```
+
+We will read the dataset into pumas using the **read_pumas()** function
+
+```julia
+pk37_data_sim_df  = filter(x -> x.id == 1, pk37_data_df)
+pk37_data_sim_df[:, :Eh] .= missing
+
+pk37_data_sim = read_pumas(pk37_data_sim_df,
+                            id           = :id,
+                            time         = :time,
+                            observations = [:Eh],
+                            covariates   = [:Conc],
+                            event_data   = false)
+```
+
+We will now simulate using the final estimates obtained.
+
+```julia; results="hidden"
+pk37_sim = simobs(pk_37_sim, pk37_data_sim, param_sim)
+```
+
+ * Plot of **Concen tration vs Extraction**
+
+It is intresting to note how the `Hepatic Extraction` changes from **high extraction**
+ to a **low extraction** at the concentration of 100 μM.
+
+```julia
+pk37_sim_df = DataFrame(pk37_sim)
+@df pk37_sim_df plot(:Conc, :Eh, legend=false,
+                      xlabel="Concentration (uM)", ylabel="Hepatic Extraction",
+                      size = (600, 500), guidefontsize = 12, linewidth=3,
+                      title = "Hepatic Extraction vs Concentration",
+                      xticks=[0,100,500,1000,1500,2000])
+```
