@@ -1,0 +1,305 @@
+---
+title: Exercise 33 - Fitting Transdermal input and kinetics
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+Controlled delivery systems results in relatively uniform levels of input into
+ the system bypassing the liver and avoiding first pass metabolism. In this exercise
+ you will learn how to estimate data from a transdermal system. We will model the
+ data using a **multiple zero-order input**, this will mimic the fast and the slow
+ release of the drug from the patch. We will estimate the relative contribution
+ of each infusion and the total input time over which drug is being absorbed into
+ circulation.
+
+The basic workflow for the estimation process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. Pharmacokinetic modelling
+ 4. Diagnostic Plots
+ 5. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using Pumas
+using PumasTutorials
+using Random
+using CSV
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of the data
+
+A nicotine patch is applied to a group of patients for `5 consecutive days` and
+ the PK samples are obtained on the 5th day after the application of the patch.
+ The total dose released from each patch is **15,890 μg**. PK samples are collected
+ at the time intervals `0, 0.5, 1, 2, 3, 4, 6, 8, 10, 12, 14, 16, 17, 18, 21,
+ 23.37 hrs`. We have collected a pre-dose sample to note the concentration already
+ in circulation.
+
+The following are the units of the dataset:
+
+ * Time (time) = hrs
+ * Plasma Concentration (dv) = μg/L
+ * Dose (amt) = μg
+
+```julia
+pk33_data_df = CSV.read("/Users/Parsshava/Desktop/Julia/PumasTutorials.jl/tutorials/PKPDDataAnalysisBook/pk33_fit/pk_33.csv",
+  DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary statistics of the data
+
+```julia
+stats_pk33_data = describe(pk33_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+ * Plot of Concentration vs Time
+
+```julia
+pk_data_plot = dropmissing(pk33_data_df, :dv)
+@df pk_data_plot plot(:time, :dv, group=:id, label=false,
+                        xlabel = "Time (hrs)", ylabel="Concentration (ug/L)",
+                        size = (600, 400), guidefontsize = 12,
+                        title = "Concentration vs Time")
+```
+
+ * Plot of Mean Concentration vs Time
+
+We can see that the initial concentration at `time=0` is an average of **2 μg/L**
+
+```julia
+plasma_mean = combine(groupby(pk33_data_df,[:time]),
+                            [col => fun for col in [:dv]
+                            for fun in [mean, std]])
+
+@df plasma_mean plot(:time, :dv_mean, label=false,
+                        xlabel = "Time (hrs)", ylabel="Concentration (ug/L)",
+                        size = (600, 400), guidefontsize = 12, linewidth=3,
+                        xlims=(-0.3,25), xticks=[0,5,10,15,20,25], yticks=[2,4,6,8,10,12,14,16], ylims=(1.7,16),
+                        title = "Concentration vs Time")
+```
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+We do not have and `amt, evid & cmt` column since we are not have any dosing
+ event, for which we will include a statement `event_data=false`. This helps the
+  system know that there is no dosing event.
+
+```julia
+pk33_data = read_pumas(pk33_data_df,
+                       id           = :id,
+                       time         = :time,
+                       observations = [:dv],
+                       event_data   = false)
+```
+
+##### One-Compartment Model with Multiple Infusions
+
+We include the dose as two seperate infusions and thus we will estimate
+the duration of each dose. We will also estimate each of the doses in both the
+fast release and slow release.
+
+```julia
+pk_33         = @model begin
+  @param begin
+    tvcl      ∈ RealDomain(lower=0, upper=150)
+    tvvc      ∈ RealDomain(lower=0, upper=300)
+    tvdslow   ∈ RealDomain(lower=0, upper=13000)
+    tvtfast   ∈ RealDomain(lower=0, upper=15)
+    tvtslow   ∈ RealDomain(lower=0, upper=22)
+    Ω         ∈ PDiagDomain(1)
+    σ²_prop   ∈ RealDomain(lower=0)
+    σ_add     ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η         ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Cl        = tvcl
+    Vc        = tvvc
+    Dose_slow = tvdslow
+    Tfast     = tvtfast * exp(η[1])
+    Tslow     = tvtslow
+    Ffast     = (t<=Tfast) * (15890-Dose_slow)/Tfast
+    Fslow     = (t<=Tslow) * Dose_slow/Tslow
+  end
+
+  @init begin
+    Central  = 2*Vc
+  end
+
+  @dynamics begin
+    Central'  =  Ffast + Fslow -(Cl/Vc)*Central
+  end
+
+  @derived begin
+    cp        = @. Central/Vc
+    dv        ~ @. Normal(cp, sqrt((cp^2*σ²_prop) + σ_add^2))
+  end
+end
+```
+
+We have obtained the `inital estimates` from literature and certain Graphical.
+
+```julia
+param_est = ( tvcl    = 78,
+              tvvc    = 140,
+              tvdslow = 10000,
+              tvtfast = 7,
+              tvtslow = 18,
+              Ω       = Diagonal([0.02]),
+              σ²_prop = 0.005,
+              σ_add   = 0.01)
+```
+
+##### Naive Pooled
+
+A quick estimation of the mean parameters can be done by performing a NaivePooled
+ Analysis. This will give us a good judgemnt of the parameters obtained from NCA
+ Analysis and provide better inital estimates for the fitting.
+
+```julia
+pk33_fit_nv = @time fit(pk_33, pk33_data, param_est,
+                            Pumas.NaivePooled(), ensemlblealg=EnsembleThreads(),
+                            omegas=(:Ω,))
+
+coeftable(pk33_fit_nv)
+```
+
+We see that the initial estimates we found are very close to the NaivePooled
+ Analysis. We will now find the Between Subject Variability (BSV) using `FOCEI`.
+
+```julia
+pk_33_fit = @time fit(pk_33, pk33_data, param_est,
+                      Pumas.FOCEI(), ensemlblealg=EnsembleThreads())
+
+coeftable(pk_33_fit)
+```
+
+We will obtain the `precision` of the parameters.
+
+```julia
+pk_33_infer   = coeftable(infer(pk_33_fit))
+```
+
+We will `inspect` the diagnostics of the model before we go for the goodness of fit plots.
+
+```julia
+pk_33_inspect = inspect(pk_33_fit) |> DataFrame
+```
+
+## Diagnostic Plots
+
+##### Goodness of Fit Plots
+
+```julia
+theme(:wong2)
+
+function gof(pktvp_mr_inspect_run2)
+  p1 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+      p1,
+      :dv_pred, :dv;
+      ylabel = "Observed dv (ug/L)",
+      xlabel = "Population Predicted (ug/L)",
+      label = "",
+      legend=false,
+  )
+  Plots.abline!(p1,  1, 0; primary = false, color=:red, linewidth=4)
+
+  #
+  p2 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p2,
+    :dv_ipred, :dv;
+    ylabel = "Observed Plasma` Conc (ug/L)",
+    xlabel = "Individual Predicted (ug/L)",
+    label = "",
+    legend=false,
+  )
+  Plots.abline!(p2, 1, 0; primary = false, color=:red, linewidth=4)
+
+  p3 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+    p3,
+    :time, :dv_wres;
+    xlabel = "Time (hr)",
+    ylabel = "Conditional Weighted Residuals",
+     legend=false
+  )
+  Plots.abline!(p3, 0, 0; primary = false, color=:red, linewidth=4)
+
+  p4 = plot()
+  @df pktvp_mr_inspect_run2 scatter!(
+   p4,
+   :dv_pred, :dv_wres,
+   xlabel = "Population Predicted (ug/L)",
+   ylabel = "Conditional Weighted Residuals",
+   legend=false
+  )
+  Plots.abline!(p4, 0, 0; primary = false, color=:red, linewidth=4)
+
+  return plot(p1,p2,p3,p4; size = (1000, 1000))
+end
+
+gof(pk_33_inspect)
+```
+
+##### η-Distribution
+
+```julia
+data33_etacov = select(pk_33_inspect,["η_1"])
+data33_etacov = stack(data33_etacov, ["η_1"])
+data33_etacov[!,:variable] .= string.(data33_etacov.variable)
+@df data33_etacov groupedviolin(:variable,:value,
+                               alpha =0.5, legend=false)
+@df data33_etacov groupedboxplot!(:variable,:value,
+                               alpha =0.5, label ="")
+Plots.abline!(0,0, linewidth=4, color = "black",
+              size = (300, 500),
+              xlabel = "η's", ylabel = "η_values",
+              guidefontsize = 16,
+              tickfontsize =9, label ="")
+```
+
+## Validation
+
+We will perform a validation of the final model using a `Visual Predictive Check`.
+
+```julia
+pk_vpc = vpc(pk_33_fit, 200; dv=:dv,
+              ensemblealg=EnsembleSerial())
+
+plot(pk_vpc,
+    size=(800,800), xlabel="Time after dose (hr)",
+    ylabel = "Concentration (ug/L)" ,
+    titlefontsize=20,guidefontsize=20,
+    markersize=7, markeralpha = 0.5, markercolor =:grey,
+    observations = true,
+    observed_quantiles = true,
+    simquantile_medians = true,
+    ci_bands = true,
+    legend=true, legendfontsize = 12,
+    titlefontcolor = :blue,
+    linewidth = 5,
+    xtickfont = font(20),
+    ytickfont = font(20))
+```
