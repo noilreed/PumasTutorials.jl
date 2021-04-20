@@ -3,16 +3,21 @@ title : Induction Models
 author : Parsshava R Mehta
 date : 4th June 2020
 ---
+
 Load the necessary libraries
+
 ```julia
-using Pumas, Plots, DataFrames, StatsPlots
+using Pumas, PumasPlots, DataFrames, PlottingUtilities, CairoMakie
 ```
+
 ## Introduction
+
 In this tutorial you will learn the following induction models
   * Heteroinduction Model
   * Autoinduction Model
 
 #### Heteroinduction Model
+
 Ref: [von Bahr C, Steiner E, Koike Y, Gabrielsson J. Time course of enzyme induction in humans: effect of pentobarbital on nortriptyline metabolism. Clin Pharmacol Ther. 1998;64(1):18‐26.](https://pubmed.ncbi.nlm.nih.gov/9695715/)
 
 In this model you can see a term `t` in the pre block; this indicates the **solver time**. `t`(time) is used to provide a condition of true or false with the _if elseif else_ statment.
@@ -21,6 +26,10 @@ In this model you can see a term `t` in the pre block; this indicates the **solv
 
 ```julia
 hetero_model = @model begin
+  @metadata begin
+    timeu   = u"hr"
+  end
+
   @param begin
     tvka    ∈ RealDomain(lower=0)
     tvclss  ∈ RealDomain(lower=0)
@@ -58,6 +67,7 @@ hetero_model = @model begin
   end
 
   @derived begin
+    "Plasma Concentration (ug/L)"
     cp       = @. 1000*Central/Vc
   end
 end
@@ -80,20 +90,26 @@ par_hetero = ( tvka    = 1.8,    # (hr⁻¹)  Absorption Rate Constant
 Note: We incorporate `ii` (interdose-interval) and `addl` (additional no. of doses) for the ease of coding
 
 ```julia
-ev1  = DosageRegimen(10, cmt=1, time=0, ii=8, addl=87)
-sub1 = Subject(id=1, events=ev1)
+sub1 = Subject( id=1,
+                events=DosageRegimen(10, cmt=1, time=0, ii=8, addl=87))
 ```
 Use the `simobs` function for simulation
 
-```julia
-obs1 = simobs(hetero_model, sub1, par_hetero, obstimes=0:1:800);
+```julia; results = "hidden"
+obs1 = simobs(hetero_model, sub1, par_hetero, obstimes=0:1:800)
 ```
 
 Convert the file to a dataframe for plotting
 
 ```julia
-simdf = DataFrame(obs1)
-@df simdf plot(:time, :cp, xlabel="Time (hr)", ylabel="Concentration (ug/L)", title="Concentration vs Time", linewidth=1.5, label=false, color=:purple)
+#simdf = DataFrame(obs1)
+#@df simdf plot(:time, :cp, xlabel="Time (hr)", ylabel="Concentration (ug/L)", title="Concentration vs Time", linewidth=1.5, label=false, color=:purple)
+
+interactive!(false)
+p1 = sim_plot(hetero_model,
+              obs1, observations = :cp)
+Label(p1[0, :], "Concentration vs Time", textsize = 30)
+p1
 ```
 
 #### Autoinduction Model
@@ -105,6 +121,10 @@ equal to the rate of degradation, thus **Kin = Kout**.
 
 ```julia
 auto_model  = @model begin
+  @metadata begin
+    timeu   = u"hr"
+  end
+
   @param begin
     tvvc    ∈ RealDomain(lower=0)
     tvcl    ∈ RealDomain(lower=0)
@@ -142,7 +162,9 @@ auto_model  = @model begin
   end
 
   @derived begin
+    "Plasma Concentration (mg/L)"
     cp     = @. Central/Vc
+    "Amount of Enzyme (mg)"
     enz    = @. Enzyme
   end
 end
@@ -163,25 +185,36 @@ par_auto = (  tvcl   = 1,     # (L/hr)
 A single subject receives a dose of 100mg IV-Bolus every 4 hrs followed by 20 additional doses
 
 ```julia
-ev1  = DosageRegimen(100, cmt=:Central, time=0, ii=4, addl=20)
-sub1 = Subject(id=1, events=ev1)
+sub1 = Subject( id=1,
+                events=DosageRegimen(100, cmt=:Central, time=0, ii=4, addl=20))
 ```
 
 Use the `simobs` function to simulate and convert to a dataframe
 
-```julia
+```julia; results="hidden"
 obs1  = simobs(auto_model, sub1, par_auto, obstimes=0:0.1:80)
-simdf = DataFrame(obs1)
 ```
 
 Plot **Plasma Concentration vs Time**
 
 ```julia
-@df simdf plot(:time, :cp, xlabel="Time (hr)", ylabel="Concentration (mg/L)", title="Plasma Concentration vs Time", label=false, linewidth=1.5)
+#@df simdf plot(:time, :cp, xlabel="Time (hr)", ylabel="Concentration (mg/L)", title="Plasma Concentration vs Time", label=false, linewidth=1.5)
+
+interactive!(false)
+p1 = sim_plot(auto_model,
+              obs1, observations = :cp)
+Label(p1[0, :], "Concentration vs Time", textsize = 30)
+p1
 ```
 
 Plot **Enzyme vs Time**
 
 ```julia
-@df simdf plot(:time, :enz, xlabel="Time (hr)", ylabel="Amount (mg)", title="Enzyme vs Time", label=false, linewidth=1.5)
+#@df simdf plot(:time, :enz, xlabel="Time (hr)", ylabel="Amount (mg)", title="Enzyme vs Time", label=false, linewidth=1.5)
+
+interactive!(false)
+p2 = sim_plot(auto_model,
+              obs1, observations = :enz)
+Label(p1[0, :], "Enzyme vs Time", textsize = 30)
+p2
 ```
