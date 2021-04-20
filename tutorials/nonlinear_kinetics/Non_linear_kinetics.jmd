@@ -7,7 +7,7 @@ date : 2nd June 2020
 Load the necessary libraries
 
 ```julia
-using Pumas, Plots, DataFrames, StatsPlots
+using Pumas, PumasPlots, Random, PlottingUtilities, CairoMakie
 ```
 
 ## Introduction
@@ -28,25 +28,29 @@ using the Michaelis-Menten term
 
 ```julia
 one_compt_non_linear_eli = @model begin
+  #@metadata begin
+  #  timeu   = u"hr"
+  #end
+
   @param begin
-    tvvc   ∈ RealDomain(lower=0)
-    tvvmax ∈ RealDomain(lower=0)
-    tvkm   ∈ RealDomain(lower=0)
-    Ω      ∈ PDiagDomain(2)
+    tvvc    ∈ RealDomain(lower=0)
+    tvvmax  ∈ RealDomain(lower=0)
+    tvkm    ∈ RealDomain(lower=0)
+    Ω       ∈ PDiagDomain(2)
   end
 
   @random begin
-    η      ~ MvNormal(Ω)
+    η       ~ MvNormal(Ω)
   end
 
   @pre begin
-    Vc     = tvvc * exp(η[1])
-    Vmax   = tvvmax
-    Km     = tvkm * exp(η[2])
+    Vc      = tvvc * exp(η[1])
+    Vmax    = tvvmax
+    Km      = tvkm * exp(η[2])
   end
 
   @vars begin  # Concentration-dependant : Elimination
-    VMKM  := Vmax/(Km+Central)
+    VMKM    := Vmax/(Km+Central)
   end
 
   @dynamics begin
@@ -54,9 +58,10 @@ one_compt_non_linear_eli = @model begin
   end
 
   @derived begin
-    cp     = @. Central/Vc
-    nca   := @nca cp
-    auc    = NCA.auc(nca)
+    #"Plasma Concentration (mg/L)"
+    cp      = @. Central/Vc
+    nca    := @nca cp
+    auc     = NCA.auc(nca)
   end
 end
 ```
@@ -86,35 +91,48 @@ ev3  = DosageRegimen(400, time=0, cmt=:Central)
 sub3 = Subject(id=3, events=ev3)
 ev4  = DosageRegimen(600, time=0, cmt=:Central)
 sub4 = Subject(id=4, events=ev4);
+
+pop = map((subj, amt) -> Subject(id=subj,
+                                 events = DosageRegimen(amt, time = 0, cmt = :Central),
+                                 covariates = (dose = amt,)),
+                                 #observations = tmdd_observations),
+                                 1:4, #subject ids
+                                 [25, 200, 400, 600] # doses
+                                 )
 ```
 
 Concatenate all the four subjects as a population and use the `simobs` function for simulation
 
-```julia
-sub  = [sub1, sub2, sub3, sub4]
-obs1 = simobs(one_compt_non_linear_eli, sub, par1, obstimes=0:0.1:30);
+```julia; results="hidden"
+obs1 = simobs(one_compt_non_linear_eli, pop, par1, obstimes=0:0.1:30)
 ```
 
 Convert `obs1` to a dataframe and plot **Concentration vs Time**
 
 ```julia
-simdf = DataFrame(obs1)
-@df simdf plot(:time, :cp, yaxis=:log, group=:id, xlabel="Time (hr)", ylabel="Concentration (mg/L)", title="Concentration vs Time", legendtitle="Subject Id", linewidth=1.5)
+#simdf = DataFrame(obs1)
+#@df simdf plot(:time, :cp, yaxis=:log, group=:dose, xlabel="Time (hr)", ylabel="Concentration (mg/L)", title="Concentration vs Time", legendtitle="Subject Id", linewidth=1.5)
+
+interactive!(false)
+p1 = sim_plot(one_compt_non_linear_eli,
+              obs1, observations = :cp)
+Label(p1[0, :], "Plasma Concentration vs Time", textsize = 30)
+p1
 ```
 
 Use the Dataframes functions to `filter` and `select` the rows and colums as required for plotting
 
 ```julia
-df1 = filter(x -> x.time ==0.1, simdf)
-df1[!, :dose] = [25,200,400,600]
-df2 = select!(df1,:auc,:dose)
+df1 = filter(x -> x.time == 0.1, simdf)
+#df1[!, :dose] = [25,200,400,600]
+#df2 = select!(df1,:auc,:dose)
 ```
 
 Plot AUC vs Dose and see the concentration-dependant change in AUC
 
 ```julia
-@df df2 scatter(:dose, :auc, xlabel="Dose (mg)", ylabel="AUC (mg.h/L)", title="AUC vs Dose", label=false)
-@df df2 plot!(:dose, :auc, label=false, linewidth=1.5)
+@df df1 scatter(:dose, :auc, xlabel="Dose (mg)", ylabel="AUC (mg.h/L)", title="AUC vs Dose", label=false)
+@df df1 plot!(:dose, :auc, label=false, linewidth=1.5)
 ```
 
 #### Concentration-dependant Metabolite Formation
@@ -124,6 +142,10 @@ a Michaelis-Menten type reaction
 
 ```julia
 two_compt_non_linear_metform = @model begin
+  @metadata begin
+    timeu   = u"mins"
+  end
+
   @param begin
     tvvc    ∈ RealDomain(lower=0)
     tvq     ∈ RealDomain(lower=0)
@@ -162,7 +184,9 @@ two_compt_non_linear_metform = @model begin
   end
 
   @derived begin
+    "Plasma Concentration (ug/L)"
     cp    = @. Central/Vc
+    "Metabolite Concentration (ug/L)"
     met   = @. Metabolite/Vme
     nca  := @nca cp
     auc   = NCA.auc(nca)
@@ -200,34 +224,55 @@ sub3 = Subject(id=3, events=ev3, covariates=(Wt=70,))
 ev4  = DosageRegimen(900, time=0, cmt=:Central)
 sub4 = Subject(id=4, events=ev4, covariates=(Wt=70,))
 sub  = [sub1, sub2, sub3, sub4]
+
+two_compt_non_linear_metform_observations = (cp = nothing, met = nothing)
+pop = map((subj, amt) -> Subject(id=subj,
+                                 events = DosageRegimen(amt, time = 0, cmt = :Central),
+                                 covariates = (dose = amt, Wt=70)),
+                                 #observations = two_compt_non_linear_metform_observations),
+                                 1:4, #subject ids
+                                 [50, 300, 600, 900] # doses
+                                 )
 ```
 
 Use the `simobs` function to run the simulation
 
-```julia
-obs1 = simobs(two_compt_non_linear_metform, sub, par_met, obstimes=0:1:600);
+```julia; results="hidden"
+obs1 = simobs(two_compt_non_linear_metform, pop, par_met, obstimes=0:1:600)
 ```
 
 Convert `obs1` to a dataframe. Plot **Plasma Concentration vs Time**
 
 ```julia
-simdf = DataFrame(obs1)
-@df simdf plot(:time, :cp, yaxis=:log, group=:id, xlabel="Time (mins)", ylabel="Concentration (ug/L)", title="Plasma Conc vs Time", legendtitle="Subject Id", linewidth=1.5,)
+#simdf = DataFrame(obs1)
+#@df simdf plot(:time, :cp, yaxis=:log, group=:id, xlabel="Time (mins)", ylabel="Concentration (ug/L)", title="Plasma Conc vs Time", legendtitle="Subject Id", linewidth=1.5,)
+
+interactive!(false)
+p1 = sim_plot(two_compt_non_linear_metform,
+              obs1, observations = :cp)[1]
+Label(p1[0, :], "Plasma Concentration vs Time", textsize = 30)
+p1
 ```
 
 Plot **Metabolite Concentration vs Time**
 
 ```julia
-df1 = filter(x -> x.time >0, simdf)
-@df df1 plot(:time, :met, yaxis=:log, group=:id, xlabel="Time (mins)",  ylabel="Concentration (ug/L)", title="Metabolite Conc vs Time", legendtitle="Subject Id", legend=:bottomleft, linewidth=1.5)
+#df1 = filter(x -> x.time >0, simdf)
+#@df df1 plot(:time, :met, yaxis=:log, group=:id, xlabel="Time (mins)",  ylabel="Concentration (ug/L)", title="Metabolite Conc vs Time", legendtitle="Subject Id", legend=:bottomleft, linewidth=1.5)
+
+interactive!(false)
+p2 = sim_plot(two_compt_non_linear_metform,
+              obs1, observations = :dv)[1]
+Label(p2[0, :], "Metabolite Concentration vs Time", textsize = 30)
+p2
 ```
 
 Use the Dataframes functions to `filter` and `select` the rows and colums as required for plotting
 
 ```julia
 df2 = filter(x -> x.time ==1, simdf)
-df2[!, :dose] = [50,300,600,900]
-df3 = select!(df2,:id,:dose,:auc)
+#df2[!, :dose] = [50,300,600,900]
+#df3 = select!(df2,:id,:dose,:auc)
 ```
 
 Plot AUC vs Dose and see the dose-dependant change in AUC
@@ -250,6 +295,10 @@ a Michaelis-Menten type reaction
 
 ```julia
 one_compt_non_linear_bio = @model begin
+  @metadata begin
+    timeu = u"hr"
+  end
+
   @param begin
     tvcl       ∈ RealDomain(lower=0)
     tvvc       ∈ RealDomain(lower=0)
@@ -269,6 +318,9 @@ one_compt_non_linear_bio = @model begin
     Cl         = tvcl*exp(η[1])
     Vc         = tvvc*exp(η[2])
     Ka         = tvka
+  end
+
+  @dosecontrol begin
     RelFmax    = tvrelfmax
     RelFD50    = tvrelfd50
     RefDose    = 20
@@ -286,6 +338,7 @@ one_compt_non_linear_bio = @model begin
   end
 
   @derived begin
+    "Plasma Concentration (mg/L)"
     cp         = @. Central/Vc
     nca        := @nca cp
     cl         = NCA.cl(nca)
@@ -328,14 +381,30 @@ sub5 = Subject(id=5, events=ev5, covariates=(Dose=240,))
 ev6  = DosageRegimen(400, time=0, cmt=:Depot)
 sub6 = Subject(id=6, events=ev6, covariates=(Dose=400,))
 sub  = [sub1, sub2, sub3, sub4, sub5, sub6]
+
+pop = map((subj, amt) -> Subject(id=subj,
+                                 events = DosageRegimen(amt, time = 0, cmt = :Depot),
+                                 covariates = (Dose = amt,)),
+                                 #observations = tmdd_observations),
+                                 1:6, #subject ids
+                                 [20, 40, 80, 120, 240, 400] # doses
+                                 )
 ```
 
 Use the `simobs` function to run the simulation
 
+```julia; results="hidden"
+obs1  = simobs(one_compt_non_linear_bio, pop, par1, obstimes=0:0.1:24)
+#simdf = DataFrame(obs1)
+#@df simdf plot(:time, :cp, group=:id, xlabel="Time (hr)",  ylabel="Concentration (mg/L)", title="Concentration vs Time", legendtitle="Subject Id", linewidth=1.5)
+```
+
 ```julia
-obs1  = simobs(one_compt_non_linear_bio, sub, par1, obstimes=0:0.1:24)
-simdf = DataFrame(obs1)
-@df simdf plot(:time, :cp, group=:id, xlabel="Time (hr)",  ylabel="Concentration (mg/L)", title="Concentration vs Time", legendtitle="Subject Id", linewidth=1.5)
+interactive!(false)
+p1 = sim_plot(one_compt_non_linear_bio,
+              obs, observations = :cp)[1]
+Label(p1[0, :], "Plasma Concentration vs Time", textsize = 30)
+p1
 ```
 
 Use the Dataframes functions to `filter` and `select` the rows and colums as required for plotting
