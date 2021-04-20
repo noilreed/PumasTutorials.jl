@@ -1,13 +1,13 @@
 ---
 title : Non Compartmental Analysis
 author : PumasAI
-date : August 2020
+date : April 2021
 ---
 
 Load the necessary libraries
 
 ```julia
-using PumasTutorials, Pumas, Plots, CSV, DataFrames, StatsPlots, Statistics
+using PumasTutorials, NCA, NCAUtilities, CSV, DataFrames, StatsPlots, Statistics, Unitful
 ```
 
 ## Introduction
@@ -28,12 +28,6 @@ In the given dataset
 ```julia
 data = DataFrame(CSV.File(joinpath(dirname(pathof(PumasTutorials)), "..", "tutorials", "nca", "NCA_tutorial.csv")))
 first(data, 6)
-```
-
-Plot a exploratory graph of **Concentration vs Time** and group each subject by the specific `ID` assigned.
-
-```julia
-@df data plot(:TIME, :CONC, group=:ID, xlabel="Time (hrs)", ylabel="Concentration (mg/L)", xticks=[0,12,24,36,48,60,72,84,96,108,120], label=false)
 ```
 
 #### Single-dose NCA
@@ -68,7 +62,7 @@ Parse the dataframe to a `read_nca` function and map the necessary columns from 
 **Note:**
 
  * If your datset has the specific style of headers for the column you _will not need_ to map them seperately. They will be
-automatically determined by PUMAS. eg: id, time, conc, amt, route, duration(if needed), ocassion(if needed), group(if needed)
+automatically determined by Pumas. eg: id, time, observations, amt, route, duration(if needed), group(if needed)
 
  * _Do not specify the Inter Dose Interval_ in this case because we are computing Single-Dose NCA parameters
 
@@ -76,7 +70,7 @@ automatically determined by PUMAS. eg: id, time, conc, amt, route, duration(if n
 pop        = read_nca(  single_dose_data,
                         id    = :ID,
                         time  = :TIME,
-                        conc  = :CONC,
+                        observations  = :CONC,
                         amt   = :AMT,
                         route = :ROUTE,
                         llq   = 0.001concu,
@@ -84,7 +78,16 @@ pop        = read_nca(  single_dose_data,
                         concu = concu,
                         amtu  = amtu
                       )
-report     = NCAReport(pop, sigdigits=3)
+```
+
+Plot a exploratory graph of ***Concentration vs Time*** for the first subject.
+
+```julia
+NCAUtilities.observations_vs_time(pop[1])
+```
+
+```julia
+report0     = run_nca(pop, sigdigits=3)
 ```
 
 ##### Compute Specific Parameters
@@ -111,7 +114,7 @@ Calculation of **AUC** at _specific time_ intervals and merge to the final repor
 ```julia
 auc0_12   = NCA.auc(pop, interval=(0,12).*timeu, method=:linuplogdown, sigdigits=3) #various other methods are :linear, :linlog
 auc12_24  = NCA.auc(pop, interval=(12,24).*timeu, method=:linuplogdown, sigdigits=3)
-final     = innerjoin(report, auc0_12, auc12_24, on = [:id], makeunique=true)
+final     = innerjoin(report0.reportdf, auc0_12, auc12_24, on = [:id], makeunique=true)
 ```
 
 You can select the colums that you wish to see in the output
@@ -139,12 +142,12 @@ multiple_dose_data           = filter(x -> x.TIME > 24 , data)
 ```
 
 In the case of multiple-dose NCA the extra parameters which are calculated based on the dosing interval (τ) will be included in the output.
-
+You can select the NCA parameters that you wish to see in the output with the `parameters` keyword argument to `run_nca`
 ```julia
 pop1       = read_nca( multiple_dose_data,
                        id    = :ID,
                        time  = :TIME,
-                       conc  = :CONC,
+                       observations  = :CONC,
                        amt   = :AMT,
                        route = :ROUTE,
                        ii    = :II,        # please specify II for Multiple-dose NCA
@@ -152,21 +155,16 @@ pop1       = read_nca( multiple_dose_data,
                        timeu = timeu,
                        concu = concu,
                        amtu  = amtu)
-report1    = NCAReport(pop1, sigdigits=3)
+report1    = run_nca(pop1, sigdigits=3)
 ```
 
 Similar to the Single-NCA you can compute individual parameters and merge them to the final report
 
-You can select the colums that you wish to see in the output
+
+Compute the summary statistics of the selected variables that you require
 
 ```julia
-nca_output_multiple = select(report1, :doseamt, :kel, :half_life, :tmax, :cmax, :auclast, :auc_tau_obs, :vz_f_obs, :cl_f_obs, :aumcinf_obs, :tau, :cavgss)
-```
-
-Compute the Statistics of the selected variables that you require
-
-```julia
-Stat_report1        = describe(nca_output_multiple)
+Stat_report1        = summarize(report1.reportdf, parameters = [:doseamt, :kel, :half_life, :tmax, :cmax, :auclast, :auc_tau_obs, :vz_f_obs, :cl_f_obs, :aumcinf_obs, :tau, :cavgss])
 ```
 
 #### Documentation
@@ -179,5 +177,5 @@ The NCA report can be saved as a CSV file for further analysis
 
 ```julia
 CSV.write("NCA_single_dose.csv", final)      # Single-NCA final report
-CSV.write("NCA_multiple_dose.csv", report1)  # Multiple-NCA final report
+CSV.write("NCA_multiple_dose.csv", report1.reportdf)  # Multiple-NCA final report
 ```
