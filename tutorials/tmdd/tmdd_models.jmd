@@ -1,7 +1,6 @@
 ---
 title : Target Mediated Drug Disposition Models (TMDD)
 date: `j Date(now())`
-css: ../../assets/resources.css
 ---
 
 ```julia; echo = false
@@ -9,7 +8,7 @@ using Dates
 ```
 
 ```julia
-using Pumas, Plots, DataFrames, StatsPlots
+using Pumas, PumasPlots, Random, PlottingUtilities, CairoMakie
 ```
 
 ## Introduction
@@ -37,6 +36,9 @@ The Compartments are:
 
 ```julia
 tmdd_full_model   = @model begin
+  @metadata begin
+    timeu = u"hr"
+  end
   @param begin
     tvCl          ∈ RealDomain(lower=0)
     tvVc          ∈ RealDomain(lower=0)
@@ -59,7 +61,10 @@ tmdd_full_model   = @model begin
     Kon           = tvKon
     Koff          = tvKoff
     Kint          = tvKint
-    bioav         = (Ligand=1/Vc,)    # The drug enters into the system as concentrations
+  end
+
+  @dosecontrol begin
+    bioav         = (Ligand=1/tvVc,)    # The drug enters into the system as concentrations
   end
 
   @init begin
@@ -70,11 +75,11 @@ tmdd_full_model   = @model begin
     Kel          := Cl/Vc
     K12          := Q/Vc
     K21          := Q/Vp
-    R0            = Ksyn/Kdeg
-    Ligand_tot    = Ligand + Complex    # Total Ligand Concentration
-    Rtot          = Receptor + Complex  # Total Receptor Concentration
-    TO            = Receptor/Rtot       # Receptor occupancy
-    Ratio_Rec     = Receptor/R0         # Ratio of Free Receptor to Baseline value
+    R0           := Ksyn/Kdeg
+    Ligand_tot   := Ligand + Complex    # Total Ligand Concentration
+    Rtot         := Receptor + Complex  # Total Receptor Concentration
+    TO           := Receptor/Rtot       # Receptor occupancy
+    Ratio_Rec    := Receptor/R0         # Ratio of Free Receptor to Baseline value
   end
 
   @dynamics begin
@@ -85,8 +90,11 @@ tmdd_full_model   = @model begin
   end
 
   @derived begin
+    "Free Ligand Concentration (mg/L)"
     Free_ligand   = @. Ligand
+    "Free Receptor Concentration (mg/L)"
     Free_receptor = @. Receptor
+    "Free Complex Concentration (mg/L)"
     Free_complex  = @. Complex
   end
 end
@@ -107,64 +115,57 @@ param_full = (  tvCl   = 0.001,   # Clearance of the drug (L/hr)
 
 **Simulating a population of four subjects with different doses**
 
- * Subject 1 receives a dose of 1.5 mg given as an IV-Bolus at `time=0`
- * Subject 2 receives a dose of 5 mg given as an IV-Bolus at `time=0`
- * Subject 3 receives a dose of 15 mg given as an IV-Bolus at `time=0`
- * Subject 4 receives a dose of 45 mg given as an IV-Bolus at `time=0`
+ * Subject 1 receives a dose of 1.5 mg given as an IV-Bolus at `time = 0`
+ * Subject 2 receives a dose of 5 mg given as an IV-Bolus at `time = 0`
+ * Subject 3 receives a dose of 15 mg given as an IV-Bolus at `time = 0`
+ * Subject 4 receives a dose of 45 mg given as an IV-Bolus at `time = 0`
 
 ```julia
-evs1   = DosageRegimen(1.5, time=0, cmt=1)
-sub1   = Subject(id=1, events=evs1, covariates=(dose=1.5,))
-evs2   = DosageRegimen(5, time=0, cmt=1)
-sub2   = Subject(id=2, events=evs2, covariates=(dose=5,))
-evs3   = DosageRegimen(15, time=0, cmt=1)
-sub3   = Subject(id=3, events=evs3, covariates=(dose=15,))
-evs4   = DosageRegimen(45, time=0, cmt=1)
-sub4   = Subject(id=4, events=evs4, covariates=(dose=45,))
-pop    = [sub1,sub2,sub3,sub4];
+tmdd_observations = (Free_ligand = nothing, Free_receptor = nothing, Free_complex = nothing)
+pop = map((subj, amt) -> Subject(id=subj, 
+                                 events = DosageRegimen(amt, time = 0, cmt = 1), 
+                                 covariates = (dose = amt,), 
+                                 observations = tmdd_observations), 
+                                 1:4, #subject ids
+                                 [1.5, 5, 15, 45] # doses
+                                 )
 ```
 
 Use the `simobs` function to run the simulation
 
-```julia
-sim_full = simobs(tmdd_full_model, pop, param_full, obstimes=0.01:1:500)
-df_full  = DataFrame(sim_full);
+```julia; results = "hidden"
+sim_full = simobs(tmdd_full_model, pop, param_full, obstimes = 0.01:1:500)
 ```
 
-Plot **Time vs Lignad Concentration**
-
 ```julia
-@df df_full plot(:time, :Free_ligand, group=:dose, yaxis=:log, yticks=[0.001,0.01,0.1,1,10,100,1000], ylims=(0.001,1000), legend=:bottomleft, linewidth=1.5,
-                title="Time vs Free Ligand Concentration", xlabel="Time (hr)", ylabel="Free Ligand Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+interactive!(false)
+p1 = sim_plot(tmdd_full_model, 
+             sim_full, observations = :Free_ligand)[1]
+Label(p1[0, :], "Full TMDD Model: Free Ligand Concentration", textsize = 30) 
+p1
 ```
 
-Plot **Time vs Receptor Concentration**
-
 ```julia
-@df df_full plot(:time, :Free_receptor, group=:dose, yaxis=:log, yticks=[0.001,0.01,0.1,1,10,100,1000], ylims=(0.001,1000), legend=:topleft, linewidth=1.5,
-                title="Time vs Free Receptor Concentration", xlabel="Time (hr)", ylabel="Free Receptor Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+p2 = sim_plot(tmdd_full_model, 
+             sim_full, observations = :Free_receptor)[1]
+Label(p2[0, :], "Full TMDD Model: Free Receptor Concentration", textsize = 30) 
+p2
 ```
 
-Plot **Time vs Complex Concentration**
-
 ```julia
-@df df_full plot(:time, :Free_complex, group=:dose, yaxis=:log, yticks=[0.001,0.01,0.1,1,10,100,1000], ylims=(0.001,1000), legend=:bottomleft, linewidth=1.5,
-                title="Time vs Free Complex Concentration", xlabel="Time (hr)", ylabel="Free Complex Concentration (mg/L)", legendtitle="Dose (mg/kg)")
-```
-
-Plot **Time vs Lignad,Receptor & Complex Concentration**
-
-```julia
-@df df_full plot(:time, :Free_ligand, yaxis=:log, yticks=[0.001,0.01,0.1,1,10,100,1000], ylims=(0.001,1000), linewidth=1.5,
-                title="Time vs Concentration", label="Ligand", xlabel="Time (hr)", ylabel="Concentration (mg/L)", legend=:outertopright)
-@df df_full plot!(:time, :Free_receptor, label="Receptor", linewidth=1.5)
-@df df_full plot!(:time, :Free_complex, label="Complex", linewidth=1.5)
+p3 = sim_plot(tmdd_full_model, 
+             sim_full, observations = :Free_complex)[1]
+Label(p3[0, :], "Full TMDD Model: Free Complex Concentration", textsize = 30) 
+p3
 ```
 
 #### Quasi-Steady State (QSS) Model
 
 ```julia
 tmdd_qss_model    = @model begin
+  @metadata begin
+    timeu = u"hr"
+  end
   @param begin
     tvCl          ∈ RealDomain(lower=0)
     tvVc          ∈ RealDomain(lower=0)
@@ -187,7 +188,10 @@ tmdd_qss_model    = @model begin
     Kon           = tvKon
     Koff          = tvKoff
     Kint          = tvKint
-    bioav         = (Ltot=1/Vc,)      # The drug enters into the system as concentrations
+  end
+
+  @dosecontrol begin
+    bioav         = (Ltot=1/tvVc,)      # The drug enters into the system as concentrations
   end
 
   @init begin
@@ -203,8 +207,8 @@ tmdd_qss_model    = @model begin
     Conc_lig     := 1/2*((Ltot-Rtot-Kss) + sqrt((Ltot-Rtot-Kss)^2+4*Kss*Ltot))
     Free_receptor = Rtot - (Ltot - Conc_lig)
     Free_complex  = Ltot - Conc_lig
-    TO            = Free_receptor/Rtot    # Receptor occupancy
-    Ratio_Rec     = Free_receptor/R0      # Ratio of Free Receptor to Baseline value
+    TO            := Free_receptor/Rtot    # Receptor occupancy
+    Ratio_Rec     := Free_receptor/R0      # Ratio of Free Receptor to Baseline value
 
   end
 
@@ -215,6 +219,7 @@ tmdd_qss_model    = @model begin
   end
 
   @derived begin
+    "Free Ligand Concentration (mg/L)"
     Free_ligand   = @. Conc_lig
   end
 end
@@ -236,30 +241,32 @@ param_qss = ( tvCl   = 0.001,   # Clearance of the drug (L/hr)
 
 Use the `simobs` function to run the simulation
 
-```julia
-sim_qss = simobs(tmdd_qss_model, pop, param_qss, obstimes=0.1:1:500)
-df_qss  = DataFrame(sim_qss);
+```julia; results = "hidden"
+sim_qss = simobs(tmdd_qss_model, pop, param_qss, obstimes = 0.1:1:500)
 ```
 
-Plot **Time vs Lignad Concentration**
-
 ```julia
-@df df_qss plot(:time, :Free_ligand, group=:dose, yaxis=:log, yticks=[0.001,0.01,0.1,1,10,100,1000], ylims=(0.001,1000), legend=:bottomleft, linewidth=1.5,
-                title="Time vs Free Ligand Concentration", xlabel="Time (hr)", ylabel="Free Ligand Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+interactive!(false)
+p4 = sim_plot(tmdd_qss_model, 
+             sim_qss, observations = :Free_ligand)[1]
+Label(p4[0, :], "Quasi-Steady State Model: Free Ligand Concentration", textsize = 30) 
+p4
 ```
 
-Plot **Time vs Receptor Concentration**
-
 ```julia
-@df df_qss plot(:time, :Free_receptor, group=:dose, legend=:topleft, linewidth=1.5,
-                title="Time vs Free Receptor Concentration", xlabel="Time (hr)", ylabel="Free Receptor Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+interactive!(false)
+p5 = sim_plot(tmdd_qss_model, 
+             sim_qss, observations = :Free_receptor)[1]
+Label(p5[0, :], "Quasi-Steady State Model: Free Receptor Concentration", textsize = 30) 
+p5
 ```
 
-Plot **Time vs Complex Concentration**
-
 ```julia
-@df df_qss plot(:time, :Free_complex, group=:dose, legend=:topleft, linewidth=1.5,
-                title="Time vs Free Complex Concentration", xlabel="Time (hr)", ylabel="Free Complex Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+interactive!(false)
+p6 = sim_plot(tmdd_qss_model, 
+             sim_qss, observations = :Free_complex)[1]
+Label(p6[0, :], "Quasi-Steady State Model: Free Complex Concentration", textsize = 30) 
+p6
 ```
 
 
@@ -267,6 +274,9 @@ Plot **Time vs Complex Concentration**
 
 ```julia
 tmdd_con_rtot_model = @model begin
+  @metadata begin
+    timeu = u"hr"
+  end
   @param begin
     tvCl            ∈ RealDomain(lower=0)
     tvVc            ∈ RealDomain(lower=0)
@@ -287,7 +297,10 @@ tmdd_con_rtot_model = @model begin
     Kon             = tvKon
     KD              = tvKD
     R0              = tvR0
-    bioav           = (Ligand=1/Vc,)       # The drug enters into the system as concentrations
+  end
+
+  @dosecontrol begin
+    bioav           = (Ligand=1/tvVc,)       # The drug enters into the system as concentrations
   end
 
   @vars begin
@@ -309,7 +322,9 @@ tmdd_con_rtot_model = @model begin
   end
 
   @derived begin
+    "Free Ligand Concentration (mg/L)"
     Free_ligand     = @. Ligand
+    "Free Complex Concentration (mg/L)"
     Free_complex    = @. Complex
   end
 end
@@ -330,37 +345,41 @@ param_con_rtot = (  tvCl   = 0.001,   # Clearance of the drug (L/hr)
 
 Use the `simobs` function to run the simulation
 
-```julia
-sim_con_rtot = simobs(tmdd_con_rtot_model, pop, param_con_rtot, obstimes=0.1:1:500)
-df_con_rtot  = DataFrame(sim_con_rtot);
+```julia; results = "hidden"
+sim_con_rtot = simobs(tmdd_con_rtot_model, pop, param_con_rtot, obstimes = 0.1:1:500)
 ```
 
-Plot **Time vs Lignad Concentration**
-
 ```julia
-@df df_con_rtot plot(:time, :Free_ligand, group=:dose, yaxis=:log, yticks=[0.001,0.01,0.1,1,10,100,1000], ylims=(0.001,1000), legend=:bottomleft, linewidth=1.5,
-                title="Time vs Free Ligand Concentration", xlabel="Time (hr)", ylabel="Free Ligand Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+interactive!(false)
+p7 = sim_plot(tmdd_con_rtot_model, 
+             sim_con_rtot, observations = :Free_ligand)[1]
+Label(p7[0, :], "Constant Rtot Model: Free Ligand Concentration", textsize = 30) 
+p7
 ```
 
-Plot **Time vs Receptor Concentration**
-
 ```julia
-@df df_con_rtot plot(:time, :Free_receptor, group=:dose, legend=:topleft, linewidth=1.5,
-                title="Time vs Free Receptor Concentration", xlabel="Time (hr)", ylabel="Free Receptor Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+interactive!(false)
+p8 = sim_plot(tmdd_con_rtot_model, 
+             sim_con_rtot, observations = :Free_receptor)[1]
+Label(p8[0, :], "Constant Rtot Model: Free Receptor Concentration", textsize = 30) 
+p8
 ```
 
-Plot **Time vs Complex Concentration**
-
 ```julia
-@df df_con_rtot plot(:time, :Free_complex, group=:dose, legend=:bottomleft, linewidth=1.5,
-                title="Time vs Free Complex Concentration", xlabel="Time (hr)", ylabel="Free Complex Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+interactive!(false)
+p9 = sim_plot(tmdd_con_rtot_model, 
+             sim_con_rtot, observations = :Free_complex)[1]
+Label(p9[0, :], "Constant Rtot Model: Free Complex Concentration", textsize = 30) 
+p9
 ```
-
 
 #### Irreversible Binding Model
 
 ```julia
 tmdd_ib_model     = @model begin
+  @metadata begin
+    timeu = u"hr"
+  end
   @param begin
     tvCl          ∈ RealDomain(lower=0)
     tvVc          ∈ RealDomain(lower=0)
@@ -381,7 +400,10 @@ tmdd_ib_model     = @model begin
     Ksyn          = tvKsyn
     R0            = tvR0
     Kint          = tvKint
-    bioav         = (Ligand=1/Vc,)     # The drug enters into the system as concentrations
+  end
+
+  @dosecontrol begin
+    bioav         = (Ligand=1/tvVc,)     # The drug enters into the system as concentrations
   end
 
   @init begin
@@ -407,8 +429,11 @@ tmdd_ib_model     = @model begin
   end
 
   @derived begin
+    "Free Ligand Concentration (mg/L)"
     Free_ligand   = @. Ligand
+    "Free Receptor Concentration (mg/L)"
     Free_receptor = @. Receptor
+    "Free Complex Concentration (mg/L)"
     Free_complex  = @. Complex
   end
 end
@@ -429,37 +454,41 @@ param_ib = (  tvCl   = 0.001,   # Clearance of the drug (L/hr)
 
 Use the `simobs` function to run the simulation
 
-```julia
+```julia; results = "hidden"
 sim_ib = simobs(tmdd_ib_model, pop, param_ib, obstimes=0.1:1:500)
-df_ib  = DataFrame(sim_ib);
 ```
-
-Plot **Time vs Lignad Concentration**
 
 ```julia
-@df df_ib plot(:time, :Free_ligand, group=:dose, yaxis=:log, yticks=[0.001,0.01,0.1,1,10,100,1000], ylims=(0.001,1000), legend=:bottomleft, linewidth=1.5,
-                title="Time vs Free Ligand Concentration", xlabel="Time (hr)", ylabel="Free Ligand Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+interactive!(false)
+p10 = sim_plot(tmdd_ib_model, 
+             sim_ib, observations = :Free_ligand)[1]
+Label(p10[0, :], "Irreversible Binding Model: Free Ligand Concentration", textsize = 30) 
+p10
 ```
-
-Plot **Time vs Receptor Concentration**
 
 ```julia
-@df df_ib plot(:time, :Free_receptor, group=:dose, legend=:topleft, linewidth=1.5,
-                title="Time vs Free Receptor Concentration", xlabel="Time (hr)", ylabel="Free Receptor Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+interactive!(false)
+p11 = sim_plot(tmdd_ib_model, 
+             sim_ib, observations = :Free_receptor)[1]
+Label(p11[0, :], "Irreversible Binding Model: Free Receptor Concentration", textsize = 30) 
+p11
 ```
-
-Plot **Time vs Complex Concentration**
 
 ```julia
-@df df_ib plot(:time, :Free_complex, group=:dose, legend=:topleft, linewidth=1.5,
-                title="Time vs Free Complex Concentration", xlabel="Time (hr)", ylabel="Free Complex Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+interactive!(false)
+p12 = sim_plot(tmdd_ib_model, 
+             sim_ib, observations = :Free_complex)[1]
+Label(p12[0, :], "Irreversible Binding Model: Free Complex Concentration", textsize = 30) 
+p12
 ```
-
 
 #### Wagner Model
 
 ```julia
 tmdd_wagner_model = @model begin
+  @metadata begin
+    timeu = u"hr"
+  end
   @param begin
     tvCl          ∈ RealDomain(lower=0)
     tvVc          ∈ RealDomain(lower=0)
@@ -478,7 +507,10 @@ tmdd_wagner_model = @model begin
     Kint          = tvKint
     KD            = tvKD
     R0            = tvR0
-    bioav         = (Ltot=1/Vc,)      # The drug enters into the system as concentrations
+  end
+
+  @dosecontrol begin
+    bioav         = (Ltot=1/tvVc,)      # The drug enters into the system as concentrations
   end
 
   @vars begin
@@ -500,7 +532,8 @@ tmdd_wagner_model = @model begin
   end
 
   @derived begin
-    Free_ligand   = @. Conc_lig
+    "Free Ligand Concentration (mg/L)"
+    Free_ligand   = @. Conc_lig 
   end
 end
 ```
@@ -519,30 +552,32 @@ param_wagner = (  tvCl   = 0.001,   # Clearance of the drug (L/hr)
 
 Use the `simobs` function to run the simulation
 
-```julia
-sim_wagner = simobs(tmdd_wagner_model, pop, param_wagner, obstimes=0.1:1:500)
-df_wagner  = DataFrame(sim_wagner);
+```julia; results = "hidden"
+sim_wagner = simobs(tmdd_wagner_model, pop, param_wagner, obstimes = 0.1:1:500)
 ```
 
-Plot **Time vs Lignad Concentration**
-
 ```julia
-@df df_wagner plot(:time, :Free_ligand, group=:dose, yaxis=:log, yticks=[0.001,0.01,0.1,1,10,100,1000], ylims=(0.001,1000), legend=:bottomleft, linewidth=1.5,
-                title="Time vs Free Ligand Concentration", xlabel="Time (hr)", ylabel="Free Ligand Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+interactive!(false)
+p13 = sim_plot(tmdd_wagner_model, 
+             sim_wagner, observations = :Free_ligand)[1]
+Label(p13[0, :], "Wagner Model: Free Ligand Concentration", textsize = 30) 
+p13
 ```
 
-Plot **Time vs Receptor Concentration**
-
 ```julia
-@df df_wagner plot(:time, :Free_receptor, group=:dose, legend=:topleft, linewidth=1.5,
-                title="Time vs Free Receptor Concentration", xlabel="Time (hr)", ylabel="Free Receptor Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+interactive!(false)
+p14 = sim_plot(tmdd_wagner_model, 
+             sim_wagner, observations = :Free_receptor)[1]
+Label(p14[0, :], "Wagner Model: Free Receptor Concentration", textsize = 30) 
+p14
 ```
 
-Plot **Time vs Complex Concentration**
-
 ```julia
-@df df_wagner plot(:time, :Free_complex, group=:dose, legend=:topleft, linewidth=1.5,
-                title="Time vs Free Complex Concentration", xlabel="Time (hr)", ylabel="Free Complex Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+interactive!(false)
+p15 = sim_plot(tmdd_wagner_model, 
+             sim_wagner, observations = :Free_complex)[1]
+Label(p15[0, :], "Wagner Model: Free Complex Concentration", textsize = 30) 
+p15
 ```
 
 
@@ -550,6 +585,9 @@ Plot **Time vs Complex Concentration**
 
 ```julia
 tmdd_con_rtot_ib_model = @model begin
+  @metadata begin
+    timeu = u"hr"
+  end
   @param begin
     tvCl            ∈ RealDomain(lower=0)
     tvVc            ∈ RealDomain(lower=0)
@@ -568,7 +606,10 @@ tmdd_con_rtot_ib_model = @model begin
     Kint            = tvKint
     Kon             = tvKon
     R0              = tvR0
-    bioav           = (Ligand=1/Vc,)      # The drug enters into the system as concentrations
+  end
+
+  @dosecontrol begin
+    bioav           = (Ligand=1/tvVc,)      # The drug enters into the system as concentrations
   end
 
   @vars begin
@@ -589,7 +630,9 @@ tmdd_con_rtot_ib_model = @model begin
   end
 
   @derived begin
+    "Free Ligand Concentration (mg/L)"
     Free_ligand     = @. Ligand
+    "Free Complex Concentration (mg/L)"
     Free_complex    = @. Complex
   end
 end
@@ -609,37 +652,41 @@ param_con_rtot_ib = (   tvCl   = 0.001,   # Clearance of the drug (L/hr)
 
 Use the `simobs` function to run the simulation
 
-```julia
-sim_con_rtot_ib = simobs(tmdd_con_rtot_ib_model, pop, param_con_rtot_ib, obstimes=0.1:1:500)
-df_con_rtot_ib  = DataFrame(sim_con_rtot_ib);
+```julia; results = "hidden"
+sim_con_rtot_ib = simobs(tmdd_con_rtot_ib_model, pop, param_con_rtot_ib, obstimes = 0.1:1:500)
 ```
 
-Plot **Time vs Free Ligand Concentration**
-
 ```julia
-@df df_con_rtot_ib plot(:time, :Free_ligand, group=:dose, yaxis=:log, yticks=[0.001,0.01,0.1,1,10,100,1000], ylims=(0.001,1000), legend=:bottomleft, linewidth=1.5,
-                title="Time vs Free Ligand Concentration", xlabel="Time (hr)", ylabel="Free Ligand Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+interactive!(false)
+p16 = sim_plot(tmdd_con_rtot_ib_model, 
+             sim_con_rtot_ib, observations = :Free_ligand)[1]
+Label(p16[0, :], "Constant Rtot + Ireversible Binding Model: Free Ligand Concentration", textsize = 30) 
+p16
 ```
 
-Plot **Time vs Receptor Concentration**
-
 ```julia
-@df df_con_rtot_ib plot(:time, :Free_receptor, group=:dose, legend=:topleft, linewidth=1.5,
-                title="Time vs Free Receptor Concentration", xlabel="Time (hr)", ylabel="Free Receptor Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+interactive!(false)
+p17 = sim_plot(tmdd_con_rtot_ib_model, 
+             sim_con_rtot_ib, observations = :Free_receptor)[1]
+Label(p17[0, :], "Constant Rtot + Ireversible Binding Model: Free Receptor Concentration", textsize = 30) 
+p17
 ```
 
-Plot **Time vs Free Complex Concentration**
-
 ```julia
-@df df_con_rtot_ib plot(:time, :Free_complex, group=:dose, legend=:bottomleft, linewidth=1.5,
-                title="Time vs Free Complex Concentration", xlabel="Time (hr)", ylabel="Free Complex Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+interactive!(false)
+p18 = sim_plot(tmdd_con_rtot_ib_model, 
+             sim_con_rtot_ib, observations = :Free_complex)[1]
+Label(p18[0, :], "Constant Rtot + Ireversible Binding Model: Free Complex Concentration", textsize = 30) 
+p18
 ```
-
 
 #### Michaelis-Menten Model
 
 ```julia
 tmdd_mm_model   = @model begin
+  @metadata begin
+    timeu = u"hr"
+  end
   @param begin
     tvCl        ∈ RealDomain(lower=0)
     tvVc        ∈ RealDomain(lower=0)
@@ -656,7 +703,10 @@ tmdd_mm_model   = @model begin
     Vp          = tvVp
     Vm          = tvVm
     Km          = tvKm
-    bioav       = (Ligand=1/Vc,)     # The drug enters into the system as concentrations
+  end
+
+  @dosecontrol begin
+    bioav           = (Ligand=1/tvVc,)      # The drug enters into the system as concentrations
   end
 
   @vars begin
@@ -671,6 +721,7 @@ tmdd_mm_model   = @model begin
   end
 
   @derived begin
+    "Free Ligand Concentration (mg/L)"
     Free_ligand = @. Ligand
   end
 end
@@ -689,14 +740,14 @@ param_mm = (  tvCl   = 0.001,   # Clearance (L/hr)
 
 Use the `simobs` function to run the simulation
 
-```julia
+```julia; results = "hidden"
 sim_mm = simobs(tmdd_mm_model, pop, param_mm, obstimes=0.01:1:500)
-df_mm  = DataFrame(sim_mm);
 ```
 
-Plot **Time vs Lignad Concentration**
-
 ```julia
-@df df_mm plot(:time, :Free_ligand, group=:dose, yaxis=:log, yticks=[0.001,0.01,0.1,1,10,100,1000], ylims=(0.001,1000), legend=:bottomleft, linewidth=1.5,
-                title="Time vs Free Ligand Concentration", xlabel="Time (hr)", ylabel="Free Ligand Concentration (mg/L)", legendtitle="Dose (mg/kg)")
+interactive!(false)
+p19 = sim_plot(tmdd_con_rtot_ib_model, 
+             sim_con_rtot_ib, observations = :Free_ligand)[1]
+Label(p19[0, :], "Michaelis-Menten Model: Free Ligand Concentration", textsize = 30) 
+p19
 ```
