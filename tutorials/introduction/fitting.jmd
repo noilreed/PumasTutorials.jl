@@ -1,6 +1,18 @@
 ---
 title: Fitting models in Pumas
+date: `j Date(now())`
 ---
+
+```julia; echo = false
+using Dates
+```
+
+```julia
+using Random
+using Pumas
+using PlottingUtilities
+using PumasPlots
+```
 
 # Fitting a PK model
 In this tutorial we will go through the steps required to fit a model in Pumas.jl.
@@ -10,16 +22,12 @@ We start by simulating a population from a two compartment model with oral
 absorption, and then we show how to fit and do some model validation using
 the fit output.
 
-```julia
-using Pumas, Plots, Random
-Random.seed!(0);
-```
 
 The dosage regimen is an dose of 100 into `Depot` at time 0, followed
 by two additional (`addl=2`) doses every fourth hour
 
 ```julia
-repeated_dose_regimen = DosageRegimen(100, time=0, ii=4, addl=2)
+repeated_dose_regimen = DosageRegimen(100, time = 0, ii = 4, addl = 2)
 ```
 
 As ususal, let's define a function to choose body weight randomly
@@ -32,13 +40,14 @@ choose_covariates() = (Wt = rand(55:80),)
 and generate a population of subjects with a random weight generated from the covariate function above
 
 ```julia
-pop = Population(map(i -> Subject(id = i,
-                                  events = repeated_dose_regimen,
-                                  observations =(dv=Float64[],),
-                                  covariates = choose_covariates()),
-                                  1:24))
+pop =  map(i -> Subject(id = i,
+                events = repeated_dose_regimen,
+                observations = (dv = nothing,),
+                covariates = choose_covariates()),
+                1:24)
 ```
 We now have 24 subjects equipped with a weight and a dosage regimen.
+
 ## The PK model of drug concentration and elimination
 To simulate a data set and attempt to estimate the data generating
 parameters, we have to set up the actual pharmacokinetics (PK) model
@@ -97,10 +106,20 @@ if the concentration is zero the variance in distribution of the
 explained variable will also be zero. Let's use the default
 parameters, as set in the `@param`-block, and simulate the data
 
+```julia; results = "hidden"
+param = init_params(mymodel)
+Random.seed!(1234)
+obs = simobs(mymodel, 
+             pop, 
+             param, 
+             obstimes = 1:1:72)
+```
+
 ```julia
-param = init_param(mymodel)
-obs = simobs(mymodel, pop, param, obstimes=1:1:72)
-plot(obs)
+interactive!(false)
+p = sim_plot(mymodel, 
+          obs, observations = :dv)
+p[1]          
 ```
 
 ## Fitting the model
@@ -108,7 +127,9 @@ To fit the model, we use the `fit` function. It requires a model, a population,
 a named tuple of parameters and a likelihood approximation method.
 
 ```julia
-result = fit(mymodel, Subject.(obs), param, Pumas.FOCEI())
+result = fit(mymodel, 
+            Subject.(obs), 
+            param, Pumas.FOCEI(), ensemblealg = EnsembleThreads())
 ```
 
 Of course, we started the fitting at the true parameters, so let us define
@@ -123,7 +144,7 @@ alternative_param = (
     Ω  = Diagonal([0.18,0.04, 0.03]),
     σ_prop = 0.04)
 
-fit(mymodel, Subject.(obs), alternative_param, Pumas.FOCEI())
+fit(mymodel, Subject.(obs), alternative_param, Pumas.FOCEI(), ensemblealg = EnsembleThreads())
 ```
 
 and we see that the estimates are essentially the same up to numerical noise.
@@ -143,13 +164,13 @@ to better understand the statistical properties of our model, we can
 simulate a much larger population and try again
 
 ```julia
-pop_big = Population(map(i -> Subject(id = i,
-                                  events = repeated_dose_regimen,
-                                  observations =(dv=Float64[],),
-                                  covariates = choose_covariates()),
-                                  1:100))
+pop_big = map(i -> Subject(id = i,
+                           events = repeated_dose_regimen,
+                           observations = (dv = nothing,),
+                           covariates = choose_covariates()),
+                           1:100)
 obs_big = simobs(mymodel, pop_big, param, obstimes=1:1:72)
-result_big = fit(mymodel, Subject.(obs_big), param, Pumas.FOCEI())
+result_big = fit(mymodel, Subject.(obs_big), param, Pumas.FOCEI(), ensemblealg = EnsembleThreads())
 infer(result_big)
 ```
 
@@ -157,13 +178,14 @@ This time we see similar estimates, but much narrower confidence intervals
 across the board.
 
 ## Estimating a misspecified model
-To explore some of the diagnostics tools available in Julia, we can try 
+To explore some of the diagnostics tools available in Pumas, we can try 
 to set up a model that does not fit out data generating process. This time
 we propose a one compartent model. The problem with estimating a one compartment
 model when the data comes from a two compartment model, is that we cannot capture
 the change in slope on the concentration profile you get with a two compartment model.
 This means that even if we can capture the model fit someone well on average, we
 should expect to see systematic trends in the residual diagnostics post estimation.
+
 ```julia
 mymodel_misspec = @model begin
   @param   begin
@@ -202,20 +224,30 @@ alternative_param_no_q = (
     Ω  = Diagonal([0.18,0.04, 0.03]),
     σ_prop = 0.04)
 
-result_misspec = fit(mymodel_misspec, Subject.(obs), alternative_param_no_q, Pumas.FOCEI())
+result_misspec = fit(mymodel_misspec, Subject.(obs), 
+                     alternative_param_no_q, 
+                     Pumas.FOCEI(), ensemblealg = EnsembleThreads())
 ```
 
-First off, the absorption flow parameters `ka` is quite off the charts,
+First off, the absorption flow parameters `Ka` is quite off the charts,
 so that would be a warning sign off the bat, but let us try to use a
-tool in the toolbox to asses the fit: the weighted residuals. We get
-these by using the `wresiduals` function
+tool in the toolbox to asses the goodness of fit. We get
+these by using the `inspect` function
 
 ```julia
-wres = wresiduals(result)
-wres_misspec = wresiduals(result_misspec)
-p1 = plot([w.wres.dv for w in wres], title="Correctly specified", legend=false)
-p2 = plot([w.wres.dv for w in wres_misspec], title = "Misspecified", legend=false)
-plot(p1, p2)
+res_inspect_2cmp = inspect(result)
+res_inspect_1cmp = inspect(result_misspec)
+p1 = goodness_of_fit(res_inspect_1cmp)
+p2 = goodness_of_fit(res_inspect_2cmp)
+```
+
+```julia
+p1[1]
+```
+
+
+```julia
+p2[1]
 ```
 The weighted residuals should be standard normally distributed with throughout the time
 domain. We see that this is the case for the correctly specified model, but certainly not
