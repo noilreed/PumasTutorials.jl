@@ -1,10 +1,19 @@
 ---
 title: Absorption models
-date: April 20, 2020
+date: `j Date(now())`
 ---
 
+
+```julia; echo = false
+using Dates
+```
+
 ```julia
-using Pumas, Plots
+using Random
+using Pumas
+using PlottingUtilities
+using PumasPlots
+using CairoMakie
 ```
 
 # Introduction
@@ -23,9 +32,14 @@ In this tutorial, we will cover the following absorption models
 ## Generating the population
 
 ```julia;
-sd = DosageRegimen(100, time=0)
-choose_covariates() = (Wt = rand(55:80), dose=100)
-sd_with_covariates = map(i -> Subject(id=i, events=sd, covariates=choose_covariates()), 1:10)
+sd = DosageRegimen(100, time = 0)
+Random.seed!(1234)
+choose_covariates() = (Wt = rand(55:80), dose = 100)
+sd_with_covariates = map(i -> Subject(id = i, 
+                                      events = sd, 
+                                      covariates = choose_covariates(),
+                                      observations = (conc = nothing,)), 
+                                      1:10)
 ```
 For a more indepth tutorial, please see the tutorial on [generating and simulation populations](https://tutorials.pumas.ai/html/introduction/simulating_populations.html)
 
@@ -62,10 +76,9 @@ foabs = @model begin
     Central' =  Ka*Depot - Central*CL/V
   end
 
-  @derived begin
-    conc = Central/V
+  @observed begin
+    conc = @. Central/V
   end
-
 end
 
 ```
@@ -80,9 +93,17 @@ param = (
 
 We can now use the data and model with parameters to simulate a first-order absorption profile
 
+```julia; results="hidden"
+Random.seed!(1234)
+obs = simobs(foabs, sd_with_covariates, param, obstimes = 0:1:48)
+```
+
 ```julia
-obs = simobs(foabs, sd_with_covariates, param, obstimes=0:1:48)
-foplot = plot(obs, title = "First-order absorption")
+interactive!(false)
+p = sim_plot(foabs, 
+          obs, observations = :conc)[1]
+Label(p[0, :], "First-order Absorption", textsize = 30) 
+p        
 ```
 
 ## zero-order absorption
@@ -105,6 +126,9 @@ zoabs = @model begin
   @pre begin
     CL = tvcl*(Wt/11)^0.75*exp(η[1])
     V  = tvv*(Wt/11)*exp(η[2])
+  end
+
+  @dosecontrol begin
     duration =  (Central = tvduration*exp(η[3]),)
   end
 
@@ -112,7 +136,7 @@ zoabs = @model begin
     Central' =  - Central*CL/V
   end
 
-  @derived begin
+  @observed begin
     conc = Central/V
   end
 
@@ -136,14 +160,25 @@ zero-order absorption profiles
 We can now use the data and model with parameters to simulate a zero-order absorption profile
 
 ```julia
-sd = DosageRegimen(100, time=0, rate=-2)
+sd = DosageRegimen(100, time = 0, rate = -2)
 choose_covariates() = (Wt = rand(55:80), dose=100)
-sd_with_covariates = map(i -> Subject(id=i, events=sd, covariates=choose_covariates()), 1:10)
+sd_with_covariates = map(i -> Subject(id = i, 
+                                      events = sd, 
+                                      covariates = choose_covariates(),
+                                      observations = (conc = nothing,)), 1:10)
+```
+
+```julia; results="hidden"
+Random.seed!(1234)
+obs = simobs(zoabs, sd_with_covariates, param, obstimes = 0:0.1:48)
 ```
 
 ```julia
-obs = simobs(zoabs, sd_with_covariates, param, obstimes=0:0.1:48)
-zoplot = plot(obs, title = "Zero-order absorption")
+interactive!(false)
+p = sim_plot(foabs, 
+          obs, observations = :conc)[1]
+Label(p[0, :], "Zero-order Absorption", textsize = 30) 
+p        
 ```
 
 ## mixed zero+first order absorption models
@@ -172,6 +207,9 @@ fozoabs = @model begin
     CL = tvcl*(Wt/70)^0.75*exp(η[1])
     V  = tvv*(Wt/70)*exp(η[2])
     Ka = tvka
+  end
+
+  @dosecontrol begin
     duration = (Central = tvduration,)
     bioav = (Depot = tvbio, Central = 1-tvbio)
     lags = (Depot = tvlag,)
@@ -182,7 +220,7 @@ fozoabs = @model begin
     Central' =  Ka*Depot - Central*CL/V
   end
 
-  @derived begin
+  @observed begin
     conc = Central/V
   end
 
@@ -209,17 +247,27 @@ after a lag of 2 hours.
 We can now use the data and model with parameters to simulate a simultaneous first- and zero-order absorption profile
 
 ```julia
-sd_fo = DosageRegimen(100, time=0, cmt=1, rate = 0, evid=1)
-sd_zo = DosageRegimen(100, time=0, cmt=2, rate = -2, evid=1)
+sd_fo = DosageRegimen(100, time = 0, cmt = 1, rate = 0, evid = 1)
+sd_zo = DosageRegimen(100, time = 0, cmt = 2, rate = -2, evid = 1)
 sd_fo_zo = DosageRegimen(sd_fo,sd_zo)
 
-choose_covariates() = (Wt = rand(55:80), dose=100)
-sd_with_covariates = map(i -> Subject(id=i, events=sd_fo_zo, covariates=choose_covariates()), 1:10)
+choose_covariates() = (Wt = rand(55:80), dose = 100)
+sd_with_covariates = map(i -> Subject(id = i, 
+                                      events = sd_fo_zo, 
+                                      covariates = choose_covariates(),
+                                      observations = (conc = nothing,)), 1:10)
+```
+
+```julia; results="hidden"
+obs = simobs(fozoabs, sd_with_covariates, param, obstimes = 0:0.1:24)
 ```
 
 ```julia
-obs = simobs(fozoabs, sd_with_covariates, param, obstimes=0:0.1:24)
-fozoplot = plot(obs, title = "mixed zero+first order absorption")
+interactive!(false)
+p = sim_plot(fozoabs, 
+          obs, observations = :conc)[1]
+Label(p[0, :], "Mixed zero+first order absorption", textsize = 30) 
+p        
 ```
 
 ## Two parallel first-order absorptions
@@ -249,6 +297,9 @@ two_parallel_foabs = @model begin
     V  = tvv*(Wt/70)*exp(η[2])
     Ka1 = tvka1*exp(η[3])
     Ka2 = tvka2*exp(η[4])
+  end
+
+  @dosecontrol begin
     lags = (SR = tvlag*exp(η[5]),)
     bioav = (IR = tvbio*exp(η[6]), SR = 1-tvbio*exp(η[6]))
   end
@@ -259,7 +310,7 @@ two_parallel_foabs = @model begin
     Central' =  Ka1*IR + Ka2*SR - Central*CL/V
   end
 
-  @derived begin
+  @observed begin
     conc = Central/V
   end
 
@@ -277,13 +328,23 @@ param = (
 
 We can now use the data and model with parameters to simulate a first-order absorption profile
 
-```julia
-fo_1 = DosageRegimen(100, cmt=1, time=0)
-fo_2 = DosageRegimen(100, cmt=2, time=0)
+```julia; results="hidden"
+fo_1 = DosageRegimen(100, cmt = 1, time = 0)
+fo_2 = DosageRegimen(100, cmt = 2, time = 0)
 parallel_fo = DosageRegimen(fo_1,fo_2)
-parallel_fo_with_covariates = map(i -> Subject(id=i, events=parallel_fo, covariates=choose_covariates()), 1:10)
-obs = simobs(two_parallel_foabs, parallel_fo_with_covariates, param, obstimes=0:1:48)
-parallel_fo_plot = plot(obs, title = "Two Parallel First-order absorption")
+parallel_fo_with_covariates = map(i -> Subject(id = i,
+                                               events = parallel_fo, 
+                                               covariates = choose_covariates(),
+                                               observations= (conc = nothing,)), 1:10)
+obs = simobs(two_parallel_foabs, parallel_fo_with_covariates, param, obstimes = 0:1:48)
+```
+
+```julia
+interactive!(false)
+p = sim_plot(two_parallel_foabs, 
+          obs, observations = :conc)[1]
+Label(p[0, :], "Two Parallel First-order absorption", textsize = 30) 
+p        
 ```
 
 ## Weibull-Type Absorption
@@ -337,11 +398,22 @@ param = (
 
 We can now use the data and model with parameters to simulate a weibull absorption profile
 
+```julia; results="hidden"
+wb_reg = DosageRegimen(100, cmt = 1, time = 0)
+wb_reg_with_covariates = map(i -> Subject(id = i, 
+                                          events = wb_reg, 
+                                          covariates = choose_covariates(),
+                                          observations = (conc = nothing,)), 1:10)
+obs = simobs(wb_abs, wb_reg_with_covariates, param, obstimes = 0:1:48)
+```
+
+
 ```julia
-wb_reg = DosageRegimen(100, cmt=1, time=0)
-wb_reg_with_covariates = map(i -> Subject(id=i, events=wb_reg, covariates=choose_covariates()), 1:10)
-obs = simobs(wb_abs, wb_reg_with_covariates, param, obstimes=0:1:48)
-wb_plot = plot(obs, title = "Weibull absorption")
+interactive!(false)
+p = sim_plot(wb_abs, 
+          obs, observations = :conc)[1]
+Label(p[0, :], "Weibull absorption", textsize = 30) 
+p        
 ```
 
 ## Erlang absorption
@@ -386,8 +458,8 @@ erlangabs = @model begin
     Periph' = - K21*Periph + K12*Central
   end
 
-  @derived begin
-    conc = @. Central/Vc
+  @observed begin
+    conc = Central/Vc
   end
 
 end
@@ -405,9 +477,20 @@ param = (
 
 We can now use the data and model with parameters to simulate a erlang absorption profile
 
+```julia; results="hidden"
+erlang_reg = DosageRegimen(100, cmt = 1, time = 0)
+erlang_reg_with_covariates = map(i -> Subject(id = i, 
+                                              events = erlang_reg, 
+                                              covariates = choose_covariates(),
+                                              observations = (conc = nothing,)), 1:10)
+obs = simobs(erlangabs, erlang_reg_with_covariates, param, obstimes = 0:1:24)
+```
+
+
 ```julia
-erlang_reg = DosageRegimen(100, cmt=1, time=0)
-erlang_reg_with_covariates = map(i -> Subject(id=i, events=erlang_reg, covariates=choose_covariates()), 1:10)
-obs = simobs(erlangabs, erlang_reg_with_covariates, param, obstimes=0:1:24)
-erlang_plot = plot(obs, title = "Erlang absorption")
+interactive!(false)
+p = sim_plot(erlangabs, 
+          obs, observations = :conc)[1]
+Label(p[0, :], "Erlang absorption", textsize = 30) 
+p        
 ```
