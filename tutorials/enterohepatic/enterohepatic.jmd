@@ -7,7 +7,7 @@ date: 11th June 2020
 Load the necessary libraries
 
 ```julia
-using Pumas, Plots, DataFrames, StatsPlots
+using Pumas, PumasPlots, DataFrames, Random, PlottingUtilities, CairoMakie
 ```
 
 ## Introduction
@@ -24,6 +24,10 @@ In this tutorial you will learn how to write different ways of modeling the phsy
 
 ```julia
 single_entero = @model begin
+  @metadata begin
+    timeu = u"hr"
+  end
+
   @param begin
     tvvc      ∈ RealDomain(lower=0)
     tvcl      ∈ RealDomain(lower=0)
@@ -64,7 +68,9 @@ single_entero = @model begin
   end
 
   @derived begin
+    "Plasma Concentration (mg/L)"
     cp     = @. Central/Vc
+    "Switch"
     sw     = @. Switch
   end
 end
@@ -87,23 +93,35 @@ par1 = (tvvc     = 5,     # (L)
 
 A single subject receives a dose of 500mg give as an IV-bolus at `time=0`
 
-```julia
-ev1  = DosageRegimen(500, time=0, cmt=:Central)
-sub1 = Subject(id=1, evs=ev1)
-obs1 = simobs(single_entero, sub1, par1, obstimes=0:0.1:50);
+```julia; results="hidden"
+sub1 = Subject( id=1,
+                evs= DosageRegimen(500, time=0, cmt=:Central))
+obs1 = simobs(single_entero, sub1, par1, obstimes=0:0.1:50)
 ```
 
 Convert `obs1` to a Dataframe and plot the **Concentration vs Time**
 
 ```julia
-df  = DataFrame(obs1)
-@df df plot(:time, :cp, yaxis=:log, xlabel="Time (hr)", ylabel="Concentration (mg/l)", title="Concentration vs Time", label="Predicted Conc", linewidth=2, xticks=[0,10,20,30,40,50], xlims=(0,50))
+#df  = DataFrame(obs1)
+#@df df plot(:time, :cp, yaxis=:log, xlabel="Time (hr)", ylabel="Concentration (mg/l)", title="Concentration vs Time", label="Predicted Conc", linewidth=2, xticks=[0,10,20,30,40,50], xlims=(0,50))
+
+interactive!(false)
+p1 = sim_plot(single_entero,
+              obs1, observations = :cp)[1]
+Label(p1[0, :], "Concentration vs Time", textsize = 30)
+p1
 ```
 
 Plot **Switch vs Time**. In this you can see the release from the `Bile` compartment at the specified time points.
 
 ```julia
-@df df plot(:time, :sw, xlabel="Time (hr)", ylabel="Switch", label=false, linewidth=2, xticks=[0,10,20,30,40,50], xlims=(0,50))
+#@df df plot(:time, :sw, xlabel="Time (hr)", ylabel="Switch", label=false, linewidth=2, xticks=[0,10,20,30,40,50], xlims=(0,50))
+
+interactive!(false)
+p2 = sim_plot(single_entero,
+              obs1, observations = :sw)[1]
+Label(p2[0, :], "Switch vs Time", textsize = 30)
+p2
 ```
 
 #### Continous Release of the bile using the Cosine function
@@ -113,6 +131,10 @@ Plot **Switch vs Time**. In this you can see the release from the `Bile` compart
 
 ```julia
 continous_entero = @model begin
+  @metadata begin
+    timeu = u"hr"
+  end
+
   @param begin
     tvvc   ∈ RealDomain(lower=0)
     tvcl   ∈ RealDomain(lower=0)
@@ -149,7 +171,9 @@ continous_entero = @model begin
   end
 
   @derived begin
+    "Plasma Concentration (mg/L)"
     cp     = @. Central/Vc
+    "Switch"
     sw     = @. Switch
   end
 end
@@ -171,20 +195,31 @@ par1 = (tvvc  = 5,     # (L)
 A single subject receives a dose of 500mg as an IV-Bolus at `time=0`
 
 ```julia
-ev1  = DosageRegimen(500, time=0, cmt=:Central)
-sub1 = Subject(id=1, evs=ev1)
-obs1 = simobs(continous_entero, sub1, par1, obstimes=0:0.1:70);
+sub1 = Subject(id=1, events=DosageRegimen(500, time=0, cmt=:Central))
+obs1 = simobs(continous_entero, sub1, par1, obstimes=0:0.1:70)
 ```
 
 Convert `obs1` to a Dataframe and plot the **Concentration vs Time**
 
 ```julia
-df1  = DataFrame(obs1)
-@df df1 plot(:time, :cp, yaxis=:log, xlabel="Time (hr)", ylabel="Concentration (mg/l)", label="Predcited Conc", linewidth=2, xticks=[0,10,20,30,40,50,60,70], xlims=(0,70))
+#df1  = DataFrame(obs1)
+#@df df1 plot(:time, :cp, yaxis=:log, xlabel="Time (hr)", ylabel="Concentration (mg/l)", label="Predcited Conc", linewidth=2, xticks=[0,10,20,30,40,50,60,70], xlims=(0,70))
+
+interactive!(false)
+p3 = sim_plot(continous_entero,
+              obs1, observations = :cp)[1]
+Label(p3[0, :], "Concentration vs Time", textsize = 30)
+p3
 ```
 
 Plot **Switch vs Time**. In this you can see the release from the `Bile` compartment at fixed intervals.
 
 ```julia
-@df df1 plot(:time, :sw, xlabel="Time (hr)", ylabel="Switch", label=false, linewidth=2, xticks=[0,10,20,30,40,50,60,70], xlims=(0,69))
+#@df df1 plot(:time, :sw, xlabel="Time (hr)", ylabel="Switch", label=false, linewidth=2, xticks=[0,10,20,30,40,50,60,70], xlims=(0,69))
+
+interactive!(false)
+p4 = sim_plot(continous_entero,
+              obs1, observations = :sw)[1]
+Label(p4[0, :], "Switch vs Time", textsize = 30)
+p4
 ```
