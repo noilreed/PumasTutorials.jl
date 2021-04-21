@@ -75,6 +75,19 @@ sub3    = Subject(id=3, events=ev3)
 
 #Merge 3 subjects to a build a population
 pop     = [sub1,sub2,sub3]
+
+
+# (or)
+
+#Another way to build this similar population is using this single line of code
+
+pop = map((subj, amt) -> Subject(id = subj,
+                                 events = DosageRegimen(amt, time = 0, cmt = 1, ii = 8, addl = 2),
+                                 covariates = (dose = amt,)),
+                                 #observations = tmdd_observations),
+                                 1:3, #subject ids
+                                 [60, 45, 20] # doses
+                                 )
 ```
 
 3. A total of 4 subjects receive **3 different dosage regimens** at **3 different periods**.
