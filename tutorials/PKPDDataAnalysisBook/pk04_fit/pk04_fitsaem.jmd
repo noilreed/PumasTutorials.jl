@@ -1,0 +1,261 @@
+---
+title: Exercise PK04 - Estimation of One Compartment Oral Dosing
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+For this fitting exercise we wil learn how to fit a first order one-compartment
+  absorption model. The challenge in this exercise is that the estimated values of
+  rate constants of absorption *Ka* and elimination *K* are almost identical. Thus,
+  we use a limited form with Ka = K = K¹. We will try all possible models and compare
+  various models based on the diagnostic plots and certain criteria. The basic
+  workflow for the estimation process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary libraries before we get started
+
+```julia
+using Pumas
+using PumasTutorials
+using Random
+using CSV
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of the data
+
+A Controlled Release formulation with a dose of 352.3 μg is given orally Q24 hrs
+ for 9 days (last dose=216 hrs). A total of 40 patients participated in the study.
+ Pk samples are obtaines from the patient on Day 1 - 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 23.9
+ & Day 9 - Predose, 216.5, 217, 218, 219, 220, 221, 222, 223, 224, 226, 228, 230, 240.
+ A total of 26 samples are collected from each patient.
+
+The following are the units of the dataset:
+
+ * Time (time) = hrs
+ * Plasma Concentration (dv) = μg/L
+ * Dose (amt) = mg
+
+```julia
+pk04_data_df = CSV.read("./pk_04.csv", DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary statistics of the data
+
+```julia
+stats_pk04_data = describe(pk04_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+Plot of Plasma Concentration vs Time on `Day 9`.
+
+```julia
+pk_data_plot = dropmissing(pk04_data_df, :dv)
+filter!(x -> x.time >= 216, pk_data_plot)
+@df pk_data_plot plot(:time, :dv, group=:id, label=false,
+                        xlabel = "Time (hrs)", ylabel="Concentration (ug/L)",
+                        size = (600, 600), guidefontsize = 12,
+                        title = "Concentration vs Time")
+```
+
+## NCA Analysis
+
+We will now perform an NCA analysis to get the initial estimates for fitting of
+ the given data. Since the dose is extravascular we will need to include a
+ route colum `ev`. This will help to compute the correct parameters. We will perform
+ the NCA for Day 9 (steady state) PK samples. The concentrations are in μg/L and
+ the dose is in μg, so we can parse the data to the *read_nca* function.
+
+```julia, results="hidden"
+pk04_data_nca = filter(x -> x.time >= 216, pk04_data_df)
+pk04_data_nca[:, :route] .= "ev"
+```
+
+Now, map the data variables to the *read_nca* function that prepares the data for
+ NCA analysis. You can even type **?read_nca** in the REPL and get more information
+ on the mapping of the variables.
+
+```julia
+pk04_nca = read_nca(pk04_data_nca,
+                    id     = :id,
+                    time   = :time,
+                    amt    = :amt,
+                    conc   = :dv,
+                    route  = :route)
+```
+
+A full NCAReport is generated, we will then perform summary statistics of the
+ required parameters to obtain the Mean, GeometricMean, and SD.
+
+```julia
+pk04_nca_report = NCAReport(pk04_nca, sigdig=3)
+```
+
+Perform the `Summary Statistics` for the required NCA Parameters
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk04_nca_report, [:id, :vz_f_obs, :cl_f_obs, :kel, :half_life, :aucinf_obs, :tmax, :tlag])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_f_obs, :cl_f_obs, :kel, :half_life, :aucinf_obs, :tmax, :tlag], [:id])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+We can obtain the Ka value from 0.693/(tmax/4) i.e **Ka = 0.42 hr⁻¹**
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+First we will try to fit the data to a first-order absorption model.
+
+```julia
+pk04_data = read_pumas(pk04_data_df,
+                       id           = :id,
+                       time         = :time,
+                       observations = [:dv],
+                       amt          = :amt,
+                       evid         = :evid,
+                       cmt          = :cmt,
+                       rate         = :rate)
+```
+
+##### First-order Absorption Model
+
+In this model the parameters are *Ka and K*
+
+```julia
+pk_04_kak    = @emmodel begin
+  @metadata begin
+    desc     = "PK 04 KaK Model"
+    timeu    = u"hr"
+  end
+  
+  @param begin
+    Ka       ~ 1 | LogNormal
+    K        ~ 1 | LogNormal
+    tvtlag   ~ 1 | LogNormal
+  end
+
+  @random begin
+    "Volume (L)"
+    Vc       ~ 1 | LogNormal
+  end
+
+  @pre begin
+    lags     = (Depot = tvtlag,)
+  end
+
+  @dynamics begin
+    Depot'   = -Ka*Depot
+    Central' =  Ka*Depot - K*Central
+  end
+
+  @post begin
+    cp       = Central/Vc
+  end
+
+  @error begin
+    dv       ~ ProportionalNormal(cp)
+  end
+end
+```
+
+The initial parameters are obtained from NCA analysis.
+
+```julia
+pk04_param_kak = (Ka      = 0.4,
+                  Vc      = 69,
+                  K       = 0.09,
+                  tvtlag  = 0.5)
+```
+
+## SAEM Analysis
+
+A quick estimation of the mean parameters can be done by performing a NaivePooled
+ Analysis. This will give us a good judgemnt of the parameters obtained from NCA
+ Analysis and provide better inital estimates for the fitting.
+
+```julia
+pk04_kak_fit_saem = @time fit(pk_04_kak, pk04_data, pk04_param_kak,
+                            Pumas.SAEM(), ensemlblealg=EnsembleThreads())
+
+coeftable(pk04_kak_fit_saem)
+```
+
+
+We can see clearly that the model **with lag time** is a better fit to the data. The
+ parameters of Ka and K are not distinctly identified. Hence we will reduce the
+ model Ka = K = K¹.
+
+```julia
+pk_04_kk     = @emmodel begin
+  @metadata begin
+    desc     = "PK 04 KaK Model"
+    timeu    = u"hr"
+  end
+  
+  @param begin
+    K¹       ~ 1 | LogNormal
+    tvtlag   ~ 1 | LogNormal
+  end
+
+  @random begin
+    "Volume (L)"
+    Vc       ~ 1 | LogNormal
+  end
+
+  @pre begin
+    lags     = (Depot = tvtlag,)
+  end
+
+  @dynamics begin
+    Depot'   = -K¹*Depot
+    Central' =  K¹*Depot - K¹*Central
+  end
+
+  @post begin
+    cp       = Central/Vc
+  end
+
+  @error begin
+    dv       ~ ProportionalNormal(cp)
+  end
+end
+```
+
+The initial parameters obtained from the previous runs have been used.
+
+```julia
+pk04_param_kk = (K¹      = 0.15,
+                 Vc      = 48,
+                 tvtlag  = 0.6)
+```
+
+We have dropped the η on K¹ since it not estimated with good precision.
+
+```julia
+pk04_kk_lag_fit_saem = @time fit(pk_04_kk, pk04_data, pk04_param_kk,
+                                  Pumas.SAEM(), ensemlblealg=EnsembleThreads())
+
+coeftable(pk04_kk_lag_fit_saem)
+```
