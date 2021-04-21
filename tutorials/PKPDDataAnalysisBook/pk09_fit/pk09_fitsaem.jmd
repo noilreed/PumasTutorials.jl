@@ -1,0 +1,250 @@
+---
+title : Exercise PK09 - Estimation of fraction absorbed and nonlinear bioavailability across the liver, Simultaneous fitting of Intravenous and Oral data
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise we will learn how to fit the IV and Oral data together simultaneously.
+ This exericse also includes a seperate `hepatic` compartment from which we will
+ model estimate the fraction absorbed and the non-linear bioavailability across
+ the liver.
+
+The basic workflow for the estimation process is:
+
+  1. Description of the data
+  2. Exploratory analysis of the data
+  3. NCA Analysis
+  4. Pharmacokinetic modelling
+  5. Diagnostic Plots
+  6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using Pumas
+using PumasTutorials
+using Random
+using CSV
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of the data
+
+In this experiment pre-clinical data was obtained from *30 rats*. Each rat is dosed
+ with a test compound. An `IV` dose of **2 μmol/kg** and `Oral` dose of **6 μmol/kg**.
+  We will simultaneously fit both the data to obtain the necessary parameter values.
+  PK samples are obtained from `IV` dosing at the following time points 0.03333,
+  0.13333, 0.25, 0.75, 2, 4, 6, 8, 20, 23 hrs and from `Oral` dosing at 0.08333,
+  0.1, 0.2, 0.25, 0.5, 1, 2, 4, 6, 8, 18, 20, 23 hrs.
+
+The following are the units of the dataset:
+
+  * Time (time) = hrs
+  * Plasma Concentration (dv) = μmol/L
+  * Dose (amt) = μmol
+
+```julia
+pk09_data_df = CSV.read("./pk_09.csv", DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk09_data = describe(pk09_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+* Plot of Plasma Concentration vs Time, Oral Dosing
+
+```julia
+pk09_data_df_oral = filter(:occasion => ==(2), pk09_data_df)
+pk_data_plot_oral = dropmissing(pk09_data_df_oral, :dv)
+@df pk_data_plot_oral plot(:time, :dv, group=:id, label=false,
+                      xlabel="Time (hr)", ylabel="Concentration (umol/L)",
+                      size = (600, 600), guidefontsize = 12,
+                      title = "Oral Dosing, Concentrations vs Time")
+```
+
+* Plot of Plasma Concentration vs Time, IV Dosing
+
+```julia
+pk09_data_df_iv = filter(:occasion => ==(1), pk09_data_df)
+pk_data_plot_iv = dropmissing(pk09_data_df_iv, :dv)
+@df pk09_data_df_iv plot(:time, :dv, group=:id, yaxis=:log, label=false,
+                         xlabel="Time (hr)", ylabel="Concentration (umol/L)",
+                         size = (600, 600), guidefontsize = 12,
+                         title = "IV Dosing, Concentration vs Time")
+```
+
+From the graph we can see that there is a greater variability in the clearance
+ of the drug. Thus, we will need to check if the clearance is linear or is capacity
+ limited.
+
+## NCA Analysis
+
+We will now perform an NCA analysis to get the initial estimates for fitting of
+ the given data. We will nee to specify if the dosing is intravascular 'iv' or
+ extravascular 'ev'. This will help to compute the correct parameters. The
+ concentrations are in μmol/L and the dose is in μmol, so we can parse the data
+ to the read_nca function.
+
+```julia; results="hidden"
+pk09_data_df[!, :route] = ifelse.(pk09_data_df.occasion .== 1, "iv", "ev")
+```
+
+Now, map the data variables to the read_nca function that prepares the data for
+ NCA analysis. You can even type **?read_nca** in the REPL and get more information
+ on the mapping of the variables. We have `grouped` by occasion so that the necessary
+ parameters will be computed.
+
+```julia
+pk09_nca = read_nca(pk09_data_df,
+                    id     = :id,
+                    time   = :time,
+                    amt    = :amt,
+                    conc   = :dv,
+                    route  = :route,
+                    group  = [:occasion])
+```
+
+A full NCAReport is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean, GeometricMean, and SD**.
+
+```julia
+pk09_nca_report = NCAReport(pk09_nca, sigdig=3)
+```
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk09_nca_report, [:id, :vz_obs, :cl_obs, :vss_obs,:vz_f_obs, :cl_f_obs, :kel, :half_life, :aucinf_obs, :tmax, :tlag, :occasion])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_obs, :cl_obs, :vz_f_obs, :vss_obs, :cl_f_obs, :kel, :half_life, :aucinf_obs, :tmax, :tlag], [:id, :occasion])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:occasion, :variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+sort!(stats_nca_summary, :occasion)
+dropmissing!(stats_nca_summary, :value_mean)
+```
+
+We have obtained the following parameters which we will use as initial etimates
+ for the simulation.
+
+  * Vc - Volume of Central Compartment  = **0.37 (L/kg)**
+  * Q - Intercompartmental Clearance, vc*α, where α is the initial slope factor
+      =**2 (L/hr/kg)**
+  * Vp - Volume of Peripheral Compartment, Vss-Vc = **0.1 (L/kg)**
+  * Vmax - Maximum Metabolic Rate, if average concentration is 1 μmol/L, then we
+      can calculate Vmax from Clint = Vmax/(KmH+Ch) = **0.1 (μmol/hr/kg)**
+  * Km - Michaelis Menton Constant, since the average Clearance is 0.1 L/hr/kg, Km = **0.2-0.3 (μmol/L)**
+  * Ka - Absorption Rate Constant = 0.693/(tmax/4) = **8.9 (hr⁻¹)**
+  * fa - Fraction of drug absorbed = **0.34**
+  * tlag - lag time = **0.0 (hr)**
+
+## Pharmacokinetic Modelling
+
+#####  Read the dataset into read_pumas()
+
+```julia
+pk09_data = read_pumas(pk09_data_df,
+                        id           = :id,
+                        time         = :time,
+                        observations = [:dv],
+                        amt          = :amt,
+                        evid         = :evid,
+                        cmt          = :cmt)
+```
+
+##### Semi-Physiological Model
+
+This is a semi-physiologic model with a hepatic compartment. The drug
+  clearly follows a two-compartment model. We will try to model it using `lag time`
+  and even `without lag time`. The values of *Qh = 3.3 L/hr/kg* and *Vh = 0.02 L/kg*
+  are obtained from literature and are kept as constants.
+
+```julia
+pk_09           = @emmodel begin
+  @metadata begin
+    desc  = "PK09 Semiphysiologic Model"
+    timeu = u"hr"
+  end
+
+  @param begin
+    Q         ~ 1 | LogNormal
+    tvtlag    ~ 1 | LogNormal
+  end
+
+  @random begin
+    "Absorption Rate Constant (1/hr)"
+    Ka ~ 1 | LogNormal
+    "Maximum rate of elimination (umol/hr)"
+    Vmax ~ 1 | LogNormal
+    "Michaelis Menten Constant (1/hr)"
+    Km ~ 1 | LogNormal
+    "Volume (L)"
+    Vc ~ 1 | LogNormal
+    "Peripheral Volume (L)"
+    Vp ~ 1 | LogNormal
+    "Fraction absorbed"
+    tvfa ~ 1 | LogNormal
+  end
+
+  @pre begin
+    lags        = (Depot = tvtlag,)
+    bioav       = (Depot = tvfa,)
+    Qh          = 3.3
+    Vh          = 0.02
+  end
+
+  @dynamics begin
+    Depot'      = - Ka*Depot
+    Hepatic'    =   Ka*Depot -(Qh/Vh)*Hepatic + (Qh/Vc)*Central - Vmax*(Hepatic/Vh)/(Km + (Hepatic/Vh))
+    Central'    =  (Qh/Vh)*Hepatic - (Qh/Vc)*Central -(Q/Vc)*Central + (Q/Vp)*Peripheral
+    Peripheral' =  (Q/Vc)*Central - (Q/Vp)*Peripheral
+  end
+
+  @post begin
+    cp          = Central/Vc
+  end 
+
+  @error begin
+    dv          ~ ProportionalNormal(cp)
+  end
+end
+```
+
+Initial parameter estimates for IV and Oral Dosing at separate occasions are
+ obatined from NCA analysis.
+
+```julia
+param_est = ( Vc      = 0.37,
+              Q       = 2,
+              Vp      = 0.1,
+              Vmax    = 0.1,
+              Km      = 0.3,
+              Ka      = 8.9,
+              tvfa    = 0.34,
+              tvtlag  = 0.062)
+```
+
+##### SAEM Fitting
+
+In this we will estimate the `tlag` parameter and check which model is a better
+ fit to the data.
+
+```julia
+pk_09_fit_saem_lag = @time fit(pk_09, pk09_data, param_est,
+                       Pumas.SAEM(), ensemblealg = EnsembleThreads())
+
+coeftable(pk_09_fit_saem_lag)
+```
