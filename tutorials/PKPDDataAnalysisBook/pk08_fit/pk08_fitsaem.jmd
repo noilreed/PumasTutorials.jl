@@ -1,0 +1,257 @@
+---
+title : Exercise PK08 - Estimation of Two-Compartmental Model
+date: `j Date(now())`
+---
+
+## Objectives
+
+In this exercise you will learn how to fit the given data to a one-compartment
+ model and also a two-compartment model. We will decide how to discriminate between
+ the models using diagnostic plots and `AIC` and `BIC` values. The basic workflow for
+ the estimation process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using Pumas
+using PumasTutorials
+using Random
+using CSV
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of the data
+
+A 100 μg bolus dose of drug-X is given intravenously for a total of **68 patients**.
+ PK samples are collected at the following time points `0.08, 0.25, 0.5, 0.75, 1,
+ 1.33, 1.67, 2, 2.5, 3.07, 3.5, 4.03, 5, 7, 11, 23, 29, 35, 47.25 hrs`. A total of 19
+ samples are collected from each patient.
+
+The following are the units of the dataset:
+
+ * Time (time) = hrs
+ * Plasma Concentration (dv) = μg/L
+ * Dose (amt) = μg
+
+```julia
+pk08_data_df = CSV.read("./pk_08.csv", DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk08_data = describe(pk08_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+Plot of Plasma **Concentration vs Time**
+
+```julia
+@df pk08_data_df plot(:time, :dv,
+                group=:id, label=false, yaxis=:log,
+                xlabel="Time (hr)", ylabel="Concentration (ug/L)",
+                size = (600, 600), guidefontsize = 12,
+                title = "Concentration vs Time")
+```
+
+## NCA Analysis
+
+We will now perform an NCA analysis to get the initial estimates for the fitting
+ of the given data. We will include a route column to specify that dosing is
+ intravenous `iv`. The *read_nca()* function input requires the route to be stated
+ as `iv` for intravenous.
+
+```julia; results="hidden"
+pk08_data_df[:,:route] .= "iv"
+```
+
+Now, map the data variables to the read_nca function that prepares the data for NCA analysis.
+
+```julia
+pk08_nca = read_nca(pk08_data_df,
+                    id     = :id,
+                    time   = :time,
+                    amt    = :amt,
+                    conc   = :dv,
+                    route  = :route)
+```
+
+A full `NCAReport` is generated, we will then perform summary statistics of the
+required parameters to obtain the **Mean, GeometricMean, and SD**
+
+```julia
+pk08_nca_report = NCAReport(pk08_nca, sigdig=3)
+```
+
+Perform the `Summary Statistics` for the required NCA Parameters
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk08_nca_report, [:id, :vz_obs, :cl_obs, :aucinf_obs])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_obs, :cl_obs, :aucinf_obs], [:id])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:occasion, :variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk08_data = read_pumas(pk08_data_df,
+                       id           = :id,
+                       time         = :time,
+                       amt          = :amt,
+                       evid         = :evid,
+                       cmt          = :cmt,
+                       observations = [:dv])
+```
+
+##### One Compartment Model
+
+```julia
+pk_08_1cmt      = @emmodel begin
+  @metadata begin
+    desc  = "PK 08 One-Compartment"
+    timeu = u"hr"
+  end
+
+  @random begin
+    "Clearance (L/hr)"
+    CL ~ 1 | LogNormal
+    "Volume (L)"
+    Vc ~ 1 | LogNormal
+  end
+
+  @dynamics Central1
+    #Central'    = -(CL/Vc)*Central
+
+  @post begin
+    cp          = Central/Vc
+  end
+  
+  @error begin
+    dv          ~ ProportionalNormal(cp)
+  end
+end
+```
+
+The initial parameters are obtained from NCA analysis.
+
+```julia
+param_est_1cmt = ( CL = 6,
+                   Vc = 106)
+```
+
+Before we start with fitting the data, we will simulate the data with the initial
+ estimates of the parameters we have obtained from the NCA analysis. This will
+ help us to evaluate the appropiatness of the model.
+
+```julia
+Random.seed!(1234)
+simpk    = simobs(pk_08_1cmt, pk08_data, param_est_1cmt)
+simpk_df = DataFrame(simpk)
+
+@df simpk_df plot(:time, :dv, group=:id, yaxis=:log,
+                     xlabel = "Time (hrs)", ylabel = "Concentration (ug/L)",
+                     title = "Concentration vs Time",
+                     size = (600, 600), guidefontsize = 12,
+                     label = "", alpha=0.2)
+@df pk08_data_df scatter!(:time, :dv, alpha=0.3, yaxis = :log,
+                          label = "Observed concentrations", legend=false)
+```
+
+#### SAEM Fitting
+
+The results of the NaivePooled estimates match closely to our initial estimates from
+ NCA analysis. We will now use the mean estimates from the NaivePooled Analysis for
+ fitting the data and obatining the Between Subject Variability on the parameters.
+
+```julia
+pk08_1cmt_fit_saem = fit(pk_08_1cmt, pk08_data, param_est_1cmt,
+                       Pumas.SAEM(), ensemblealg=EnsembleThreads())
+
+coeftable(pk08_1cmt_fit_saem)
+```
+
+##### Two Compartment Model
+
+We will now try to fit a two-compartment model and check if it the model fits better
+ to the data.
+
+```julia
+pk_08_2cmt      = @emmodel begin
+  @metadata begin
+    desc  = "PK 08 Two-Compartment"
+    timeu = u"hr"
+  end
+
+  @param begin
+    Q   ~ 1 | LogNormal
+  end
+
+  @random begin
+    "Clearance (L/hr)"
+    CL ~ 1 | LogNormal
+    "Volume (L)"
+    Vc ~ 1 | LogNormal
+    "Peripheral Volume (L)"
+    Vp ~ 1 | LogNormal
+  end
+
+  @dynamics Central1Periph1
+    #Central'    = -(Cl/Vc)*Central - (Q/Vc)*Central + (Q/Vp)*Peripheral
+    #Peripheral' =  (Q/Vc)*Central  - (Q/Vp)*Peripheral
+  #end
+
+  @post begin
+    cp          = Central/Vc
+  end
+
+  @error begin
+    dv          ~ ProportionalNormal(cp)
+  end
+end
+```
+
+We will use the estimates obtained from the one compartment model and split the
+ Volume of Distribution between the two comparments.
+
+```julia
+param_est_2cmt = ( CL = 6,
+                   Vc = 48,
+                   Q  = 6,
+                   Vp = 48)
+```
+
+We will now run SAEM on the two-compartment model
+
+```julia
+pk08_2cmt_fit_saem = fit(pk_08_2cmt, pk08_data, param_est_2cmt,
+                       Pumas.SAEM(), ensemblealg=EnsembleThreads())
+
+coeftable(pk08_2cmt_fit_saem)
+```
+
+We will compare the parameters of both the models
+
+```julia
+param_comp_df = @pipe leftjoin(coeftable(pk08_2cmt_fit_saem),
+                coeftable(pk08_1cmt_fit_saem), on = :parameter, makeunique = true) |>
+                rename!(_, :estimate => :pk2cmp, :estimate_1 => :pk1cmp)
+```
