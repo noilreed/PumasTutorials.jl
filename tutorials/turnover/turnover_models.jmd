@@ -7,7 +7,7 @@ date: 8th June 2020
 Load the necessary libraries
 
 ```julia
-using Pumas, Plots, DataFrames, StatsPlots
+using Pumas, PumasPlots, Random, PlottingUtilities, CairoMakie
 ```
 
 # Introduction
@@ -25,6 +25,10 @@ In this example the hormone is constantly synthesized in the body with a turnove
 
 ```julia
 endo_comp_model = @model begin
+  @metadata begin
+    timeu = u"hr"
+  end
+
   @param begin
     tvka    ∈ RealDomain(lower=0)
     tvcl    ∈ RealDomain(lower=0)
@@ -56,7 +60,9 @@ endo_comp_model = @model begin
   end
 
   @derived begin
+    "Plasma Concentration (Drug+Endogenous Compound) (ug/L)"
     cp             = @. Central/Vc
+    "Plasma Concentration (Drug Alone) (ug/L)"
     cp_drug        = @. cp - (Rin/(Cl))
     nca           := @nca cp_drug
     auc            = NCA.auc(nca)
@@ -83,27 +89,40 @@ Simulate a _population_ of 5 subjects who receives a SC dose of 40μg at `time=0
 **Note:** The weight is selected randomly between 50 and 100kgs
 
 ```julia
-ev1  = DosageRegimen(40, time=0, cmt=:Skin)
-sub1 = map(i -> Subject(id=i, events=ev1, covariates=(Wt=rand(50:100),)), 1:5)
+sub1 = map(i -> Subject(id=i,
+                        events=DosageRegimen(40, time=0, cmt=:Skin),
+                        covariates=(Wt=rand(50:100),)), 1:5)
 ```
 
 Use the `simobs` function to run the simualtion
 
-```julia
+```julia; results="hidden"
 obs1  = simobs(endo_comp_model, sub1, par1, obstimes=0:0.1:40);
 ```
 
 Convert the `obs1` to a Dataframe. The Plot depicts the Concentration Time Profile of the **Drug + Endogenous Compound vs Time**
 
 ```julia
-simdf = DataFrame(obs1)
-@df simdf plot(:time, :cp, group=:id, ylims=(0,350), yticks=[0,50,100,150,200,250,300,350], xlabel="Time (hr)", ylabel="Conc (Drug+Endogenous Compound) (ug/L)", title="Concentration vs Time", legendtitle="Subject Id", linewidth=1.5 )
+#simdf = DataFrame(obs1)
+#@df simdf plot(:time, :cp, group=:id, ylims=(0,350), yticks=[0,50,100,150,200,250,300,350], xlabel="Time (hr)", ylabel="Conc (Drug+Endogenous Compound) (ug/L)", title="Concentration vs Time", legendtitle="Subject Id", linewidth=1.5 )
+
+interactive!(false)
+p1 = sim_plot(endo_comp_model,
+              obs1, observations = :cp)[1]
+Label(p1[0, :], "Plasma Concentration vs Time", textsize = 30)
+p1
 ```
 
 The Plot depicts the Concentration Time Profile of the **Drug Alone vs Time**
 
 ```julia
-@df simdf plot(:time, :cp_drug, group=:id, ylims=(0,300), yticks=[0,50,100,150,200,250,300], xlabel="Time (hr)", ylabel="Conc (Drug Alone) (ug/L)", title="Concentration vs Time", legendtitle="Subject Id", linewidth=1.5 )
+#@df simdf plot(:time, :cp_drug, group=:id, ylims=(0,300), yticks=[0,50,100,150,200,250,300], xlabel="Time (hr)", ylabel="Conc (Drug Alone) (ug/L)", title="Concentration vs Time", legendtitle="Subject Id", linewidth=1.5 )
+
+interactive!(false)
+p2 = sim_plot(endo_comp_model,
+              obs1, observations = :cp_drug)[1]
+Label(p2[0, :], "Plasma Concentration vs Time", textsize = 30)
+p2
 ```
 
 Uisng the integrated NCA fucntion in the model we `Select` the output of the NCA object to a dataframe
@@ -129,6 +148,10 @@ In this example, the production rate is inhibited and is mentioned in the @vars 
 
 ```julia
 inhibition_kin = @model begin
+  @metadata begin
+    timeu = u"hr"
+  end
+
   @param begin
     tvcl   ∈ RealDomain(lower=0)
     tvvc   ∈ RealDomain(lower=0)
@@ -168,7 +191,9 @@ inhibition_kin = @model begin
   end
 
   @derived begin
+    "Plasma Concentration (mg/L)"
     cp   = @. Central/Vc
+    "Inhibtion of Kin"
     resp = @. Response
   end
 end
@@ -201,25 +226,45 @@ sub2 = Subject(id=200, events=ev2)
 ev3  = DosageRegimen(300, time=0, cmt=:Central, duration=3)
 sub3 = Subject(id=300, events=ev3)
 sub  = [sub1, sub2, sub3]
+
+pop = map((subj, amt) -> Subject(id=subj,
+                                 events = DosageRegimen(amt, time = 0, cmt = :Central, duration=3),
+                                 covariates = (dose = amt,)),
+                                 #observations = tmdd_observations),
+                                 1:3, #subject ids
+                                 [100, 200, 300] # doses
+                                 )
 ```
 
 Use the `simobs` function to run the simulation
 
-```julia
-obs1 = simobs(inhibition_kin, sub, par, obstimes=0:0.1:40);
+```julia; results="hidden"
+obs1 = simobs(inhibition_kin, sub, pop, obstimes=0:0.1:40)
 ```
 
 Convert `obs1` to a DataFrame. Plot a graph of **Concentration vs Time**.
 
 ```julia
-simdf = DataFrame(obs1)
-@df simdf plot(:time, :cp, group=:id, xlabel="Time (hr)", ylabel="Concentration (mg/L)", title="Concentration vs Time", legendtitle="Dose", linewidth=1.5)
+#simdf = DataFrame(obs1)
+#@df simdf plot(:time, :cp, group=:id, xlabel="Time (hr)", ylabel="Concentration (mg/L)", title="Concentration vs Time", legendtitle="Dose", linewidth=1.5)
+
+interactive!(false)
+p1 = sim_plot(inhibition_kin,
+              obs1, observations = :cp)[1]
+Label(p1[0, :], "Plasma Concentration vs Time", textsize = 30)
+p1
 ```
 
 Plot a graph of **Response vs Time**
 
 ```julia
-@df simdf plot(:time, :resp, group=:id, xlabel="Time (hr)", ylabel="Inhibtion of Kin", title="Response vs Time", legendtitle="Dose", linewidth=1.5)
+#@df simdf plot(:time, :resp, group=:id, xlabel="Time (hr)", ylabel="Inhibtion of Kin", title="Response vs Time", legendtitle="Dose", linewidth=1.5)
+
+interactive!(false)
+p2 = sim_plot(inhibition_kin,
+              obs1, observations = :resp)[1]
+Label(p2[0, :], "Response vs Time", textsize = 30)
+p2
 ```
 
 ##### Inhibition of Kout
@@ -228,6 +273,10 @@ In this example, the degradation rate is inhibited and is mentioned in the @vars
 
 ```julia
 inhibition_kout = @model begin
+  @metadata begin
+    timeu = u"hr"
+  end
+
   @param begin
     tvcl   ∈ RealDomain(lower=0)
     tvvc   ∈ RealDomain(lower=0)
@@ -267,7 +316,9 @@ inhibition_kout = @model begin
   end
 
   @derived begin
+    "Plasma Concentration (mg/L)"
     cp   = @. Central/Vc
+    "Inhibtion of Kout"
     resp = @. Response
   end
 end
@@ -300,19 +351,32 @@ sub2 = Subject(id=200, events=ev2)
 ev3  = DosageRegimen(300, time=0, cmt=:Central, duration=3)
 sub3 = Subject(id=300, events=ev3)
 sub  = [sub1, sub2, sub3]
+
+pop = map((subj, amt) -> Subject(id=subj,
+                                 events = DosageRegimen(amt, time = 0, cmt = :Central, duration=3),
+                                 covariates = (dose = amt,)),
+                                 #observations = tmdd_observations),
+                                 1:3, #subject ids
+                                 [100, 200, 300] # doses
+                                 )
 ```
 
 Use the `simobs` function to run the simulation
 
-```julia
+```julia; results="hidden"
 obs1 = simobs(inhibition_kout, sub, par, obstimes=0:0.1:40);
 ```
 
 Convert `obs1` to a DataFrame. Plot a graph of **Response vs Time**
 
 ```julia
-simdf = DataFrame(obs1)
-@df simdf plot(:time, :resp, group=:id, xlabel="Time (hr)", ylabel="Inhibtion of Kout", title="Response vs Time", legendtitle="Dose", linewidth=1.5)
+#simdf = DataFrame(obs1)
+#@df simdf plot(:time, :resp, group=:id, xlabel="Time (hr)", ylabel="Inhibtion of Kout", title="Response vs Time", legendtitle="Dose", linewidth=1.5)
+
+p3 = sim_plot(inhibition_kout,
+              obs1, observations = :resp)[1]
+Label(p3[0, :], "Response vs Time", textsize = 30)
+p3
 ```
 
 ##### Stimulation of Kin
@@ -321,6 +385,10 @@ In this example, the production rate is stimulated and is mentioned in the @vars
 
 ```julia
 stimulation_kin = @model begin
+  @metadata begin
+    timeu = u"hr"
+  end
+
   @param begin
     tvcl   ∈ RealDomain(lower=0)
     tvvc   ∈ RealDomain(lower=0)
@@ -360,7 +428,9 @@ stimulation_kin = @model begin
   end
 
   @derived begin
+    "Plasma Concentration (mg/L)"
     cp   = @. Central/Vc
+    "Stimulation of Kin"
     resp = @. Response
   end
 end
@@ -393,19 +463,32 @@ sub2 = Subject(id=200, events=ev2)
 ev3  = DosageRegimen(300, time=0, cmt=:Central, duration=3)
 sub3 = Subject(id=300, events=ev3)
 sub  = [sub1, sub2, sub3]
+
+pop = map((subj, amt) -> Subject(id=subj,
+                                 events = DosageRegimen(amt, time = 0, cmt = :Central, duration=3),
+                                 covariates = (dose = amt,)),
+                                 #observations = tmdd_observations),
+                                 1:3, #subject ids
+                                 [100, 200, 300] # doses
+                                 )
 ```
 
 Use the `simobs` function to run the simulation
 
-```julia
-obs1  = simobs(stimulation_kin, sub, par, obstimes=0:0.1:40);
+```julia; results="hidden"
+obs1  = simobs(stimulation_kin, sub, par, obstimes=0:0.1:40)
 ```
 
 Convert `obs1` to a DataFrame. Plot a graph of **Response vs Time**
 
 ```julia
-simdf = DataFrame(obs1)
-@df simdf plot(:time, :resp, group=:id, xlabel="Time (hr)", ylabel="Stimulation of Kin", title="Response vs Time", legendtitle="Dose", linewidth=1.5)
+#simdf = DataFrame(obs1)
+#@df simdf plot(:time, :resp, group=:id, xlabel="Time (hr)", ylabel="Stimulation of Kin", title="Response vs Time", legendtitle="Dose", linewidth=1.5)
+
+p4 = sim_plot(stimulation_kin,
+              obs1, observations = :resp)[1]
+Label(p4[0, :], "Response vs Time", textsize = 30)
+p4
 ```
 
 ##### Stimulation of Kout
@@ -414,6 +497,10 @@ In this example, the degradation rate is stimulated and is mentioned in the @var
 
 ```julia
 stimulation_kout = @model begin
+  @metadata begin
+    timeu = u"hr"
+  end
+
   @param begin
     tvcl   ∈ RealDomain(lower=0)
     tvvc   ∈ RealDomain(lower=0)
@@ -453,7 +540,9 @@ stimulation_kout = @model begin
   end
 
   @derived begin
+    "Plasma Concentration (mg/L)"
     cp   = @. Central/Vc
+    "Stimulation of Kout"
     resp = @. Response
   end
 end
@@ -486,17 +575,30 @@ sub2 = Subject(id=200, events=ev2)
 ev3  = DosageRegimen(300, time=0, cmt=:Central, duration=3)
 sub3 = Subject(id=300, events=ev3)
 sub  = [sub1, sub2, sub3]
+
+pop = map((subj, amt) -> Subject(id=subj,
+                                 events = DosageRegimen(amt, time = 0, cmt = :Central, duration=3),
+                                 covariates = (dose = amt,)),
+                                 #observations = tmdd_observations),
+                                 1:3, #subject ids
+                                 [100, 200, 300] # doses
+                                 )
 ```
 
 Use the `simobs` function to run the simulation
 
-```julia
-obs1  = simobs(stimulation_kout, sub, par, obstimes=0:0.1:40);
+```julia; results="hidden"
+obs1  = simobs(stimulation_kout, sub, par, obstimes=0:0.1:40)
 ```
 
 Convert `obs1` to a DataFrame. Plot a graph of **Response vs Time**
 
 ```julia
-simdf = DataFrame(obs1)
-@df simdf plot(:time, :resp, group=:id, xlabel="Time (hr)", ylabel="Stimulation of Kout", title="Response vs Time", legendtitle="Dose", linewidth=1.5)
+#simdf = DataFrame(obs1)
+#@df simdf plot(:time, :resp, group=:id, xlabel="Time (hr)", ylabel="Stimulation of Kout", title="Response vs Time", legendtitle="Dose", linewidth=1.5)
+
+p5 = sim_plot(stimulation_kout,
+              obs1, observations = :resp)[1]
+Label(p5[0, :], "Response vs Time", textsize = 30)
+p5
 ```
