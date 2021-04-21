@@ -7,7 +7,7 @@ date : 13th June 2020
 Load the necessary libraries
 
 ```julia
-using Pumas, Plots, DataFrames, StatsPlots
+using Pumas, DataFrames, PumasPlots, Random, PlottingUtilities, CairoMakie
 ```
 #### Model Description
 
@@ -15,6 +15,10 @@ This is a one compartment oral absorption model with **Weight and Metabolizing c
 
 ```julia
 oral_one_cmpt = @model begin
+  @metadata begin
+    timeu = u"hr"
+  end
+
   @param   begin
     tvKa     ∈ RealDomain(lower=0)
     tvCl     ∈ RealDomain(lower=0)
@@ -43,6 +47,7 @@ oral_one_cmpt = @model begin
   end
 
   @derived begin
+  "Plasma Concentration (μg/L)"
     cp       = @. 1000*(Central/Vc)
   end
 end
@@ -66,8 +71,14 @@ par = ( tvKa   = 0.7,    # (hr⁻¹) Absorption Rate Constant
 ev1  = DosageRegimen(100, time=0, cmt=1)
 s1   = Subject(id=1, events=ev1, covariates=(isPM=1, wt=80))
 obs1 = simobs(oral_one_cmpt, s1, par, obstimes=0:0.1:120)
-df   = DataFrame(obs1)
-@df df plot(:time, :cp, xticks=[0,12,24,36,48,60,72,84,96,108,120], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+#df   = DataFrame(obs1)
+#@df df plot(:time, :cp, xticks=[0,12,24,36,48,60,72,84,96,108,120], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+
+interactive!(false)
+p1 = sim_plot(oral_one_cmpt,
+              obs1, observations = :cp)[1]
+Label(p1[0, :], "Concentration vs Time", textsize = 30)
+p1
 ```
 
 2. Single subject who receives a **30 mg** oral dose _three times a day_ for _3 days_
@@ -79,8 +90,14 @@ df   = DataFrame(obs1)
 ev2  = DosageRegimen(30, time=0, ii=8, addl=8, cmt=:Depot)
 s2   = Subject(id=1, events=ev2, covariates=(isPM=0, wt=60))
 obs2 = simobs(oral_one_cmpt, s2, par, obstimes=0:0.1:80)
-df   = DataFrame(obs2)
-@df df plot(:time, :cp, xticks=[0,8,16,24,32,40,48,56,64,72,80], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+#df   = DataFrame(obs2)
+#@df df plot(:time, :cp, xticks=[0,8,16,24,32,40,48,56,64,72,80], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+
+interactive!(false)
+p2 = sim_plot(oral_one_cmpt,
+              obs2, observations = :cp)[1]
+Label(p2[0, :], "Concentration vs Time", textsize = 30)
+p2
 ```
 3. A population of _two subjects_ receive **30 mg** oral dose _three times a day_ for _3 days_
 
@@ -94,8 +111,14 @@ pop1 = [s2,s3]
 ```
 ```julia
 obs3 = simobs(oral_one_cmpt, pop1, par, obstimes=0:0.1:80)
-df   = DataFrame(obs3)
-@df df plot(:time, :cp, group=:id, xticks=[0,8,16,24,32,40,48,56,64,72,80], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+#df   = DataFrame(obs3)
+#@df df plot(:time, :cp, group=:id, xticks=[0,8,16,24,32,40,48,56,64,72,80], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+
+interactive!(false)
+p3 = sim_plot(oral_one_cmpt,
+              obs3, observations = :cp)[1]
+Label(p3[0, :], "Concentration vs Time", textsize = 30)
+p3
 ```
 
 4. A single subject who receives an `IV` loading dose of **100 mg** at `time = 0` and is started immediately with a `oral` dose of **200 mg** that is to be give _once daily_ for _4 days_.
@@ -107,8 +130,14 @@ df   = DataFrame(obs3)
 ev4  = DosageRegimen([100,200], time=[0,0], cmt=[2,1], addl=[0,3], ii=[0,24])
 s4   = Subject(id=1, events=ev4, covariates=(isPM=0, wt=80))
 obs4 = simobs(oral_one_cmpt, s4, par, obstimes=0:0.1:96)
-df   = DataFrame(obs4)
-@df df plot(:time, :cp, xticks=[0,6,12,18,24,30,36,42,48,54,60,66,72,78,84,90,96], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+#df   = DataFrame(obs4)
+#@df df plot(:time, :cp, xticks=[0,6,12,18,24,30,36,42,48,54,60,66,72,78,84,90,96], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+
+interactive!(false)
+p4 = sim_plot(oral_one_cmpt,
+              obs4, observations = :cp)[1]
+Label(p3[0, :], "Concentration vs Time", textsize = 30)
+p4
 ```
 
 5. A single subject who received a **50 mg IV dose** at `time = 0`, followed by another **20 mg IV dose** at `time = 6`, followed by **30 mg oral dose** at `time = 12` that is given every _12 hours_ for _3 days_.
@@ -119,8 +148,14 @@ df   = DataFrame(obs4)
 ev5  = DosageRegimen([50,20,30], time=[0,6,12], cmt=[2,2,1], addl=[0,0,5], ii=[0,0,12])
 s5   = Subject(id=1, events=ev5, covariates=(isPM=rand([0,1]), wt=rand(50:80)))
 obs5 = simobs(oral_one_cmpt, s5, par, obstimes=0:0.1:90)
-df   = DataFrame(obs5)
-@df df plot(:time, :cp, xticks=[0,6,12,18,24,30,36,42,48,54,60,66,72,78,84,90], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+#df   = DataFrame(obs5)
+#@df df plot(:time, :cp, xticks=[0,6,12,18,24,30,36,42,48,54,60,66,72,78,84,90], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+
+interactive!(false)
+p5 = sim_plot(oral_one_cmpt,
+              obs5, observations = :cp)[1]
+Label(p3[0, :], "Concentration vs Time", textsize = 30)
+p5
 ```
 
 6. A _population of 5 subjects_ receive a **30 mg oral dose** _two times a day_ for _7 days_
@@ -132,8 +167,14 @@ df   = DataFrame(obs5)
 ev6  = DosageRegimen(30, time=0, cmt=1, ii=12, addl=13)
 pop2 = map(i -> Subject(id=i, events=ev6, covariates=(isPM=rand([0,1]), wt=rand(50:80))), 1:5)
 obs6 = simobs(oral_one_cmpt, pop2, par, obstimes=0:0.1:180)
-df   = DataFrame(obs6)
-@df df plot(:time, :cp, group=:id, xticks=[0,12,24,36,48,60,72,84,96,108,120,132,144,156,168,180], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+#df   = DataFrame(obs6)
+#@df df plot(:time, :cp, group=:id, xticks=[0,12,24,36,48,60,72,84,96,108,120,132,144,156,168,180], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+
+interactive!(false)
+p6 = sim_plot(oral_one_cmpt,
+              obs6, observations = :cp)[1]
+Label(p6[0, :], "Concentration vs Time", textsize = 30)
+p6
 ```
 
 7. A _population of 24 subjects_ receive the following doses:
@@ -154,7 +195,7 @@ pop5 = map(i -> Subject(id=i, events=DosageRegimen([50,50], time=[0,0], cmt=[2,1
 pop6 = map(i -> Subject(id=i, events=DosageRegimen([75,25], time=[0,6], cmt=[2,1]), covariates=(isPM=rand([0,1]), wt=rand(80:100), category=4)), 19:24)
 pop7 = vcat(pop3, pop4, pop5, pop6)
 obs7 = simobs(oral_one_cmpt, pop7, par, obstimes=0:0.1:48)
-df   = DataFrame(obs7);
+#df   = DataFrame(obs7);
 ```
 
 Filter the dataframe based on the category of patients and use it for plotting the respective **Concentration vs Time** profile
@@ -197,8 +238,14 @@ df4  = filter(x -> x.category == 4, df)
 ev8  = DosageRegimen(100, time=0, duration=2, cmt=:Central, ii=24, addl=3)
 pop8 = map(i -> Subject(id=i, events=ev8, covariates=(isPM=rand([0,1]), wt=rand(50:80))), 1:5)
 obs8 = simobs(oral_one_cmpt, pop8, par, obstimes=0:0.1:120)
-df8  = DataFrame(obs8)
-@df df8 plot(:time, :cp, group=:id, xticks=[0,12,24,36,48,60,72,84,96,108,120], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+#df8  = DataFrame(obs8)
+#@df df8 plot(:time, :cp, group=:id, xticks=[0,12,24,36,48,60,72,84,96,108,120], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+
+interactive!(false)
+p8 = sim_plot(oral_one_cmpt,
+              obs8, observations = :cp)[1]
+Label(p8[0, :], "Concentration vs Time", textsize = 30)
+p8
 ```
 
 9. A single subject receives **50 mg dose of IV-bolus** at `time=0` followed by a **30 mg IV-Infusion** for 2 hours at `time=12` for total 3 dose Q12hrs.
@@ -207,8 +254,14 @@ df8  = DataFrame(obs8)
 ev9  = DosageRegimen([50,50], time=[0,12], duration=[0,2], cmt=2, addl=[0,2], ii=[0,12])
 sub9 = Subject(id=1, events=ev9, covariates=(isPM=0, wt=rand(50:80)))
 obs9 = simobs(oral_one_cmpt, sub9, par, obstimes=0:0.1:60)
-df9  = DataFrame(obs9)
-@df df9 plot(:time, :cp, xticks=[0,6,12,18,24,30,36,42,48,54,60], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+#df9  = DataFrame(obs9)
+#@df df9 plot(:time, :cp, xticks=[0,6,12,18,24,30,36,42,48,54,60], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+
+interactive!(false)
+p9 = sim_plot(oral_one_cmpt,
+              obs9, observations = :cp)[1]
+Label(p9[0, :], "Concentration vs Time", textsize = 30)
+p9
 ```
 
 10. A single subject receives an uneven doses of 50mg IV at `time=0`, 30mg oral at `time=4` , 30mg IV at `time=24` and 30mg oral at `time=30`
@@ -217,8 +270,14 @@ df9  = DataFrame(obs9)
 ev10  = DosageRegimen([50,30,30,30], time=[0,6,24,30], cmt=[2,1,2,1])
 sub10 = Subject(id=1, events=ev10, covariates=(isPM=rand([0,1]), wt=rand(50:80)))
 obs10 = simobs(oral_one_cmpt, sub10, par, obstimes=0:0.1:60)
-df10  = DataFrame(obs10)
-@df df10 plot(:time, :cp, xticks=[0,6,12,18,24,30,36,42,48,54,60], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+#df10  = DataFrame(obs10)
+#@df df10 plot(:time, :cp, xticks=[0,6,12,18,24,30,36,42,48,54,60], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+
+interactive!(false)
+p10 = sim_plot(oral_one_cmpt,
+               obs10, observations = :cp)[1]
+Label(p10[0, :], "Concentration vs Time", textsize = 30)
+p10
 ```
 
 
@@ -271,6 +330,12 @@ obs11  = simobs(oral_one_cmpt, data, par, obstimes=0:0.1:120);
 Step 6: Convert to a Dataframe for plotting
 
 ```julia
-df11   = DataFrame(obs11)
-@df df11 plot(:time, :cp, group=:id, xticks=[0,12,24,36,48,60,72,84,96,108,120], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+#df11   = DataFrame(obs11)
+#@df df11 plot(:time, :cp, group=:id, xticks=[0,12,24,36,48,60,72,84,96,108,120], xlabel="Time (hr)", ylabel= "Concentration (ug/L)", title="Concentration vs Time", label=false, linewidth=1.5)
+
+interactive!(false)
+p11 = sim_plot(oral_one_cmpt,
+               obs11, observations = :cp)[1]
+Label(p11[0, :], "Concentration vs Time", textsize = 30)
+p11
 ```
