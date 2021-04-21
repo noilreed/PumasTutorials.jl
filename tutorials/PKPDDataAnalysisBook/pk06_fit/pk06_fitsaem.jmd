@@ -1,0 +1,265 @@
+---
+title:  Exercise PK06 - Simultaneous Estimation of Plasma and Urine Data
+date: `j Date(now())`
+---
+
+## Objectives:
+
+For this fitting exercise we will learn how to analyze intravascular (IV) and
+ extravascular (Oral) data and then simultaneously fit both IV and Oral data.
+ The main goal is that all possible sources of data should be included, this
+ helps to increase precision of parameters and avoids bias.
+ The basic workflow of the estimation process is
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+```
+## Description of the data
+
+The given dataset contains pk samples collected at two occasions from a total of **65 patients**.
+  Each patient is administered an IV dose of 12.5 mg (12500 μg) on occasion = 1
+  and a oral dose of 25 mg (25000 μg) on occasion = 2. The intravenous dose is
+  actually given as a constant rate infusion over 5 mins. Since the drug has a long
+  half-life (>30 hrs) we will model this as an intavenous bolus. PK samples are collected
+  on Occasion 1 & 2 at 0.3,0.6,1,2,3,4,6,8,24,48,72,96,168, Urine Volumes are also
+  collected on Ocassion 1 & 2 over a period of 24 hrs till 48 hrs. The final drug
+  amount in urine are noted down at 24 and 48 hrs.
+
+The following are the units of the dataset:
+
+ * Time (time) = hrs
+ * Concentration (dv) = μg/L
+ * Dose (amt) = μg
+ * Occasion = 1: Intravenous Dose, 2:Oral Dose
+
+```julia
+pk06_data_df = CSV.read("./pk_06.csv", DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk06_data = describe(pk06_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv, :dv_ae])
+```
+
+## Exploratory Plots of the given data
+
+##### IV Data
+
+Filter only the IV data and plot the **Concentration vs Time**
+
+```julia
+pk_data_plot_iv = filter(x -> x.sample == "IV-Plasma", pk06_data_df)
+@df pk_data_plot_iv plot(:time, :dv, yaxis=:log, group=:id, label=false,
+                         xlabel="Time (hr)", ylabel="Concentration (ug/L)",
+                         size = (600, 600), guidefontsize = 14,
+                         title = "IV Dosing, Concentration vs Time")
+```
+
+##### Oral Data
+
+Filter only the Oral data and plot the **Concentration vs Time**
+
+```julia
+pk_data_plot_oral = filter(x -> x.sample == "Oral-Plasma", pk06_data_df)
+@df pk_data_plot_oral plot(:time, :dv, group=:id, label=false,
+                      xlabel="Time (hr)", ylabel="Concentration (ug/L)",
+                      size = (600, 600), guidefontsize = 14,
+                      title = "Oral Dosing, Concentrations vs Time")
+```
+
+## NCA Analysis
+
+We will now perform an NCA analysis to get the initial estimates for the fitting
+ of the given data. The read_nca() function input requires
+ the route to be stated as either `ev` for extravascular or `iv` for intravenous,
+ the dataset contains a route column which we can map. We will group by the
+ occasion so that we get the values for both IV dosing and Oral dosing.
+
+```julia
+pk_nca = filter(x -> x.route == "ev", pk06_data_df)
+
+pk06_nca = read_nca(pk_nca,
+                    id     = :id,
+                    time   = :time,
+                    amt    = :amt,
+                    conc   = :dv,
+                    route  = :route,
+                    group  = [:occasion])
+```
+
+A full NCAReport is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean, GeometricMean, and SD**
+
+```julia
+pk06_nca_report = NCAReport(pk06_nca, sigdig=3)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk06_nca_report, [:id, :vz_f_obs, :cl_f_obs, :auclast, :tmax, :tlag, :occasion])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_f_obs, :cl_f_obs, :auclast, :tmax, :tlag,], [:id, :occasion])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:occasion, :variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+We have obtained the mean `NCA Statistics` for a few parameters and the others can be calculated as below:
+
+ * Obtain the F value (vz_obs/vz_f_obs) i.e F =
+ * Obtain the Ka value from 0.693/(tmax/4) i.e **Ka = 0.412**
+
+## Pharmacokinetic Modeling
+
+##### Read Dataset in Pumas
+
+All `0` concentrations in the dataset need to be set to missing, then parse the dataset to read_pumas().
+
+```julia
+pk06_data_df[:dv] = recode(pk06_data_df[:dv], 0.0=>missing)
+
+pk06_data = read_pumas(pk06_data_df,
+                        id           = :id,
+                        time         = :time,
+                        observations = [:dv, :dv_ae],
+                        amt          = :amt,
+                        evid         = :evid,
+                        cmt          = :cmt)
+```
+
+##### One-compartment model with lag time
+
+We can see that the there is a `lag time` as derived from NCA analysis, so we will
+ include a lag component. We will simulatneously fit both the IV and Oral data.
+ This will help to improve the parameter precision and obtain the Bioavailability (F)
+ of the drug.
+
+```julia
+pk_06        = @emmodel begin
+  @metadata begin
+    desc  = "PK 06 One-cmt with lag time"
+    timeu = u"hr"
+  end
+
+  @random begin
+    "Absorption Rate Constant (1/hr)"
+    Ka ~ 1 | LogNormal
+    "Clearance (L/hr)"
+    Cl ~ 1 | LogNormal
+    "Volume (L)"
+    Vc ~ 1 | LogNormal
+    "Fraction Excreted in Urine"
+    fe ~ 1 | LogNormal
+    "Lag Time (hr)"
+    tvlag    ~ 1 | LogNormal
+    "Bioavailability"
+    tvF      ~ 1 | LogNormal
+  end
+
+  @pre begin
+    lags     = (Depot = tvlag )
+    bioav    = (Depot = tvF )
+  end
+
+  @dynamics begin
+    Depot'   = -Ka*Depot
+    Central' =  Ka*Depot - (Cl/Vc)*Central
+    Urine'   =  fe*(Cl/Vc)*Central
+  end
+
+  @post begin
+    cp       = Central/Vc
+    ae       = Urine
+  end
+
+  @error begin
+    dv       ~ ProportionalNormal(cp)
+    dv_ae    ~ Normal(ae)
+  end
+end
+```
+
+Initial Parameters for IV and Oral Dosing at separate occasions obatined from NCA
+ analysis.
+
+```julia
+param_est = ( Cl      = 6.5,
+              Vc      = 257,
+              fe      = 0.09,
+              Ka      = 0.41,
+              tvlag   = 0.16,
+              tvF     = 0.9)
+```
+
+Before we start with fitting the data, we will simulate the data with the initial
+ estimates of the parameters we have obtained from the NCA analysis. This will
+ help us to evaluate the appropiatness of the model.
+
+```julia
+Random.seed!(1234)
+simpk_iv    = simobs(pk_06, pk06_data, param_est, obstimes=[0.3,0.6,1,2,3,4,6,8,24,48,72,96,168])
+simpk_iv_df = DataFrame(simpk_iv)
+dropmissing!(simpk_iv_df, :dv)
+
+@df simpk_iv_df plot(:time, :dv, group=:id, yaxis=:log,
+                     xlabel = "Time (hrs)", ylabel = "Concentration (ug/L)",
+                     title = "IV Dosing, Concentration vs Time",
+                     size = (600, 600), guidefontsize = 12,
+                     label = "", alpha=0.2)
+@df pk_data_plot_iv scatter!(:time, :dv, alpha=0.5, yaxis = :log,
+                          label = "Observed concentrations", legend=false)
+```
+
+```julia
+time_oral     = (168 .+ [0.3,0.6,1,2,3,4,6,8,24,48,72,96,168])
+Random.seed!(1234)
+simpk_oral    = simobs(pk_06, pk06_data, param_est, obstimes=time_oral)
+simpk_oral_df = DataFrame(simpk_oral)
+simpk_oral_df[:time] = simpk_oral_df.time .- 168
+dropmissing!(simpk_oral_df, :dv)
+
+@df simpk_oral_df plot(:time, :dv, group=:id,
+                     xlabel = "Time (hrs)", ylabel = "Concentration (ug/L)",
+                     title = "Oral Dosing, Concentration vs Time",
+                     size = (600, 600), guidefontsize = 12,
+                     label = "", alpha=0.2)
+@df pk_data_plot_oral scatter!(:time, :dv, alpha=0.5,
+                          label = "Observed concentrations", legend=false)
+```
+
+The `Between Subject Variability` among the parameters seems a bit more on the observed
+ data. We will still use these and let the system determine the values.
+
+## SAEM Fitting
+
+The results of the NaivePooled estimates match closely to our initial estimates
+from NCA analysis, except for the `Volume of distribution`. We will now use the
+same estimates from the NCA Analysis for fitting the data and obatining
+the Between Subject Variability on the parameters.
+
+```julia
+pk_06_fit_saem = @time fit(pk_06, pk06_data, param_est,
+                             Pumas.SAEM(), ensemblealg = EnsembleThreads())
+
+coeftable(pk_06_fit_saem)
+```
