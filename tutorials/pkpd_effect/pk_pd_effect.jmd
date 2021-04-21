@@ -7,7 +7,7 @@ date : 21st June 2020
 Load the necessary libraries
 
 ```julia
-using Pumas, Plots, DataFrames, StatsPlots
+using Pumas, PumasPlots, DataFrames, Random, PlottingUtilities, CairoMakie
 ```
 
 ## Introduction
@@ -24,6 +24,10 @@ In this example the effect is directly related to the concenration of the drug i
 
 ```julia
 pk_pd_nodelay   = @model begin
+  @metadata begin
+    timeu = u"hr"
+  end
+
   @param begin
     tvCl        ∈ RealDomain(lower=0)
     tvVc        ∈ RealDomain(lower=0)
@@ -67,7 +71,9 @@ pk_pd_nodelay   = @model begin
   end
 
   @derived begin
+    "Plasma Concentration (mg/L)"
     Cp          = @. Central/Vc
+    "Effect"
     E           = @. Emax*(Cp^γ)/(EC50^γ+Cp^γ)
   end
 end
@@ -90,10 +96,11 @@ par1 = (tvKa   = 0.9,    # (hr⁻¹)
 
 A single subject receives an oral dose of 25mg at `time=0`.
 
-```julia
-ev1  = DosageRegimen(25, time=0, cmt=1)
-s1   = Subject(id=1,events=ev1, covariates=(Wt=60,))
-obs  = simobs(pk_pd_nodelay, s1, par1, obstimes=0:0.1:30);
+```julia; results="hidden"
+s1   = Subject( id=1,
+                events=DosageRegimen(25, time=0, cmt=1),
+                covariates=(Wt=60,))
+obs  = simobs(pk_pd_nodelay, s1, par1, obstimes=0:0.1:30)
 ```
 
 Plot of **Effect vs Concentration** to see the hystersis loop
@@ -101,8 +108,8 @@ Plot of **Effect vs Concentration** to see the hystersis loop
 This plot explain that there are is no delay in the effect of the drug against the concentration
 
 ```julia
-df1  = DataFrame(obs)
-@df df1 plot(:Cp, :E, xlabel="Concentration (mg/L", ylabel="Effect", title="No Hysteresis", label=false, linewidth=1.5)
+#df1  = DataFrame(obs)
+#@df df1 plot(:Cp, :E, xlabel="Concentration (mg/L", ylabel="Effect", title="No Hysteresis", label=false, linewidth=1.5)
 ```
 
 Plot the **Concentration and Effect vs Time**
@@ -121,6 +128,10 @@ The effect compartment in this case is a **hypothetical compartment** and the co
 
 ```julia
 pk_pd_delay     = @model begin
+  @metadata begin
+    timeu = u"hr"
+  end
+
   @param begin
     tvCl        ∈ RealDomain(lower=0)
     tvVc        ∈ RealDomain(lower=0)
@@ -165,8 +176,11 @@ pk_pd_delay     = @model begin
   end
 
   @derived begin
+    "Plasma Concentration (mg/L)"
     Cp          = @. Central/Vc
+    "Concentration in Effect Compartment (mg/L)"
     Conc_eff    = @. ConcEffect/Vc
+    "Effect"
     E           = @. Emax*(Conc_eff^γ)/(EC50^γ+Conc_eff^γ)
   end
 end
@@ -189,10 +203,11 @@ par = ( tvKa   = 0.9,    # (hr⁻¹)
 
 A single subject receives an oral dose of 25mg at `time=0`.
 
-```julia
-ev1 = DosageRegimen(25, time=0, cmt=1)
-s1  = Subject(id=1,events=ev1, covariates=(Wt=60,))
-obs = simobs(pk_pd_delay, s1, par, obstimes=0:0.1:30);
+```julia; results="hidden"
+s1  = Subject( id=1,
+               events=DosageRegimen(25, time=0, cmt=1),
+               covariates=(Wt=60,))
+obs = simobs(pk_pd_delay, s1, par, obstimes=0:0.1:30)
 ```
 
 Plot of **Effect vs Concentration** to see the hystersis loop
@@ -200,8 +215,8 @@ Plot of **Effect vs Concentration** to see the hystersis loop
 This plot explain that there are two effects for a given concentration of the drug depending if the concentration is rising or falling.
 
 ```julia
-df1 = DataFrame(obs)
-@df df1 plot(:Cp, :E, xlabel="Concentration (mg/L", ylabel="Effect", title="Hysteresis Loop", label=false, linewidth=1.5)
+#df1 = DataFrame(obs)
+#@df df1 plot(:Cp, :E, xlabel="Concentration (mg/L)", ylabel="Effect", title="Hysteresis Loop", label=false, linewidth=1.5)
 ```
 
 Plot the **Concentration and Effect vs Time**
