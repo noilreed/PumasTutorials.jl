@@ -1,21 +1,31 @@
 ---
 title : Non Compartmental Analysis
-author : PumasAI
-date : April 2021
+date: `j Date(now())`
 ---
+
+```julia; echo = false
+using Dates
+```
 
 Load the necessary libraries
 
 ```julia
-using PumasTutorials, NCA, NCAUtilities, CSV, DataFrames, StatsPlots, Statistics, Unitful
+using PumasTutorials
+using Random
+using DataFrames
+using CSV
+using NCA
+using NCAUtilities
 ```
 
 ## Introduction
 
-In this tutorial you will learn how to compute specific parameters using Non-Compartmental Analysis
+This tutorial will introduce the workflow of performing Non-Compartmental Analysis (NCA) in a command-line based workflow. A [graphical user interface
+for NCA]() is also available for a more interactive experience. 
 
+For the purpose of this tutorial, we will be usig the following dataset:
 
-PK was collected in 107 subjects who received 50 mg q24 hours for 5 days, on Day 1 (first dose) and Day 5 (last dose at steady-state).
+Blood samples for pharmacokinetics were collected in 107 subjects who received 50 mg of _DrugX_ q24 hours for 5 days, on Day 1 (first dose) and Day 5 (last dose at steady-state).
 We will compute _**Single Dose**_ and _**Multiple Dose**_ NCA parameters
 
 In the given dataset
@@ -23,36 +33,37 @@ In the given dataset
  * Conc  = mg/L
  * Amt   = mg
 
-**Step1:** Load the NCA dataset using the `CSV.read` function and convert it to a Dataframe
+#### Load Data
+
+Load the NCA dataset using the `CSV.read` function and convert it to a Dataframe. 
 
 ```julia
-data = DataFrame(CSV.File(joinpath(dirname(pathof(PumasTutorials)), "..", "tutorials", "nca", "NCA_tutorial.csv")))
+data = CSV.read(joinpath(dirname(pathof(PumasTutorials)), "..", "tutorials", "nca", "NCA_tutorial.csv"), DataFrame, missingstrings=["NA", ".", ""])
 first(data, 6)
 ```
 
 #### Single-dose NCA
 
-Filter data for time <= 24 hrs to perform the Single-dose NCA
+Samples on Day 1 will be used for single dose NCA. So, we filter data for time <= 24 hrs
 
-
-```julia
+```julia;results = "hidden"
 single_dose_data  = filter(x -> x.TIME <= 24 , data)
 ```
 
-We will specify the units of time, concentration and amount which will be mapped to `read_nca`
+We will specify the units of time, concentration and amount which will be used in the analysis.
 
-```julia
+```julia; results = "hidden"
 timeu = u"hr"
 concu = u"mg/L"
 amtu  = u"mg";
 ```
 
-Parse the dataframe to a `read_nca` function and map the necessary columns from the dataset
+Next, we map the columns in the dataset to the required arguments in the `read_nca` function
 
  * id
- * conc
+ * observations
  * time
- * ocassion - if you have different ocassions
+ * ii - if you have multiple doses
  * amt
  * route - Infusion "inf", IV "iv", Oral "ev"
  * duration - Only for Infusion
@@ -73,38 +84,159 @@ pop        = read_nca(  single_dose_data,
                         observations  = :CONC,
                         amt   = :AMT,
                         route = :ROUTE,
-                        llq   = 0.001concu,
-                        timeu = timeu,
-                        concu = concu,
-                        amtu  = amtu
+                        llq   = 0.001
                       )
 ```
 
-Plot a exploratory graph of ***Concentration vs Time*** for the first subject.
+#### Exploratory Analysis
+
+We start by different ways of visualizing the concentration time profiles. Depending on how
+you are performing your analysis, plots can be either interactive or static. A detailed tutorial on NCA related 
+plotting is available [here]().
+There are two main plots that can be used:
+
+1. `observations_vs_time`
+2. `summary_observations_vs_time`
+
+If you are working in VSCode, you could enjoy the interactive experience, or explicitly set it by 
+
+```julia;results = "hidden"
+interactive!(true)
+```
+
+Let's look at the observations vs time plots for one subject ( you can toggle through the subject index). 
+Assuming you are running this code in VSCode, a plot opens up as below and you should be able to 
+toggle between linear and log plots and hovering over the plot will tell you the exact value on the 
+x- and y-axis.
 
 ```julia
-NCAUtilities.observations_vs_time(pop[1])
+observations_vs_time(pop[1])
+```
+
+On the other hand, if you would like to view all subjects in an interactive fashion, you can
+
+```julia;results = "hidden"
+ctplots_interactive = observations_vs_time(pop, subplots=false)
+```
+
+and then toggle through each plot
+
+```julia
+ctplots_interactive[1]
+ctplots_interactive[2]
+```
+However, that can become cumbersome for many subjects. To view many subjects at once, choose the non-interactive mode via
+
+```julia;results = "hidden"
+interactive!(false)
+```
+
+
+Let's plot the concentration vs time for a few subject picked randomly.
+
+
+```julia;results = "hidden"
+Random.seed!(1234)
+rand_subjs = rand(1:length(pop), 9)
+ctplots = observations_vs_time(pop[rand_subjs], 
+                                xlabel = "Time hr", 
+                                ylabel = "DrugX Concentration mg/L",
+                                separate = true, 
+                                columns = 3, 
+                                rows = 3, 
+                                interactive = false)
+```
+
+Below are the linear and log concentration time plots
+
+```julia
+ctplots[1]
 ```
 
 ```julia
-report0     = run_nca(pop, sigdigits=3)
+ctplots[2]
+```
+
+You can also visualize the mean concentration vs time plot by using
+
+```julia
+summary_observations_vs_time(pop,
+                        xlabel = "Time  hr", 
+                        ylabel = "DrugX Concentration mg/L",
+                        subplots = false, interactive = false)[1]
+```
+
+#### NCA analysis
+
+The workhorse function that performs the analysis is `run_nca` (previously called `NCAReport`). While it is sufficient to use `run_nca(pop)`, 
+there are a lot of arguments that the function accepts. These are mostly metadata information that is used to generate a an automated report
+that will be covered later.
+
+```julia;results = "hidden"
+report_sd    = run_nca(pop, sigdigits=3,
+                studyid="STUDY-001",
+                studytitle="Phase 1 SAD of DrugX",
+                author = [("Vijay", "Pumas-AI")],
+                sponsor = "PumasAI",
+                date=Dates.now(),
+                conclabel="DrugX Concentration (mg/L)",
+                timelabel="Time hr",
+                versionnumber=v"0.1",)
+```
+
+You can view the individual subject fits in an interactive way, but for the tutorial we will showcase the non-interactive way
+
+```julia;results = "hidden"
+individual_fits = subject_fits(report_sd,
+             xlabel = "Time hr", 
+             ylabel = "DrugX Concentration mg/L",
+             separate = true, 
+             columns = 4, 
+             rows = 4, 
+             interactive = false)
+```
+
+The above code generates a vector of 16 plots (4 x 4) where each subject has the linear and log fit.
+To view each set of plots, you can acces via the vector index of 1:16 e.g.
+
+```julia; fig_width = 8; fig_height = 8
+individual_fits[1]
+```
+
+
+```julia; fig_width = 8; fig_height = 8
+individual_fits[4]
+```
+
+##### Create Parameters Summaries
+
+```julia
+parms = [:cmax, :aucinf_obs]
+param_summary = summarize(report_sd.reportdf, parameters=parms)
+```
+
+One can use some of the plotting functions to visualize the distribution of the parameters.
+
+```julia; fig_width = 8; fig_height = 8
+parameters_dist(report_sd, :aucinf_obs)[1]
 ```
 
 ##### Compute Specific Parameters
 
-We will now compute the specific parameters that we require and merge all of them to a dataframe
+We will now compute the specific parameters that we require and merge all of them to a dataframe. Note how
+you have to qualify each function with `NCA.` to avoid variables named as those parameters.
 
 ```julia
 vz        = NCA.vz(pop, sigdigits=3)  # Volume of Distribution/F, in this case since the drug is given orally
 cl        = NCA.cl(pop, sigdigits=3)  # Clearance/F, in this case since the drug is given orally
 lambdaz   = NCA.lambdaz(pop, threshold=3, sigdigits=3)  # Terminal Elimination Rate Constant, threshold=3 specifies the max no. of time point used for calculation
-lambdaz_1 = NCA.lambdaz(pop, slopetimes=[8,12,16].*timeu, sigdigits=3) # slopetimes in this case specifies the exact time point you want for the calculation
+lambdaz_1 = NCA.lambdaz(pop, slopetimes=[8,12,16], sigdigits=3) # slopetimes in this case specifies the exact time point you want for the calculation
 thalf     = NCA.thalf(pop[4], sigdigits=3) # Half-life calculation for 4th individual
 cmax_d    = NCA.cmax(pop, normalize=true, sigdigits=3) # Dose Normalized Cmax
 mrt       = NCA.mrt(pop, sigdigits=3) # Mean residence time
 aumc      = NCA.aumc(pop, method=:linlog, sigdigits=3) # AUMC calculation, using :linlog method
 rename!(lambdaz_1, Dict(:lambdaz => "lambdaz_specf")) #since we have two lambdaz calculation rename one column to merge in a dataframe
-df_1      = innerjoin(vz,cl,lambdaz, lambdaz_1,cmax_d,mrt,aumc, on=[:id], makeunique=true)
+individual_params      = innerjoin(vz,cl,lambdaz, lambdaz_1,cmax_d,mrt,aumc, on=[:id], makeunique=true)
 ```
 
 ##### Calculate AUC at specific intervals
@@ -112,23 +244,9 @@ df_1      = innerjoin(vz,cl,lambdaz, lambdaz_1,cmax_d,mrt,aumc, on=[:id], makeun
 Calculation of **AUC** at _specific time_ intervals and merge to the final report dataframe
 
 ```julia
-auc0_12   = NCA.auc(pop, interval=(0,12).*timeu, method=:linuplogdown, sigdigits=3) #various other methods are :linear, :linlog
-auc12_24  = NCA.auc(pop, interval=(12,24).*timeu, method=:linuplogdown, sigdigits=3)
-final     = innerjoin(report0.reportdf, auc0_12, auc12_24, on = [:id], makeunique=true)
-```
-
-You can select the colums that you wish to see in the output
-
-**Note:** Since this drug is given orally the parameters returned by NCA are **apparent** Volume of Distribution (Vz/F) and Clearance (Cl/F) where F is the bioavailability.
-
-```julia
-nca_output_single = select(final, :doseamt, :kel, :half_life, :cmax, :tmax, :auclast, :aucinf_obs, :vz_f_obs, :cl_f_obs, :aumcinf_obs, :auc0_12, :auc12_24)
-```
-
-Compute the Statistics of the selected variables that you require
-
-```julia
-Stat_report = describe(nca_output_single)
+auc0_12   = NCA.auc(pop, interval=(0,12), method=:linuplogdown, sigdigits=3) #various other methods are :linear, :linlog
+auc12_24  = NCA.auc(pop, interval=(12,24), method=:linuplogdown, sigdigits=3)
+final     = innerjoin(report_sd.reportdf, auc0_12, auc12_24, on = [:id], makeunique=true)
 ```
 
 #### Multiple-dose NCA
@@ -143,19 +261,17 @@ multiple_dose_data           = filter(x -> x.TIME > 24 , data)
 
 In the case of multiple-dose NCA the extra parameters which are calculated based on the dosing interval (τ) will be included in the output.
 You can select the NCA parameters that you wish to see in the output with the `parameters` keyword argument to `run_nca`
-```julia
-pop1       = read_nca( multiple_dose_data,
+
+```julia;results="hidden"
+pop_md       = read_nca( multiple_dose_data,
                        id    = :ID,
                        time  = :TIME,
                        observations  = :CONC,
                        amt   = :AMT,
                        route = :ROUTE,
                        ii    = :II,        # please specify II for Multiple-dose NCA
-                       llq   = 0.001concu,
-                       timeu = timeu,
-                       concu = concu,
-                       amtu  = amtu)
-report1    = run_nca(pop1, sigdigits=3)
+                       llq   = 0.001)
+report_md    = run_nca(pop_md, sigdigits=3)
 ```
 
 Similar to the Single-NCA you can compute individual parameters and merge them to the final report
@@ -164,7 +280,12 @@ Similar to the Single-NCA you can compute individual parameters and merge them t
 Compute the summary statistics of the selected variables that you require
 
 ```julia
-Stat_report1        = summarize(report1.reportdf, parameters = [:doseamt, :kel, :half_life, :tmax, :cmax, :auclast, :auc_tau_obs, :vz_f_obs, :cl_f_obs, :aumcinf_obs, :tau, :cavgss])
+param_summary_md  = summarize(report_md.reportdf, 
+                            parameters = [:half_life, 
+                                          :tmax, :cmax, 
+                                          :auclast, :auc_tau_obs, 
+                                          :vz_f_obs, :cl_f_obs, 
+                                          :aumcinf_obs, :tau, :cavgss])
 ```
 
 #### Documentation
@@ -175,7 +296,7 @@ Please refer to the [NCA Documentation](https://docs.pumas.ai/dev/basics/nca/) f
 
 The NCA report can be saved as a CSV file for further analysis
 
-```julia
+```julia; eval=false
 CSV.write("NCA_single_dose.csv", final)      # Single-NCA final report
-CSV.write("NCA_multiple_dose.csv", report1.reportdf)  # Multiple-NCA final report
+CSV.write("NCA_multiple_dose.csv", report_md.reportdf)  # Multiple-NCA final report
 ```
