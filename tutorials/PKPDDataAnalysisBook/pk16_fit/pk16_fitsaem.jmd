@@ -1,0 +1,233 @@
+---
+title: Exercise PK16 - Fitting Two compartment intravenous plasma/urine
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise we will learn how the complexities involved in modeling multiple
+ intravenous infusions plasma kinetics alongside urinary data. This we will be able
+ to develop a model for urinary excretion and calculate the amount of drug excreted
+ in urine. Simultaneous fitting of both `plasma and urine` data helps to improve the
+ parameter precision.
+
+The basic workflow of the estimation process is
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+```
+
+## Description of the data
+
+A total of **16 male dogs** received two continous intravenous infusions of the drug.
+ An initial dose of *538 umol/kg* for 0 to 0.983 hrs and a second infusion of *3390 μmol/kg*
+ from 0.983 hrs to 23.95 hrs. PK samples are collected at `0.5, 1, 2, 4, 7.6, 8.02,
+ 12.05, 15.95, 22.13, 23.89, 24.46, 24.94, 25.94, 26.96, 27.95, 29.97, 31.94, 35.96, 48, 54, 60, 72 hrs`.
+ Urine samples are collected at `6.1, 12.15, 24.05, 36.2, 48.2, 60.2, 72.2 hrs`
+
+The following are the units of the dataset:
+
+ * Time (time) = hrs
+ * Plasma Concentration (dv_plasma) = μmol/L
+ * Urine Amount (dv_urine) = μmol
+ * Dose (amt) = μmol/kg
+
+```julia
+pk16_data_df = CSV.read("./pk_16.csv", DataFrame, missingstrings=["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk16_data = describe(pk16_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv_plasma, :dv_urine])
+```
+
+## Exploratory Plots of the given data
+
+* Plot of Plasma Concentration vs Time
+
+```julia
+pk_data_plot_plasma = dropmissing(pk16_data_df, :dv_plasma)
+@df pk_data_plot_plasma plot(:time, :dv_plasma, group=:id, yaxis=:log, label=false,
+                             xlabel="Time (hr)", ylabel="Concentration (umol/L)",
+                             size = (600, 600), guidefontsize = 12,
+                             title = "Plasma Concentrations vs Time")
+```
+
+* Plot of Urine Amount vs Time
+
+```julia
+pk_data_plot_urine = dropmissing(pk16_data_df, :dv_urine)
+@df pk_data_plot_urine plot(:time, :dv_urine, group=:id, label=false,
+                        xlabel="Time (hr)", ylabel="Concentration (umol)",
+                        size = (600, 600), guidefontsize = 12,
+                        title = "Urine Amount vs Time")
+```
+
+## NCA Analysis
+
+We will now perform an NCA analysis of the second infusion dose to get the initial
+  estimates for the fitting of the given data. From the terminal slope value we can
+  obtain the parameters like Clearance and Volume of Distribution. The route column
+  will need to be included to indicate the dosing is an infusion `inf`. The *read_nca*
+  function input requires the route to be stated as `inf` for infusion, this will help
+  to compute the parameters correctly.
+
+We will filiter the data to include only the concentrations after the second dose.
+ Since it is an infusion we will calculate the duration. We do this by dividing the
+ amount by rate.
+
+```julia; results="hidden"
+pk16_nca_df = filter(x -> x.time >=0.983, pk16_data_df)
+pk16_nca_df[:, :duration] .= pk16_nca_df.amt ./ pk16_nca_df.rate
+pk16_nca_df[:, :route] .= "inf"
+```
+
+Now, map the data variables to the read_nca function that prepares the data for
+ NCA analysis. You can even type ?read_nca in the REPL and get more information
+ on the mapping of the data.
+
+```julia
+pk16_nca = read_nca(pk16_nca_df,
+                    id       = :id,
+                    time     = :time,
+                    amt      = :amt,
+                    conc     = :dv_plasma,
+                    duration = :duration,
+                    route    = :route)
+```
+
+A full NCAReport is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean, GeometricMean, and SD**
+
+```julia
+pk16_nca_report = NCAReport(pk16_nca, sigdig=3)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk16_nca_report, [:id, :vz_obs, :cl_obs, :kel, :half_life, :vss_obs])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_obs, :cl_obs, :kel, :half_life, :vss_obs], [:id])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+We have obtained initial estimates for Total Clearance (Cl) and Volume of Distribution (Vc).
+  We will now calculate the Renal Clearance from the mean urine amount at `time = 72.2 hrs`.
+
+```julia
+mean_urine_amt = filter(x -> x.time == 72.2, pk16_data_df)
+describe(mean_urine_amt, :min, :max, :mean, :std, cols=[:dv_urine])
+```
+
+Thus the total drug that is renal excreted is around **86%** (3376/3928(Total Dose)).
+ From this we can calculate the renal clearance of the drug 0.86 * 0.30 i.e **Clr = 0.266 L/hr/kg**
+ The non-renal clearance is calculate from the Cl - Clr (0.31 - 0.266) i.e **Clm = 0.044 L/hr/kg**
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk_data      = read_pumas(pk16_data_df,
+                          id           = :id,
+                          time         = :time,
+                          observations = [:dv_plasma, :dv_urine],
+                          amt          = :amt,
+                          evid         = :evid,
+                          cmt          = :cmt)
+```
+
+##### Two-compartment Model with Urine Compartment
+
+In this two-compartment model we have a `Urine` Compartment and this will help
+ us calculate the amount of drug excreted via the renal route.
+
+```julia
+pk_16       = @emmodel begin
+    @metadata begin
+      desc  = "PK16 Two Comt with Urine Data"
+      timeu = u"hr"
+    end
+
+    @param begin
+      Vc       ~ 1 | LogNormal
+      Vp       ~ 1 | LogNormal
+    end
+
+    @random begin
+      "Renal Clearance (L/hr)"
+      CLr ~ 1 | LogNormal
+      "Non Renal Clearance (L/hr)"
+      CLm ~ 1 | LogNormal
+      "Intercompartmental Clearance (L/hr)"
+      Q ~ 1 | LogNormal
+    end
+
+    @dynamics begin
+      Central'    = - (CLr/Vc)*Central - (CLm/Vc)*Central + (Q/Vp)*Peripheral - (Q/Vc)*Central
+      Peripheral' =   (Q/Vc)*Central - (Q/Vp)*Peripheral
+      Urine'      =   (CLr/Vc)*Central
+    end
+
+    @post begin
+      cp_plasma   = Central/Vc
+      cp_urine    = Urine
+    end
+     
+    @error begin
+      dv_plasma   ~ ProportionalNormal(cp_plasma)
+      dv_urine    ~ Normal(cp_urine)
+    end
+end
+```
+
+We will use the initial estimates we have obtained from the NCA Analysis and other
+ derived values.
+
+```julia
+param_est = ( CLm   = 0.04,
+              CLr   = 0.266,
+              Vc    = 1.1,
+              Vp    = 0.13,
+              Q     = 0.04)
+```
+
+##### SAEM Fitting
+
+
+Based on the NaivePooled estimates we will slightly modify our inital estimates
+ for Central and Peripheral Volume. Using these estimates we will perform fitting
+ using `FOCEI`
+
+```julia
+pk_16_fit = @time fit(pk_16, pk_data, param_est,
+                       Pumas.SAEM(), ensemblealg = EnsembleThreads())
+
+coeftable(pk_16_fit)
+```
