@@ -1,0 +1,293 @@
+---
+title : Exercise PK18 - Capacity II - Fitting Ethanol kinetics
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise you will learn how to go from data to insight. Following which
+ you can assess goodness-of-fit plots, and interpret the outputs.  In this exercise
+ ethanol is given is an infusion and the samples are collected accordingly. We will
+ try to fit a **non-linear elimination model**. Since the system is dealing with
+ non-linear kinetics we will have to provide good initial estimates, so that we
+ do not end up in a local minimum.
+
+The basic workflow of the estimation process is
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using GLM
+```
+
+## Description of the data
+
+Ethanol is given as an Intravenous Infusion at a dose of **0.4 g/kg** over *30 mins*.
+ Plasma samples are obtained in parallel with expired air every 5th min for 6 hours.
+ We know that etahnol is known to exhibit capacity-limited kinetics. Samples are
+ collected at `5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 70, 75, 80, 85, 90,
+ 95, 105, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155, 160, 165, 170, 175, 180,
+ 190, 195, 200, 205, 210, 215, 220, 225, 230, 235, 240, 255, 270, 285, 300, 315, 330,
+ 345, 360 mins`.
+
+The following are the units of the dataset:
+
+ * Time (time) = mins
+ * Plasma Concentration (dv) = g/L
+ * Dose (amt) = g
+
+```julia
+pk18_data_df = CSV.read("./pk_18.csv", DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary statistics of the data
+
+```julia
+stats_pk18_data = describe(pk18_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv, :amt])
+```
+
+## Exploratory Plots of the given data
+
+ * Plot of Plasma Concentration vs Time
+
+```julia
+pk_data_plot_plasma = dropmissing(pk18_data_df, :dv)
+@df pk_data_plot_plasma plot(:time, :dv, group=:id, yaxis=:log, label=false,
+                             xlabel="Time (mins)", ylabel="Concentration (g/L)",
+                             size = (600, 600), guidefontsize = 12,
+                             title = "Concentrations vs Time")
+```
+
+## NCA Analysis
+
+We will now perform an NCA analysis to get the initial estimates for the fitting
+ of the given data. We will include a `route` column to specify that dosing is an
+ infusion `inf`.  The read_nca() function input requires the route to be stated
+ as `inf` for an infusion.
+
+```julia; results="hidden"
+pk18_data_df[:, :route] .= "inf"
+```
+
+Now, map the data variables to the *read_nca* function that prepares the data for
+ NCA analysis. We will map the `duration` column to the required variable since the
+ drug is given as an infusion.
+
+```julia
+pk18_nca = read_nca(pk18_data_df,
+                    id       = :id,
+                    time     = :time,
+                    amt      = :amt,
+                    conc     = :dv,
+                    duration = :duration,
+                    route    = :route)
+```
+
+A full NCAReport is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean, GeometricMean, and SD**
+
+```julia
+pk18_nca_report = NCAReport(pk18_nca, sigdig=3)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk18_nca_report, [:id, :vz_obs, :cl_obs, :kel, :half_life, :vss_obs])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_obs, :cl_obs, :kel, :half_life, :vss_obs], [:id])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+We have obtained the initial estimates for `Volume of Distribution`. We will split
+ the volume between the two compartments. The clearance of the drug is *0.17 L/min*.
+ At very low concentration of 0.1 g/L , Cl = Vmax/(Km+C). From this we will calculate
+ Vmax and Km.
+
+We will calculate the mean of the time points and this will help us calculate the
+ slope for A and B.
+
+```julia
+pk18_slope = select(pk18_data_df, [:id, :time, :dv])
+pk18_slope_stacked = stack(pk18_slope, [:dv], [:id, :time])
+pk18_slope_summary = combine(groupby(pk18_slope,[:time]),
+                             [col => fun for col in [:dv]
+                             for fun in [mean, geomean, std]])
+```
+
+Plot of the mean concentration at the respective time points
+
+```julia
+@df pk18_slope_summary plot(:time, :dv_geomean, yaxis=:log, label=false,
+                             xlabel="Time (mins)", ylabel="Concentration (g/L)",
+                             size = (600, 400), guidefontsize = 12, linewidth=3,
+                             title = "Mean Concentration vs Time")
+```
+
+Calculate the SLOPE A, filter values less than 250 mins
+
+```julia
+pk18_slopeA_df = filter(x -> x.time < 250, pk18_slope_summary)
+ols_slopA = lm(@formula(dv_geomean ~ time), pk18_slopeA_df)
+```
+
+Calculate the SLOPE B, filter values greater than 250 mins
+
+```julia
+pk18_slopeB_df = filter(x -> x.time > 250, pk18_slope_summary)
+ols_slopeB = lm(@formula(dv_geomean ~ time), pk18_slopeB_df)
+```
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk_data      = read_pumas(pk18_data_df,
+                          id           = :id,
+                          time         = :time,
+                          observations = [:dv],
+                          amt          = :amt,
+                          evid         = :evid,
+                          cmt          = :cmt,
+                          rate         = :rate)
+```
+
+##### Two-compartment Linear Model
+
+```julia
+pk_18_lm        = @emmodel  begin
+  @metadata begin
+    desc = "PK18 Linear Model"
+    timeu = u"minute"
+  end
+
+  @random begin
+    "Clearance (L/minute)"
+    CL ~ 1 | LogNormal
+    "Volume (L)"
+    Vc ~ 1 | LogNormal
+    "InterCompartmental Clearance (L/minute)"
+    Q ~ 1 | LogNormal
+    "Peripheral Volume (L)"
+    Vp ~ 1 | LogNormal
+  end
+
+  @dynamics Central1Periph1
+    #Central'    = - (Cl/Vc * Central + (Q/Vp) * Peripheral - (Q/Vc) * Central
+    #Peripheral' = - (Q/Vp) * Peripheral + (Q/Vc) * Central
+  #end
+
+  @post begin
+    cp         = Central/Vc
+  end
+
+  @error begin
+    dv         ~ ProportionalNormal(cp)
+  end
+end
+```
+
+We will use the initial estimates obtained from the NCA Analysis
+
+```julia
+param_est_lm = (CL       = 0.17,
+                Q        = 1,
+                Vc       = 5,
+                Vp       = 15)
+```
+
+##### SAEM Fitting
+
+We will now try to fit a two-compartment linear model using `FOCEI`
+
+```julia
+pk_18_lm_fit = @time fit(pk_18_lm, pk_data, param_est_lm,
+                      Pumas.SAEM(), ensemblealg = EnsembleThreads())
+
+coeftable(pk_18_lm_fit)
+```
+
+
+##### Two-compartment Non-linear Model
+
+```julia
+pk_18_nm        = @emmodel  begin
+  @metadata begin
+    desc = "PK18 Nonlinear Model"
+    timeu = u"minute"
+  end
+
+  @param begin
+    Km ~ 1 | LogNormal 
+  end
+
+  @random begin
+    "Maximum rate of elimination (mg/minute)"
+    Vmax ~ 1 | LogNormal
+    "Volume (L)"
+    Vc ~ 1 | LogNormal
+    "InterCompartmental Clearance (L/minute)"
+    Q ~ 1 | LogNormal
+    "Peripheral Volume (L)"
+    Vp ~ 1 | LogNormal
+  end
+
+  @dynamics begin
+    Central'    = - (Vmax/(Km+(Central/Vc))) * Central/Vc + (Q/Vp) * Peripheral - (Q/Vc) * Central
+    Peripheral' = - (Q/Vp) * Peripheral + (Q/Vc) * Central
+  end
+
+  @post begin
+    cp         = Central/Vc
+  end
+
+  @error begin
+    dv         ~ ProportionalNormal(cp)
+  end
+end
+```
+
+We will use the inital parameters we have obtained.
+
+```julia
+param_est_nm = (Vmax     = 0.098,
+                Km       = 0.049,
+                Q        = 1,
+                Vc       = 5,
+                Vp       = 15)
+```
+
+##### SAEM Fitting
+
+We will now fit the model using `FOCEI`
+
+```julia
+pk_18_nm_fit = @time fit(pk_18_nm, pk_data, param_est_nm,
+                      Pumas.SAEM(), ensemblealg = EnsembleThreads())
+
+coeftable(pk_18_nm_fit)
+```
