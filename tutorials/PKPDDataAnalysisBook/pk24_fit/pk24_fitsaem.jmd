@@ -1,0 +1,288 @@
+---
+title: Exercise PK24 - Fitting Nonlinear kinetics - Flow 2
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise you will learn how to model nonlinear kinetics with respect to flow.
+ We will model a **flow dependent system** in which there will be a changes in the
+ perfusion of the eliminating organ depending on the concentration. The drug is
+ known to reduce cardiac output and hepatic blood flow when the concentration increases.
+ We make certain assumptions between the flow and concentration.
+
+The basic workflow for the estimation process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+using GLM
+```
+
+## Description of the data
+
+A intravenous infusion of **10mg/kg (10000 μg)** is administered for over `2 hours`
+ to a total of 45 subjects. Blood samples are drawn at frequent intervals at times
+ `0.25, 0.5, 0.75, 1.05, 1.25, 1.49, 1.75, 1.99, 2.16, 2.35, 2.4, 2.65, 2.81, 2.95,
+ 3.11, 3.56, 4.15, 6, 7 hrs`.
+
+The following are the units of the dataset:
+
+  * Time (time) = hrs
+  * Plasma Concentrations (dv) = μg/L
+  * Dose (amt) = μg/kg
+
+```julia
+pk24_data_df = CSV.read("./pk_24.csv", DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+pretty_table(first(pk24_data_df,20), backend = :html)
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk24_data = describe(pk24_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+ * Plot the **Concentration vs Time**
+
+```julia
+pk_data_plot = dropmissing(pk24_data_df, :dv)
+@df pk_data_plot plot(:time, :dv, group=:id, label=false,
+                       xlabel="Time (hr)", ylabel="Concentration (ug/L)",
+                       size = (600, 600), guidefontsize = 14,
+                       title = "Plasma Concentration vs Time")
+```
+
+ * Plot of **Mean Concentration vs Time**
+
+```julia
+plasma_mean = combine(groupby(pk24_data_df,[:time]),
+                             [col => fun for col in [:dv]
+                             for fun in [mean, geomean, std]])
+plasma_mean[:, :dv_geomean_ln] .= log.(plasma_mean.dv_geomean)
+
+@df plasma_mean plot(:time, :dv_geomean, label=false,
+                       xlabel="Time (hr)", ylabel="Concentration (ug/L)",
+                       size = (600, 600), guidefontsize = 14, linewidth=2,
+                       title = "Plasma Concentration vs Time")
+
+```
+
+## NCA Analysis
+
+We will perform an `NCA Analysis` of the given data to obtain a few initial estimates
+ for the estmation process. We will include a `route` column to indicate that the
+ dosing is an intravenous infusion `inf`. We will calculation the duration of
+ infusion from the amount and rate.
+
+```julia, results="hidden"
+pk24_data_df[:, :route] .= "inf"
+pk24_data_df[:, :duration] .= pk24_data_df.amt ./ pk24_data_df.rate
+```
+
+Now, map the data variables to the `read_nca` function that prepares the data for
+ NCA analysis. You can even type `?read_nca` in the REPL and get more information
+ on the mapping of the required variables.
+
+```julia
+pk24_nca = read_nca(pk24_data_df,
+                    id       = :id,
+                    time     = :time,
+                    amt      = :amt,
+                    conc     = :dv,
+                    duration = :duration,
+                    route    = :route)
+```
+
+A full NCAReport is generated, we will then perform summary statistics of the
+required parameters to obtain the **Mean, GeometricMean, and SD**
+
+```julia
+pk24_nca_report = NCAReport(pk24_nca, sigdig=3)
+```
+
+Perform the `Summary Statistics` for the required NCA Parameters
+
+```julia
+dropmissing!(pk24_nca_report)
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk24_nca_report, [:id, :vz_obs, :cl_obs, :aucinf_obs, :kel, :half_life])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_obs, :cl_obs, :aucinf_obs, :kel, :half_life], [:id])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+From the `NCA Analysis` we will set the initial estimates for the estimation.
+
+ * The Volume of Distribution is split between the three compartments, thus we will
+    split them between the three compartment.
+ *  The Clearance is lower for the Shallow Compartment than for the Deep and Central
+    Compartment.
+
+## Pharmacokinetic Modeling
+
+##### Read Dataset in Pumas
+
+```julia
+pk24_data = read_pumas(pk24_data_df,
+                        id           = :id,
+                        time         = :time,
+                        observations = [:dv],
+                        amt          = :amt,
+                        evid         = :evid,
+                        rate         = :rate,
+                        cmt          = :cmt)
+```
+
+##### Static Model
+
+```julia
+pk_24_static   = @emmodel begin
+  @metadata begin
+    desc       = "PK24 Static Model"
+    timeu      = u"hr"
+  end
+
+  @param begin
+    Vc         ~ 1 | LogNormal
+    CLo        ~ 1 | LogNormal
+  end
+
+  @random begin
+    "Intercompartmetal Clearance - Shallow (L/hr)"
+    Q1         ~ 1 | LogNormal
+    "Intercompartmetal Clearance - Deep (L/hr)"
+    Q2         ~ 1 | LogNormal
+    "Volume of Distribution - Shallow (L)"
+    Vp1        ~ 1 | LogNormal
+    "Volume of Distribution - Deep (L)"
+    Vp2        ~ 1 | LogNormal
+  end
+
+  @dynamics begin
+    Central'   =  - CLo*(Central/Vc) - Q1*(Central/Vc) + Q1*(Shallow/Vp1) - Q2*(Central/Vc) + Q2*(Deep/Vp2)
+    Shallow'   =    Q1*(Central/Vc) - Q1*(Shallow/Vp1)
+    Deep'      =    Q2*(Central/Vc) - Q2*(Deep/Vp2)
+  end
+
+  @post begin
+    cp         = Central/Vc
+  end
+
+  @error begin
+    dv         ~ ProportionalNormal(cp)
+  end
+end
+```
+
+We have obtained the parameters from the `NCA Analysis`.
+
+```julia
+param_est_static  = (Vc  = 0.5,
+                     CLo = 4.5,
+                     Q1  = 4.5,
+                     Q2  = 1,
+                     Vp1 = 4,
+                     Vp2 = 6)
+```
+
+##### SAEM Fitting
+
+We will fit the data using `FOCEI`.
+
+```julia
+pk_24_static_fit = @time fit(pk_24_static, pk24_data, param_est_static,
+                           Pumas.SAEM(), ensemblealg = EnsembleThreads())
+
+coeftable(pk_24_static_fit)
+```
+
+
+##### Flow Model
+
+```julia
+pk_24_flow      = @emmodel begin
+  @metadata begin
+    desc       = "PK24 Flow Model"
+    timeu      = u"hr"
+  end
+
+  @param begin
+    Vc         ~ 1 | LogNormal
+    CLo        ~ 1 | LogNormal
+    A          ~ 1 | LogNormal
+  end
+
+  @random begin
+    "Intercompartmetal Clearance - Shallow (L/hr)"
+    Q1         ~ 1 | LogNormal
+    "Intercompartmetal Clearance - Deep (L/hr)"
+    Q2         ~ 1 | LogNormal
+    "Volume of Distribution - Shallow (L)"
+    Vp1        ~ 1 | LogNormal
+    "Volume of Distribution - Deep (L)"
+    Vp2        ~ 1 | LogNormal
+  end
+
+
+  @dynamics begin
+    Central'   =  - (CLo -(A * (Central/Vc))) * (Central/Vc) - Q1*(Central/Vc) + Q1*(Shallow/Vp1) - Q2*(Central/Vc) + Q2*(Deep/Vp2)
+    Shallow'   =    Q1*(Central/Vc) - Q1*(Shallow/Vp1)
+    Deep'      =    Q2*(Central/Vc) - Q2*(Deep/Vp2)
+  end
+
+  @post begin
+    cp         = Central/Vc
+  end
+
+  @error begin
+    dv         ~ ProportionalNormal(cp)
+  end
+end
+```
+
+We will use the estimates we have obtained from the `static model`
+
+```julia
+param_est_flow = (Vc  = 0.5,
+                  CLo = 6.0,
+                  Q1  = 5.1,
+                  Q2  = 0.9,
+                  Vp1 = 1.5,
+                  Vp2 = 3.1,
+                  A   = 0.0025)
+```
+
+We will now estimate the flow model using `SAEM`.
+
+```julia
+pk_24_flow_fit = @time fit(pk_24_flow, pk24_data, param_est_flow,
+                       Pumas.SAEM(), ensemblealg = EnsembleThreads())
+
+coeftable(pk_24_flow_fit)
+```
