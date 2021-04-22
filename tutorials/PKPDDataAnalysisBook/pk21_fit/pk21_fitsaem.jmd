@@ -1,0 +1,218 @@
+---
+title : Exercise PK21 - Fitting Nonlinear Kinetics - Heteroinduction
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise we will learn how to build a **heteroinduction model** and estimate
+ the apparent fractional turnover rate for the enzyme. To conduct this experiment
+  Nortriptyline (NT) was administered Q8 hrs for a period of 29 days . In this we
+  assume that the intrinsic clearance of NT is depedent on the synthesis of enzyme.
+  We will model the time dependant change in elimination rate constant of a drug.
+
+The basic workflow for the estimation process is:
+
+ 1. Description of the data
+ 2. NCA Exploratory Analysis
+ 3. Pharmacokinetic modelling
+ 4. Diagnostic Plots
+ 5. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+```
+
+## Description of the given data
+
+To conduct this experiment Nortriptyline (NT) **10 mg** was administered orally
+ Q8 hrs for a period of 29 days (696 hrs) (_'87 additional doses'_). On day 9
+ (216 hrs), the drug pentobarbital (PB) is administered ans stopped on day 21.5
+ (516 hrs). PK samples are collected at times `168, 171, 172, 175, 216, 360, 361,
+  363, 365, 368, 384, 432, 504, 505, 507, 509, 552, 600, 696, 697, 699, 701, 704 hrs`.
+
+The following are the units of the dataset:
+
+ * Time (time) = hrs
+ * Plasma Concentration (Conc) = nM
+ * Dose (amt) = μg
+
+_Note:_ For all calculation make sure to convert the dose to nM
+
+```julia
+pk21_data_df = CSV.read("./pk_21.csv", DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk21_data = describe(pk21_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## NCA Analysis
+
+We will perform an `NCA Analysis` of the given data to obtain the AUC for
+ the pre-induction.
+
+ **Pre-Induction Phase**
+
+```julia
+pk21_data_nca_pre = filter(x -> (x.time >= 168.0 && x.time <= 175.0), pk21_data_df)
+select!(pk21_data_nca_pre, :id, :time, :dv)
+dropmissing!(pk21_data_nca_pre)
+
+pk21_nca_pre = read_nca(pk21_data_nca_pre,
+                        id     = :id,
+                        time   = :time,
+                        conc   = :dv)
+```
+
+We will calculate the `AUC` of the given data for the _pre-induction phase_.
+
+```julia
+pk21_nca_auc_pre = NCA.auc(pk21_nca_pre, auctype=:last)
+describe(pk21_nca_auc_pre)
+```
+
+**Induction Phase**
+
+```julia
+pk21_data_nca_ss = filter(x -> (x.time >= 504.0 && x.time <= 509.0), pk21_data_df)
+select!(pk21_data_nca_ss, :id, :time, :dv)
+dropmissing!(pk21_data_nca_ss)
+
+pk21_nca_ss = read_nca(pk21_data_nca_ss,
+                         id     = :id,
+                         time   = :time,
+                         conc   = :dv)
+```
+
+We will calculate the `AUC` of the given data for the _induction phase_.
+
+```julia
+pk21_nca_auc_ss = NCA.auc(pk21_nca_ss, auctype=:last)
+describe(pk21_nca_auc_ss)
+```
+
+  * The pre-induction clearance can be calculated from Clpre = Dose/AUcpre,
+     i.e **Clpre = 55.02 L/hr**
+
+  * The Induction clearance can be calculated from Clss = Dose/AUcss,
+     i.e **Clss = 149.94 L/hr**
+
+  * The Kout parameters is obtained from the data. It takes approximately **150 hrs**
+     for the drug to reduce to 50% of drug level.
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+We have used two covariates TBP and TBP2, TBP represents the time at which the inducer
+ PB is started i.e **216 hrs** and TBP2 represnts the time at which the inducer PB is
+ stopped i.e **516 hrs**
+
+```julia
+pk21_data = read_pumas(pk21_data_df,
+                       id           = :id,
+                       time         = :time,
+                       observations = [:dv],
+                       amt          = :amt,
+                       evid         = :evid,
+                       rate         = :rate,
+                       cmt          = :cmt,
+                       covariates   = [:TBP, :TBP2])
+```
+
+##### One-Compartment Absorption Model
+
+This is a one-compartment model with time-dependant change in clearance. We dont
+ include the pharmacokinetics of pentobarbital (inducing enzyme).
+
+```julia
+pk_21        = @emmodel begin
+  @metadata begin
+    desc = "PK21 Heteroinduction Model"
+    timeu = u"hr"
+  end
+
+  @param begin
+    Ka       ~ 1 | LogNormal
+    tvlag    ~ 1 | LogNormal
+    Kout     ~ 1 | LogNormal
+    Vc       ~ 1 | LogNormal
+  end
+
+  @random begin
+    "Preinduction Clearance (L/hr)"
+     Clpre ~ 1 | LogNormal
+    "Induced SS Clearance (L/hr)"
+     Clss ~ 1 | LogNormal
+  end
+
+  @covariates TBP TBP2
+
+  @pre begin
+    lags     = (Depot=tvlag,)
+
+    ## Pre-induced State
+    Kpre     = Clpre/Vc
+    Kss      = Clss/Vc
+
+    ## Peri-induced State
+    Kperi    = Kss-(Kss-Kpre)*exp(-Kout*(t-TBP))
+
+    ## Post-induced State
+    A        = Kss - (Kss-Kpre)*exp(-Kout*(TBP2-TBP))
+    Kpost    = Kpre - (Kpre-A)*exp(-Kout*(t-TBP2))
+
+    K10      = (t<TBP) * Kpre + (t>=TBP && t<TBP2) * Kperi + (t>=TBP2) * Kpost
+  end
+
+  @dynamics begin
+    Depot'   = -Ka*Depot
+    Central' =  Ka*Depot - K10*Central
+  end
+
+  @post begin
+    cp       = (1000/263.384)*Central/Vc
+  end 
+
+  @error begin
+    dv       ~ ProportionalNormal(cp)
+  end
+end
+```
+
+We have obtained the initial estimates from some derivation and graphically.
+
+```julia
+param_est = ( Ka     = 3,
+              Clss   = 149,
+              tvlag  = 0.7,
+              Clpre  = 55,
+              Kout   = 0.005,
+              Vc     = 1260)
+```
+
+##### SAEM Fitting
+
+```julia
+pk_21_lag_fit = @time fit(pk_21, pk21_data, param_est,
+                         Pumas.SAEM(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_21_lag_fit)
+```
+
