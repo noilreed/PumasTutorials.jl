@@ -1,0 +1,252 @@
+---
+title: Exercise PK17 - Fitting Nonlinear kinetics - Capacity 1
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise we will try to fit a one-comparmtent model with first order elimination
+ and a michaelis-menten elimination. It is very important to have adequate data to
+ help us distinguish and make comparisons between the models.
+
+The basic workflow of the estimation process is
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+```
+
+## Description of the data
+
+A new drug is administered as a rapid infusion at a dose of `1800 μg` over *0.5 mins*
+ followed by a slow infusion at a dose of `5484.8 μg` over 39.63 mins. PK samples are
+ collected at the following time points - `0.1, 5.38, 10.33, 15.3, 20.35, 23.13, 28.15,
+ 33.18, 38.23, 40.62, 45.25, 50.08, 60.42, 80.35 mins`. A total of 14 samples are collected
+ from each patient.
+
+The following are the units of the dataset:
+
+ * Time (time) = mins
+ * Plasma Concentration (dv) = μg/mL
+ * Dose (amt) = μg
+
+```julia
+pk17_data_df = CSV.read("./pk_17.csv", DataFrame, missingstrings=["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk17_data = describe(pk17_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+ * Plot of *Concentration vs Time*
+
+```julia
+pk_data_plot_plasma = dropmissing(pk17_data_df, :dv)
+@df pk_data_plot_plasma plot(:time, :dv, group=:id, label=false,
+                             xlabel="Time (mins)", ylabel="Concentration (ug/mL)",
+                             size = (600, 600), guidefontsize = 12,
+                             title = "Plasma Concentrations vs Time")
+```
+
+## NCA Analysis
+
+We will now perform an NCA analysis of the slow infusion dose to get the initial
+ estimates for the fitting of the given data. From the terminal slope value we can
+ obtain the parameters like `Clearance` and `Volume of Distribution`. The route
+ column will need to be included to indicate the dosing is an *infusion* `inf`.
+ The *read_nca* function input requires the route to be stated as inf for infusion,
+ this will help to compute the parameters correctly.
+
+We will filiter the data to include only the concentrations after the second dose.
+ Since it is an infusion we will calculate the duration. We do this by dividing the
+ `amount` by `rate`.
+
+```julia; results="hidden"
+pk17_nca_df = filter(x -> x.time >=0.5, pk17_data_df)
+pk17_nca_df[:, :duration] .= pk17_nca_df.amt ./ pk17_nca_df.rate
+pk17_nca_df[:, :route] .= "inf"
+```
+
+Now, map the data variables to the readnca function that prepares the data for NCA
+ analysis. You can even type **?readnca** in the REPL and get more information on
+ the mapping of the data.
+
+```julia
+pk17_nca = read_nca(pk17_nca_df,
+                    id       = :id,
+                    time     = :time,
+                    amt      = :amt,
+                    conc     = :dv,
+                    duration = :duration,
+                    route    = :route)
+```
+
+A full NCAReport is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean, GeometricMean, and SD**
+
+```julia
+pk17_nca_report = NCAReport(pk17_nca, sigdig=3)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk17_nca_report, [:id, :vz_obs, :cl_obs, :kel, :half_life, :vss_obs])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_obs, :cl_obs, :kel, :half_life, :vss_obs], [:id])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+We have obtained the Clearance and Volume of Distribution from the NCA Analysis.
+ We will use these estimates for fitting of the linear model.
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk_data      = read_pumas(pk17_data_df,
+                          id           = :id,
+                          time         = :time,
+                          observations = [:dv],
+                          amt          = :amt,
+                          evid         = :evid,
+                          cmt          = :cmt)
+```
+
+##### One-Compartment Model with Linear Elimination
+
+```julia
+pk_17_lm    = @emmodel begin
+  @metadata begin
+    desc = "One Cmt Linear Model"
+    timeu = u"minute"
+  end
+
+ @random begin
+    "Clearance (mL/mins)"
+    CL ~ 1 | LogNormal
+    "Volume (mL)"
+    Vc ~ 1 | LogNormal
+ end
+
+ @dynamics Central1
+   #Central' = - (Cl/Vc)*Central
+ #end
+
+ @post begin
+   cp       = Central/Vc
+  end
+
+  @error begin
+   dv       ~ ProportionalNormal(cp)
+ end
+end
+```
+
+These estimates are obtained from the NCA Anlaysis
+
+```julia
+param_est_lm = (CL    = 34,
+                Vc    = 798)
+```
+
+## SAEM Fitting
+
+The estimate for the `Volume of Distribution` seems off from the NCA Analysis. Hence
+ we will use the estimates we have obatined from the `NaivePooled` Analysis for the
+ fitting using `FOCEI`.
+
+```julia
+param_est_lm_nv = (tvcl    = 39,
+                   tvvc    = 1430,
+                   Ω       = Diagonal([0.04, 0.04]),
+                   σ²_prop = 0.02)
+
+pk_17_fit_lm = @time fit(pk_17_lm, pk_data, param_est_lm,
+                         Pumas.SAEM(), ensemblealg = EnsembleThreads())
+
+coeftable(pk_17_fit_lm)
+```
+
+
+##### Micahelis Menten Model
+
+```julia
+pk_17_mm     = @emmodel begin
+  @metadata begin
+    desc = "PK17 Non-linear Model"
+    timeu = u"minute"
+  end
+
+  @param begin
+    Km     ~ 1 | LogNormal
+  end
+
+  @random begin
+    "Maximum rate of elimination (ug/minute)"
+    Vmax ~ 1 | LogNormal
+    "Volume (L)"
+    Vc ~ 1 | LogNormal
+  end
+
+  @dynamics begin
+    Central' = - (Vmax* (Central/Vc))/(Km+(Central/Vc))
+  end
+
+  @post begin
+    cp       = Central/Vc
+  end
+
+  @error begin
+    dv       ~ ProportionalNormal(cp)
+  end
+end
+```
+
+At very low concentrations of about *1 μg/mL*, we assume the **Km = 1 μg/mL** .
+ Using the fomula Cl = Vmax / (Km+C), we calculate Vmax to be approximately
+ **84 μg/min**. We will use these as initial estimates for the analysis.
+
+```julia
+param_est_mm = (Vmax  = 84,
+                Km    = 1,
+                Vc    = 1355)
+```
+
+We will try to the fit the data using `FOCEI`
+
+```julia
+pk_17_fit_mm = @time fit(pk_17_mm, pk_data, param_est_mm,
+                          Pumas.SAEM(), ensemblealg = EnsembleThreads())
+
+coeftable(pk_17_fit_mm)
+```
+
