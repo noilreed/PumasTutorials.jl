@@ -1,0 +1,352 @@
+---
+title : Exercise PK27 - Fitting Target Mediated Drug Disposition
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise we will learn how to develop a **full Target Mediated Drug Disposition**
+ **Model (TMDD)**. We will use data from _ligand, receptor and complex_. This will help
+ us to improve the parameters precision. We have used a dose range of `1.5, 5, 5
+  45 mg/kg`. We will also compare the full TMDD model to a two-compartment
+  Michaelis Menten and parallel linear elimination model (reduced model). We will
+  check if the true parameters of the TMDD model be replaced with two reduced
+  parameters of the reduced model.
+
+The basic workflow for the estimation process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+ 7. Model Comparison
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of the given data
+
+A total of 12 subjects, 3 subjects in each group receive a dose of **1.5, 5, 15 & 45 mg/kg**
+ respectively. The doses are given as an `Intravenous Bolus` and then PK samples
+ are collected at various time intervals `0.1, 1, 10, 24, 72, 120, 168, 240, 360,
+ 499 hrs`. Data is collected upto 500 hrs, this will provide us with all the four
+ phases observed in the ligand concentration.
+
+The following are the units of the dataset:
+
+  * Time (time) = hrs
+  * Ligand Concentrations (dv_cp) = mg/L
+  * Receptor Concentrations (dv_rec) = mg/L
+  * Complex Concentration (dv_com) = mg/L
+  * Dose (amt) = mg/kg
+  * Group ( `1` : Dose=1.5mg/kg, `2` : Dose=5mg/kg, `3` : Dose=15mg/kg, `4` : Dose=45mg/kg)
+
+```julia
+pk27_data_df = CSV.read("./pk_27.csv", DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic `summary` statistics of the data
+
+```julia
+stats_pk27_data = describe(pk27_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv_cp,:dv_rec,:dv_com])
+```
+
+## Exploratory Plots of the given data
+
+ * Plot of Plasma Concentration vs Time
+
+```julia
+pk_data_plot = dropmissing(pk27_data_df, :dv_cp)
+@df pk_data_plot plot(:time, :dv_cp, group=:id, color=:Group, yaxis=:log, label=false,
+                      xlabel="Time (hrs)", ylabel="Concentration (mg/L)",
+                      guidefontsize = 12, size = (600, 600),
+                      title = "Plasma Concentrations vs Time")
+```
+
+ * Plot of the Mean Plasma Concentration vs Time
+
+```julia
+plasma_mean = combine(groupby(pk27_data_df,[:Group, :time]),
+                            [col => fun for col in [:dv_cp]
+                            for fun in [mean, geomean, std]])
+
+
+@df plasma_mean plot(:time, :dv_cp_mean, group=:Group, yaxis=:log, label=false,
+                      xlabel="Time (hrs)", ylabel="Concentration (mg/L)",
+                      guidefontsize = 12, size = (600, 600),
+                      title = "Mean Plasma Concentrations vs Time")
+@df plasma_mean scatter!(:time, :dv_cp_mean, group=:Group, label=false)
+```
+
+We show an expansion of the first `80 hrs`, you can see how initally the dip in
+ concentration is larger at the lower doses and keeps on decreasing.
+
+```julia
+plasma_mean_80 = filter(x -> x.time <= 80.0, plasma_mean)
+@df plasma_mean_80 plot(:time, :dv_cp_mean, group=:Group, yaxis=:log, label=false,
+                      xlabel="Time (hrs)", ylabel="Concentration (mg/L)",
+                      size = (300, 500), ylims=(10,1000),
+                      title = "Mean Concentration vs Time")
+@df plasma_mean_80 scatter!(:time, :dv_cp_mean, group=:Group, label=false)
+```
+
+ * Plot of Receptor Concentration vs Time
+
+```julia
+@df pk_data_plot plot(:time, :dv_rec, group=:id, color=:Group, yaxis=:log, label=false,
+                      xlabel="Time (hrs)", ylabel="Concentration (mg/L)",
+                      guidefontsize = 12, size = (600, 600),
+                      title = "Receptor Concentrations vs Time")
+```
+
+ * Plot of Complex Concentration vs Time
+
+```julia
+@df pk_data_plot plot(:time, :dv_com, group=:id, color=:Group, yaxis=:log, label=false,
+                      xlabel="Time (hrs)", ylabel="Concentration (mg/L)",
+                      guidefontsize = 12, size = (600, 600),
+                      title = "Complex Concentrations vs Time")
+```
+
+## NCA Analysis
+
+We will now perform an NCA Analysis to get initial estimates of the data for the
+ fitting of the given data. We will include a `route` column to specify that dosing
+ is an intravenous bolus `iv`. The *read_nca()* function input requires the route
+ to be stated as `iv` for an intravenous bolus, this will help to compute the
+ parameters correctly.
+
+We will perform NCA only on Group 4 subjects (Dose 45 mg/kg) to get the initial
+ estimates for fitting of the data.
+
+```julia, results="hidden"
+pk27_nca_df = filter(x -> x.Group == 4, pk27_data_df)
+pk27_nca_df[:, :route] .= "iv"
+```
+
+Now, map the data variables to the *read_nca* function that prepares the data for
+ NCA analysis. You can even type **?read_nca** in the REPL and get more information
+ on the mapping of the data.
+
+```julia
+pk27_nca = read_nca(pk27_nca_df,
+                    id       = :id,
+                    time     = :time,
+                    amt      = :amt,
+                    conc     = :dv_cp,
+                    route    = :route)
+```
+
+A `full NCAReport` is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean, GeometricMean, and SD**
+
+```julia
+pk27_nca_report = NCAReport(pk27_nca, sigdig=3)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters.
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk27_nca_report, [:id, :vz_obs, :cl_obs, :aucinf_obs, :kel, :half_life, :cmax])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_obs, :cl_obs, :aucinf_obs, :kel, :half_life, :cmax], [:id])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+We will read the dataset into Pumas. We will the observed data of the _ligand,_
+ _receptor and complex_.
+
+```julia
+pk27_data = read_pumas(pk27_data_df,
+                        id           = :id,
+                        time         = :time,
+                        observations = [:dv_cp, :dv_rec, :dv_com],
+                        amt          = :amt,
+                        evid         = :evid,
+                        cmt          = :cmt,
+                        covariates   = [:Group])
+```
+
+##### Full Target Mediated Drug Disposition Model
+
+```julia
+pk_27_full      = @emmodel begin
+  @metadata begin
+    desc = "PK27 Full TMDD Model"
+    timeu = u"hr"
+  end
+
+  @param begin
+    Koff      ~ 1 | LogNormal
+    Q         ~ 1 | LogNormal
+    Kerl      ~ 1 | LogNormal
+  end
+
+  @random begin
+    "Clearance of central compartment (L/kg/hr)"
+    Cl          ~ 1 | LogNormal
+    "Second oder on rate of ligand (L/mg/hr)"
+    Kon         ~ 1 | LogNormal
+    "Volume of Peripheral Compartment (L/kg)"
+    Vp          ~ 1 | LogNormal
+    "Zero order receptor synthesis process (mg/L/hr)"
+    Kin         ~ 1 | LogNormal
+    "First order receptor degenration process (1/hr)"
+    Kout        ~ 1 | LogNormal
+  end
+
+  @pre begin
+    Vc          = 0.05
+    bioav       = (Central = 1/Vc,)
+  end
+
+  @init begin
+    Receptor    = Kin/Kout
+  end
+
+  @dynamics begin
+    Central'    = -(Cl/Vc)*Central - (Q/Vc)*Central + (Q/Vp)*Peripheral - Kon*Receptor*Central + Koff*Complex
+    Peripheral' = (Q/Vc)*Central - (Q/Vp)*Peripheral
+    Receptor'   = Kin - Kout*Receptor - Kon*Receptor*Central + Koff*Complex
+    Complex'    = Kon*Receptor*Central - Koff*Complex - Kerl*Complex
+  end
+
+  @post begin
+    cp          = Central
+    rec         = Receptor
+    com         = Complex
+  end
+
+  @error begin
+    dv_cp       ~ ProportionalNormal(cp)
+    dv_rec      ~ ProportionalNormal(rec)
+    dv_com      ~ ProportionalNormal(com)
+  end
+end
+```
+
+We have obatined a few intial estimates from the `NCA Analysis`.
+
+```julia
+param_est = ( Cl        = 0.0008,
+              Kon       = 0.10,
+              Koff      = 0.0005,
+              Vp        = 0.1,
+              Q         = 0.005,
+              Kin       = 0.11,
+              Kout      = 0.01,
+              Kerl      = 0.006)
+```
+
+##### SAEM Fitting
+
+We will now fit the data using `SAEM` to obatin the Between Subject Variability
+ (BSV).
+
+```julia
+pk_27_fit = @time fit(pk_27_full, pk27_data, param_est,
+                        Pumas.SAEM(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_27_fit)
+```
+
+
+
+##### Michaelis-Menten Model (Reduced Model)
+
+```julia
+pk27_data_red = read_pumas(pk27_data_df,
+                            id           = :id,
+                            time         = :time,
+                            observations = [:dv_cp],
+                            amt          = :amt,
+                            evid         = :evid,
+                            cmt          = :cmt,
+                            covariates   = [:Group])
+```
+
+##### Two-compartment model with Parallel First-order and Nonlinear Elimination
+
+```julia
+pk_27_reduced   = @emmodel begin
+  @metadata begin
+    desc = "PK27 Reduced TMDD Model"
+    timeu = u"hr"
+  end
+
+  @param begin
+    Km        ~ 1 | LogNormal
+    Vc        ~ 1 | LogNormal
+    Q         ~ 1 | LogNormal
+    CLl       ~ 1 | LogNormal
+  end
+
+  @random begin
+    "Maximum rate of elimination (mg/kg/hr)"
+    Vmax        ~ 1 | LogNormal
+    "Volume of Peripheral Compartment (L/kg)"
+    Vp          ~ 1 | LogNormal
+  end
+
+  @dynamics begin
+    Central'    = -(Vmax/(Km+(Central/Vc)))*(Central/Vc) - CLl*(Central/Vc)-(Q/Vc)*Central +(Q/Vp)*Peripheral
+    Peripheral' = (Q/Vc)*Central -(Q/Vp)*Peripheral
+  end
+
+  @post begin
+    cp          = Central/Vc
+  end
+
+  @error begin
+    dv_cp       ~ ProportionalNormal(cp)
+  end
+end
+```
+
+We have obatined the initial estimates from the literature
+
+```julia
+param_est_red = ( Vmax  = 0.0146,
+                  Km    = 3.7,
+                  Vp    = 0.0293,
+                  Vc    = 0.05,
+                  Q     = 0.003,
+                  CLl   = 0.00090)
+```
+
+##### SAEM Fitting
+
+We will now fit the data using `FOCEI` to obatin the Between Subject Variability
+ (BSV).
+
+```julia
+pk_27_red_fit = @time fit(pk_27_reduced, pk27_data_red, param_est_red,
+                          Pumas.SAEM(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_27_red_fit)
+```
