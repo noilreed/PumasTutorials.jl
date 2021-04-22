@@ -1,0 +1,281 @@
+---
+title: Exercise PK20 - Fitting Capacity IV - Noninear Kinetics
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise we will learn how to fit the data to a non-linear system obtained
+ from two class of subjects who were given different doses. The assumption is that
+  the major source of variability is on the **Km parameter**. You will learn how to obtain
+  initial parameter estimates for the fitting process.
+
+The basic workflow for the estimation process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using GLM
+```
+
+## Description of data
+
+The drug is given as an Intravenous Bolus to two class of subjects. A dose of **25 mg**
+ is given to `45 subjects` and a dose of **100 mg** is given to another `45 subjects`.
+ The PK samples are collected for class=1 (dose = 25mg) at times `0.08, 0.25, 0.5, 0.75,
+ 1.0, 1.5, 2.0 hrs` ad for class=2 (dose = 100mg) at times `0.08, 0.25, 0.5, 0.75,
+ 1.0, 1.5, 2.0, 4.0, 6.0, 8.0 hrs`.
+
+The following are the units of the dataset:
+
+ * Time (time) = hrs
+ * Plasma Concentrations (dv_cp) = μg/L
+ * Dose (amt) = μg
+ * class (1 : Dose 25mg, 2 : Dose = 100mg)
+
+```julia
+pk20_data_df = CSV.read("./pk_20.csv", DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk20_data = describe(pk20_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+ * Plot of Concentration vs Time
+
+```julia
+pk_data_plot = dropmissing(pk20_data_df, :dv)
+@df pk_data_plot plot(:time, :dv, group=:class, yaxis=:log, label=false,
+                      xlabel="Time (hr)", ylabel="Concentration (ug/L)",
+                      size = (600, 600), guidefontsize = 12,
+                      title = "Concentrations vs Time")
+```
+
+We can distinctly see that there are two classes of subjects. The subjects differ
+ on the clearance parameter. We will further analyse the data on this.
+
+## NCA Analysis
+
+We will now perform an NCA analysis to get the initial estimates for fitting
+ of the given data. The route column will need to be included to indicate the dosing
+ is intravenous `iv`. The *read_nca* function input requires the route to be stated
+ as iv for intravenous, this will help to compute the parameters correctly.
+
+```julia; results="hidden"
+pk20_data_df[:, :route] .= "iv"
+```
+
+Now, map the data variables to the *read_nca* function that prepares the data for
+ NCA analysis. You can even type **?read_nca** in the REPL and get more information
+ on the mapping of the data. We will group the data by `class`.
+
+```julia
+pk20_nca = read_nca(pk20_data_df,
+                   id     = :id,
+                   time   = :time,
+                   amt    = :amt,
+                   conc   = :dv,
+                   route  = :route,
+                   group  = [:class])
+```
+
+A full NCAReport is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean, Geometric Mean, and SD**
+
+```julia
+pk20_nca_report = NCAReport(pk20_nca, sigdig=3)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk20_nca_report, [:id, :vz_obs, :cl_obs, :kel, :half_life, :cmax, :aucinf_obs, :class])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_obs, :cl_obs, :kel, :half_life, :cmax, :aucinf_obs], [:id, :class])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:class, :variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+We can see clearly that the `clearance` for both the class of subjects are different.
+ Thus we will estimate the clearances seperately. The clearance of the drug **decreases**
+ as the dose is increased. This indicates that the elimination of the drug is capacity
+ limited.
+
+We will now calculate the mean concentrations for the different classes and we will
+ estimate the intial parameters for Vmax and Km
+
+```julia; results="hidden"
+pk20_slope = select(pk20_data_df, [:id, :time, :dv, :class])
+pk20_slope_stacked = stack(pk20_slope, [:dv], [:id, :time, :class])
+pk20_slope_summary = combine(groupby(pk20_slope,[:class, :time]),
+                             [col => fun for col in [:dv]
+                             for fun in [mean, geomean, std]])
+pk20_slope_summary[:, :dv_geomean_ln] .= log.(pk20_slope_summary.dv_geomean)
+```
+
+Plot of **Mean Concentrations vs Time**
+
+```julia
+@df pk20_slope_summary plot(:time, :dv_geomean, yaxis=:log, group=:class, label=false,
+                             xlabel="Time (mins)", ylabel="Concentration (g/L)",
+                             size = (600, 400), guidefontsize = 12, linewidth=3,
+                             title = "Mean Concentration vs Time")
+```
+
+We have converted the concentration to _log_ for calculation of slope and intercept.
+
+Calculation of Slope for Class = 1 (Dose = 25 mg)
+
+```julia
+pk20_class1_df = filter(x -> (x.class .== 1 && x.time >= 1.0), pk20_slope_summary)
+ols_class1 = lm(@formula(dv_geomean_ln ~ time), pk20_class1_df)
+GLM.coeftable(ols_class1)
+```
+
+Calculation of Slope for Class = 2 (Dose = 100 mg)
+
+```julia
+pk20_class2_df = filter(x -> (x.class .== 2 && x.time >= 4), pk20_slope_summary)
+ols_class2 = lm(@formula(dv_geomean_ln ~ time), pk20_class2_df)
+GLM.coeftable(ols_class2)
+```
+
+Calculation of **Km and Vmax** for both the doses, we will use them for initial estimates
+ during the fitting of the data.
+
+```julia; results="hidden"
+Co1   = 565        # Cmax value
+_Co1  = exp(7.388) # Y-intercept Value
+K1    = -2.56      # Slope
+Km1   = Co1/(log(_Co1/Co1))
+
+Vmax1 = (-K1) * 30 * Km1
+```
+
+```julia; results="hidden"
+Co2   = 2319        # Cmax value
+_Co2  = exp(9.448)  # Y-intercept Value
+K2    = -0.89       # Slope
+Km2   = Co2/(log(_Co2/Co2))
+
+Vmax2 = (-K2) * 30 * Km2
+```
+
+```julia
+estimates = DataFrame(Km1=Km1, Vmax1=Vmax1, Km2=Km2, Vmax2=Vmax2)
+```
+
+We can clearly see that the **Vmax** values are not different between the two
+ class of subjects. There is a clear difference between the **Km** parameters.
+ Hence we will try to model the data and estimate two seperate Km values.
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+
+```julia
+pk20_est_df = filter(x -> (!(x.time == 0  && x.evid == 0.0)), pk20_data_df)
+
+pk20_data = read_pumas(pk20_est_df,
+                        id           = :id,
+                        time         = :time,
+                        observations = [:dv],
+                        amt          = :amt,
+                        evid         = :evid,
+                        cmt          = :cmt,
+                        covariates   = [:class])
+```
+
+## One Compartment Non-Linear Model
+
+In this model we assume the variability of the drug is on the Km values. From
+ the initial graph we can see that there are two class of patients they have
+ seperate clearance values. Thus we will estimates both the Km values seperately
+
+```julia
+pk_20_nm     = @emmodel begin
+  @metadata begin
+    desc = "One Cmt Non-linear Model"
+    timeu = u"hr"
+  end
+
+  @random begin
+    "Maximum rate of elimination (ug/hr)"
+    Vmax ~ 1 | LogNormal
+    "Volume (L)"
+    Vc ~ 1 | LogNormal
+    "Michaelis Menten Constant - 1 (ug/L)"
+    tvkm1 ~ 1 | LogNormal
+    "Michaelis Menten Constant - 2 (ug/L)"
+    tvkm2 ~ 1 | LogNormal
+  end
+
+  @covariates class
+
+  @pre begin
+    Km       = class == 1 ? tvkm1 : tvkm2 
+  end
+
+  @dynamics begin
+    Central' = - (Vmax * (Central/Vc)/(Km + (Central/Vc)))
+  end
+
+  @post begin
+    cp       = Central/Vc
+  end
+
+  @error begin
+    dv       ~ ProportionalNormal(cp)
+  end
+end
+```
+
+We have obtained the initial estimates from `NCA` and few other calculations.
+
+```julia
+param_est_nm = (tvkm1   = 300,
+                tvkm2   = 900,
+                Vmax  = 38000,
+                Vc    = 30)
+```
+
+##### SAEM Fitting
+
+We see that the initial estimates we found are not very close to the NaivePooled
+ Analysis. But they are still good estimates to let the system find the best
+ local minima using `SAEM`
+
+```julia
+pk_20_nm_fit = @time fit(pk_20_nm, pk20_data, param_est_nm,
+                          Pumas.SAEM(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_20_nm_fit)
+```
+
