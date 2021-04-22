@@ -1,0 +1,212 @@
+---
+title : Exercise PK26 - Fitting of antibody kinetics after IV doses to man
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise we have obtained data from Baeur _et al_. We will use a semi-physiologic
+  model for the estimation of the given data. The data displays a nonlinear pattern,
+  and the antibody is modeled by means of **parallel first-order and Michaelis-Menten**
+  process.
+
+The basic workflow of the estimation process is
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+```
+
+## Description of the data
+
+The antibody is given as an Intravenous Bolus to `5` groups of 5 subjects each.
+ The doses given to **group 1: 0.1 mg/kg, group 2: 0.3 mg/kg, group 3: 1 mg/kg,**
+ **group 4: 3 mg/kg and group 5: 10 mg/kg**. Plasma samples are collected at various
+ time intervals.
+
+The following are the units of the dataset:
+
+ * Time (time) = days
+ * Plasma Concentration (dv) = mg/L
+ * Dose (amt) = mg/kg
+
+```julia
+pk26_data_df = CSV.read("./pk_26.csv", DataFrame, missingstrings=["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk26_data = describe(pk26_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+* Plot of Plasma Concentration vs Time
+
+```julia
+pk_data_plot = dropmissing(pk26_data_df, :dv)
+@df pk_data_plot plot(:time, :dv, group=:id, yaxis=:log, color=:Group, label=false,
+                       xlabel="Time (days)", ylabel="Concentration (mg/L)",
+                       size = (600, 500), guidefontsize = 12,
+                       title = "Plasma Concentrations vs Time")
+```
+
+## NCA Analysis
+
+We will now perform an NCA analysis to make a few interpretations of the given data.
+ The **read_nca()** function input requires the route to be stated as `iv` for intravenous
+ bolus.
+
+```julia; results="hidden"
+pk26_data_df[:, :route] .= "iv"
+```
+
+Now, map the data variables to the **read_nca** function that prepares the data
+ for NCA analysis. You can even type **?read_nca** in the REPL and get more
+ information on the mapping of the variables. We will group the data by `Dose`, this
+ will provide information on the parameters for each dose seperately.
+
+```julia
+pk26_nca = read_nca(pk26_data_df,
+                    id       = :id,
+                    time     = :time,
+                    amt      = :amt,
+                    conc     = :dv,
+                    route    = :route,
+                    group    = [:Dose])
+```
+
+A `full NCAReport` is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean and SD**
+
+```julia
+pk26_nca_report = NCAReport(pk26_nca, sigdig=3)
+```
+
+Perform the `Summary Statistics` for the required NCA Parameters
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk26_nca_report, [:id, :vz_obs, :cl_obs, :kel, :half_life, :aucinf_obs, :Dose])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_obs, :cl_obs, :kel, :half_life, :aucinf_obs], [:id, :Dose])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:variable, :Dose]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, std]])
+```
+
+We will plot the **Clearance vs Dose**. This will help us understand the relation
+ and make further decisions in the modelling of the given data.
+
+```julia
+cl = select(pk26_nca_report, [:id, :Dose, :cl_obs])
+#TODO unable to get ordered x-axis
+cl[!,:Dose] .= CategoricalArray(cl.Dose)
+@df cl groupedviolin(:Dose, :cl_obs, group=:Dose,
+                      marker=(0.2,:blue,stroke(0)))
+@df cl groupedboxplot!(:Dose, :cl_obs, group=:Dose, label="",
+                      marker=(0.1,:orange,stroke(2)), alpha=0.5)
+plot!(size = (600,600), xlabel = "Dose (mg/kg)", ylabel = "Clearance", legend=:topright,
+   guidefontsize = 16, alpha=0.5)
+```
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk26_est_df = filter(x -> (!(x.time == 0  && x.evid == 0.0)), pk26_data_df)
+
+pk26_data  = read_pumas(pk26_est_df,
+                        id           = :id,
+                        time         = :time,
+                        observations = [:dv],
+                        amt          = :amt,
+                        evid         = :evid,
+                        cmt          = :cmt,
+                        covariates   = [:Dose, :Group])
+```
+
+##### Two-compartment model with Parallel First-order and Nonlinear Elimination
+
+```julia
+pk_26           = @emmodel begin
+  @metadata begin
+    desc = "PK26 Two Cmt first order and nonlinear eli"
+    #timeu = u"days"
+  end
+
+  @param begin
+    Km        ~ 1 | LogNormal
+    Vc        ~ 1 | LogNormal
+    Q         ~ 1 | LogNormal
+  end
+
+  @random begin
+    "Maximum rate of elimination (mg/day)"
+    Vmax        ~ 1 | LogNormal
+    "Peripheral Volume (L)"
+    Vp          ~ 1 | LogNormal
+    "Linear Clearance (L/hr)"
+    CLl         ~ 1 | LogNormal
+  end
+
+  @dynamics begin
+    Central'    = -(Vmax/(Km+(Central/Vc)))*(Central/Vc) - CLl*(Central/Vc)-(Q/Vc)*Central +(Q/Vp)*Peripheral
+    Peripheral' = (Q/Vc)*Central -(Q/Vp)*Peripheral
+  end
+
+  @post begin
+    cp          = Central/Vc
+  end
+
+  @error begin
+    dv          ~ ProportionalNormal(cp)
+  end
+end
+```
+
+We have obtained the inital estimates from the `literature`.
+
+```julia
+param_est = ( Vmax  = 0.04,
+              Km    = 0.09,
+              Vp    = 0.01,
+              Vc    = 0.09,
+              Q     = 0.01,
+              CLl   = 0.007)
+```
+
+##### SAEM Fitting
+
+We will now fit the data using `SAEM` and let the system find the best
+ local minima.
+
+```julia
+pk_26_fit= @time fit(pk_26, pk26_data, param_est,
+                       Pumas.SAEM(), ensemblealg = EnsembleThreads())
+
+coeftable(pk_26_fit)
+```
+
