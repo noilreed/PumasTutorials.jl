@@ -1,0 +1,303 @@
+---
+title: Exercise PK12 - Estimation of Intravenous and Oral Dosing to find Bioavailability
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise we will learn how to estimate the **bioavailability**. When the relative
+ or absolute bioavailability of the drug is to be estimates, the drug must be given
+ both orally and intravenous. We need to assume that the clearance is the same on both
+ occasions. In order that we eliminate such a risk the oral and iv doses are given
+ seperately with a gap of `30 mins to 1 hr`. For this exercise we will dose orally
+ followed with intravenous dosing. The basic workflow for the estimation process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using Pumas
+using PumasTutorials
+using Random
+using CSV
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of the data
+
+A dose of **2.5 mg** of the drug is given orally at `time = 0 mins` followed with an Intravenous
+ Infusion for 15 mins, dose of **0.5 mg** 1 hour post the oral dose at `time = 60 mins`. PK samples
+ are collected at the following time points 6, 10, 15, 20, 30, 45, 59.9, 63, 66,
+ 75, 80, 90, 107, 119, 134, 150 mins. A total of 16 samples are collected from each
+ patient.
+
+The following are the units of the dataset:
+
+ * Time (time) = mins
+ * Plasma Concentration (dv) = μg/L
+ * Dose (amt) = mg/kg
+
+```julia
+pk12_data_df = CSV.read("./pk_12.csv", DataFrame, missingstrings=["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk12_data = describe(pk12_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+ * Plot of Concentration vs Time
+
+```julia
+pk_data_plot = dropmissing(pk12_data_df, :dv)
+@df pk_data_plot plot(:time, :dv, group=:id, yaxis=:log, label=false,
+                      xlabel="Time (mins)", ylabel="Concentration (ug/L)",
+                      title = "Concentrations vs Time")
+```
+
+## NCA Analysis
+
+We will now perform an NCA analysis to get the initial estimates for fitting of
+ the given data. We will perform an NCA on the oral and IV data seperately. This
+ will help us to compute the parameters required for the analysis.
+
+```julia; results="hidden"
+#Filter the Oral Data
+pk12_data_nca_oral = filter(x -> x.time <= 59.9, pk12_data_df)
+pk12_data_nca_oral[:, :route] .= "ev"
+#Since the amt is in mg we will convert it to μg
+pk12_data_nca_oral[:, :amt] = ifelse.(pk12_data_nca_oral.time .== 0, 2500, missing)
+
+# Filter the Inf Data
+pk12_data_nca_inf = filter(x -> x.time >= 60, pk12_data_df)
+pk12_data_nca_inf[:, :route] .= "inf"
+#Since the amt is in mg we will convert it to μg
+pk12_data_nca_inf[:, :amt] = ifelse.(pk12_data_nca_inf.time .== 60.0, 500, missing)
+```
+
+##### NCA - Oral Data
+
+Now, map the data variables to the read_nca function that prepares the data for NCA analysis.
+ You can even type **?read_nca** in the REPL and get more information on the mapping of the variables.
+
+```julia
+pk12_nca_oral = read_nca(pk12_data_nca_oral,
+                         id     = :id,
+                         time   = :time,
+                         amt    = :amt,
+                         conc   = :dv,
+                         route  = :route)
+
+pk12_oral_nca_report = NCAReport(pk12_nca_oral, sigdig=3)
+```
+
+Perform the Summary Statistics for the oral data to get the required NCA Parameters
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk12_oral_nca_report, [:id, :vz_f_obs, :cl_f_obs, :kel, :half_life, :aucinf_obs, :tmax, :tlag])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_f_obs, :cl_f_obs, :kel, :half_life, :aucinf_obs, :tmax, :tlag], [:id])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+##### NCA - Infusion Data
+
+```julia
+pk12_nca_inf = read_nca(pk12_data_nca_inf,
+                          id     = :id,
+                          time   = :time,
+                          amt    = :amt,
+                          conc   = :dv,
+                          rate   = :rate,
+                          route  = :route)
+
+pk12_inf_nca_report = NCAReport(pk12_nca_inf, sigdig=3)
+```
+Perform the Summary `Statistics` for the Infusion data to get the required NCA Parameters
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk12_inf_nca_report, [:id, :vz_obs, :cl_obs, :kel, :half_life, :aucinf_obs])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_obs, :cl_obs, :kel, :half_life, :aucinf_obs], [:id])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+First we will try to fit the data to a one-compartment model
+
+```julia
+## If there are any 0 values in dv because of lag time we will set them to missing
+#replace!(pk12_data_df.dv,0.0 => missing)
+
+pk_data = read_pumas(pk12_data_df,
+                      id           = :id,
+                      time         = :time,
+                      observations = [:dv],
+                      amt          = :amt,
+                      evid         = :evid,
+                      cmt          = :cmt)
+```
+
+##### One-Compartment Model
+
+
+```julia
+pk_12_1cmt      = @emmodel begin
+  @metadata begin
+    desc = "PK12 One Compartment"
+    timeu = u"minute"
+  end
+
+  @random begin
+    "Absorption Rate Constant (1/minute)"
+    Ka ~ 1 | LogNormal
+    "Clearance (L/minute)"
+    CL ~ 1 | LogNormal
+    "Volume (L)"
+    Vc ~ 1 | LogNormal
+    "Bioavailability"
+    tvF ~ 1 | LogNormal
+  end
+
+  @pre begin
+    bioav       = (Depot = tvF,)
+  end
+
+  @dynamics Depots1Central1
+    #Depot'      = -Ka*Depot
+    #Central'    =  Ka*Depot - (Cl/Vc)*Central
+  #end
+
+  @post begin
+    cp          = 1000*(Central/Vc)
+  end
+
+  @error begin
+    dv          ~ ProportionalNormal(cp)
+  end
+end
+```
+
+We have obtained the initial parameters for One-Compartment Model from NCA analysis
+
+```julia
+param_est_1cmt = (Ka    = 0.12,
+                  CL    = 0.3,
+                  Vc    = 0.27,
+                  tvF   = 0.04)
+```
+
+##### SAEM
+
+We will now use the mean estimates from the NaivePooled Analysis for fitting the
+ data and obatining the Between Subject Variability (BSV) on the parameters.
+
+```julia
+pk_12_fit_1cmt_saem = @time fit(pk_12_1cmt, pk_data, param_est_1cmt,
+                           Pumas.SAEM(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_12_fit_1cmt_saem)
+```
+
+
+##### Two-Compartment Model
+
+We will now fit a two-compartment model
+
+```julia
+pk_12_2cmt      = @emmodel begin
+  @metadata begin
+    desc = "PK12 Two Compartment"
+    timeu = u"minute"
+  end
+    
+  @param   begin
+    Q         ~ 1 | LogNormal
+  end
+
+  @random begin
+    "Absorption Rate Constant (1/minute)"
+    Ka ~ 1 | LogNormal
+    "Clearance (L/minute)"
+    CL ~ 1 | LogNormal
+    "Volume (L)"
+    Vc ~ 1 | LogNormal
+    "Peripheral Volume (L)"
+    Vp ~ 1 | LogNormal
+    "Lag-time (minutes)"
+    tvlag ~ 1 | LogNormal
+    "Bioavailability"
+    tvF ~ 1 | LogNormal
+  end
+
+  @pre begin
+    lags        = (Depot = tvlag,)
+    bioav       = (Depot = tvF,)
+  end
+
+  @dynamics Depots1Central1Periph1
+    #Depot'      = -Ka*Depot
+    #Central'    =  Ka*Depot - (Cl/Vc)*Central - (Q/Vc)*Central + (Q/Vp)*Peripheral
+    #Peripheral' =  (Q/Vc)*Central - (Q/Vp)*Peripheral
+  #end
+
+  @post begin
+    cp          = 1000*(Central/Vc)
+  end
+
+  @error begin
+    dv          ~ ProportionalNormal(cp)
+  end
+end
+```
+
+ * Initial Parameters for Two Compartment
+
+```julia
+param_est_2cmt = (Ka      = 0.11,
+                  CL      = 0.012,
+                  Q       = 0.012,
+                  Vc      = 0.14,
+                  Vp      = 0.14,
+                  tvlag   = 3.2,
+                  tvF     = 0.033)
+```
+
+We will try to fit a two-compartment model `with lag` to the given data.
+
+```julia
+pk_12_fit_2cmt_lag = @time fit(pk_12_2cmt, pk_data, param_est_2cmt,
+                      Pumas.SAEM(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_12_fit_2cmt_lag)
+```
+
+
