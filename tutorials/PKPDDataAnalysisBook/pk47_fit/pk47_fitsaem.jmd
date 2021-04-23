@@ -1,0 +1,162 @@
+---
+title : Exercise PK47 - Plasma Protein Binding Modeling
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exericse we will use _in vitro_ data generated from protein binding in
+ human plasma based on two different protein concentrations for two compounds
+ "A" & "B". We will fit the data for both compounds simultaneously in one single
+ run. By simultaneously using a low and high binding protein concentrations we can
+ obtain higher parameter precision. The basic workflow of the estimation process is
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. Initial Estimates
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of the data
+
+_In vitro_ data is generated from human plasma binding of two compounds A and B.
+ The protein concentrations used for **Compound A are 0.3 and 50** and for
+ **Compound 0.1 and 10**.
+
+The following are the units of the dataset:
+
+  * Time (time) = hrs
+  * Free Fraction (dv) = %
+  * Unbound oncentration (dose) = μg
+  * Total Protein Concentration (Pt)
+  * Compound = "A" & "B"
+
+```julia
+pk47_data_df = CSV.read("./pk_47.csv", DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk47_data = describe(pk47_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+ * Plot of Unbound Concentration (Free Concentration) vs Free Fraction - Compound A
+
+```julia
+pk_data_plot_A = filter(x -> x.Compound == "A", pk47_data_df)
+@df pk_data_plot_A plot(:dose, :dv, group=:id, xaxis=:log, label=false,
+                        xlabel="Unbound Concentration (dv)", ylabel="Free Fraction (%)",
+                        size = (600, 400), guidefontsize = 12,
+                        title = "Free Fraction vs Unbound Concentration - Compound A")
+```
+
+ * Plot of Unbound Concentration (Free Concentration) vs Free Fraction - Compound B
+
+```julia
+pk_data_plot_B = filter(x -> x.Compound == "B", pk47_data_df)
+@df pk_data_plot_B plot(:dose, :dv, group=:id, xaxis=:log, label=false,
+                        xlabel="Unbound Concentration (dv)", ylabel="Free Fraction (%)",
+                        size = (600, 400), guidefontsize = 12,
+                        title = "Free Fraction vs Unbound Concentration - Compound B")
+```
+
+## Initial Estimates
+
+ * Protein Concentrations tested are **0.3 and 50** for `Compound A`.
+ * Protein Concentrations tested are **0.1 and 10** for `Compound B`.
+ * We assume the no of binding sites (n) to be `2`, and using the known value for
+    total protein concentration (Pt) to be `50`, and observed free fraction (fu)
+    to be `0.15` in the formula fu = 1/1+Ka.n.Pt, i.e **Ka_A = 6** . We use the
+    same formula even for Compound B.
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk47_data = read_pumas(pk47_data_df,
+                       observations = [:dv],
+                       covariates   = [:dose, :Pt, :Compound],
+                       event_data   = false)
+```
+
+##### Protein Binding Model
+
+```julia
+pk_47       = @emmodel begin
+  @metadata begin
+    desc ="Pk47 Protein Binding Model"
+  end
+  
+  @random begin
+    tvka_A  ~ 1 | LogNormal
+    tvka_B  ~ 1 | LogNormal
+    tvn_A   ~ 1 | LogNormal
+    tvn_B   ~ 1 | LogNormal
+  end
+
+  @covariates dose Pt Compound
+
+  @pre begin
+    _Compound = Compound
+    _dose   = dose
+    _Pt     = Pt
+    Ka      = _Compound == "A" ? tvka_A : tvka_B 
+    n       = _Compound == "A" ? tvn_A  : tvn_B 
+    isComp  = _Compound != "B"
+  end
+
+  @post begin
+    fu      = (1-(1/(1+(_dose/(n*_Pt))+(1/(Ka*n*_Pt)))))*100
+  end
+
+  @error begin
+    dv      ~ Normal(fu)
+  end
+end
+```
+
+We will use the initial estimates we have derived earlier for the fitting process.
+
+```julia
+param_est = (tvka_A   = 6,
+             tvn_A    = 2,
+             tvka_B   = 10,
+             tvn_B    = 2)
+```
+
+
+##### SAEM Fitting
+
+We will now use the initial estimates from the NaivePooled Analysis for fitting the
+ data and obatining the Between Subject Variability (BSV) on the parameters.
+
+```julia
+pk_47_fit = @time fit(pk_47, pk47_data, param_est,
+                       Pumas.SAEM(), ensemblealg = EnsembleThreads())
+
+coeftable(pk_47_fit)
+```
+
