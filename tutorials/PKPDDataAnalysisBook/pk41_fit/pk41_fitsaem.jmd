@@ -1,0 +1,211 @@
+---
+title : Exercise PK41 - Fitting Multiple intraveneous infusions - NCA vs regression
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise we will highlight the **benefits of simultaneously modeling** multiple
+ sources of intravenous infusion. When we have multiple sources we can obtain
+ better precision of the parameters even with lesser number of samples.
+
+The basic workflow for the estimation process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of data
+
+Each group of 20 subjects received an infusion of different doses 310, 520 and
+ 780 μg/kg body weight as an intravenous infusion over 5 hrs. A total of 60 patients
+ are enrolled in the study and PK samples are collected at `0.1,2,5,6,8,10 hrs`.
+
+The following are the units of the dataset:
+
+ * Time (time) = hrs
+ * Plasma Concentrations (dv_cp) = μg/L
+ * Dose (amt) = μg/kg
+ * Group dose (310, 520, 780)
+
+```julia
+pk41_data_df = CSV.read("./pk_41.csv", DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk41_data = describe(pk41_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+* Plot of Plasma Concentration vs Time
+
+```julia
+pk_data_plot = dropmissing(pk41_data_df, :dv)
+filter!(x -> x.time != 0.0, pk_data_plot)
+@df pk_data_plot plot(:time, :dv, group=:id, color=:dose, yaxis=:log, label=false,
+                      xlabel="Time (hr)", ylabel="Concentration (ug/L)",
+                      guidefontsize = 12, size = (600, 600), alpha=0.5,
+                      title = "Plasma Concentrations vs Time")
+```
+
+## NCA Analysis
+
+We will now perform an NCA Analysis to get initial estimates of the data for the
+ fitting of the given data. We will include a route column to specify that dosing
+ is an intravenous infusion `inf`. The *read_nca()* function input requires the route
+ to be stated as `inf` for an intravenous infusion, this will help to compute the
+ parameters correctly.
+
+```julia; results="hidden"
+pk41_data_df[:, :route] .= "inf"
+```
+
+We will perform an NCA of the `Plasma Concentrations`. We have grouped it by _dose_,
+ this will help us in understanding the difference between the doses and help
+ with plotting.
+
+```julia
+pk41_data_df[:, :duration] = pk41_data_df.amt ./ pk41_data_df.rate
+
+pk41_nca_plasma = read_nca(pk41_data_df,
+                            id       = :id,
+                            time     = :time,
+                            amt      = :amt,
+                            conc     = :dv,
+                            route    = :route,
+                            duration = :duration,
+                            group    = [:dose])
+```
+
+A `full NCAReport` is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean, GeometricMean, and SD**
+
+```julia
+pk41_nca_plasma_report = NCAReport(pk41_nca_plasma, sigdig=3)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters.
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_plasma_df = select(pk41_nca_plasma_report, [:id, :vz_obs, :cl_obs, :kel, :half_life,
+   :cmax, :mrtinf_obs, :dose])
+
+## Stack the data for easy computation
+stats_nca_plasma_stacked = stack(stats_nca_plasma_df, [:vz_obs, :cl_obs, :kel, :half_life,
+   :cmax, :mrtinf_obs], [:id, :dose])
+stats_nca_plasma_summary = combine(groupby(stats_nca_plasma_stacked,[:dose, :variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+Plot of **Clearance vs Dose**
+
+```julia
+filter!(x -> x.variable == "cl_obs", stats_nca_plasma_summary)
+@df stats_nca_plasma_summary plot(:dose, :value_mean, label=false, linewidth=3,
+                            xlabel="Dose (ug/kg)", ylabel="Clearance (L/hr/kg)",
+                            size = (600, 600), guidefontsize = 12,
+                            title = "Clearance vs Time" )
+@df stats_nca_plasma_summary scatter!(:dose, :value_mean, label=false, markersize=8)
+```
+
+We can see that the **clearance deceases as the dose increases**. Thus we will
+ model the data as a non-linear elimination.
+
+From the Clearance and Cmax for the doses we will estimate the values for **Vmax and Km**
+ using the formula Cl = Vmax/(Km+C). Thus we get the value for **Vmax = 310 μg/hr/kg** and
+ **Km = 150 μg/L**
+
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk41_est_df = filter(x -> (!(x.time == 0  && x.evid == 0.0)), pk41_data_df)
+
+pk41_data = read_pumas(pk41_est_df,
+                      id           = :id,
+                      time         = :time,
+                      observations = [:dv],
+                      amt          = :amt,
+                      evid         = :evid,
+                      cmt          = :cmt,
+                      rate         = :rate,
+                      covariates   = [:dose])
+```
+
+##### One-Compartment Non-linear Elimination
+
+```julia
+pk_41        = @emmodel begin
+  @metadata begin
+    desc = "PK41 One-cmt Nonlinear Elimination"
+    timeu = u"hr"
+  end
+
+  @random begin
+    Vmax     ~ 1 | LogNormal 
+    Km       ~ 1 | LogNormal
+    Vc       ~ 1 | LogNormal
+  end
+
+  @dynamics begin
+    Central' = - (Vmax * (Central/Vc)/(Km + (Central/Vc)))
+  end
+
+  @post begin
+    cp       = Central/Vc
+  end
+
+  @error begin
+    dv       ~ ProportionalNormal(cp)
+  end
+end
+```
+
+We have obtained the initial parameters using `NCA` and other derivations.
+
+```julia
+param_est  = ( Vmax   = 310,
+                Km    = 150,
+                Vc    = 1.3)
+```
+
+##### SAEM Fitting
+
+We see that the initial estimates we found are not very close to the NaivePooled
+ Analysis. But they are still good estimates to let the system find the best
+ local minima using `SAEM`
+
+```julia
+pk_41_fit = @time fit(pk_41, pk41_data, param_est,
+                        Pumas.SAEM(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_41_fit)
+```
