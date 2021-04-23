@@ -1,0 +1,271 @@
+---
+title : Exercise PK45 - Fitting Reversible metabolism of drug A & its metabolite B
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise you will learn how to model reversible metabolism of a drug and
+ its metabolite. We will seperately administer both the parent compound and its
+ metabolite on different occasions. We will simultaneously fit the parent and
+ metabolite concentrations obtained on both the `Occasions`.
+
+ The basic workflow for the estimation process is:
+
+  1. Description of the data
+  2. Exploratory analysis of the data
+  3. NCA Analysis
+  4. Pharmacokinetic modelling
+  5. Diagnostic Plots
+  6. Validation
+
+ Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of the given data
+
+Rapid intravenous doses of the **parent compound (4.3 μmol/kg) and metabolite (5 μmol/kg)**
+  are adminsitered over `15 secs` **to beagle dogs weighing around 10 - 15 kgs**. The
+  parent compound is adminsitered on `Occasion : 2` and the metabolite is administered
+  on `Occasion : 1`. On both the occasions we have measured levels of parent and
+  the metabolite. On Occasion 1, the time points of sampling are `0.0042, 0.0333,
+  0.1333, 0.25, 0.75, 2, 4, 7, 12, 23 hrs`. On Occasion 2, the time points of
+  sampling are `0.0042, 0.0333, 0.1667, 0.5, 1, 2, 2.75, 5, 7, 24, 31 hrs`.
+
+The following are the units of the dataset:
+
+  * Time (time) = hrs
+  * Plasma Concentrations (dv_cp) = uM
+  * Plasma Concentrations (dv_met) = uM
+  * Dose (amt) = μmol/kg
+  * Occasion = (1 : Metabolite Administration & 2 : Parent Administration)
+
+```julia
+pk45_data_df = CSV.read("./pk_45.csv", DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk45_data = describe(pk45_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv_cp,:dv_met])
+```
+
+## Exploratory Plots of the given data
+
+* Plot of **Plasma & Metabolite Concentrations vs Time** on Occasion `1` (Metabolite
+   Administered). The `red` color indicates Plasma and the `blue` indicates Metabolite.
+
+```julia
+pk_data_plot_1 = dropmissing(pk45_data_df, :dv_cp)
+filter!(x -> x.Occasion == 1, pk_data_plot_1)
+@df pk_data_plot_1 plot(:time, :dv_cp, group=:id, yaxis=:log, color=:red, label=false,
+                      xlabel="Time (hrs)", ylabel="Concentration (uM)",
+                      guidefontsize = 12, size = (600, 600), alpha=0.5,
+                      title = "Plasma & Metabolite Concentrations vs Time")
+@df pk_data_plot_1 plot!(:time, :dv_met, group=:id, color=:blue, label=false, alpha=0.5)
+```
+
+* Plot of **Plasma & Metabolite Concentrations vs Time** on Occasion `2` (Plasma
+   Administered). The `red` color indicates Plasma and the `blue` indicates Metabolite.
+
+```julia
+pk_data_plot_2 = dropmissing(pk45_data_df, :dv_cp)
+filter!(x -> x.Occasion == 2, pk_data_plot_2)
+@df pk_data_plot_2 plot(:time, :dv_cp, group=:id, yaxis=:log, color=:red, label=false,
+                      xlabel="Time (hrs)", ylabel="Concentration (uM)",
+                      guidefontsize = 12, size = (600, 600), alpha=0.5,
+                      title = "Plasma Concentrations vs Time")
+@df pk_data_plot_2 plot!(:time, :dv_met, group=:id, color=:blue, label=false, alpha=0.5)
+```
+
+## NCA Analysis
+
+##### Plasma NCA
+
+We will now perform an NCA Analysis to get initial estimates of the data for the
+ fitting of the given data. We will include a route column to specify that dosing
+ is an intravenous infusion `inf`. The *read_nca()* function input requires the route
+ to be stated as `inf` for an intravenous infusion, this will help to compute the
+ parameters correctly.
+
+```julia; results="hidden"
+pk45_data_df[:, :route] .= "iv"
+```
+
+We will perform an NCA of the `Plasma Concentrations`. We have grouped it by _Occasion_,
+ this will help us in understanding the difference between the Occasion.
+
+```julia
+pk45_nca_plasma = read_nca(pk45_data_df,
+                            id       = :id,
+                            time     = :time,
+                            amt      = :amt,
+                            conc     = :dv_cp,
+                            route    = :route,
+                            group    = [:Occasion])
+```
+
+A `full NCAReport` is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean, GeometricMean, and SD**
+
+```julia
+pk45_nca_plasma_report = NCAReport(pk45_nca_plasma, sigdig=3)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters.
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_plasma_df = select(pk45_nca_plasma_report, [:id, :cl_obs, :vss_obs, :half_life, :cmax, :aucinf_obs, :aumcinf_obs, :Occasion])
+
+## Stack the data for easy computation
+stats_nca_plasma_stacked = stack(stats_nca_plasma_df, [:cl_obs, :half_life, :vss_obs, :cmax, :aucinf_obs, :aumcinf_obs], [:id, :Occasion])
+stats_nca_plasma_summary = combine(groupby(stats_nca_plasma_stacked,[:Occasion, :variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+ **Initial Estimates**
+
+* The Clearance of Parent is i.e **Clp = 0.33 L/hr/kg**
+* The Central Volume of Distribution of Parent is Dosep/Cop, i.e **Vcp = 0.54 L/kg**
+* The Peripheral Volume ofDistribution of Parent is Vss - Vcp, i.e **Vpp = 0.33 L/kg**
+* The Intercompartmental Clearance is **Qp = 0.18 L/hr/kg**
+
+##### Metabolite NCA
+
+We will perform an NCA of the `Metabolite Concentrations`. We have grouped it by _Occasion_,
+ this will help us in understanding the difference between the Occasion.
+
+```julia
+pk45_nca_met = read_nca(pk45_data_df,
+                            id       = :id,
+                            time     = :time,
+                            amt      = :amt,
+                            conc     = :dv_met,
+                            route    = :route,
+                            duration = :duration,
+                            group    = [:Occasion])
+```
+
+A `full NCAReport` is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean, GeometricMean, and SD**
+
+```julia
+pk45_nca_met_report = NCAReport(pk45_nca_met, sigdig=3)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters.
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_met_df = select(pk45_nca_met_report, [:id, :cl_obs, :vss_obs, :half_life, :cmax, :aucinf_obs, :aumcinf_obs, :Occasion])
+
+## Stack the data for easy computation
+stats_nca_met_stacked = stack(stats_nca_met_df, [:cl_obs, :vss_obs, :half_life, :cmax, :aucinf_obs, :aumcinf_obs,], [:id, :Occasion])
+stats_nca_met_summary = combine(groupby(stats_nca_met_stacked,[:Occasion, :variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+ **Initial Estimates**
+
+ * The Volume of Distribution of Metabolite is Dosem/Com, i.e **Vcm = 0.78 L/kg**
+    (slightly lesser than central volume)
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk45_data = read_pumas(pk45_data_df,
+                        id           = :id,
+                        time         = :time,
+                        observations = [:dv_cp, :dv_met],
+                        amt          = :amt,
+                        evid         = :evid,
+                        rate         = :rate,
+                        cmt          = :cmt)
+```
+
+##### Two-compartment Parent and One-compartment Metabolite Model
+
+```julia
+pk_45            = @emmodel begin
+  @metadata begin
+    desc = "PK45 Two-compartment Parent and One-compartment Metabolite Model"
+    timeu = u"hr"
+  end
+
+  @param begin
+    Vcp        ~ 1 | LogNormal
+    Vpp         ~ 1 | LogNormal
+    Clp        ~ 1 | LogNormal
+    Vcm        ~ 1 | LogNormal
+    Clm        ~ 1 | LogNormal
+    Clpm       ~ 1 | LogNormal
+    Clmp       ~ 1 | LogNormal
+  end
+
+  @random begin
+    Qp         ~ 1 | LogNormal
+  end
+
+  @dynamics begin
+    Centralp'    = (Qp/Vpp)*Peripheralp - (Qp/Vcp)*Centralp - (Clp/Vcp)*Centralp - (Clpm/Vcp)*Centralp + (Clmp/Vcm)*Centralm
+    Peripheralp' = (Qp/Vcp)*Centralp -  (Qp/Vpp)*Peripheralp
+    Centralm'    = -(Clm/Vcm)*Centralm - (Clmp/Vcm)*Centralm + (Clpm/Vcp)*Centralp
+  end
+
+  @post begin
+    cp           = Centralp/Vcp
+    met          = Centralm/Vcm
+  end
+
+  @error begin
+    dv_cp        ~ Normal(cp)
+    dv_met       ~ Normal(met)
+  end
+end
+```
+
+We have obtained the initial estimates from `NCA analysis` and some drivations.
+
+```julia
+param_est = (Vcp     = 0.54,
+             Vpp     = 0.3,
+             Qp      = 0.18,
+             Clp     = 0.33,
+             Vcm     = 0.78,
+             Clm     = 0.07,
+             Clpm    = 0.011,
+             Clmp    = 0.045)
+```
+
+##### SAEM Fitting
+
+We will perform a `SAEM Analysis` to obtain the parameters of the
+ subjects.
+
+```julia
+pk_45_fit_nv = @time fit(pk_45, pk45_data, param_est,
+                          Pumas.SAEM(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_45_fit_nv)
+```
+
