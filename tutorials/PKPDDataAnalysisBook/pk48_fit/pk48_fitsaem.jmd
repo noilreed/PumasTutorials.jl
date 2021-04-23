@@ -1,0 +1,229 @@
+---
+title : Exercise PK48 - Fitting One Compartment Michaelis Menten Kinetics, Drug and Metabolite in Urine
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise we will learn how to analyze a dataset with plasma concentration
+ and urine excretion of parent and metabolite. We will simultaneously `fit` all
+ the data to obtain better estimate of the parameters. The basic
+ workflow of the estimation process is
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of the data
+
+A dose of **500 μmol** of drug is given as an `Intravenous` bolus. Plasma Concentrations
+ were measured along with plasma and metabolite amounts in urine for 15 hours.
+ PK samples are collected at `1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 15 hrs` for both
+ plasma and urine.
+
+The following are the units of the dataset:
+
+  * Time (time) = hrs
+  * Plasma Concentrations (dv) = μM
+  * Parent Amount in Urine (dv_aep) = μmol
+  * Metabolite Amount in Urine (dv_aem) = μmol
+  * Dose (amt) = μmol
+
+```julia
+pk48_data_df = CSV.read("./pk_48.csv", DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary statistics of the data
+
+```julia
+stats_pk48_data = describe(pk48_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv, :dv_aep, :dv_aem])
+```
+
+## Exploratory Plots of the given data
+
+ * Plasma Concentration vs Time
+
+```julia
+pk_data_plot = dropmissing(pk48_data_df, :dv)
+@df pk_data_plot plot(:time, :dv, yaxis=:log, group=:id, label=false,
+                      xlabel="Time (hr)", ylabel="Concentration (ug/L)",
+                      size = (600, 600), guidefontsize = 12,
+                      title = "Concentration vs Time")
+```
+
+ * Parent Urine Amount
+
+```julia
+@df pk_data_plot plot(:time, :dv_aep, yaxis=:log, group=:id, label=false,
+                      xlabel="Time (hr)", ylabel="Parent Amount (umol)",
+                      size = (600, 600), guidefontsize = 12,
+                      title = "Parent Amount vs Time")
+```
+
+ * Metabolite Urine Amount
+
+```julia
+@df pk_data_plot plot(:time, :dv_aem, yaxis=:log, group=:id, label=false,
+                      xlabel="Time (hr)", ylabel="Metabolite Amount (umol)",
+                      size = (600, 600), guidefontsize = 12,
+                      title = "Metabolite Amount vs Time")
+```
+
+## NCA Analysis
+
+We will now perform an NCA analysis to get the initial estimates for the fitting
+ of the given data. The **read_nca()** function input requires the route to be
+ stated as `iv` for intravenous. This will help to calculate the parameters accurately.
+
+```julia, results="hidden"
+pk48_data_df[:, :route] .= "iv"
+```
+
+Now, map the data variables to the **read_nca** function that prepares the data
+ for NCA analysis. You can even type **?read_nca** in the REPL and get more
+ information on mapping of the variables.
+
+```julia
+pk48_nca = read_nca(pk48_data_df,
+                    id       = :id,
+                    time     = :time,
+                    amt      = :amt,
+                    conc     = :dv,
+                    route    = :route)
+```
+
+A `full NCAReport` is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean, GeoMean and SD**. We will also calculate
+ the AUC10_15 for calculation of Renal Clearance (Clr)
+
+```julia
+pk48_nca_report = NCAReport(pk48_nca, sigdig=3)
+pauc10_15 = NCA.auc(pk48_nca, interval=(10,15), method=:linuplogdown, sigdigits=3)
+pk48_nca_merge = outerjoin(pk48_nca_report, pauc10_15, on=[:id], makeunique=true)
+```
+
+Perform the `Summary Statistics` for the required NCA Parameters
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk48_nca_merge, [:id, :vz_obs, :cl_obs, :kel, :half_life, :aucinf_obs, :auc10_15, :mrtinf_obs, :aumcinf_obs])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_obs, :cl_obs, :kel, :half_life, :aucinf_obs, :auc10_15, :aumcinf_obs, :mrtinf_obs], [:id])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+ * We have obatined the initial estimates for **Volume of Distribution and Clearance**.
+ * We will obtain the renal clearance for using the formula Au10_15/AUC10_15, i.e
+    **Clr = 2.3 L/hr**
+ * For the Km value we will estimate it to be **2 μM** from the graph where the
+    terminal the linear phase starts.
+ * Since the total plasma clearance is estimated to be `6.24 L/hr` we will estimate
+    Vmax from the formula _Vmax/Km~Cl_ , i.e **Vmax = 12.48 μmol/hr**
+
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk48_data = read_pumas(pk48_data_df,
+                        id           = :id,
+                        time         = :time,
+                        observations = [:dv, :dv_aep, :dv_aem],
+                        amt          = :amt,
+                        evid         = :evid,
+                        cmt          = :cmt)
+```
+
+##### One-Compartment Model with Parent and Metabolite Urine Compartment
+
+In this model the parent drug is converted to metabolite. The metabolite is then
+ excreted instantaneously via the kidney. Thus the following model has a urine parent
+  compartment and urine metabolite compartment.
+
+```julia
+pk_48        = @emmodel begin
+  @metadata begin
+    desc = "PK48 One-Compartment Model with Parent and Metabolite Urine Compartment"
+    timeu = u"hr"
+  end
+
+   @random begin
+    "Maximum rate of metabolism (uM/hr)"
+    Vmax     ~ 1 | LogNormal
+    "Michaelis Menten Constant (uM)"
+    Km       ~ 1 | LogNormal
+    "Renal Clearance (L/hr)"
+    Clr      ~ 1 | LogNormal
+    "Central Volume of Distribution (L)"
+    Vc       ~ 1 | LogNormal
+  end
+
+  @dynamics begin
+    Central' = - Vmax*(Central/Vc)/(Km + (Central/Vc)) - (Clr/Vc)* Central
+    UrineP'  =  (Clr/Vc) * Central
+    UrineM'  =   Vmax*(Central/Vc)/(Km + (Central/Vc))
+  end
+
+  @post begin
+    cp       = Central/Vc
+    ae_p     = UrineP
+    ae_m     = UrineM
+  end
+
+  @error begin
+    dv       ~ ProportionalNormal(cp)
+    dv_aep   ~ Normal(ae_p)
+    dv_aem   ~ Normal(ae_m)
+  end
+end
+```
+
+We will use the initial estimates from `NCA Analysis` and few other derivations
+
+```julia
+param_est = (Vmax    = 12.48,
+             Km      = 2,
+             Clr     = 2.3,
+             Vc      = 12.76)
+```
+
+
+##### SAEM Fitting
+
+We can see that the initial estmates obtained from `NCA` and other derivations are
+ not close to the NaivePooled estimates but we will use them for `SAEM` and
+ let the system come to a local minimum and obatin the Between Subject Variability
+ (BSV) on the parameters.
+
+```julia
+pk_48_fit = @time fit(pk_48, pk48_data, param_est,
+                      Pumas.SAEM(), ensemblealg = EnsembleThreads())
+
+coeftable(pk_48_fit)
+```
+
