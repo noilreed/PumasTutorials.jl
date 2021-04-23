@@ -1,0 +1,212 @@
+---
+title : Exercise PK40 - Fitting Enterohepatic Recirculation
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise you will learn how to analyze data that shows an enterohepatic
+ recirculation of the drug. In this we model only one release of the bile into
+ the gut from where it is absorbed. There is **zero-order** release of the drug from
+ the `bile compartment`.
+
+The basic workflow for the estimation process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of the data
+
+An intravenous bolus dose of 5617.3 μg of a new compound which is known to exhibit
+ enterohepatic recirculation (EHC) is administered. The PK samples are collected
+ at `0.03, 0.083, 0.15, 0.17, 0.33, 0.5, 0.67, 0.83, 1, 1.5, 2, 4, 6, 8, 10, 10.5,
+ 11, 11.5, 12, 12.5, 13, 15, 16, 17, 18, 20, 24, 26, 28, 30, 32, 36 hrs`.
+
+The following are the units of the dataset:
+
+ * Time (time) = hrs
+ * Plasma Concentration (dv) = μg/L
+ * Dose (amt) = μg
+
+```julia
+pk40_data_df = CSV.read("./pk_40.csv", DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk40_data = describe(pk40_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+ * Plot of Concentration vs Time
+
+```julia
+pk_data_plot = dropmissing(pk40_data_df, :dv)
+@df pk_data_plot plot(:time, :dv, group=:id, yaxis=:log, label=false,
+                      xlabel="Time (hr)", ylabel="Concentration (ug/L)",
+                      size = (600, 600), guidefontsize = 12,
+                      title = "Concentration vs Time")
+```
+
+From the Concentrations vs Time plot we can see that there is a _rise in concentration_
+ at around 10 hours after the intial fall.
+
+## NCA Analysis
+
+We will perform an `NCA Analysis` to obtain a few initial estimates of the parameters
+ for the fitting of the given data. We will include a `route` column so that we have
+  descent value for the initial estimates.
+
+```julia; results="hidden"
+pk40_data_df[:, :route] .= "iv"
+```
+
+Now, map the data variables to the *read_nca* function that prepares the data for
+ NCA analysis. You can even type **?read_nca** in the REPL and get more information
+ on the mapping of the data.
+
+```julia
+pk40_nca = read_nca(pk40_data_df,
+                    id     = :id,
+                    time   = :time,
+                    amt    = :amt,
+                    conc   = :dv,
+                    route  = :route)
+```
+
+A full NCAReport is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean, GeometricMean, and SD**
+
+```julia
+pk40_nca_report = NCAReport(pk40_nca, sigdig=3)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk40_nca_report, [:id, :vz_obs, :cl_obs, :aucinf_obs, :kel, :half_life, :tmax])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_obs, :cl_obs, :aucinf_obs, :kel, :half_life, :tmax], [:id])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+* We will **split the volume of distribution** between the two compartment to use as
+   initial estimates for our analysis.
+* For the Clearance we will assign a **higher value** to the intercompartmental
+   clearance (Q) since we can see the initial rapid decline in concentrations.
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk40_est_df = filter(x -> (!(x.time == 0  && x.evid == 0.0)), pk40_data_df)
+
+pk40_data = read_pumas(pk40_est_df,
+                        id           = :id,
+                        time         = :time,
+                        observations = [:dv],
+                        amt          = :amt,
+                        evid         = :evid)
+```
+
+###### Enterohepatic Recirculation Model
+
+```julia
+pk_40            = @emmodel begin
+  @metadata begin
+    desc = "PK40 Enterohepatic Recirculation Model"
+    timeu = u"hr"
+  end
+
+  @param begin
+     Q         ~ 1 | LogNormal
+     Klg       ~ 1 | LogNormal
+   end
+
+   @random begin
+    "Clearance (L/hr)"
+     Cl          ~ 1 | LogNormal 
+     "Volume of Distribution (L)"
+     Vc          ~ 1 | LogNormal
+     "Peripheral Volume of Distribution (L)"
+     Vp          ~ 1 | LogNormal
+     "Absorption rate constant (1/hr)"
+     Ka          ~ 1 | LogNormal
+     "Duration of Release of Bile (hr)"
+     τ           ~ 1 | LogNormal
+   end
+
+   @pre begin
+     Kempt       = (t>10 && t<(10+τ))*(1/τ)
+   end
+
+   @dynamics begin
+     Central'    = Ka*Depot - (Cl/Vc)*Central + (Q/Vp)*Peripheral - (Q/Vc)*Central - Klg*Central
+     Peripheral' = (Q/Vc)*Central - (Q/Vp)*Peripheral
+     Bile'       = Klg*Central - Bile*Kempt
+     Depot'      = Bile*Kempt - Ka*Depot
+   end
+
+   @post begin
+     cp          = Central/Vc
+    end
+
+    @error begin
+     dv          ~ ProportionalNormal(cp)
+   end
+end
+```
+
+We have obtained a few initial estimates from the NCA analysis.
+
+```julia
+param_est = ( Cl    = 1.5,
+              Vc    = 15,
+              Vp    = 20,
+              Q     = 5,
+              Ka    = 2.3,
+              Klg   = 0.7,
+              τ     = 2.8)
+```
+
+##### SAEM Fitting
+
+Our initial estimates are close to the NaivePooled estimates. We will fit the
+ data using `SAEM`
+
+```julia
+pk_40_fit = @time fit(pk_40, pk40_data, param_est,
+                        Pumas.SAEM(), ensemblealg = EnsembleThreads())
+
+coeftable(pk_40_fit)
+```
+
