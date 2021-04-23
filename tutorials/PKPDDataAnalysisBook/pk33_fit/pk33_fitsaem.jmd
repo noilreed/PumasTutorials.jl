@@ -1,0 +1,180 @@
+---
+title: Exercise 33 - Fitting Transdermal input and kinetics
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+Controlled delivery systems results in relatively uniform levels of input into
+ the system bypassing the liver and avoiding first pass metabolism. In this exercise
+ you will learn how to estimate data from a transdermal system. We will model the
+ data using a **multiple zero-order input**, this will mimic the fast and the slow
+ release of the drug from the patch. We will estimate the relative contribution
+ of each infusion and the total input time over which drug is being absorbed into
+ circulation.
+
+The basic workflow for the estimation process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. Pharmacokinetic modelling
+ 4. Diagnostic Plots
+ 5. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using Pumas
+using PumasTutorials
+using Random
+using CSV
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of the data
+
+A nicotine patch is applied to a group of patients for `5 consecutive days` and
+ the PK samples are obtained on the 5th day after the application of the patch.
+ The total dose released from each patch is **15,890 μg**. PK samples are collected
+ at the time intervals `0, 0.5, 1, 2, 3, 4, 6, 8, 10, 12, 14, 16, 17, 18, 21,
+ 23.37 hrs`. We have collected a pre-dose sample to note the concentration already
+ in circulation.
+
+The following are the units of the dataset:
+
+ * Time (time) = hrs
+ * Plasma Concentration (dv) = μg/L
+ * Dose (amt) = μg
+
+```julia
+pk33_data_df = CSV.read("./pk_33.csv", DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary statistics of the data
+
+```julia
+stats_pk33_data = describe(pk33_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+ * Plot of Concentration vs Time
+
+```julia
+pk_data_plot = dropmissing(pk33_data_df, :dv)
+@df pk_data_plot plot(:time, :dv, group=:id, label=false,
+                        xlabel = "Time (hrs)", ylabel="Concentration (ug/L)",
+                        size = (600, 400), guidefontsize = 12,
+                        title = "Concentration vs Time")
+```
+
+ * Plot of Mean Concentration vs Time
+
+We can see that the initial concentration at `time=0` is an average of **2 μg/L**
+
+```julia
+plasma_mean = combine(groupby(pk33_data_df,[:time]),
+                            [col => fun for col in [:dv]
+                            for fun in [mean, std]])
+
+@df plasma_mean plot(:time, :dv_mean, label=false,
+                        xlabel = "Time (hrs)", ylabel="Concentration (ug/L)",
+                        size = (600, 400), guidefontsize = 12, linewidth=3,
+                        xlims=(-0.3,25), xticks=[0,5,10,15,20,25], yticks=[2,4,6,8,10,12,14,16], ylims=(1.7,16),
+                        title = "Concentration vs Time")
+```
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+We do not have and `amt, evid & cmt` column since we are not have any dosing
+ event, for which we will include a statement `event_data=false`. This helps the
+  system know that there is no dosing event.
+
+```julia
+pk33_data = read_pumas(pk33_data_df,
+                       id           = :id,
+                       time         = :time,
+                       observations = [:dv],
+                       event_data   = false)
+```
+
+##### One-Compartment Model with Multiple Infusions
+
+We include the dose as two seperate infusions and thus we will estimate
+the duration of each dose. We will also estimate each of the doses in both the
+fast release and slow release.
+
+```julia
+pk_33         = @emmodel begin
+  @metadata begin
+   desc = "PK33 One Cmt with Multiple Infusion"
+   timeu = u"hr"
+  end
+
+  @param begin
+    Cl        ~ 1 | LogNormal
+    Vc        ~ 1 | LogNormal
+    Dose_slow ~ 1 | LogNormal
+    Tslow     ~ 1 | LogNormal
+  end
+
+  @random begin
+    Tfast     ~ 1 | LogNormal
+  end
+
+  @pre begin
+    Ffast     = (t<=Tfast) * (15890-Dose_slow)/Tfast
+    Fslow     = (t<=Tslow) * Dose_slow/Tslow
+  end
+
+  @init begin
+    Central  = 2*Vc
+  end
+
+  @dynamics begin
+    Central'  =  Ffast + Fslow -(Cl/Vc)*Central
+  end
+
+  @post begin
+    cp        = Central/Vc
+  end
+
+  @error begin
+    dv        ~ ProportionalNormal(cp) * Normal(cp)
+  end
+end
+```
+
+We have obtained the `inital estimates` from literature and certain Graphical.
+
+```julia
+param_est = ( Cl    = 78,
+              Vc    = 140,
+              Dose_slow = 10000,
+              Tfast = 7,
+              Tslow = 18)
+```
+
+##### SAEM
+
+
+We see that the initial estimates we found are very close to the NaivePooled
+ Analysis. We will now find the Between Subject Variability (BSV) using `FOCEI`.
+
+```julia
+pk_33_fit = @time fit(pk_33, pk33_data, param_est,
+                      Pumas.SAEM(), ensemlblealg=EnsembleThreads())
+
+coeftable(pk_33_fit)
+```
+
