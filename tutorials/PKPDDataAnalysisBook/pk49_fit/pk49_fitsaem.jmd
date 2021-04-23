@@ -1,0 +1,284 @@
+---
+title: Exercise PK49 - Fitting Turnover IV - Factor II data in healthy volunteers
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+In this exercise we will learn to analyse the coagulation Factor II and model it
+  to estimate the turnover kinetics. In most endogenous substances, the amount and
+  concentration of coagulation Factor II is a difference between the _rate of synthesis_
+  and _rate of degradation_. We will estimate both the synthesis rate and clearance
+  of factor II  simultaneously.
+
+The basic workflow of the estimation process is
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of the data
+
+A dose of 400 mg is given as a constant IV Infusion over a period of 19 mins (0.316 hrs)
+ and plasma samples of _Factor II_ were collected at `0.01, 0.05, 0.08, 0.16, 0.25,
+ 0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 15, 18, 24, 32, 48, 72, 96, 144 hrs`.
+
+The following are the units of the dataset:
+
+  * Time (time) = hrs
+  * Plasma Concentrations (dv) = mg/L
+  * Dose (amt) = mg
+
+```julia
+pk49_data_df = CSV.read("./pk_49.csv", DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk49_data = describe(pk49_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+ * Plot of Concentration vs Time
+
+```julia
+pk_data_plot = dropmissing(pk49_data_df, :dv)
+@df pk_data_plot plot(:time, :dv, group=:id, label=false,
+                      xlabel="Time (hr)", ylabel="Concentration (mg/L)",
+                      size = (600, 600), guidefontsize = 12,
+                      title = "Concentration vs Time")
+```
+
+We will calculate the mean concentration at each of the time points.
+
+```julia
+stats_mean_time = combine(groupby(pk_data_plot,[:time]),
+                            [col => fun for col in [:dv]
+                            for fun in [mean, geomean, std]])
+```
+
+ * Plot of Mean Concentration vs Time
+
+```julia
+@df stats_mean_time plot(:time, :dv_mean, label=false, linewidth=3,
+                      xlabel="Time (hr)", ylabel="Concentration (mg/L)",
+                      size = (600, 600), guidefontsize = 12,
+                      title = "Mean Concentration vs Time")
+```
+
+## NCA Analysis
+
+We will now perform an NCA Analysis to get initial estimates of the data for
+ fitting of the given data. We will include a route column to specify that dosing
+ is an infusion `inf`. The **read_nca()** function input requires the route to
+ be stated as `inf` for an infusion, this will help to compute the parameters
+ correctly.
+
+We will calculate the `duration` of the dosing interval from the _amount_ and _rate_
+
+```julia, results="hidden"
+pk49_data_df[:, :route] .= "inf"
+pk49_data_df[:, :duration] .= pk49_data_df.amt ./ pk49_data_df.rate
+```
+
+Since there is endogenous production of coagulation Factor II, we will subtract the last
+ concentration from all the concentrations to calculate the parameters using
+ `NCA`
+
+```julia
+transform!(groupby(pk49_data_df, :id), :dv => (x -> x .- x[25]) => :dv_nca)
+
+pk49_nca = read_nca(pk49_data_df,
+                    id       = :id,
+                    time     = :time,
+                    amt      = :amt,
+                    conc     = :dv_nca,
+                    duration = :duration,
+                    route    = :route)
+```
+
+A full NCAReport is generated, we will then perform summary statistics of the
+  required parameters to obtain the **Mean, GeometricMean, and SD**
+
+```julia
+pk49_nca_report = NCAReport(pk49_nca, sigdig=3)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters
+
+```julia
+dropmissing!(pk49_nca_report)
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk49_nca_report, [:id, :vz_obs, :cl_obs, :aucinf_obs, :kel, :half_life, :clast])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_obs, :cl_obs, :aucinf_obs, :kel, :half_life, :clast], [:id])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+ * We have calculated the `Volume of Distribution` and `Clearance` from the NCA
+    Analysis
+ * To calculate the `Synthesis` we use the formula Css = Synthesis/Cl, i.e
+    **Synthesis = 14.95 mg/hr**
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk49_data = read_pumas(pk49_data_df,
+                        id           = :id,
+                        time         = :time,
+                        observations = [:dv],
+                        amt          = :amt,
+                        evid         = :evid,
+                        rate         = :rate,
+                        cmt          = :cmt)
+```
+
+##### One-Compartment Model with Endogenous Synthesis of drug
+
+```julia
+pk_49_1cmt       = @emmodel begin
+  @metadata begin
+    desc = "PK49 One Cmt with Endogenous Synthesis"
+    timeu = u"hr"
+  end
+
+  @param begin
+    Vc           ~ 1 | LogNormal
+  end
+
+  @random begin
+    "Clearance (L/hr)"
+    CL           ~ 1 | LogNormal
+    "Synthesis of endogenous coagulation Factor II (mg/hr)"
+    Synthesis    ~ 1 | LogNormal
+  end
+
+  @init begin
+    Central      = Synthesis/(CL/Vc) #we add Vc here because we want it in "amount". not conc.
+  end
+
+   @dynamics begin
+     Central'    = Synthesis - (CL/Vc)*Central
+   end
+
+   @post begin
+     cp          = Central/Vc
+    end
+
+    @error begin
+     dv          ~ Normal(cp)
+   end
+end
+```
+
+We have obtained the initial estimates from `NCA Analysis` and other derivations.
+
+```julia
+param_est_1cmt = ( CL        = 0.1,
+                   Vc        = 3.9,
+                   Synthesis = 14.95)
+```
+
+
+We see that the initial estimates are close to the NaivePooled Analysis.
+ We will use them for estimation and let the system find the best
+ local minima using `SAEM`
+
+```julia
+pk_49_1cmt_fit = @time fit(pk_49_1cmt, pk49_data, param_est_1cmt,
+                      Pumas.SAEM(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_49_1cmt_fit)
+```
+
+
+##### Two-Compartment Model with Endogenous Synthesis of drug
+
+```julia
+pk_49_2cmt      = @emmodel begin
+  @metadata begin
+    desc        = "PK49 Two Cmt with Endogenous Synthesis"
+    timeu       = u"hr"
+  end
+
+  @param begin
+    Vc           ~ 1 | LogNormal
+  end
+
+  @random begin
+    "Clearance (L/hr)"
+    CL           ~ 1 | LogNormal
+    "Peripheral Volume of Distribution (L)"
+    Vp           ~ 1 | LogNormal
+    "Intercompartmental Clearance (L/hr)"
+    Q            ~ 1 | LogNormal
+    "Synthesis of endogenous coagulation Factor II (mg/hr)"
+    Synthesis    ~ 1 | LogNormal
+  end
+
+  @init begin
+    Central      = Synthesis/(CL/Vc) #we add Vc here because we want it in "amount". not conc.
+  end
+
+   @dynamics begin
+     Central'    = Synthesis - (CL/Vc)*Central - (Q/Vc)*Central + (Q/Vp)*Peripheral
+     Peripheral' = (Q/Vc)*Central - (Q/Vp)*Peripheral
+   end
+
+   @post begin
+     cp          = Central/Vc
+   end
+
+   @error begin
+     dv          ~ Normal(cp)
+   end
+end
+```
+
+We will use the final estimates from the one-compartment model and split the
+ volume of distribution between the two-compartments. We will use these initial
+ estimates for analysis.
+
+```julia
+param_est_2cmt = ( CL        = 0.141,
+                   Vc        = 1.75,
+                   Q         = 0.141,
+                   Vp        = 1.75,
+                   Synthesis = 15.2)
+```
+
+We will now fit the data using `SAEM`.
+
+```julia
+pk_49_2cmt_fit = @time fit(pk_49_2cmt, pk49_data, param_est_2cmt,
+                           Pumas.SAEM(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_49_2cmt_fit)
+```
+
