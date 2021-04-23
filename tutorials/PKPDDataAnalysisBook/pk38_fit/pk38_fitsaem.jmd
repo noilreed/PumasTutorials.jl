@@ -1,0 +1,148 @@
+---
+title : Exercise PK38 - Fitting Invitro/invivo extrapolation II
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise we will analyze the _in vitro_ metabolic rate of a compound using
+ the differential equation. We will apply nonlinear regression to five different
+ starting concentrations. The compound is excreted completely via the hepatic route.
+ We will model two different cytochrome P450 isoenzymes for the elimination of the
+ compound.
+
+The basic workflow for the estimation process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. Pharmacokinetic modelling
+ 4. Diagnostic Plots
+ 5. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+```
+
+## Description of the given data
+
+In this experiment `6 human microsomes` of 5 groups where given different concentrations
+ of **50, 30, 10,3 & 5 μmol/L**. The concentrations of the drug where recorded over
+ various time points `0.1, 0.5, 1, 1.5, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
+ 15, 16, 17, 18, 19, 20, 23, 27, 28, 29, 30, 31 mins` for the highest concentration.
+
+The following are the units of the dataset:
+
+ * Time (time) = mins
+ * Concentration = uM
+ * Dose (amt) = μmol/L
+ * Group (1 : Dose 50, 2 : Dose 30, 3 : Dose 10, 4 : Dose 3, 5 : Dose 1)
+
+```julia
+pk38_data_df = CSV.read("./pk_38.csv", DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk38_data = describe(pk38_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+ * Plot of Concentration vs Time
+
+```julia
+pk_data_plot = dropmissing(pk38_data_df, :dv)
+filter!(x -> x.dv > 0, pk_data_plot)
+@df pk_data_plot plot(:time, :dv, group=:id, yaxis=:log, color=:Group, label=false,
+                      xlabel="Time (mins)", ylabel="Concentration (uM)",
+                      size = (600, 500), guidefontsize = 12,
+                      title = "Concentration vs Time")
+```
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk38_data = read_pumas(pk38_data_df,
+                        id           = :id,
+                        time         = :time,
+                        amt          = :amt,
+                        evid         = :evid,
+                        observations = [:dv],
+                        cmt          = :cmt,
+                        covariates   = [:Group])
+```
+
+##### Double-Enzyme NonLinear Elimination Model
+
+The volume of the incubation medium is set to 1ml.
+
+```julia
+pk_38        = @emmodel begin
+  @metadata begin
+    desc = "PK38 Double-Enzyme Nonlinear Elimination Model"
+  end
+
+  @param begin
+    Km1    ~ 1 | LogNormal
+    Km2    ~ 1 | LogNormal
+  end
+
+  @random begin
+    Vmax1    ~ 1 | LogNormal 
+    Vmax2    ~ 1 | LogNormal
+  end
+
+  @pre begin
+    Vmedium  = 1
+  end
+
+  @dynamics begin
+    Central' =  -((Vmax1*Central/(Km1+Central))+(Vmax2*Central/(Km2+Central)))/Vmedium
+  end
+
+  @post begin
+    cp       = Central/Vmedium
+  end
+
+  @error begin  
+    dv       ~ Normal(cp)
+  end
+end
+```
+
+We will use the `graphical representation` for the initial parameter estimates for
+ the fitiing of the given data.
+
+```julia
+param_est = ( Vmax1 = 0.8,
+              Km1   = 0.1,
+              Vmax2 = 1.0,
+              Km2   = 10)
+```
+
+##### SAEM Fitting
+
+We will now fit the data using `SAEM`
+
+```julia
+pk_38_fit = @time fit(pk_38, pk38_data, param_est,
+                      Pumas.SAEM(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_38_fit)
+```
