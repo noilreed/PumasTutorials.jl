@@ -1,0 +1,269 @@
+---
+title: Exercise PK32 - Fitting Turnover III Nonlinear disposition
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise we will learn how to analyze the turnover of hyaluronan (HA). We
+ tried to model the drug using **saturable Michaelis-Menten process**. We tried to study
+ the drug by using various infusion from 20 - 600 μg/L. We will pay special attention
+  to the final estimate of the **Km value** and then make interpretations from that.
+
+The basic workflow for the estimation process is:
+
+  1. Description of the data
+  2. Exploratory analysis of the data
+  3. NCA Analysis
+  4. Pharmacokinetic modelling
+  5. Diagnostic Plots
+  6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of the data
+
+In this analysis the drug is given as multiple doses as mentioned below as a Rapid
+ Infusion followed by Slow Infusion doses. PK samples are collected at various time
+ points along the study as seen in the dataset below.
+
+```julia
+Dosage = DataFrame(- = ["Dose (μg)", "Time Interval (mins)"],
+ Rapid_IV_1 = ["1669", "0"], Infusion_1 = ["1131.8", "0-30.1"],
+ Rapid_IV_2 = ["1701", "125-126"], Infusion_2=["1884.4","125.2-154.3"],
+ Rapid_IV_3 = ["1733", "260-261"], Infusion_3=["6300","260.1-290.1"])
+pretty_table(first(Dosage,10), backend = :html)
+```
+
+The following are the units of the dataset:
+
+ * Time (time) = mins
+ * Plasma Concentration (dv) = μg/L
+ * Dose (amt) = μg
+
+```julia
+pk32_data_df = CSV.read("./pk_32.csv", DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk32_data = describe(pk32_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+ * Plot of Concentration vs Time
+
+```julia
+pk_data_plot = dropmissing(pk32_data_df, :dv)
+@df pk_data_plot plot(:time, :dv, group=:id, label=false,
+                      xlabel="Time (mins)", ylabel="Concentration (ug/L)",
+                      size = (600, 500), guidefontsize = 12,
+                      title = "Concentration vs Time")
+```
+
+## NCA Analysis
+
+We will perform an NCA analysis for the time points between `260 and 360 mins`.
+ From this we will be able to calculate the AUC and then the **Clearance**. We
+ will filter the required data and then parse the data to the **read_nca()** function.
+ For the NCA analysis we will subract the data from the baseline value of 20.2 μg/L.
+
+```julia; results="hidden"
+transform!(groupby(pk32_data_df, :id), :dv => (x -> x .- 20.2) => :dv_nca)
+
+pk_nca_260_360 = filter(x -> (x.time >= 260.0 && x.time <= 360.0), pk32_data_df)
+dropmissing!(pk_nca_260_360, :dv)
+select!(pk_nca_260_360, :id, :time, :dv_nca)
+```
+
+Now, map the data variables to the read_nca function that prepares the data for
+ NCA analysis. You can even type **?read_nca** in the REPL and get more information
+ on the mapping of the data.
+
+```julia
+pk32_nca = read_nca(pk_nca_260_360,
+                    id       = :id,
+                    time     = :time,
+                    conc     = :dv_nca)
+```
+
+A full NCAReport is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean, GeometricMean, and SD**
+
+```julia
+pk32_nca_report = NCAReport(pk32_nca, sigdig=3)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk32_nca_report, [:id, :auclast, :kel, :half_life, :tmax])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:auclast, :tmax, :kel, :half_life], [:id ])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+* From AUC we will calculate the Clearance by using the formula Cl = Total_dose/AUC.
+   i.e **Cl = 0.38 L/min**.
+* We have the half-life and Clearance from which we can calculate the **Volume of Distribution**
+   using the formula t1/2 = (0.693 * Vd) / Cl , i.e **Vd = 4.1 L**
+* We will calculate the _Vmax_ value based on Cbase = kin/(Vmax/Km+C), where C = AUC/τ
+   and kin = Conc at baseline * Cl. i.e **Vmax = 144.35 μg/min**
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk32_data = read_pumas(pk32_data_df,
+                        id           = :id,
+                        time         = :time,
+                        observations = [:dv],
+                        amt          = :amt,
+                        evid         = :evid,
+                        cmt          = :cmt)
+```
+
+##### One-Compartment Linear Model
+
+```julia
+pk_32_lm      = @emmodel begin
+  @metadata begin
+    desc      = "PK32 One Cmt Linear Model"
+    timeu     = u"minute"
+  end
+
+  @param begin
+    Kin       ~ 1 | LogNormal 
+    Vc        ~ 1 | LogNormal
+  end
+
+  @random begin
+    CL        ~ 1 | LogNormal
+  end
+
+  @init begin
+    Central   = Kin/(CL/Vc)
+  end
+
+  @dynamics begin
+    Central'  = Kin - (CL/Vc)*Central
+  end
+
+  @post begin
+    cp        = Central/Vc
+  end
+
+  @error begin
+    dv        ~ ProportionalNormal(cp)
+  end
+end
+```
+
+We have obtained the initial estimates from `NCA` and few other calculations.
+
+```julia
+param_est_lm = (Vc    = 4.8,
+                CL    = 0.38,
+                Kin   = 20.2)
+```
+
+We will try to fit the data to a `NaivePooled Analysis`. We have tried to fit the
+ data to **FOCEI** and the _Between Subject Variability_ has not been estimated.
+ Thus we will stick to NaivePooled Analysis.
+
+```julia
+pk_32_lm_fit = @time fit(pk_32_lm, pk32_data, param_est_lm,
+                           Pumas.SAEM(), ensemblealg = EnsembleThreads())
+
+coeftable(pk_32_lm_fit)
+```
+
+
+We can see there are trends in the residual plots and the `one-compartment linear model`
+ is not a good fit for the given data.
+
+##### One-Compartment Non-linear Model
+
+```julia
+pk_32_nm     = @emmodel begin
+  @metadata begin
+    desc   = "PK32 One Cmt Non-linear Model"
+    timeu  = u"minute"
+  end
+
+  @param begin
+    Vmax   ~ 1 | LogNormal
+    Km     ~ 1 | LogNormal
+    Kin    ~ 1 | LogNormal
+  end
+
+  @random begin
+    Vc       ~ 1 | LogNormal 
+  end
+
+  @init begin
+    Central  = Kin/((Vmax/(2*Km))/Vc)
+  end
+
+  @dynamics begin
+    Central' = Kin - (Vmax/(Km+Central/Vc))*(Central/Vc)
+  end
+
+  @post begin
+    cp       = Central/Vc
+  end
+
+  @error begin
+    dv       ~ ProportionalNormal(cp)
+  end
+end
+```
+
+We will use the estimates from the previous fit and few other from what we have
+ derived earlier.
+
+```julia
+param_est_nm = (Vc    = 4.1,
+                Vmax  = 144,
+                Km    = 190,
+                Kin   = 7.67)
+```
+
+We will still try to fit the data using `NaivePooled Analysis` since the BSV is
+ still not estimable.
+
+```julia
+pk_32_nm_fit = @time fit(pk_32_nm, pk32_data, param_est_nm,
+                         Pumas.SAEM(), ensemblealg = EnsembleThreads())
+
+coeftable(pk_32_nm_fit)
+```
+
+From the final estimate of HA we can see that the Km value is **493 μg/L**. This value
+ is about 10 times higher than the normal plasma concentrations. Thus in normal
+ physiological conditions the value _will not rise to saturable levels_. Only during
+ certain `pathological conditions` the concentrations are elevated. This reinforces
+ the fact that the HA pharmacokinetics are **linear under normal physiological conditions**.
