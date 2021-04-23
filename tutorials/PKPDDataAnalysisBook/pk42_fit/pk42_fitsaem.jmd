@@ -1,0 +1,221 @@
+---
+title: Exercise PK42 - Fitting Saturable absorption via transporters
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+In this exercise you will learn how to model non-linear absorption kinetics. We
+ assume that the nonlinear absoprtion is due to saturable transport mechanism.
+ As the dose increases the time to absorption keeps on increasing. Thus we will
+ learn about a system with nonlinear absorption and linear elimination.
+
+The basic workflow for the estimation process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+```
+
+## Description of the data
+
+In this exercise each subject recieves a dose of **10mg, 30mg & 90mg** on three
+  different occasions. Samples are collected on each occasion. The samples are
+  collected at `5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 70, 75, 80, 85,
+  90, 95, 105, 110, 115, 120, 150, 180, 210, 240, 300, 360 mins`.
+
+The following are the units of the dataset:
+
+ * Time (time) = mins
+ * Plasma Concentrations (dv) = μg/L
+ * Dose (amt) = μg
+ * Occasion (1 : Dose 90mg, 2 : Dose = 30mg, 3 : Dose = 10mg)
+
+```julia
+pk42_data_df = CSV.read("./pk_42.csv", DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk42_data = describe(pk42_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+ * Plot of Concentration vs Time
+
+```julia
+pk_data_plot = dropmissing(pk42_data_df, :dv)
+filter!(x -> x.dv >= 0.1, pk_data_plot)
+@df pk_data_plot plot(:time, :dv, group=(:id,:Occasion), yaxis=:log, color=:Occasion, label=false,
+                      xlabel="Time (mins)", ylabel="Concentration (ug/L)",
+                      size = (600, 600), guidefontsize = 12,
+                      title = "Concentrations vs Time")
+```
+
+We can see the shift to the right in peak plasma concentration with increasing doses.
+
+## NCA Analysis
+
+We will now perform an NCA analysis to get the initial estimates for fitting
+ of the given data. The route column will need to be included to indicate the dosing
+ is extravascular `ev`. The *read_nca* function input requires the route to be stated
+ as ev for extravascular, this will help to compute the parameters correctly.
+
+```julia; results="hidden"
+pk42_data_df[:, :route] .= "ev"
+```
+
+Now, map the data variables to the *read_nca* function that prepares the data for
+ NCA analysis. You can even type **?read_nca** in the REPL and get more information
+ on the mapping of the data. We will group the data by `Occasion`.
+
+```julia
+pk42_nca = read_nca(pk42_data_df,
+                   id     = :id,
+                   time   = :time,
+                   amt    = :amt,
+                   conc   = :dv,
+                   route  = :route,
+                   group  = [:Occasion])
+```
+
+A full NCAReport is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean, Geometric Mean, and SD**
+
+```julia
+pk42_nca_report = NCAReport(pk42_nca, sigdig=3)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters
+
+```julia
+dropmissing!(pk42_nca_report)
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk42_nca_report, [:id, :vz_f_obs, :cl_f_obs, :half_life, :tmax, :cmax, :aucinf_obs, :aucinf_dn_obs, :Occasion])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_f_obs, :cl_f_obs, :half_life, :tmax, :cmax, :aucinf_obs, :aucinf_dn_obs], [:id, :Occasion])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:Occasion, :variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+We can see that the dose-normalized AUC's are not very different for each dose.
+ Thus it is clear that the elimination of the drug is linear. For such a system
+  with **complete absorption** the dose-normalized AUC's should not be different.
+
+We will calculate the **Ka** for each of the doses.
+ * Dose - 10mg , 0.693(_tmax_/4) = **0.923 min⁻¹**
+ * Dose - 30mg , = **2.252 min⁻¹**
+ * Dose - 90mg, = **9.58 min⁻¹**
+
+From this we can see that at higher dose there is saturable absorption.
+
+From previous studies we have estimated the initial parameters to be
+ _Vc = 5.2 L, Q = 1.1 L/min, Vp = 40 L & Cl = 2.2 L/min_.
+
+ * The lowest dose of **10mg does not show non-linearity** thus we assume the Km value
+    to be 10,000 μg.
+ * Vmax = Css * Cl, i.e **Vmax = 770 μg/min**
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk42_data = read_pumas(pk42_data_df,
+                        id           = :id,
+                        time         = :time,
+                        observations = [:dv],
+                        amt          = :amt,
+                        evid         = :evid,
+                        cmt          = :cmt,
+                        covariates   = [:Occasion])
+```
+
+##### Two-compartment model with Saturable Absorption
+
+```julia
+pk_42           = @emmodel begin
+  @metadata begin
+    desc = "PK42 Two Cmt with Saturable Absorption"
+    timeu = u"minute"
+  end
+
+  @param begin
+    Vp        ~ 1 | LogNormal
+    Q         ~ 1 | LogNormal
+  end
+
+  @covariates Occasion
+
+  @random begin
+    "Maximum rate of formation (ug/mins)"
+    Vmax        ~ 1 | LogNormal
+    "Micahelis Menten Constant (ug/L)"
+    Km          ~ 1 | LogNormal
+    "Volume of Dsitribution (L)"
+    Vc          ~ 1 | LogNormal
+    "Clearance (L/mins)"
+    CL          ~ 1 | LogNormal
+  end
+
+  @dynamics begin
+    Depot'      = -(Vmax/(Km+Depot))*Depot
+    Central'    =  (Vmax/(Km+Depot))*Depot -CL*(Central/Vc) - (Q/Vc)*Central + (Q/Vp)*Peripheral
+    Peripheral' =  (Q/Vc)*Central - (Q/Vp)*Peripheral
+  end
+
+  @post begin
+    cp          = Central/Vc
+  end
+
+  @error begin
+    dv          ~ Normal(cp)
+  end
+end
+```
+
+We have obtained the initial estimates from `NCA` and few from previous studies.
+
+```julia
+param_est = (Vmax = 770,
+             Km   = 10000,
+             Vc   = 5.2,
+             Vp   = 40,
+             Q    = 1.1,
+             CL   = 2.2)
+```
+
+##### SAEM Fitting
+
+
+We see that the initial estimates we found are close to the NaivePooled
+ Analysis. We will estimate using `SAEM`.
+
+```julia
+pk_42_fit = @time fit(pk_42, pk42_data, param_est,
+                      Pumas.SAEM(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_42_fit)
+```
+
