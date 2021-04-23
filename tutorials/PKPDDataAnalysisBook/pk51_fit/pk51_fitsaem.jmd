@@ -1,0 +1,307 @@
+---
+title : Exercise PK51 - Fitting Multi-compartment drug/metabolite
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise we will learn how to analyze the kinetics of the plasma parent
+ concentration and active metabolite concentrations. We assume that the entire
+ `parent` compound is converted to `active metabolite` and then excreted via the kidney.
+ The main goal is to estimate the parameters of both the **parent and metabolite**
+ simultaneously with the parameters that govern the absorption kinetics of the
+ parent compound.
+
+The basic workflow for the estimation process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of data
+
+In this the paent drug is given as a rapid intravenous `bolus` (5000) and an `oral` solution (8000)
+ on two different occasion to 25 subjects. Concentrations of **parent and metabolite**
+ are measured for 24 hours (1440 mins). PK samples are collected at `2, 5, 10, 15, 30,
+ 45, 60, 90, 120, 180, 240, 360, 480, 720, 1440 mins`.
+
+The following are the units of the dataset:
+
+  * Time (time) = mins
+  * Parent Plasma Concentrations (dv_cp) = ...
+  * Metabolite Plasma Concentrations (dv_met) = ...
+  * Dose (amt) = ...
+  * Occasion (Dose) = IV and Oral
+
+```julia
+pk51_data_df = CSV.read("./pk_51.csv", DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic `summary` statistics of the data
+
+```julia
+stats_pk51_data = describe(pk51_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv_cp,:dv_met])
+```
+
+## Exploratory Plots of the given data
+
+ * Plot of Concentration vs Time for IV Dosing
+    The `red` line denotes the parent compound and the `blue` line denotes the
+    metabolite concentration.
+
+```julia
+pk_iv_data_plot = dropmissing(pk51_data_df, :dv_cp)
+filter!(x -> x.Dose == "IV", pk_iv_data_plot)
+pk_iv_data_plot[!, :dv_cp] = recode(pk_iv_data_plot[:dv_cp], 0.0=>missing)
+pk_iv_data_plot[!, :dv_met] = recode(pk_iv_data_plot[:dv_met], 0.0=>missing)
+
+@df pk_iv_data_plot plot(:time, :dv_cp, group=:id, yaxis=:log, color=:red, label=false,
+                      xlabel="Time (mins)", ylabel="Concentration (..)",
+                      size = (600, 600), guidefontsize = 12,
+                      title = "IV Dosing, Concentration vs Time")
+@df pk_iv_data_plot plot!(:time, :dv_met, group=:id, color=:blue, label=false)
+```
+
+ * Plot of Concentration vs Time for Oral Dosing
+   The `red` line denotes the parent compound and the `blue` line denotes the
+    metabolite concentration.
+
+```julia
+pk_oral_data_plot = dropmissing(pk51_data_df, :dv_cp)
+filter!(x -> x.dv_met >= 0, pk_oral_data_plot)
+filter!(x -> x.Dose == "Oral", pk_oral_data_plot)
+pk_oral_data_plot[!, :dv_cp] = recode(pk_oral_data_plot[:dv_cp], 0.0=>missing)
+pk_oral_data_plot[!, :dv_met] = recode(pk_oral_data_plot[:dv_met], 0.0=>missing)
+
+
+@df pk_oral_data_plot plot(:time, :dv_cp, group=:id, yaxis=:log, color=:red, label=false,
+                      xlabel="Time (mins)", ylabel="Concentration (..)",
+                      size = (600, 600), guidefontsize = 12,
+                      title = "Oral Dosing, Concentration vs Time")
+@df pk_oral_data_plot plot!(:time, :dv_met, group=:id, color=:blue, label=false)
+```
+
+## NCA Analysis
+
+We will now perform an NCA Analysis to get initial estimates of the data for
+ fitting of the given data. We will perform NCA Analysis on the `Parent Concentrations`
+ and `Metabolite Concentrations` seperately.
+
+* Perform NCA Analysis on **IV data** of Parent Compound
+
+```julia
+pk51_nca_iv_df = filter(x -> x.Dose == "IV", pk51_data_df)
+
+pk51_nca_iv = read_nca(pk51_nca_iv_df,
+                       id       = :id,
+                       time     = :time,
+                       amt      = :amt,
+                       conc     = :dv_cp,
+                       route    = :Dose)
+```
+
+* Perform NCA Analysis on **Oral data** of Parent Compound
+
+```julia
+pk51_nca_oral_df = filter(x -> x.Dose == "Oral", pk51_data_df)
+pk51_nca_oral_df[:, :route] .= "ev"
+
+pk51_nca_oral = read_nca(pk51_nca_oral_df,
+                       id       = :id,
+                       time     = :time,
+                       amt      = :amt,
+                       conc     = :dv_cp,
+                       route    = :route)
+```
+
+ * Perform `NCA Analysis` on **IV data** of _Metabolite_ Compound
+
+```julia
+pk51_nca_met = select(pk51_nca_iv_df, :id, :time, :dv_met)
+dropmissing!(pk51_nca_met)
+
+pk51_nca_oral_met = read_nca(pk51_nca_met,
+                              id       = :id,
+                              time     = :time,
+                              conc     = :dv_met)
+```
+
+A full NCAReport is generated, we will then perform summary statistics of the
+  required parameters to obtain the **Mean, GeometricMean, and SD**
+
+```julia
+## IV
+pk51_nca_iv_report = NCAReport(pk51_nca_iv, sigdig=3)
+## Oral
+pk51_nca_oral_report = NCAReport(pk51_nca_oral, sigdig=3)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters
+
+ * IV Dosing, NCA Report
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk51_nca_iv_report, [:id, :vz_obs, :vss_obs, :cl_obs, :aucinf_obs, :kel, :half_life, :cmax])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_obs, :vss_obs, :cl_obs, :aucinf_obs, :kel, :half_life, :cmax], [:id])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+ * Oral Dosing, NCA Report
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk51_nca_oral_report, [:id, :vz_f_obs, :cl_f_obs, :aucinf_obs, :kel, :half_life, :cmax, :tmax, :tlag])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_f_obs, :cl_f_obs, :aucinf_obs,  :kel, :half_life, :cmax, :tmax, :tlag], [:id])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+###### Initial Estimates
+
+ **Parent Compound**
+
+ * The Volume of Distribtuion of Parent Compound Vc = Doseiv/Cmax, i,.e **Vc = 15 L**
+ * The Volume of Distribtuion of Parent Compound Vss = Vc + Vt, i.e **Vt = 14 L**
+ * The Clearance of the Parent Compound is **Cl = 0.52 L/min**
+ * The Inter-Compartment Clearance of Parent Compound is **Cld = 0.09 L/min**
+ * We will calulate the Ka = 0.693/(_tmax_/4), i.e **Ka = 0.04 min⁻¹**
+ * We have obtained the tlag from NCA **tlag = 15 mins**
+ * The bioavailability F is calculated using F = Cliv/Cloral, i.e **F = 0.24**
+
+ **Metabolite**
+
+```julia
+pk51_nca_oral_met_auc = NCA.auc(pk51_nca_oral_met)
+describe(pk51_nca_oral_met_auc)
+```
+
+  * The Clearance of Metabolite is calculated by Clm = Doseiv/AUCmiv, i.e **Clm = 0.076 L/min**
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+We will set all the `0` concentrations to `missing`
+
+```julia
+pk51_data_df[!, :dv_cp] = recode(pk51_data_df[!, :dv_cp], 0.0=>missing)
+pk51_data_df[!, :dv_met] = recode(pk51_data_df[!, :dv_met], 0.0=>missing)
+
+pk51_data = read_pumas(pk51_data_df,
+                        id           = :id,
+                        time         = :time,
+                        observations = [:dv_cp, :dv_met],
+                        amt          = :amt,
+                        evid         = :evid,
+                        rate         = :rate,
+                        cmt          = :cmt)
+```
+
+##### Two-Compartment Model with Parent and Metabolite Compartment
+
+```julia
+pk_51               = @emmodel begin
+  @metadata begin
+    desc = "PK51 Two Cmt with Parent anf Metabolite Model"
+    timeu = u"hr"
+  end
+
+  @param begin
+    Vcm             ~ 1 | LogNormal
+    Cldm            ~ 1 | LogNormal
+    tvf             ~ 1 | LogNormal
+    tvlag           ~ 1 | LogNormal
+  end
+
+  @random begin
+    Vc              ~ 1 | LogNormal
+    Cl              ~ 1 | LogNormal
+    Cld             ~ 1 | LogNormal
+    Vt              ~ 1 | LogNormal
+    Clm             ~ 1 | LogNormal
+    Vtm             ~ 1 | LogNormal
+    Ka              ~ 1 | LogNormal
+  end
+
+  @pre begin
+    bioav           = (Depot = tvf , Metabolite = (1-tvf))
+    lags            = (Depot = tvlag,)
+  end
+
+  @dynamics begin
+    Depot'          = -Ka*Depot
+    Central'        =  Ka*Depot - (Cl/Vc)*Central - (Cld/Vc)*Central + (Cld/Vt)*Peripheral
+    Peripheral'     = (Cld/Vc)*Central - (Cld/Vt)*Peripheral
+    Metabolite'     =  Ka*Depot + (Cl/Vc)*Central - (Clm/Vcm)*Metabolite - (Cldm/Vcm)*Metabolite + (Cldm/Vtm)*PeriMetabolite
+    PeriMetabolite' = (Cldm/Vcm)*Metabolite - (Cldm/Vtm)*PeriMetabolite
+  end
+
+  @post begin
+    cp              = Central/Vc
+    met             = Metabolite/Vcm
+  end
+
+  @error begin
+    dv_cp           ~ ProportionalNormal(cp)
+    dv_met          ~ ProportionalNormal(met)
+  end
+end
+```
+
+We have obtained the initial estimates from the `NCA Analysis` and some derivations.
+
+```julia
+param_est = ( Vc        = 15,
+              Cl        = 0.52,
+              Cld       = 0.09,
+              Vt        = 14,
+              Vcm       = 30,
+              Clm       = 0.076,
+              Cldm      = 0.35,
+              Vtm       = 37,
+              Ka        = 0.04,
+              tvf       = 0.24,
+              tvlag     = 15)
+```
+
+##### SAEM Fitting
+
+We will now use the initial estimates from the NaivePooled Analysis for fitting the
+ data and obatining the Between Subject Variability (BSV) on the parameters.
+
+```julia
+pk_51_fit = @time fit(pk_51, pk51_data, param_est,
+                      Pumas.SAEM(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_51_fit)
+```
+
