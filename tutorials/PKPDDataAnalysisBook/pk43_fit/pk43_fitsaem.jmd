@@ -1,0 +1,221 @@
+---
+title: Exercise PK43 - Fitting Multiple absorption routes
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise we will learn how to **model multiple peaks** in plasma concentration
+ following `extravascular dosing`. In this the drug is given by the _sublingual route_
+ and there is absorption both from the buccal cavity and partly via the gastrointestinal
+ tract. In this we will estimate the `fraction of dose` that is absorbed via the buccal
+ route and gastrointestinal route. The basic workflow of the estimation process is
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of the data
+
+A dose of 2mg (2000 μg) of the drug is given by the sublingual route. In the dataset
+ you can see that a dose of 2000 μg is given in the **buccal and gut** compartment.
+ A fraction of dose gets absorbed in the buccal and 1-fraction get absorbed from the
+ gut. PK samples are collected at various time intervals `0.1, 0.15, 0.25, 0.5, 0.75,
+ 0.8, 1, 1.25, 1.5, 2, 3, 4, 5, 6, 8, 12, 24 hrs`.
+
+The following are the units of the dataset:
+
+  * Time (time) = hrs
+  * Plasma Concentrations (dv) = μg/L
+  * Dose (amt) = μg
+
+```julia
+pk43_data_df = CSV.read("./pk_43.csv", DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary statistics of the data
+
+```julia
+stats_pk43_data = describe(pk43_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+ * Plot of Concentration vs Time
+
+```julia
+pk_data_plot = dropmissing(pk43_data_df, :dv)
+@df pk_data_plot plot(:time, :dv, group=:id, label=false,
+                      xlabel="Time (hr)", ylabel="Concentration (ug/L)",
+                      size = (600, 600), guidefontsize = 12,
+                      title = "Concentration vs Time")
+```
+
+From the above plot we can see that there are two peaks after administration
+ of the drug at `time=0`.
+
+
+We will obtain the mean concentrations of the _time points_ and thus we will
+ use them in the calculation of `Ka,rapid` and `Ka,delayed`.
+
+```julia
+pk43_mean_time = select(pk43_data_df, [:id, :time, :dv])
+pk43_summary = combine(groupby(pk43_mean_time,[:time]),
+                         [col => fun for col in [:dv]
+                         for fun in [mean, geomean, std]])
+```
+
+We can obtain the Ka,rapid and Ka,delayed using the formula as below:
+
+```julia
+Kar = log(34/27)/(0.1-0.15)
+```
+
+```julia
+Kad = log(72/42)/(2-4)
+```
+
+We will calculate the **Total AUC**
+
+```julia
+pk43_nca_df = dropmissing(pk43_data_df, :dv)
+pk43_nca = read_nca(pk43_nca_df,
+                    id       = :id,
+                    time     = :time,
+                    conc     = :dv)
+```
+
+We will calculate `AUC` and `λz`.
+
+```julia
+pk43_auc = NCA.auc(pk43_nca)
+pk43_kel = NCA.lambdaz(pk43_nca)
+pk43_nca_auc_kel = outerjoin(pk43_auc, pk43_kel, on=[:id])
+describe(pk43_nca_auc_kel)
+```
+
+We will filter data below `time=2` since that is the rapid absorption concentrations.
+
+```julia
+pk43_nca_rapid = filter(x -> x.time <= 2.0, pk43_data_df)
+dropmissing!(pk43_nca_rapid, :dv)
+pk43_nca_rapid = read_nca(pk43_nca_rapid,
+                          id       = :id,
+                          time     = :time,
+                          conc     = :dv)
+```
+
+We will calculate the **AUC of Rapid Absorption**
+
+```julia
+pk43_auc_rapid = NCA.auc(pk43_nca_rapid)
+describe(pk43_auc_rapid)
+```
+
+We will obtain the Fraction of drug absorbed by buccal route using the ratio of
+ AUC calculated from sublingual portion by the total AUC, AUCss/AUCtot, i.e
+ **fabuccal = 0.56**
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk43_data = read_pumas(pk43_data_df,
+                        id           = :id,
+                        time         = :time,
+                        observations = [:dv],
+                        amt          = :amt,
+                        evid         = :evid,
+                        cmt          = :cmt)
+```
+
+##### One-Compartment Model with Two Parallel First-Order Absorption
+
+```julia
+pk_43        = @emmodel begin
+  @metadata begin
+    desc     = "PK43 One Cmt with parallel fisr order absorption"
+    timeu    = u"hr"
+  end
+
+  @param begin
+    tvlag    ~ 1 | LogNormal
+    tvfa     ~ 1 | LogNormal
+  end
+
+  @random begin
+   "Absorption rate constant(rapid from buccal) (hr⁻⅟)"
+    KaR      ~ 1 | LogNormal
+    "Absorption rate constant(delayed from GI) (hr⁻⅟)"
+    KaD      ~ 1 | LogNormal
+    "Volume of Central Compartment (L)"
+    V        ~ 1 | LogNormal
+    "Elimination rate constant (hr⁻⅟)"
+    K        ~ 1 | LogNormal
+  end
+
+  @pre begin
+    bioav    = (Buccal=tvfa, Gi= 1-tvfa)
+    lags     = (Gi=tvlag,)
+  end
+
+  @dynamics begin
+    Buccal'  = -KaR*Buccal
+    Gi'      = -KaD*Gi
+    Central' =  KaR*Buccal + KaD*Gi - K*Central
+  end
+
+  @post begin
+    cp       = Central/V
+  end 
+
+  @error begin
+    dv       ~ Normal(cp)
+  end
+end
+```
+
+We have obtained the initial estimates from few other calculations.
+
+```julia
+param_est = (KaR    = 4.6,
+             KaD    = 0.2,
+             V      = 20,
+             K      = 0.08,
+             tvfa   = 0.56,
+             tvlag  = 2)
+```
+
+##### SAEM Fitting
+
+We will now use the initial estimates from the NaivePooled Analysis for fitting the
+ data and obatining the Between Subject Variability (BSV) on the parameters.
+
+```julia
+pk_43_fit = @time fit(pk_43, pk43_data, param_est,
+                      Pumas.SAEM(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_43_fit)
+```
