@@ -1,0 +1,230 @@
+---
+title  : Exercise - PK31 Turnover II - Fitting Intravenous dosing of hormone
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise we will learn how to model Turnover data and obtain initial estimates
+ for the parameters. Such drugs are already *endogenously produced* by the body, thus
+ initial *basal concentrations* should be taken into account when modeling the data.
+ We will simultaneously model the turnover and exogenous concentrations of the drug.
+
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+using GLM
+```
+
+
+## Description of the data
+
+A study is carried out on a new controlled device containing estradiol. A dose of
+ **36,630 pmol** is given to the subjects as an `Intravenous Infusion` for over 1min.
+  The PK samples are collected at `0.0167, 0.1167, 0.167, 0.25, 0.583, 0.833, 1.083,
+  1.583, 2.083, 4.083, 8.083, 12, 23.5, 24.25, 26.75, 32 hrs`. A total of `85 Subjects`
+  have been included in the analysis.
+
+The following are the units of the dataset:
+
+  * Time (time) = hrs
+  * Plasma Concentrations (dv) = pmol/L
+  * Dose (amt) = pmol
+
+```julia
+pk31_data_df = CSV.read("./pk_31.csv", DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary statistics of the data
+
+```julia
+stats_pk31_data = describe(pk31_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+ * Plot of Concentration vs Time
+
+```julia
+pk_data_plot = dropmissing(pk31_data_df, :dv)
+@df pk_data_plot plot(:time, :dv, group=:id, yaxis=:log, label=false,
+                      xlabel="Time (hr)", ylabel="Concentration (pmol/L)",
+                      size = (600, 600), guidefontsize = 12,
+                      ylims=(1,10000), yticks=[1,10,100,1000,10000],
+                      title = "Concentration vs Time")
+```
+
+On a *log-scale* it is clearly visible that the follows a two-compartment model
+ becuase of the initial `rapid decline` on administration of the drug.
+
+## NCA Analysis
+
+We will now perform an NCA Analysis to get initial estimates of the data for the
+ fitting of the given data. We will include a route column to specify that dosing
+ is an infusion `inf`. The **read_nca()** function input requires the route to
+ be stated as `inf` for an infusion, this will help to compute the parameters
+ correctly.
+
+We will calculate the `duration` of the dosing interval from the _amount_ and _rate_
+
+```julia; results="hidden"
+pk31_data_df[:, :route] .= "inf"
+pk31_data_df[:, :duration] .= pk31_data_df.amt ./ pk31_data_df.rate
+```
+
+Since there is endogenous production of estradiol, we will subract the last
+ concentration from all the concentrations to calculate the parameters using
+ `NCA`
+
+```julia
+transform!(groupby(pk31_data_df, :id), :dv => (x -> x .- x[17]) => :dv_nca)
+
+pk31_nca = read_nca(pk31_data_df,
+                    id       = :id,
+                    time     = :time,
+                    amt      = :amt,
+                    conc     = :dv_nca,
+                    duration = :duration,
+                    route    = :route)
+```
+
+A full NCAReport is generated, we will then perform summary statistics of the
+  required parameters to obtain the **Mean, GeometricMean, and SD**
+
+```julia
+pk31_nca_report = NCAReport(pk31_nca, sigdig=3)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters
+
+```julia
+dropmissing!(pk31_nca_report)
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk31_nca_report, [:id, :vz_obs, :cl_obs, :vss_pred, :aucinf_obs,  :mrtinf_obs, :kel, :half_life, :cmax, :tmax])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_obs, :cl_obs, :vss_pred, :aucinf_obs, :mrtinf_obs, :kel, :half_life, :cmax, :tmax], [:id])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+We will now calculate the mean concentrations for the different timepoints and from
+ which we can calculate the α value which will help us estimate the `Intercompartmental
+ Clearance` (Q).
+
+```julia; results="hidden"
+pk31_slope = select(pk31_data_df, [:id, :time, :dv])
+pk31_slope_summary = combine(groupby(pk31_slope,[:time]),
+                             [col => fun for col in [:dv]
+                             for fun in [mean, geomean, std]])
+pk31_slope_summary[:, :dv_geomean_ln] .= log.(pk31_slope_summary.dv_geomean)
+```
+
+ * Plot of Mean Concentration vs Time
+
+```julia
+@df pk31_slope_summary plot(:time, :dv_geomean, yaxis=:log, label=false,
+                             xlabel="Time (hrs)", ylabel=" Mean Concentration (pmol/L)",
+                             size = (600, 600), guidefontsize = 12, linewidth=3,
+                             title = "Mean Concentration vs Time")
+```
+
+We will now calculate the slope of the **inital phase of distribution**
+
+```julia
+pk31_df = filter(x -> x.time <= 0.25, pk31_slope_summary)
+dropmissing!(pk31_df)
+ols_pk31 = lm(@formula(dv_geomean_ln ~ time), pk31_df)
+GLM.coeftable(ols_pk31)
+```
+
+We will now calculate the `intercompartmental clearance`
+ using Q = α.Vc - Cl i.e **Q = 38 L/hr**
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk31_data = read_pumas(pk31_data_df,
+                        id           = :id,
+                        time         = :time,
+                        observations = [:dv],
+                        amt          = :amt,
+                        evid         = :evid,
+                        rate         = :rate,
+                        cmt          = :cmt)
+```
+
+##### Two-Compartment Model with Endogenous Turnover of Hormone
+
+```julia
+pk_31_2cmt      = @emmodel begin
+  @metadata begin
+    desc = "PK31 Two Compartment"
+    timeu = u"hr"
+  end
+
+  @random begin
+    "Basal hormonal input (pmol/hr)"
+    Kin         ~ 1 | LogNormal
+    "Volume of Distribution (L)"
+    Vc          ~ 1 | LogNormal
+    "Clearance (L/hr)"
+    Cl          ~ 1 | LogNormal
+    "Intercompartmental Clearance (L)"
+    Q           ~ 1 | LogNormal
+    "Peripheral Volume (L/hr)"
+    Vp          ~ 1 | LogNormal
+  end
+
+  @dynamics begin
+    Central'    =  Kin  - (Cl/Vc)*Central - (Q/Vc)*Central + (Q/Vp)*Peripheral
+    Peripheral' = (Q/Vc)*Central - (Q/Vp)*Peripheral
+  end
+
+  @post begin
+    cp          = Central/Vc
+  end
+
+  @error begin
+    dv          ~ ProportionalNormal(cp)
+  end
+end
+```
+
+We have obtained the initial estimates from `NCA` and few other calculations.
+
+```julia
+param_est_2cmt = ( Kin   = 1600,
+                   Vc    = 9.7,
+                   Cl    = 63,
+                   Q     = 38,
+                   Vp    = 60)
+```
+
+##### SAEM Fitting
+
+We see that the initial estimates for Q are not very close to the NaivePooled
+ Analysis. But they are still good estimates to let the system find the best
+ local minima using `SAEM`
+
+```julia
+pk_31_2cmt_fit = @time fit(pk_31_2cmt, pk31_data, param_est_2cmt,
+                    Pumas.SAEM(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_31_2cmt_fit)
+```
