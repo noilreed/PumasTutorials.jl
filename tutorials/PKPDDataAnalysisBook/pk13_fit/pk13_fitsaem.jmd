@@ -1,0 +1,282 @@
+---
+title : PK13 - Fitting data from a bolus plus constant rate infusion
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+For this fitting exercise we wil learn how to fit a two-compartment model. In this
+ case the data is obtained from an Intravenous Bolus followed by an Intravenous-Infusion.
+ The doses for the intravenous bolus and infusion are chosen based on therapeutic range
+ of **50 - 300 μg/L**. We will try all possible models and compare various models based
+ on the diagnostic plots and certain criteria. The basic workflow for the estimation
+ process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. Initial Estimates
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using Pumas
+using PumasTutorials
+using Random
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+using CSV
+```
+
+## Description of the data
+
+A new human peptide is given to human volunteers with a dose of **400 μg/kg** as an
+ intravenous bolus followed by a **800 μg/kg** of intravenous infusion for `26 mins`.
+ The bolus dose is given to achieve the therapeutic levels immediately. A total of
+ *48 patients* participated in the study. PK samples are obtained from the patient
+ at `2,5,10,15,20,25,30,33,35,37,40,45,50,60,70,90,110,120,150 mins`. A total of 19
+ samples are collected from each patient.
+
+The following are the units of the dataset:
+
+ * Time (time) = mins
+ * Plasma Concentration (dv) = μg/L
+ * Dose (amt) = μg/kg
+
+```julia
+pk13_data_df = CSV.read("./pk_13.csv", DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk13_data = describe(pk13_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+Plot of Plasma Concentration vs Time
+
+```julia
+pk_data_plot = dropmissing(pk13_data_df, :dv)
+@df pk_data_plot plot(:time, :dv, group=:id, label=false,
+                      xlabel="Time (mins)", ylabel="Concentration (ug/L)",
+                      size = (600, 600), guidefontsize = 12,
+                      xticks = [0,12,24,36,48,60,72,84,96,108,120,132,144,156],
+                      title = "Bolus + IV Infusion Dosing, Concentration vs Time")
+```
+
+## NCA Analysis
+
+Now, map the data variables to the *read_nca* function that prepares the data for
+ NCA analysis. You can even type *?read_nca* in the REPL and get more information
+ on the mapping of the variables.
+
+```julia
+pk13_nca = read_nca(pk_data_plot,
+                    id     = :id,
+                    time   = :time,
+                    conc   = :dv)
+```
+
+We will calculate the *AUC* for the total dose give. We will use that in the
+ calculation of inital estimat for Clearance.
+
+```julia
+pk13_auc = NCA.auc(pk13_nca)
+describe(pk13_auc)
+```
+
+##### Initial Estimates for fitting
+
+We will obtain the initial estimates from
+
+ * Volume of Distribution (Vc) = Doseiv/C0 = 400/125 = **3.2 L/kg**
+ * Clearance (Cl) = Total Dose/AUC = 1200/3401 = **0.35 L/min/kg**
+ * Intercompartmental Clearance (Q) = **0.35 L/min/kg**
+ * Volume of Peripheral Compartment (Vp) = **5 L/kg** (Assumed to be greater than Vc)
+
+
+## Pharmacokinetic Modeling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk_data = read_pumas(pk13_data_df,
+                      id           = :id,
+                      time         = :time,
+                      observations = [:dv],
+                      amt          = :amt,
+                      evid         = :evid,
+                      cmt          = :cmt)
+```
+
+ * One Compartment Model
+
+We will try fitting a one-compartment model to the given data
+
+```julia
+pk_13_1cmt      = @emmodel begin
+  @metadata begin
+    desc = "One Compartment Model"
+    timeu = u"hr"
+  end
+
+  @random begin
+    "Clearance (L/hr)"
+    CL          ~ 1 | LogNormal
+    "Volume of Distribution (L)"
+    Vc          ~ 1 | LogNormal
+  end
+
+  @dynamics Central1
+    #Central'    = -(CL/Vc)*Central
+  #end
+
+  @post begin
+    cp          = Central/Vc
+  end
+
+  @error begin
+    dv          ~ ProportionalNormal(cp)
+  end
+end
+```
+
+We will use this inital parameters for the fitting of the one-compartment model
+
+```julia
+param_est_1cmt = ( CL        = 0.35,
+                   Vc        = 3.2)
+```
+
+#### SAEM Fitting
+
+Our initial estimates match for Clearance match closely to the NaivePooled Analysis.
+ We will now fit the data using `SAEM`.
+
+```julia
+pk_13_fit_1cmt = @time fit(pk_13_1cmt, pk_data, param_est_1cmt,
+                      Pumas.SAEM(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_13_fit_1cmt)
+```
+
+ * Two Compartment Model
+
+We will now fit a two-compartment model to the given data
+
+```julia
+pk_13_2cmt      = @emmodel begin
+  @metadata begin
+    desc = "Two Compartment Model"
+    timeu = u"hr"
+  end
+
+  @random begin
+    "Clearance (L/hr)"
+    CL          ~ 1 | LogNormal
+    "Volume of Distribution (L)"
+    Vc          ~ 1 | LogNormal
+    "Inter Compartmental Clearance (L/hr)"
+    Q           ~ 1 | LogNormal
+    "Peripheral Volume (L)"
+    Vp          ~ 1 | LogNormal
+  end
+
+  @dynamics Central1Periph1
+    #Central'    = -(Cl/Vc)*Central -(Q/Vc)*Central +(Q/Vp)*Peripheral
+    #Peripheral' = (Q/Vc)*Central -(Q/Vp)*Peripheral
+  #end
+
+  @post begin
+    cp          = Central/Vc
+  end
+
+  @error begin
+    dv          ~ ProportionalNormal(cp)
+  end
+end
+```
+
+ * Initial Parameters for the Two-Compartment
+
+```julia
+param_est_2cmt = ( CL        = 0.37,
+                   Vc        = 3.2,
+                   Q         = 0.37,
+                   Vp        = 5)
+```
+
+
+```julia
+pk_13_fit_2cmt = @time fit(pk_13_2cmt, pk_data, param_est_2cmt,
+                      Pumas.SAEM(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_13_fit_2cmt)
+```
+
+
+
+```julia
+pk_13_2cmt_mixrat = @model begin
+  @param begin
+    tvcl        ∈ RealDomain(lower=0)
+    tvvc        ∈ RealDomain(lower=0)
+    tvq         ∈ RealDomain(lower=0)
+    tvvp        ∈ RealDomain(lower=0)
+    Ω           ∈ PDiagDomain(4)
+    tvCMixRatio ∈ RealDomain(lower=0)
+    σ²_prop     ∈ RealDomain(lower=0)
+    σ²_add      ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η           ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    CL          = tvcl * exp(η[1])
+    Vc          = tvvc * exp(η[2])
+    Q           = tvq * exp(η[3])
+    Vp          = tvvp * exp(η[4])
+  end
+
+  @dynamics Central1Periph1
+    #Central'    = -(Cl/Vc)*Central -(Q/Vc)*Central +(Q/Vp)*Peripheral
+    #Peripheral' =  (Q/Vc)*Central -(Q/Vp)*Peripheral
+  #end
+
+  @derived begin
+    cp          = @. Central/Vc
+    dv          ~ @. Normal(cp, sqrt((cp*tvCMixRatio*σ²_prop)^2 + σ²_add^2))
+  end
+end
+```
+
+
+```julia
+param_est_2cmt_mixrat = ( tvcl        = 0.35,
+                          tvvc        = 2.8,
+                          tvq         = 0.17,
+                          tvvp        = 2.2,
+                          Ω           = Diagonal([0.14, 0.03, 0.013, 0.006]),
+                          tvCMixRatio = 0.4,
+                          σ²_prop     = 0.05,
+                          σ²_add      = 0.18)
+
+pk_13_fit_2cmt_mixrat = @time fit(pk_13_2cmt_mixrat, pk_data, param_est_2cmt_mixrat,
+                                         Pumas.FOCEI(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_13_fit_2cmt_mixrat)
+```
+
