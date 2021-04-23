@@ -1,0 +1,251 @@
+---
+title : Exercise PK52 - Fitting data for Simulated impact of disease on r-hSOD kinetics
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+**Superoxide Dismutase (SOD)** has recently been developed as recombinant human SOD (r-hSOD).
+ In this exercise we will learn how to model intravenous data of r-hSOD with a
+ special focus on **renal handling**. This exercise will help us in understanding how
+ the `impact of disease` will affect the plasma kinetics of the drug. Thus, the need
+ for dosage adjustment in cases of nephrectomy.
+
+The basic workflow for the estimation process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of the data
+
+In this exercise 16 normal rats weighing between 300-400 grams are given a dose of
+ 20,000 μg/kg as a rapid intravenous infusion for 15 secs. The rats are split into
+ two groups **Normal Rats and Nephrectomized Rats (Clamped Rats)**. Plasma is
+ collected at times `0.2, 2.1, 4.9, 9.5, 14.7, 29, 60, 119, 239, 480 mins`.
+
+The following are the units of the dataset:
+
+  * Time (time) = mins
+  * Plasma Concentrations (dv) = μg/mL
+  * Dose (amt) = μg
+  * Rat (1 : Normal Rat, 2 : Nephrectomized (Clamped) Rat)
+
+```julia
+pk52_data_df = CSV.read("./pk_52.csv", DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk52_data = describe(pk52_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+We will obtain the `Mean Concentrations` for the two seperate rats and plot the
+ **mean concentration vs time**
+
+```julia; results="hidden"
+mean_plasma_conc = combine(groupby(pk52_data_df,[:Rat, :time]),
+                            [col => fun for col in [:dv]
+                            for fun in [mean, geomean, std]])
+```
+
+* Plot of Mean Plasma Concentration vs Time
+
+  The **yellow colour** represents the `Nephrectomized Rats` and the **black colour**
+  represents the `Normal Rats`
+
+```julia
+@df mean_plasma_conc plot(:time, :dv_mean, group=:Rat, yaxis=:log, label=false,
+                      xlabel="Time (mins)", ylabel="Concentration (ug/mL)",
+                      guidefontsize = 12, size = (600, 500), linewidth=2,
+                      title = "Mean Plasma Concentrations vs Time")
+```
+
+We can see that there are two different set of `Rats` that follow different
+ pharmacokinetic profiles.
+
+## NCA Analysis
+
+We will now perform an NCA Analysis to get initial estimates of the data for the
+ fitting of the given data. We will include a route column to specify that dosing
+ is an intravenous bolus `iv`. The *read_nca()* function input requires the route
+ to be stated as `iv` for an intravenous bolus, this will help to compute the
+ parameters correctly.
+
+```julia; results="hidden"
+pk52_data_df[:, :route] .= "iv"
+```
+
+We will perform an NCA of the `Plasma Concentrations`. We have grouped it by _Rat_,
+ this will help us in understanding the difference between the two rats (Normal & Clamped)
+ and help with plotting.
+
+```julia
+pk52_nca_plasma = read_nca(pk52_data_df,
+                            id       = :id,
+                            time     = :time,
+                            amt      = :amt,
+                            conc     = :dv,
+                            route    = :route,
+                            group    = [:Rat])
+```
+
+A `full NCAReport` is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean, GeometricMean, and SD**
+
+```julia
+pk52_nca_plasma_report = NCAReport(pk52_nca_plasma, sigdig=3)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters.
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_plasma_df = select(pk52_nca_plasma_report, [:id, :vz_obs, :cl_obs, :kel, :half_life, :cmax, :doseamt, :Rat])
+
+## Stack the data for easy computation
+stats_nca_plasma_stacked = stack(stats_nca_plasma_df, [:vz_obs, :cl_obs, :kel, :half_life, :cmax, :doseamt], [:id, :Rat])
+stats_nca_plasma_summary = combine(groupby(stats_nca_plasma_stacked,[:Rat, :variable]),
+                            [col => fun for col in [:value]
+                            for fun in [mean, geomean, std]])
+```
+
+##### Initial Estimates
+
+ **Clamped Rats**
+
+  * The Volume of Distribution (Vc), i.e **Vc = 18 mL/kg**
+  * The Clearance, i.e **Cl = 0.22 mL/min/kg**
+  * The Volume of Distribution of Peripheral Compartment (Vp), i.e **Vp = 18 mL/kg**
+  * The Intercompartmental Clearance (Q), i.e **Q = 0.1 mL/min/kg**
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+```julia
+pk52_est_df = filter(x -> (!(x.time == 0  && x.evid == 0.0)), pk52_data_df)
+
+pk52_data = read_pumas(pk52_est_df,
+                      id           = :id,
+                      time         = :time,
+                      observations = [:dv],
+                      amt          = :amt,
+                      evid         = :evid,
+                      cmt          = :cmt,
+                      rate         = :rate,
+                      covariates   = [:Rat])
+```
+
+##### Two-Compartment Model
+
+In this model we have used `Rat` as a covariate. This will help us to analyze the
+  parameters seperately for the Normal Rat and Nephrectomized Rat.
+
+```julia
+pk_52           = @emmodel begin
+  @metadata begin
+    desc = "PK52 Two Compartment Model"
+    timeu = u"hr"
+  end
+
+  @param begin
+     tvvpcm     ~ 1 | LogNormal
+     tvqcm      ~ 1 | LogNormal
+  end
+
+  @random begin
+     tvclnm     ~ 1 | LogNormal
+     tvvcnm     ~ 1 | LogNormal
+     tvvpnm     ~ 1 | LogNormal
+     tvqnm      ~ 1 | LogNormal
+     tvclcm     ~ 1 | LogNormal
+     tvvccm     ~ 1 | LogNormal
+  end
+
+  @covariates Rat
+
+  @pre begin
+    _Rat        = Rat
+    CL          = _Rat == 1 ? tvclnm  : tvclcm 
+    Vc          = _Rat == 1 ? tvvcnm  : tvvccm 
+    Vp          = _Rat == 1 ? tvvpnm  : tvvpcm
+    Q           = _Rat == 1 ? tvqnm  : tvqcm
+  end
+
+  @dynamics Central1Periph1
+    #Central'    = -(Cl/Vc)*Central - (Q/Vc)*Central + (Q/Vp) * Peripheral
+    #Peripheral' =  (Q/Vc)*Central - (Q/Vp)*Peripheral
+  #end
+
+  @post begin
+    cp          = Central/Vc
+  end
+
+  @error begin
+    dv          ~ ProportionalNormal(cp)
+  end
+end
+```
+
+We will obtain the initial estimates from the `NCA Analysis` and other derivatives.
+
+```julia
+param_est = ( tvclnm  = 0.2,
+              tvvcnm  = 18,
+              tvvpnm  = 18,
+              tvqnm   = 0.1,
+              tvclcm  = 0.2,
+              tvvccm  = 18,
+              tvvpcm  = 18,
+              tvqcm   = 0.2)
+```
+
+##### FOCEI
+
+We will now use the initial estimates from the NaivePooled Analysis for fitting the
+ data and obatining the Between Subject Variability (BSV) on the parameters. We will
+ estimate the data using `FOCEI`
+
+```julia
+param_est_nv = ( tvclnm  = 3,
+                 tvvcnm  = 33,
+                 tvvpnm  = 15,
+                 tvqnm   = 0.1,
+                 tvclcm  = 0.2,
+                 tvvccm  = 13,
+                 tvvpcm  = 14,
+                 tvqcm   = 0.1,
+                 Ω       = Diagonal([0.04,0.04,0.02,0.02,0.02,0.02]),
+                 σ²_prop = 0.04)
+
+pk_52_fit = @time fit(pk_52, pk52_data, param_est,
+                        Pumas.SAEM(), ensemblealg=EnsembleThreads())
+
+coeftable(pk_52_fit)
+```
+
