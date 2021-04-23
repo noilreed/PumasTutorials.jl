@@ -1,0 +1,205 @@
+---
+title : Exercise PK2 - Fitting One Compartment Oral Dosing
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+## Objectives
+
+In this exercise we will learn how to model oral data using a first-order input
+ **with and without lag-time**. In general for a drug to appear in the plasma it
+ has to undergo the process of disintegration, dissolution of the drug into gut
+ fluid and the transport of the drug across the gut lumen. All steps account for
+  lag time that we will try to incoporate in the model.
+
+The basic workflow for the estimation process is:
+
+ 1. Description of the data
+ 2. Exploratory analysis of the data
+ 3. NCA Analysis
+ 4. Pharmacokinetic modelling
+ 5. Diagnostic Plots
+ 6. Validation
+
+Lets load the necessary `libraries` before we get started
+
+```julia
+using PumasTutorials
+using Random
+using CSV
+using Pumas
+using Plots
+using StatsPlots
+using Pipe
+using StatsBase
+using PrettyTables
+```
+
+## Description of the data
+
+An oral dose of **100 μg** is given to a total of `72 subjects`. PK samples are
+ obtained at the various time points `10, 15, 20, 30, 40, 60, 90, 120, 180, 210,
+ 240, 300, 360 mins`.
+
+The following are the units of the dataset:
+
+ * Time (time) = mins
+ * Plasma Concentrations (dv) = μg/L
+ * Dose (amt) = μg
+
+```julia
+pk02_data_df = CSV.read("./pk_02.csv", DataFrame, missingstrings = ["", ".", "NA", "BQL"])
+```
+
+Basic summary `statistics` of the data
+
+```julia
+stats_pk02_data = describe(pk02_data_df, :min, :max, :mean, :std, :nmissing, cols=[:id,:time,:dv])
+```
+
+## Exploratory Plots of the given data
+
+* Plot of Plasma Concentration vs Time
+
+```julia
+pk_data_plot = dropmissing(pk02_data_df, :dv)
+@df pk_data_plot plot(:time, :dv, group=:id, label=false,
+                      xlabel="Time (mins)", ylabel="Concentration (ug/L)",
+                      guidefontsize = 12, size = (600, 500),
+                      title = "Plasma Concentrations vs Time")
+```
+
+We can see that there is a `lag` in the concentration before the first measurable
+ concentration is seen in the plasma.
+
+## NCA Analysis
+
+We will now perform an NCA analysis to get the initial estimates for the fitting
+  of the given data. The **read_nca()** function input requires the route to be
+  stated as `ev` for extravascular. This will help to compute the parameters
+  correctly.
+
+```julia, results="hidden"
+pk02_data_df[:, :route] .= "ev"
+```
+
+Now, map the data variables to the *read_nca* function that prepares the data for
+ NCA analysis. You can even type **?read_nca** in the REPL and get more information
+ on the mapping of the data.
+
+```julia
+pk02_nca = read_nca(pk02_data_df,
+                     id     = :id,
+                     time   = :time,
+                     amt    = :amt,
+                     conc   = :dv,
+                     route  = :route)
+```
+
+A full NCAReport is generated, we will then perform summary statistics of the
+ required parameters to obtain the **Mean, GeometricMean, and SD**
+
+```julia
+pk02_nca_report = NCAReport(pk02_nca, sigdig=3)
+```
+
+Perform the Summary `Statistics` for the required NCA Parameters
+
+```julia
+## Select the required parameters from the NCA Report
+stats_nca_df = select(pk02_nca_report, [:id, :vz_f_obs, :cl_f_obs, :aucinf_obs, :kel, :tmax, :tlag, :half_life])
+
+## Stack the data for easy computation
+stats_nca_stacked = stack(stats_nca_df, [:vz_f_obs, :cl_f_obs, :aucinf_obs, :kel, :tmax, :tlag, :half_life], [:id])
+stats_nca_summary = combine(groupby(stats_nca_stacked,[:variable]),
+                             [col => fun for col in [:value]
+                             for fun in [mean, geomean, std]])
+```
+
+ We have obtained the mean `NCA Statistics` for a few parameters and the others can be calculated as below:
+
+  * We will obtain the Ka value from 0.693/(tmax/4) i.e **Ka = 0.039**
+
+## Pharmacokinetic Modelling
+
+##### Read the dataset into read_pumas()
+
+We will set the `0` concentrations to `missing`
+
+```julia
+pk02_est_df = filter(x -> (!(x.time==0 && x.evid==0)), pk02_data_df)
+recode!(pk02_est_df[!, :dv], 0.0=>missing)
+
+pk02_data = read_pumas(pk02_est_df,
+                       id           = :id,
+                       time         = :time,
+                       observations = [:dv],
+                       amt          = :amt,
+                       evid         = :evid,
+                       rate         = :rate,
+                       cmt          = :cmt)
+```
+
+##### One-Compartment Model
+
+```julia
+pk_02       = @emmodel begin
+  @metadata begin
+    desc    = "PK02 One Compartment Model"
+    timeu   = u"minute"
+  end
+
+  @param begin
+    tvlag    ~ 1 | LogNormal
+  end
+
+  @random begin
+    "Absorption Rate Constant (1/min)"
+    Ka       ~ 1 | LogNormal
+    "Elimination Rate Constant (1/min)"
+    Kel      ~ 1 | LogNormal
+    "Volume of Distribution (L)"
+    Vc       ~ 1 | LogNormal
+  end
+
+  @pre begin
+    lags     = (Depot=tvlag,)
+  end
+
+  @dynamics begin
+    Depot'   = -Ka*Depot
+    Central' =  Ka*Depot - Kel*Central
+  end
+
+  @post begin
+    cp      = Central/Vc
+  end
+
+  @error begin
+    dv      ~ ProportionalNormal(cp)
+  end
+end
+```
+
+We will use the inital estimates we have obtained from the `NCA Analysis` and other
+ derivations.
+
+```julia
+param_est = (Ka    = 0.039,
+             Kel   = 0.0083,
+             Vc    = 33,
+             tvlag = 15)
+```
+
+
+##### SAEM Fitting
+
+```julia
+pk_02_lag_fit = @time fit(pk_02, pk02_data, param_est,
+                            Pumas.SAEM(), ensemblealg = EnsembleThreads())
+
+coeftable(pk_02_lag_fit)
+```
