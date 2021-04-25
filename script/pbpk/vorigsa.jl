@@ -1,22 +1,7 @@
----
-title: Global Sensitivity Analysis on Voriconazole model
-date: `j Date(now())`
----
 
-```julia; echo = false
-using Dates
-```
-```julia
 using Pumas, CairoMakie, PumasPlots, GlobalSensitivity
-```
 
-## Introduction
 
-In this tutorial, we will cover running global sensitivity analysis on the Voriconazole model published here https://github.com/metrumresearchgroup/Voriconazole-PBPK/
-
-### Model Code
-
-```julia;
 model = @model begin
     @param begin
         Fup ∈ RealDomain(init = 0.42)
@@ -173,17 +158,11 @@ model = @model begin
     end
 end
 
-```
 
-Let's create a subject to study the model
-
-```julia
 regimen_s = DosageRegimen(200, time=0, addl=13, ii=12, cmt=1, ss=1)
 sub_s = Subject(id=1, events=regimen_s)
-```
 
-Below are setting the initial estimates of the parameters in the model
-```julia
+
 p = (Fup = 0.42, fumic = 0.711, WEIGHT = 73, MPPGL = 30.3, MPPGI = 0,
     C_OUTPUT = 6.5, VmaxH = 40, VmaxG = 40, KmH = 9.3, KmG = 9.3, bp = 1,
     kpad = 9.89, kpbo = 7.91, kpbr = 7.35, kpgu = 5.82, kphe = 1.95, kpki = 2.9,
@@ -194,19 +173,12 @@ p = (Fup = 0.42, fumic = 0.711, WEIGHT = 73, MPPGL = 30.3, MPPGI = 0,
     vgulumen = 0.35, vhe = 0.33, vki = 0.31, vli = 1.8, vlu = 0.5, vmu = 29,
     vsp = 0.15, vbl = 5.6, FQad = 0.05, FQbo = 0.05, FQbr = 0.12, FQgu = 0.16,
     FQhe = 0.04, FQki = 0.19, FQli = 0.255, FQmu = 0.17, FQsp = 0.03)
-```
 
-Let's take a look at the simulation of the model to ensure everything is working as expected.
 
-```julia
-simdata = simobs(model, [sub_s], p)
+simdata = simobs(model, sub_s, p, obstimes=0.0:30.0)
 sim_plot(model, simdata, observations=[:Cvenn])
-```
 
-We can run parameter estimation on the PBPK model with the `fit` function, we'll use the simulated data to run the estimation here
-`FQad`, `FQbo`, `FQbr`, `FQgu`, `FQhe`, `FQki`, `FQli`, `FQmu` and `FQsp` will be estimated within the bounds specified and the other parameters will be fixed.
 
-```julia
 data = read_pumas(DataFrame(simdata), observations = [:cp])
 ft = fit(model, data, p, Pumas.NaivePooled(),
     constantcoef = (
@@ -220,13 +192,8 @@ ft = fit(model, data, p, Pumas.NaivePooled(),
         vbo = 10.5, vbr = 1.45, vguWall = 0.65, vgulumen = 0.35, vhe = 0.33,
         vki = 0.31, vli = 1.8, vlu = 0.5, vmu = 29, vsp = 0.15, vbl = 5.6),
     ensemblealg=EnsembleThreads())
-```
 
-### GSA
 
-We'll run the GSA on the AUC and Cmax output of the `Cvenn` variable and therefore redefine the model to include the NCA calculation.
-
-```julia
 model = @model begin
     @param begin
         Fup ∈ RealDomain(init = 0.42)
@@ -386,31 +353,17 @@ model = @model begin
     end
 end
 
-```
 
-To run the GSA we'll define the parameter ranges for our parameters of interest.
-
-```julia
 p_range_low = (fperm=1/3, s_lumen=390/3, ITT = 3.32/3, MPPGI=1.44/3, )
 
 p_range_high = (fperm=1*3, s_lumen=390*3, ITT = 3.32*3, MPPGI=1.44*3, )
-```
 
-Now, we are ready to run GSA on our model.
 
-#### The Sobol Method
-
-We will run the Sobol method for 1000 iterations, please note that this takes a couple of hours to finish because of the complexity of the model.
-
-```julia
 regimen_s = DosageRegimen(200, time=0, addl=13, ii=12, cmt=1, ss=1, route = Pumas.NCA.IVInfusion)
 sub_s = Subject(id=1, events=regimen_s)
 sobol_ = Pumas.gsa(model, sub_s, p, GlobalSensitivity.Sobol(), [:cmax,:auc], p_range_low,p_range_high, N=1000, obstimes=0.0:1.0:30.0)
-```
 
-We can use scatter plot the result to visualize the result.
 
-```julia
 keys_ = keys(p_range_low)
 cmax_s1 = [sobol_.first_order[1,:][key] for key in keys_]
 cmax_st = [sobol_.total_order[1,:][key] for key in keys_]
@@ -425,19 +378,11 @@ auc_st = [sobol_.total_order[2,:][key] for key in keys_]
 plot_auc_s1 = scatter(fig[2,1], 1:4, auc_s1, axis = (yticks = 0:1, xticks = (1:4, [string.(keys_)...]), label = "First Order", title="AUC"))
 plot_auc_st = scatter(fig[2,2], 1:4, auc_st, axis = (yticks = 0:1, xticks = (1:4, [string.(keys_)...]), label = "Total Order"), marker=:utriangle)
 display(fig)
-```
 
-### The eFAST method
 
-eFAST method allows the estimation of first order and total Sobol indices in a more computationaly efficient way.
-
-```julia
 eFAST_ = Pumas.gsa(model, sub_s, p, GlobalSensitivity.eFAST(), [:cmax,:auc], p_range_low, p_range_high, n=1000, obstimes=0.0:1.0:30.0)
-```
 
-We can use scatter plot the result to visualize the result.
 
-```julia
 keys_ = keys(p_range_low)
 cmax_s1 = [eFAST_.first_order[1,:][key] for key in keys_]
 cmax_st = [eFAST_.total_order[1,:][key] for key in keys_]
@@ -452,9 +397,4 @@ auc_st = [eFAST_.total_order[2,:][key] for key in keys_]
 plot_auc_s1 = scatter(fig[2,1], 1:4, auc_s1, axis = (yticks = 0:1, xticks = (1:4, [string.(keys_)...]), label = "First Order", title="AUC"))
 plot_auc_st = scatter(fig[2,2], 1:4, auc_st, axis = (yticks = 0:1, xticks = (1:4, [string.(keys_)...]), label = "Total Order"), marker=:utriangle)
 display(fig)
-```
 
-## Conclusion
-
-We observe for both AUC and Cmax `fperm` and `MPPGI` show high values for both First and Total Order indices of Sobol whereas `s_lumen` and `ITT` have no effect
-at all and show a value of zero for the indices.
