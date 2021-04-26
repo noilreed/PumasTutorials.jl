@@ -1,4 +1,7 @@
 
+using Dates
+
+
 using Pumas, CairoMakie, PumasPlots, GlobalSensitivity
 
 
@@ -175,7 +178,7 @@ p = (Fup = 0.42, fumic = 0.711, WEIGHT = 73, MPPGL = 30.3, MPPGI = 0,
     FQhe = 0.04, FQki = 0.19, FQli = 0.255, FQmu = 0.17, FQsp = 0.03)
 
 
-simdata = simobs(model, sub_s, p, obstimes=0.0:30.0)
+simdata = simobs(model, [sub_s], p)
 sim_plot(model, simdata, observations=[:Cvenn])
 
 
