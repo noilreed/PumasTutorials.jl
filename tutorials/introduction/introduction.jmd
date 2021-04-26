@@ -47,19 +47,15 @@ links below.
 2. [pain_remedication.csv](https://github.com/PumasAI/PumasTutorials.jl/blob/master/data/intro/pain_remedication.csv)
 
 ```julia
-using PumasTutorials
+using Weave
 using Random
 using CSV
+using HTTP
 using Pumas
-using PlottingUtilities
-using PumasPlots
-using PumasApps
-using PumasReports
-using NCAUtilities
+using PumasUtilities
 using Chain
 using Latexify
 using Dates
-using PlotlyBase
 using CairoMakie 
 interactive!(false)
 ```
@@ -73,6 +69,7 @@ the name of the variable with _df_ and the `Population` version of that datafram
 be without the _df_ to avoid confusion.
 
 ```julia; results = "hidden"
+pkpain_df = CSV.read("./data/intro/pk_painscore.csv", DataFrame, missingstrings=["", "NA", "."])
 pkpain_df = DataFrame(CSV.File(joinpath(dirname(pathof(PumasTutorials)), "..", "data", "intro", "pk_painscore.csv"), missingstrings=["", "NA", "."]))
 remed_df  = DataFrame(CSV.File(joinpath(dirname(pathof(PumasTutorials)), "..", "data", "intro", "pain_remedication.csv"), missingstrings=["", "NA", "."]))
 ```
@@ -110,7 +107,7 @@ pkpain_nca = read_nca(pkpain_noplb_df,
                       route = :route)
 ```
 
-A full NCA Report is now obtained for completeness purposes, but later we will only extract a couple of key metrics
+A full NCA Report is now obtained for completeness purposes using the `run_nca` function, but later we will only extract a couple of key metrics
 of interest.
 
 ```julia
