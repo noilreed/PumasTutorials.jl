@@ -1,23 +1,10 @@
----
-title: Global Sensitivity Analysis on HCV model
-date: `j Date(now())`
----
 
-```julia; echo = false
 using Dates
-```
 
-```julia
+
 using Pumas, GlobalSensitivity, CairoMakie, PumasPlots
-```
 
-## Introduction
 
-In this tutorial, we will cover running global sensitivity analysis on the HCV model.
-
-### Model Code
-
-```julia
 peg_inf_model = @model begin
 
   @param begin
@@ -90,22 +77,13 @@ peg_inf_model = @model begin
   end
 
 end
-```
 
-We generate a population to simulate with.
 
-```julia
 peg_inf_dr = DosageRegimen(180.0)
 t = collect(0.0:1.0:28.0)
 _pop = map(i -> Subject(id=i, observations=(yPK=[], yPD=[]), events=peg_inf_dr, time=t), 1:3)
-```
 
-### GSA
 
-Let's define the parameters now, we'll fix the ω parameters to neutralize effect of random effects and run the GSA only on the population parameters
-`logKa` ,`logKe` ,`logVd` ,`logn` ,`logd` ,`logc` and `logEC50`.
-
-```julia
 param_PKPD = (
   logKa   = log(0.80),
   logKe   = log(0.15),
@@ -125,21 +103,12 @@ param_PKPD = (
   # variance parameter in proportional error model
   σ²PK = 0.04,
   σ²PD = 0.04)
-```
 
-We'll run the Morris method and Sobol method. The derived variables `cmax_pk` and `cmax_pd` which are CMAX outputs of NCA will be analysed.
 
-Let's take a look at the simulation of the model to ensure everything is working as expected. We'll use threading across subjects for
-simulation and also utlize this parallelism down the line in GSA as well.
-
-```julia
 simdata = simobs(peg_inf_model, _pop, param_PKPD, ensemblealg=EnsembleThreads())
 sim_plot(peg_inf_model ,simdata, observations=[:yPD,:yPK], all = true)
-```
 
-To run the GSA we'll define the parameter ranges for our parameters of interest. Let's set the range between half and twice of the initial values.
 
-```julia
 p_range_low =  (logKa   = log(0.80)/2,
                 logKe   = log(0.15)/2,
                 logVd   = log(100.0)/2,
@@ -156,14 +125,7 @@ p_range_high = (logKa   = log(0.80)*2,
                 logc    = log(7.0)*2,
                 logEC50 = log(0.12)*2, )
 
-```
 
-Now, we are ready to run GSA on our model.
-
-
-#### The Morris Method.
-
-```julia
 morris_ = Pumas.gsa(
   peg_inf_model,
   _pop,param_PKPD,
@@ -172,10 +134,8 @@ morris_ = Pumas.gsa(
   p_range_low,
   p_range_high,
   ensemblealg=EnsembleThreads())
-```
-Let's create bar plots of the means of Morris Method output to visualize the output.
 
-```julia
+
 keys_ = [keys(p_range_low)...]
 cmax_pk_meansstar = [morris_.means_star[1,:][key] for key in keys_]
 cmax_pd_meansstar = [morris_.means_star[2,:][key] for key in keys_]
@@ -184,13 +144,8 @@ fig = Figure(resolution = (1200, 400))
 plot_pk = barplot(fig[1,1], string.(keys_), cmax_pk_meansstar, axis = (xlabel ="Parameters", title="Cmax PK Morris means"))
 plot_pd = barplot(fig[1,2], string.(keys_), cmax_pd_meansstar, axis = (xlabel ="Parameters", title="Cmax PD Morris means"))
 display(fig)
-```
 
-We observe that PK Cmax is most sensitive to `logVd`, `logKa` and `logKe` parameters where as PD Cmax is most sensitive to `logc`, `logd` and `logKe`.
 
-#### The Sobol Method
-
-```julia
 sobol_ = Pumas.gsa(
   peg_inf_model,
   _pop,
@@ -201,10 +156,8 @@ sobol_ = Pumas.gsa(
   p_range_high,
   N=4000,
   ensemblealg=EnsembleThreads())
-```
-We use heatmaps to visualize the Sobol output
 
-```julia
+
 cmax_pk_s1 = [sobol_.first_order[1,:][key] for key in keys_]
 cmax_pd_s1 = [sobol_.first_order[2,:][key] for key in keys_]
 cmax_s1 = hcat(cmax_pk_s1, cmax_pd_s1)
@@ -218,10 +171,4 @@ cmax_st = hcat(cmax_pk_st, cmax_pd_st)
 
 plot_st = heatmap(fig[1,2], 1:2, 1:7, cmax_st,  axis = (xticks = (1:2, ["Cmax_PK","Cmax_PD"]), yticks = (1:7, string.(keys_)), title="First Order Indices"), colormap = "darkrainbow")
 display(fig)
-```
 
-## Conclusion
-
-For PK Cmax `logVd` comes out to be the most dominant parameter by a large margin as evident by both First and Total Order indices of Sobol.
-PD Cmax is most sensitive to `logc` and `logd` and the Total Order indices show `logKe` is also important, hence we can deduce that `logKe`
-has a greater influence due to its interactions as compared to its contribution individually.
