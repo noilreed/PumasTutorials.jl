@@ -15,12 +15,15 @@ a narrative on the lines of a regular workflow in our day to day work, with brev
 to allow a broad overview. Wherever possible, cross-references will be provided to documentation
 and detailed examples that provide deeper insight into a particular topic.
 
-As part of this workflow you will be introduced to various aspects such as
+As part of this workflow in part-1 you will be introduced to various aspects such as
 
 1. Data wrangling in Julia
 2. Exploratory analysis in Julia
-3. Continuos and discrete data non-linear mixed effects modeling in Pumas
+3. Continuos data non-linear mixed effects modeling in Pumas
 4. Model comparison routines, post-processing, validation etc.
+
+[Part-2]() of this tutorial will dive into discrete data modeling where the exposure from the PK model developed
+here will drive the outcome.
 
 ## The Study and Design
 
@@ -51,7 +54,9 @@ using Pumas
 using PumasUtilities
 ```
 
-The libraries below are good add-on's that provide additional functionality. 
+The above two packages come in-built with your download and you don't need to specifically add them. You can start `using` them directly.
+
+In addition, libraries below are good add-on's that provide ancillary functionality. 
 
 ```julia
 using Weave
@@ -63,7 +68,7 @@ using Latexify
 using CairoMakie 
 ```
 
-If you get a message that these packages are not available in your system, 
+If you get a message that any of these ancillary packages are not available in your system, 
 please add them as follows e.g.
 
 ```julia; eval = false
@@ -74,7 +79,7 @@ Pkg.add("Weave")
 For the purpose of this tutorial, we set all plots to be non-interactive. While working in a interactive environment using `.jl` files, it is perhaps efficient to 
 use leave the option to the default value of `true`. More about these options can be found about in our documentation.
 
-```julia
+```julia; results = "hidden"
 interactive!(false)
 ```
 
@@ -87,7 +92,9 @@ the name of the variable with _df_ and the `Population` version of that datafram
 be without the _df_ to avoid confusion.
 
 ```julia; results = "hidden"
-f = CSV.File(HTTP.get("https://raw.githubusercontent.com/PumasAI/PumasTutorials.jl/master/data/intro/pk_painscore.csv").body, missingstrings=["", "NA", "."])
+f = CSV.File(HTTP.get("http://bit.ly/intro_pkpain").body, 
+             missingstrings=["", "NA", "."])
+
 pkpain_df = DataFrame(f)
 ```
 
@@ -95,6 +102,7 @@ Let's filter out the placebo data as we don't need that for the PK analysis.
 
 ```julia
 pkpain_noplb_df = filter(x -> !(occursin.("Placebo", x.ARM)), pkpain_df)
+first(pkpain_noplb_df, 10)
 ```
 
 ## Analysis
