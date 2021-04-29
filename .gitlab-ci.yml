@@ -15,21 +15,14 @@ cache:
 
 test-pumastutorials:
   stage: test
+  before_script:
+    - apt-get update -yqq
+    - apt-get install -yqq texlive-xetex
   script:
     - julia -e 'using InteractiveUtils;
                 versioninfo()'
-    - >
-      # if [ "$CI_COMMIT_BRANCH" == "master" ]; then
-      #   julia --depwarn=error --project -e 'using Pkg;
-      #     Pkg.test("PumasTutorials"; coverage=true);'
-      #   julia -e 'using Pkg;
-      #     Pkg.add("Coverage");
-      #     using Coverage;
-      #     Codecov.submit_local(process_folder())'
-      # else
-        julia --depwarn=error --project -e 'using Pkg;
-          Pkg.test("PumasTutorials");'
-      # fi
+    - julia --depwarn=error --project -e 'using Pkg;
+          Pkg.test();'
   interruptible: true
   artifacts:
     paths:

@@ -1,2 +1,3 @@
-using PumasTutorials
-PumasTutorials.weave_file(".","test.jmd")
+using PumasTutorials, Pkg
+Pkg.activate("../tutorials")
+PumasTutorials.weave_file(".", "test.jmd")
