@@ -1,10 +1,10 @@
-image: "juliacomputing/juliapro:v1.4.2-1"
+image: "juliacomputing/juliapro:v1.6.0-1"
 
 variables:
-  JULIA_PKG_SERVER: pumas.juliateam.io
+  JULIA_PKG_SERVER: pumasai.juliahub.com
   PRIVATE_REGISTRY_NAME: PumasRegistry
   PRIVATE_REGISTRY_UUID: 2207cf11-c0bb-4826-96c6-61cddfb0e7e8
-  REMOVE_JULIAPRO: "true"
+  REMOVE_JULIACOMPUTINGREGISTRY: "true"
   # GitLab requires that the cache path is insde the project
   JULIA_DEPOT_PATH: "$CI_PROJECT_DIR/.julia/"
 
@@ -12,19 +12,29 @@ cache:
   paths:
     - .julia/compiled/
 
-test:
+
+test-pumastutorials:
+  stage: test
   script:
     - julia -e 'using InteractiveUtils;
                 versioninfo()'
     - >
-      julia --color=yes --project=. -e
-      'using Pkg;
-       Pkg.instantiate();
-       using PumasTutorials'
+      # if [ "$CI_COMMIT_BRANCH" == "master" ]; then
+      #   julia --depwarn=error --project -e 'using Pkg;
+      #     Pkg.test("PumasTutorials"; coverage=true);'
+      #   julia -e 'using Pkg;
+      #     Pkg.add("Coverage");
+      #     using Coverage;
+      #     Codecov.submit_local(process_folder())'
+      # else
+        julia --depwarn=error --project -e 'using Pkg;
+          Pkg.test("PumasTutorials");'
+      # fi
+  interruptible: true
   artifacts:
     paths:
       - html
-    expire_in: 1 week
+    expire_in: 90 days
   only:
   - master
   - tags
@@ -43,4 +53,4 @@ pages:
     paths:
       - public
   only:
-  - master
+  - tags
