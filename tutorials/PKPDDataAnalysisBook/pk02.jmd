@@ -35,10 +35,10 @@ call the "necessary" libraries to get start.
 
 ```julia
 using Pumas
-using Plots
 using CSV
-using StatsPlots
 using Random
+using PumasUtilities
+interactive!(false)
 ```
 
 ### Model
@@ -47,12 +47,22 @@ In this one compartment model, we administer dose in Depot compartment at _`time
 
 ```julia
 pk_02        = @model begin
+  @metadata begin
+    desc = "One Compartment Model with lag time"
+    timeu = u"minute"
+  end
+
   @param begin
+    "Absorption rate constant (1/min)"
     tvka     ∈ RealDomain(lower=0)
+    "Elimination rate constant (1/min)"
     tvkel    ∈ RealDomain(lower=0)
+    "Volume (L)"
     tvvc     ∈ RealDomain(lower=0)
+    "Lag Time (mins)"
     tvlag    ∈ RealDomain(lower=0)
     Ω        ∈ PDiagDomain(4)
+    "Proportional RUV"
     σ²_prop  ∈ RealDomain(lower=0)
   end
 
@@ -74,6 +84,9 @@ pk_02        = @model begin
 
   @derived begin
     cp       = @. Central/Vc
+    """
+    Observed Concentration (ug/L)
+    """
     dv       ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
   end
 end
@@ -124,7 +137,7 @@ Let's simulate for plasma concentration after oral administration, **without lag
 ```julia; results = "hidden"
 Random.seed!(123)
 sim_sub1 = simobs(pk_02,sub1,param1,obstimes=0:1:400)
-df1      = DataFrame(sim_sub1);
+df1      = DataFrame(sim_sub1)
 ```
 
 #### With lag-time
@@ -133,7 +146,7 @@ Let's simulate for plasma concentration after oral administration, **with lag-ti
 ```julia; results = "hidden"
 Random.seed!(123)
 sim_sub2 = simobs(pk_02,sub1,param2,obstimes=0:1:400)
-df2      = DataFrame(sim_sub2);
+df2      = DataFrame(sim_sub2)
 ```
 
 ### Dataframe & Plot
