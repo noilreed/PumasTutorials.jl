@@ -1,11 +1,17 @@
 ---
 title : Defining and Simulating Populations
-author : PumasAI
-date:  August, 2020
+date: `j Date(now())`
 ---
 
-```julia
-using Pumas, DataFrames, LinearAlgebra, Plots
+```julia; echo = false
+using Dates
+```
+
+```julia; results = "hidden"
+using Random
+using Pumas
+using PumasUtilities
+interactive!(false)
 ```
 
 # Introduction
@@ -19,14 +25,14 @@ simulate.
 
 Below is a Pumas model that specifies a 1-compartment oral absorption system
 with between-subject variability on all the parameters. Details of the model
-specification are provided in the introduction tutorial.
+specification are provided in the [documentation](https://docs.pumas.ai/stable/basics/models/).
 
 ```julia
 model = @model begin
   @param begin
     θ ∈ VectorDomain(4)
     Ω ∈ PSDDomain(3)
-    σ_prop ∈ RealDomain(init=0.1)
+    σ²_prop ∈ RealDomain(init=0.1)
   end
 
   @random begin
@@ -46,12 +52,9 @@ model = @model begin
     Central' =  Ka*Depot - Central*CL/V
   end
 
-  @vars begin
-    conc = Central/V
-  end
-
   @derived begin
-    dv ~ @.Normal(conc,sqrt(conc^2*σ_prop+ eps()))
+    conc = @. Central/V
+    dv ~ @.Normal(conc,sqrt(conc^2*σ²_prop))
   end
 
 end
@@ -61,14 +64,14 @@ end
 
 Next we provide the initial estimates of the parameters to simulate from. The fixed effects are provided
 in the θ vector (CL, V, Ka) and the between-subject variability parameteres are provided in the Ω vector as
-variances. So, 0.04 variance on Ω_11 suggests a 20% coefficient of variation. Similarly, σ_prop has a 20%
+variances. So, 0.04 variance on Ω_11 suggests a 20% coefficient of variation. Similarly, σ²_prop has a 20%
 proportional residual error.
 
 ```julia
 fixeffs = (
   θ = [0.4,20,1.1,2],
   Ω = diagm(0 => [0.04,0.04,0.04]),
-  σ_prop = 0.04
+  σ²_prop = 0.04
   )
 ```
 
@@ -77,16 +80,14 @@ fixeffs = (
 `DosageRegimen()` is the function that lets you construct a dosing regimen.
 The first argument of the `DosageRegimen` is `amt` and is not a named argument.
 All subsequent arguments need to be named. Lets try a simple example where you
-provide a 100 mg dose at `time=0`.
+provide a 100 mg dose at `time = 0`.
 
 ```julia
-ev = DosageRegimen(100, time=0)
+ev = DosageRegimen(100, time = 0)
 first(ev.data)
 ```
 As you can see above, we provided a single 100 mg dose. `DosageRegimen` provides some defaults when
-it creates the dataset, `time=0`, `evid=1`, `cmt=1`, `rate=0`, `ii=0` & `addl=0`. We can also provide
-units to the `amt` and any other variable that is derived from `amt`, e.g. `rate`, will have associated units.
-Handling of units will be covered in a different tutorial.
+it creates the dataset, `time = 0`, `evid = 1`, `cmt = 1`, `rate = 0`, `ii = 0` & `addl = 0`. 
 
 Note that `ev` is of type `DosageRegimen`. Specified like above,
 `DosageRegimen` is one of the four fundamental building block of a `Subject` (more on `Subject` below).
@@ -96,33 +97,26 @@ Note that `ev` is of type `DosageRegimen`. Specified like above,
 Let's create a single subject
 
 ```julia
-s1 = Subject(id=1,events=ev,covariates=(Wt=70,))
-for fn in fieldnames(Subject)
-    x = getproperty(s1, fn)
-    if !isa(x, Nothing)
-        println(fn)
-        println(x)
-    end
-end
+s1 = Subject(id = 1,
+            events = ev,
+            covariates = (Wt = 70,),
+            observations = (dv = nothing,))
+
 ```
-Note that each `Subject` is an individual composed of:
+Note that the `s1` `Subject` created above is composed of:
 
   - `id`: an unique identifier
-  - `obs`: observations, represented by `Pumas.Observation[]`
-  - `cvs`: covariates
-  - `evs`: events, represented by `Pumas.Event[]`
-
-In the example above, we only provided the `id`, `evs`, and the `cvs`. Since  `obs` were not
-provided, they are represented by an empty array. Lets take a closer at the events for this
-subject 1.
+  - `observations`: observations, represented by `Pumas.Observation`
+  - `covariates`: covariates, represented by `Pumas.ConstantCovar`
+  - `events`: events, represented by `Pumas.Event`
 
 ```julia
-s1.events
+DataFrame(s1.events)
 ```
-The events are presented by basic information such as the dose of drug and associated units if specified, the time of dose administration,
+The events are presented by basic information such as the dose of drug, the time of dose administration,
 the compartment number for administration and whether the dose is an instantaneous input or an infusion.
 
-Below is how the covariates are represented
+Below is how the covariates are represented, as a `NamedTuple`.
 
 ```julia
 s1.covariates
@@ -133,9 +127,19 @@ s1.covariates
 Using this one subject, `s1`, let us simulate a simple concentration time
 profile using the model above:
 
+```julia; results = "hidden"
+Random.seed!(1234)
+obs = simobs(model,
+            s1,
+            fixeffs,
+            obstimes = 0:0.1:120)
+```
+
+and plot the result
+
 ```julia
-obs = simobs(model,s1,fixeffs,obstimes=0:0.1:120)
-plot(obs)
+sim_plot(model, 
+         obs, observations = :conc)[1]
 ```
 
 ### Building Populations
@@ -143,14 +147,17 @@ plot(obs)
 Now, lets create one more subject, `s2`.
 
 ```julia
-s2 = Subject(id=2,events=ev,covariates=(Wt=70,))
+s2 = Subject(id = 2,
+            events = ev,
+            covariates = (Wt = 70,),
+            observations = (dv = nothing,))
 ```
 
 If we want to simulate both `s1` and `s2` together, we need to bring these subjects together to form a `Population`. A `Population` is
 essentially a collection of subjects.
 
 ```julia
-twosubjs =  Population([s1,s2])
+twosubjs =  [s1,s2]
 ```
 
 Let's see the details of the first and the second subject
@@ -164,15 +171,19 @@ twosubjs[2]
 ```
 Now, we can simulate this `Population` of 2 subjects as below
 
-```julia
-obs = simobs(model,twosubjs,fixeffs,obstimes=0:0.1:120)
+```julia; results = "hidden"
+Random.seed!(1234)
+obs = simobs(model,
+            twosubjs,
+            fixeffs,
+            obstimes = 0:0.1:120)
 ```
 
-When using `simobs` on more than one subject, i.e., on a `Population`, the
-simulation is automatically parallelized across the subejcts.
+and plot the result
 
 ```julia
-plot(obs)
+sim_plot(model, 
+         obs, observations = :conc)[1]
 ```
 
 Similarly, we can build a population of any number of subjects. But before we
@@ -181,15 +192,14 @@ do that, let's dive into covariate generation.
 ### Covariates
 
 As was discussed earlier, a `Subject` can also be provided details regarding
-covariates. In the model above, there are two covariates, `isPM` which stands
-for _is the subject a poor metabolizer_ and takes a boolean of _yes_ and  _no_.
-The second covariate is a continuous covariate where body weight `Wt` impacts
+covariates. In the model above, a continuous covariate body weight `Wt` impacts
 both `CL` and `V`. Let us now specify covariates to a population of 10 subjects.
 
 ```julia
+Random.seed!(1234)
 choose_covariates() = (Wt = rand(55:80),)
 ```
-`choose_covariates` will randomly choose a `isPM` and an `Wt` between 55-80 kgs
+`choose_covariates` will randomly choose a `Wt` between 55-80 kgs
 
 We can make a list with covariates for ten subjects through a list comprehension
 
@@ -204,44 +214,63 @@ build's a subject with the randomly chosen covariates in order to build a
 population:
 
 ```julia
-pop_with_covariates = Population(map(i -> Subject(id=i,events=ev,covariates=choose_covariates()),1:10))
+pop_with_covariates = map(i -> Subject(id = i,
+                                      events = ev,
+                                      covariates = choose_covariates(),
+                                      observations = (dv = nothing,)), 1:10)
 ```
 
 Simulate into the population
 
-```julia
-obs = simobs(model,pop_with_covariates,fixeffs,obstimes=0:0.1:120);
+```julia; results = "hidden"
+Random.seed!(1234)
+obs = simobs(model,
+            pop_with_covariates,
+            fixeffs,
+            obstimes = 0:0.1:120)
 ```
 
 and visualize the output
 
 ```julia
-plot(obs)
+p = sim_plot(model, 
+         obs, observations = :conc)
+p[1]         
 ```
 
 ## Multiple dose example
 
-The additional dosage regimen controls of the NMTRAN format are available
-in `DosageRegimen`. For example, `ii` defines the "interdose interval", or the
-time distance between two doses, while `addl` defines how many additional times
+`DosageRegimen` provides additional controls over the specification of the regimen. For example, `ii` defines the "interdose interval", or the
+time difference between two doses, while `addl` defines how many additional times
 to repeat a dose. Thus, let's define a dose of 100 that's repeated 7 times
 at 24 hour intervals:
 
 ```julia
-md =  DosageRegimen(100,ii=24,addl=6)
+md =  DosageRegimen(100, ii = 24, addl = 6)
 ```
 
 Let's create a new subject, `s3` with this dosage regimen:
 
 ```julia
-s3 = Subject(id=3,events=md, covariates=(Wt=70,))
+s3 = Subject(id = 3,
+             events = md, 
+             covariates = (Wt = 70,),
+             observations = (dv = nothing,))
 ```
 
 and see the results:
 
+```julia; results = "hidden"
+Random.seed!(1234)
+obs = simobs(model, 
+            s3, fixeffs,
+            obstimes = 0:0.1:240)
+```
+
 ```julia
-obs = simobs(model, s3, fixeffs,obstimes=0:0.1:240)
-plot(obs)
+p = sim_plot(model, 
+         obs, observations = :conc)
+p[1]
 ```
 
 ## Combining dosage regimens
@@ -252,69 +281,120 @@ Thus let's build a dose of 500 into compartment 1 at time 0, and 7 doses into
 compartment 1 of 100 spaced by 24 hours:
 
 ```julia
-ldmd = DosageRegimen([500,100],cmt=1, time=[0,24], addl=[0,6],ii=[0,24])
+ldmd = DosageRegimen([500,100],
+                     time = [0,24], 
+                     cmt = 1, 
+                     addl = [0,6],
+                     ii = [0,24])
 ```
 
 Let's see if this result matches our intuition:
 
-```julia
-s4 = Subject(id=4, events=ldmd, covariates=(Wt=70,))
-obs = simobs(model, s4, fixeffs,obstimes=0:0.1:120)
-plot(obs, ylims=(0,50))
+```julia;results = "hidden"
+s4 = Subject(id = 4,
+             events = ldmd, 
+             covariates = (Wt = 70,), 
+             observations = (dv = nothing,))
+Random.seed!(1234)
+obs = simobs(model, 
+             s4, 
+             fixeffs,
+             obstimes = 0:0.1:120)
 ```
+
+```julia
+sim_plot(model, 
+         obs, observations = :conc)[1]
+```
+
 
 Another way to build complex dosage regiments is to combine previously constructed
 regimens into a single regimen. For example:
 
-```julia
-e1 = DosageRegimen(500,cmt=1, time=0, addl=0,ii=0)
-e2 = DosageRegimen(100,cmt=1, time=24, addl=6,ii=24)
+```julia;results = "hidden"
+e1 = DosageRegimen(500,cmt = 1, time = 0, addl = 0, ii = 0)
+e2 = DosageRegimen(100,cmt = 1, time = 24, addl = 6, ii = 24)
 evs = DosageRegimen(e1,e2)
-obs = simobs(model, s4, fixeffs,obstimes=0:0.1:120)
-plot(obs, ylims=(0,50))
+s5 = Subject(id = 5,
+             events = evs, 
+             covariates = (Wt = 70,), 
+             observations = (dv = nothing,))
+Random.seed!(1234)
+obs = simobs(model, 
+            s5, 
+            fixeffs,
+            obstimes = 0:0.1:120)
+```
+
+```julia
+sim_plot(model, 
+         obs, observations = :conc)[1]
 ```
 
 is the same regimen as before.
 
 Putting these ideas together, we can define a population where individuals
 with different covariates undergo different regimens, and simulate them
-all together with automatic parallelism:
+all together:
 
 ```julia
-e1 = DosageRegimen(100, ii=24, addl=6)
-e2 = DosageRegimen(50,  ii=12, addl=13)
-e3 = DosageRegimen(200, ii=24, addl=2)
+e1 = DosageRegimen(100, ii = 24, addl = 6)
+e2 = DosageRegimen(50,  ii = 12, addl = 13)
+e3 = DosageRegimen(200, ii = 24, addl = 2)
 ```
 
 ```julia
-pop1 = Population(map(i -> Subject(id=i,events=e1,covariates=choose_covariates()),1:5))
-pop2 = Population(map(i -> Subject(id=i,events=e2,covariates=choose_covariates()),6:8))
-pop3 = Population(map(i -> Subject(id=i,events=e3,covariates=choose_covariates()),9:10))
-pop = Population(vcat(pop1,pop2,pop3))
+pop1 = map(i -> Subject(id = i, events = e1, covariates = choose_covariates(),
+                        observations = (dv = nothing,)), 1:5)
+pop2 = map(i -> Subject(id = i, events = e2, covariates = choose_covariates(),
+                        observations = (dv = nothing,)), 6:8)
+pop3 = map(i -> Subject(id = i, events = e3, covariates = choose_covariates(),
+                        observations = (dv = nothing,)), 9:10)
+pop  = vcat(pop1, pop2, pop3)
+```
+
+```julia; results = "hidden"
+Random.seed!(1234)
+obs = simobs(model,
+            pop,
+            fixeffs,
+            obstimes = 0:0.1:120)
 ```
 
 ```julia
-obs = simobs(model,pop,fixeffs,obstimes=0:0.1:120)
-plot(obs)
+p = sim_plot(model, 
+         obs, observations = :conc)
+p[1]         
 ```
 
 ## Defining Infusions
 
-As specified in the NMTRAN format, an infusion is a dosage which is defined
+An infusion is a dosage which is defined
 as having a non-zero positive rate at which the drug enters the system. Let's
-define a single infusion dose of total amount 100 with a rate of 3 into the
+define a single infusion dose of total amount 100 with a rate of 3 unit amount per time into the
 second compartment:
 
 ```julia
-inf = DosageRegimen(100, rate=3, cmt=2)
+inf = DosageRegimen(100, rate = 3, cmt = 2)
 ```
 
 Now let's simulate a subject undergoing this treatment strategy:
 
+```julia; results = "hidden"
+s6 = Subject(id = 5, 
+             events = inf, 
+             covariates = (Wt = 70,),
+             observations = (dv = nothing,))
+Random.seed!(1234)
+obs = simobs(model, 
+            s6, 
+            fixeffs, 
+            obstimes = 0:0.1:120)
+```
+
 ```julia
-s5 = Subject(id=5, events=inf, covariates=(Wt=70,))
-obs = simobs(model, s5, fixeffs, obstimes=0:0.1:120)
-plot(obs)
+sim_plot(model, 
+         obs, observations = :conc)[1]       
 ```
 
 ## Final Note on Julia Programming
