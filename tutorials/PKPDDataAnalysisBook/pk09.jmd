@@ -39,10 +39,9 @@ call the "necessary" libraries to get started
 
 ```julia
 using Pumas
-using Plots
-using CSV
-using StatsPlots
+using PumasUtilities
 using Random
+interactive!(false)
 ```
 
 ### Model
@@ -51,16 +50,30 @@ This model is written for both Oral and IV dosing regimen
 
 ```julia
 pk_09           = @model begin
+  @metadata begin
+    desc = "Semi-Physiologic Model"
+    timeu = u"hr"
+  end
+
   @param begin
+    "Volume of Central Compartment (L/kg)"
     tvvc        ∈ RealDomain(lower=0)
+    "Inter-compartmental Clearance (L/hr/kg)"
     tvq         ∈ RealDomain(lower=0)
+    "Volume of Peripheral Compartment (L/kg)"
     tvvp        ∈ RealDomain(lower=0)
+    "Maximum Metabolic Rate (μmol/hr/kg)"
     tvvmax      ∈ RealDomain(lower=0)
+    "Michaelis Menton Constant (μmol/L)"
     tvkm        ∈ RealDomain(lower=0)
+    "Absorption Rate Constant (hr⁻¹)"
     tvka        ∈ RealDomain(lower=0)
+    "Lag-time (hr)"
     tvtlag      ∈ RealDomain(lower=0)
+    "Fraction of drug absorbed"
     tvfa        ∈ RealDomain(lower=0)
     Ω           ∈ PDiagDomain(8)
+    "Proportional RUV"
     σ²_prop     ∈ RealDomain(lower=0)
   end
 
@@ -94,6 +107,9 @@ pk_09           = @model begin
 
   @derived begin
     cp          = @. Central/Vc
+    """
+    Observed Concentration (ug/L)
+    """
     dv          ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
   end
 end
