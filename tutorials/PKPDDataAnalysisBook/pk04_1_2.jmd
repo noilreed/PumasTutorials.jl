@@ -37,10 +37,9 @@ call the "necessary" libraries to get start.
 
 ```julia
 using Pumas
-using Plots
-using CSV
-using StatsPlots
+using PumasUtilities
 using Random
+interactive!(false) 
 ```
 
 ### Model 1 & 2
@@ -49,12 +48,22 @@ In this one compartment model, we administer multiple doses orally.
 
 ```julia
 pk_04_1_2    = @model begin
+  @metadata begin
+    desc = "One Compartment Model"
+    timeu = u"hr"
+  end
+
   @param begin
+    "Absorption Rate constant (1/hr)"
     tvka     ∈ RealDomain(lower=0)
+    "Elimination Rate Constant (1/hr)"
     tvk      ∈ RealDomain(lower=0)
+    "Volume of Distribution (L)"
     tvvc     ∈ RealDomain(lower=0)
+    "Lag-time (hr)"
     tvlag    ∈ RealDomain(lower=0)
     Ω        ∈ PDiagDomain(3)
+    "Proportional RUV"
     σ²_prop  ∈ RealDomain(lower=0)
   end
 
@@ -76,6 +85,9 @@ pk_04_1_2    = @model begin
 
   @derived begin
     cp       = @. Central/Vc
+    """
+    Observed Concentration (ug/L)
+    """
     dv       ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
   end
 end
