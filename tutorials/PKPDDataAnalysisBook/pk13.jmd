@@ -44,14 +44,26 @@ The given data follows a two compartment model in which the IV Bolus and IV-Infu
 
 ```julia
 pk_13           = @model begin
+  @metadata begin
+    desc        = "Two Compartment Model"
+    timeu       = u"minute"
+  end
+
   @param begin
+    "Clearance (L/min/kg)"
     tvcl        ∈ RealDomain(lower=0)
+    "Volume of Central Compartment (L/kg)"
     tvvc        ∈ RealDomain(lower=0)
+    "Inter-compartmental Clearance (L/min/kg)"
     tvq         ∈ RealDomain(lower=0)
+    "Volume of Peripheral Compartment (L/kg)"
     tvvp        ∈ RealDomain(lower=0)
     Ω           ∈ PDiagDomain(4)
+    "Scaling factor"
     tvCMixRatio ∈ RealDomain(lower=0)
+    "Proportional RUV"
     σ²_prop     ∈ RealDomain(lower=0)
+    "Additive RUV"
     σ²_add      ∈ RealDomain(lower=0)
   end
 
@@ -73,6 +85,9 @@ pk_13           = @model begin
 
   @derived begin
     cp          = @. Central/Vc
+    """
+    Observed Concentrations (ug/L)
+    """
     dv          ~ @. Normal(cp, sqrt((cp*tvCMixRatio*σ²_prop)^2 + σ²_add^2))
   end
 end
