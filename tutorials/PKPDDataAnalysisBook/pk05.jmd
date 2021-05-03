@@ -32,10 +32,9 @@ call the "necessary" libraries to get started.
 
 ```julia
 using Pumas
-using Plots
-using CSV
-using StatsPlots
+using PumasUtilities
 using Random
+interactive!(false)
 ```
 
 ### Model
@@ -44,12 +43,22 @@ In this one compartment model, we administer an IV dose in central compartment.
 
 ```julia
 pk_05         = @model begin
+  @metadata begin
+    desc = "One Cmt Model with Urine Cmt"
+    timeu = u"hr"
+  end
+
   @param begin
+    "Volume of Distribution (L)"
     tvVc      ∈ RealDomain(lower=0)
+    "Renal Clearance(L/hr)"
     tvClr     ∈ RealDomain(lower=0)
+    "Non Renal Clearance(L/hr)"
     tvClnr    ∈ RealDomain(lower=0)
     Ω         ∈ PDiagDomain(3)
+    "Proportional RUV - Plasma"
     σ²_prop   ∈ RealDomain(lower=0)
+    "Additive RUV - Urine"
     σ_add     ∈ RealDomain(lower=0)
   end
 
@@ -70,8 +79,12 @@ pk_05         = @model begin
 
   @derived begin
     cp_plasma = @. Central/Vc
+    """
+    Observed Concentration (mg/L)"
+    """
     dp_plasma ~ @. Normal(cp_plasma, sqrt(cp_plasma^2*σ²_prop))
     cp_urine  = @. Urine
+    "Observed Amount (mg)"
     dp_urine  ~ @. Normal(cp_urine,σ_add)
   end
 end
