@@ -34,11 +34,10 @@ In this tutorial, you will learn how to build one compartment model
 call the "necessary" libraries to get started.
 
 ```julia
-using Pumas
-using Plots
-using CSV
-using StatsPlots
 using Random
+using Pumas
+using PumasUtilities
+interactive!(false)
 ```
 
 ### Model
@@ -48,11 +47,20 @@ In this one compartment model, we administer dose in Central compartment as a ze
 
 ```julia
 pk_03        = @model begin
+  @metadata begin
+    desc = "One Compartment Model with zero-order input"
+    timeu = u"hr"
+  end
+
   @param begin
+    "Clearance (L/hr)"
     tvcl     ∈ RealDomain(lower=0)
+    "Volume (L)"
     tvvc     ∈ RealDomain(lower=0)
+    "Assumed Duration of Zero-order (hr)"
     tvTabs   ∈ RealDomain(lower=0)
     Ω        ∈ PDiagDomain(3)
+    "Proportional RUV"
     σ²_prop  ∈ RealDomain(lower=0)
   end
 
@@ -72,6 +80,9 @@ pk_03        = @model begin
 
   @derived begin
     cp       = @. 1000*(Central/Vc)
+    """
+    Observed Concentration (mcg/L)
+    """
     dv       ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
   end
 end
@@ -102,7 +113,7 @@ Single **20 mg or 20000μg** Oral dose given to a subject.
 
 ```julia
 ev1   = DosageRegimen(20,rate=-2)
-sub1  = Subject(id=1,events=ev1)
+sub1  = Subject(id=1,events=ev1,observations = (dv = nothing,))
 ```
 
 ### Simulation
@@ -111,7 +122,7 @@ Lets simulate for plasma concentration with the specific observation time points
 
 ```julia; results="hidden"
 Random.seed!(123)
-sim_sub1 = simobs(pk_03, sub1, param, obstimes=0:0.1:10);
+sim_sub1 = simobs(pk_03, sub1, param, obstimes=0:0.1:10)
 ```
 
 ### Dataframe & Plot
