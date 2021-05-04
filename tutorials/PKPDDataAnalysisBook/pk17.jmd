@@ -36,10 +36,9 @@ Call the "necessary" libraries to get started.
 
 ```julia
 using Pumas
-using Plots
-using CSV
-using StatsPlots
+using PumasUtilities
 using Random
+interactive!(false)
 ```
 
 ### Model
@@ -50,10 +49,18 @@ In this One compartment model following linear elimination,multiple IV infusions
 ##### Linear Model
 ```julia
 pk_17_lm     = @model begin
+  @metadata begin
+    desc = "Linear One Compartment Model"
+    timeu = u"minute"
+  end
+
   @param begin
+    "Clearance (ml/min)"
     tvcl     ∈ RealDomain(lower=0)
+    "Volume of Distribution (ml)"
     tvvc     ∈ RealDomain(lower=0)
     Ω        ∈ PDiagDomain(2)
+    "Additive RUV"
     σ        ∈ RealDomain(lower=0)
   end
 
@@ -72,6 +79,9 @@ pk_17_lm     = @model begin
 
   @derived begin
     cp       = @. Central/Vc
+    """
+    Observed Concentration (ug/ml)
+    """
     dv       ~ @. Normal(cp,σ)
   end
 end
@@ -100,11 +110,20 @@ In this One compartment model following nonlinear elimination,multiple IV infusi
 
 ```julia
 pk_17_mm     = @model begin
+  @metadata begin
+    desc = "Michaelis Menten - One Compartment Model"
+    timeu = u"hr"
+  end
+
   @param begin
+    "Maximum Metabolic Capacity (ug/min)"
     tvvmax   ∈ RealDomain(lower=0)
+    "Michaelis-Menten Constant (ug/ml)"
     tvkm     ∈ RealDomain(lower=0)
+    "Volume of Distribution (ml)"
     tvvc     ∈ RealDomain(lower=0)
     Ω        ∈ PDiagDomain(3)
+    "Additive RUV"
     σ        ∈ RealDomain(lower=0)
   end
 
@@ -124,6 +143,9 @@ pk_17_mm     = @model begin
 
   @derived begin
     cp       = @. Central/Vc
+    """
+    Observed Concentration (ug/ml)"
+    """
     dv       ~ @. Normal(cp,sqrt(cp^2*σ))
   end
 end
