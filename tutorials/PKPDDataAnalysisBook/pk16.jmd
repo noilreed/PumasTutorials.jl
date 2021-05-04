@@ -33,10 +33,9 @@ call the "necessary" libraries to get started.
 
 ```julia
 using Pumas
-using Plots
-using CSV
-using StatsPlots
+using PumasUtilities
 using Random
+interactive!(false)
 ```
 
 ### Model
@@ -47,14 +46,26 @@ Two-compartment model with one Central and one Peripheral compartment will help
 
 ```julia
 pk_16             = @model begin
+    @metadata begin
+      desc = "Two Compartment Model with Urine Compartment"
+      timeu = u"hr"
+    end
+
     @param begin
+      "Renal Clearance (L/hr/kg)"
       tvclr       ∈ RealDomain(lower=0)
+      "Non-renal Clearance (L/hr/kg)"
       tvclm       ∈ RealDomain(lower=0)
+      "Volume of Central Compartment (L/kg)"
       tvvc        ∈ RealDomain(lower=0)
+      "Volume of Peripheral Compartment (L/kg)"
       tvvp        ∈ RealDomain(lower=0)
+      "Inter-compartmental Clearance (L/hr/kg)"
       tvq         ∈ RealDomain(lower=0)
       Ω           ∈ PDiagDomain(5)
+      "Proportional RUV - Plasma"
       σ²₁_prop    ∈ RealDomain(lower=0)
+      "Proportional RUV - Urine"
       σ²₂_prop    ∈ RealDomain(lower=0)
     end
 
@@ -81,8 +92,14 @@ pk_16             = @model begin
 
     @derived begin
       cp_plasma   = @. Central/Vc
+      """
+      Observed Plasma Concentration (uM)
+      """
       dv_plasma   ~ @. Normal(cp_plasma, sqrt(cp_plasma^2*σ²₁_prop))
       cp_urine    = @. Urine
+      """
+      Observed Urine Amount (umol)"
+      """
       dv_urine    ~ @. Normal(cp_urine, sqrt(cp_urine^2*σ²₂_prop))
     end
 end
