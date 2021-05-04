@@ -30,10 +30,9 @@ call the "necessary" libraries to get start
 
 ```julia
 using Pumas
-using PumasTutorials
-using Plots
-using CSV
-using StatsPlots
+using PumasUtilities
+using Random
+interactive!(false)
 ```
 
 ### Import the Dataset
@@ -48,7 +47,7 @@ Import the dataset and perform data-wrangling to make the datset ready for **`re
 ```julia; results="hidden"
 data = DataFrame(CSV.File(joinpath(dirname(pathof(PumasTutorials)), "..", "data", "PKPDDataAnalysisBook", "pk15data.csv")))
 
-##delete the first row which contains untits
+##delete the first row which contains units
 delete!(data, [1])
 
 ##sort by Subject ID, Period and Time
@@ -59,10 +58,10 @@ filter!(x -> x.Period in ["11","26", "52"], data)
 filter!(x -> x.Dose_grp in ["10","56","320"], data)
 
 ## Convert the colums to necesaary types for input
-data[:Conc] = parse.(Float64,data[:Conc])
-data[:Time] = parse.(Float64,data[:Time])
-data[:Period] = parse.(Int64,data[:Period])
-data[:Dose_grp] = parse.(Int64,data[:Dose_grp])
+data[!,:Conc] = parse.(Float64,data[!,:Conc])
+data[!,:Time] = parse.(Float64,data[!,:Time])
+data[!,:Period] = parse.(Int64,data[!,:Period])
+data[!,:Dose_grp] = parse.(Int64,data[!,:Dose_grp])
 
 ##sort by Subject ID, Period and Time
 sort!(data, [:Subject_ID,:Period,:Time])
