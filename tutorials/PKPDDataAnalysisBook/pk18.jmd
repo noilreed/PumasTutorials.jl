@@ -37,10 +37,9 @@ call the "necessary" libraries to get started
 
 ```julia
 using Pumas
-using CSV
-using Plots
-using StatsPlots
+using PumasUtilities
 using Random
+interactive!(false)
 ```
 
 ### Model
@@ -49,13 +48,24 @@ In this two compartment model, we administer dose on Central compartment.
 
 ```julia
 pk_18           = @model  begin
+  @metadata begin
+    desc = "Two Compartment Model - Nonlinear Elimination"
+    timeu = u"hr"
+  end
+
   @param begin
+    "Maximum rate of elimination (mg/hr)"
     tvvmax      ∈ RealDomain(lower=0)
+    "Michaelis-Menten rate constant (mg/L)"
     tvkm        ∈ RealDomain(lower=0)
+    "Intercompartmental Clearance (L/hr)"
     tvQ         ∈ RealDomain(lower=0)
+    "Volume of Central Compartment (L)"
     tvvc        ∈ RealDomain(lower=0)
+    "Volume of Peripheral Compartment (L)"
     tvvp        ∈ RealDomain(lower=0)
     Ω           ∈ PDiagDomain(5)
+    "Proportional RUV"
     σ²_prop     ∈ RealDomain(lower=0)
   end
 
@@ -78,6 +88,9 @@ pk_18           = @model  begin
 
   @derived begin
     cp         = @. Central/Vc
+    """
+    Observed Concentration (g/L)
+    """
     dv         ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
   end
 end
