@@ -47,10 +47,9 @@ call the "necessary" libraries to get start.
 
 ```julia
 using Pumas
-using Plots
-using CSV
-using StatsPlots
+using PumasUtilities
 using Random
+interactive!(false)
 ```
 ### Model
 
@@ -62,14 +61,26 @@ In this one compartment model, we administer dose in Depot compartment at _'time
 
 ```julia
 pk_21        = @model begin
+  @metadata begin
+    desc     = "Heteroinduction Model"
+    timeu    = u"hr"
+  end
+
   @param begin
+    "Absorption Rate Constant (1/hr)"
     tvka     ∈ RealDomain(lower=0)
+    "Intrinsic Clearance post-treatment (L/hr)"
     tvclss   ∈ RealDomain(lower=0)
+    "Lag-time (hrs)"
     tvlag    ∈ RealDomain(lower=0)
+    "Intrinsic Clearance pre-treatment (L/hr)"
     tvclpre  ∈ RealDomain(lower=0)
+    "Fractional turnover rate (1/hr)"
     tvkout   ∈ RealDomain(lower=0)
+    "Volume of distribution (L)"
     tvv      ∈ RealDomain(lower=0)
     Ω        ∈ PDiagDomain(3)
+    "Proportional RUV"
     σ²_prop  ∈ RealDomain(lower=0)
   end
 
@@ -81,8 +92,8 @@ pk_21        = @model begin
 
   @pre begin
     Ka       = tvka * exp(η[1])
-    Clpre    = tvclpre * exp(η[3])  # Preinduction Clearance
-    Clss     = tvclss * exp(η[2])   # Postinduction Clearance
+    Clpre    = tvclpre * exp(η[3]) 
+    Clss     = tvclss * exp(η[2])   
     lags     = (Depot=tvlag,)
     Vc       = tvv
     Kout     = tvkout
@@ -101,6 +112,9 @@ pk_21        = @model begin
 
   @derived begin
     cp       = @. (1000/263.384)*Central/Vc
+    """
+    Observed Concentration (nM)
+    """
     dv       ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
   end
 end
