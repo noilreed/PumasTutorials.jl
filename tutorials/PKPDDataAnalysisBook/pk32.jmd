@@ -34,10 +34,9 @@ Call the "necessary" libraries to get started.
 
 ```julia
 using Pumas
-using Plots
-using CSV
-using StatsPlots
+using PumasUtilities
 using Random
+interactive!(false)
 ```
 
 ### Model
@@ -46,13 +45,23 @@ One compartment model for an endogenous compound with non-linear disposition
 
 ```julia
 pk_32        = @model begin
+  @metadata begin
+    desc     = "Non-linear Elimination Model"
+    timeu    = u"minute"
+  end
+
   @param begin
+    "Volume of Central Compartment (L)"
     tvvc     ∈ RealDomain(lower=0)
+    "Maximum metabolic capacity (μg/min)"
     tvvmax   ∈ RealDomain(lower=0)
+    "Michaelis-Menten constant (μg/L)"
     tvkm     ∈ RealDomain(lower=0)
+    "Rate of synthesis (μg/min)"
     tvkin    ∈ RealDomain(lower=0)
     Ω        ∈ PDiagDomain(4)
-    σ        ∈ RealDomain(lower=0)
+    "Proportional RUV"
+    σ²_prop  ∈ RealDomain(lower=0)
   end
 
   @random begin
@@ -77,7 +86,10 @@ pk_32        = @model begin
 
   @derived begin
     cp       = @. Central/Vc
-    dv       ~ @. Normal(cp, sqrt(cp^2*σ))
+    """
+    Observed Concentration (ug/L)
+    """
+    dv       ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
   end
 end
 ```
@@ -95,12 +107,12 @@ The parameters are as given below. `tv` represents the typical value for paramet
 
 
 ```julia
-param = (tvvc   = 5.94952,
-         tvvmax = 361.502,
-         tvkm   = 507.873 ,
-         tvkin  = 14.9684,
-         Ω      = Diagonal([0.00,0.00,0.00,0.00]),
-         σ      = 0.05)
+param = (tvvc    = 5.94952,
+         tvvmax  = 361.502,
+         tvkm    = 507.873 ,
+         tvkin   = 14.9684,
+         Ω       = Diagonal([0.00,0.00,0.00,0.00]),
+         σ²_prop = 0.05)
 ```
 
 ### Dosage Regimen
