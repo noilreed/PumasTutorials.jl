@@ -31,10 +31,9 @@ call the "necessary" libraries to get started
 
 ```julia
 using Pumas
-using Plots
-using CSV
-using StatsPlots
+using PumasUtilities
 using Random
+interactive!(false)
 ```
 
 ### Model
@@ -43,19 +42,36 @@ The given data follows a `Target Mediated Drug Disposition Model`
 
 ```julia
 pk_27           = @model begin
+  @metadata begin
+    desc        = "Target Mediated Drug Disposition Model"
+    timeu       = u"hr"
+  end
+
   @param begin
+    "Clearance of central compartment (L/kg/hr)"
     tvcl        ∈ RealDomain(lower=0)
+    "Second oder on rate of ligand (L/mg/hr)"
     tvkon       ∈ RealDomain(lower=0)
+    "First order off rate of ligand (1/hr)"
     tvkoff      ∈ RealDomain(lower=0)
+    "Volume of Peripheral Compartment (L/kg)"
     tvvp        ∈ RealDomain(lower=0)
+    "Inter-compartmental clearance (L/kg/hr)"
     tvq         ∈ RealDomain(lower=0)
+    "Zero order receptor synthesis process (mg/L/hr)"
     tvkin       ∈ RealDomain(lower=0)
+    "First order receptor degenration process (1/hr)"
     tvkout      ∈ RealDomain(lower=0)
+    "First order elimination of complex (1/hr)"
     tvkerl      ∈ RealDomain(lower=0)
+    "Volume of Central Compartment (L/kg)"
     tvvc        ∈ RealDomain(lower=0)
     Ω           ∈ PDiagDomain(9)
+    "Proportional RUV - Plasma"
     σ²_prop_cp  ∈ RealDomain(lower=0)
+    "Proportional RUV - Receptor"
     σ²_prop_rec ∈ RealDomain(lower=0)
+    "Proportional RUV - Complex"
     σ²_prop_com ∈ RealDomain(lower=0)
   end
 
@@ -89,10 +105,19 @@ pk_27           = @model begin
 
   @derived begin
     cp          = @. Central
+    """
+    Observed Concentration - Plasma (mg/L)
+    """
     dv_cp       = @. Normal(cp, sqrt(cp^2*σ²_prop_cp))
     rec         = @. Receptor
+    """
+    Observed Concentration - Receptor (mg/L)
+    """
     dv_rec      = @. Normal(rec, sqrt(rec^2*σ²_prop_rec))
     com         = @. Complex
+    """
+    Observed Concentration - Complex (mg/L)
+    """
     dv_com      = @. Normal(com, sqrt(com^2*σ²_prop_com))
   end
 end
@@ -136,15 +161,10 @@ param = ( tvcl        = 0.001,
   * Single dose of 45 mg/kg was administered as IV-Bolus at `time=0`
 
 ```julia
-ev1      = DosageRegimen(1.5, cmt=1, time=0)
-sub1     = Subject(id=1, events=ev1)
-ev2      = DosageRegimen(5, cmt=1, time=0)
-sub2     = Subject(id=2, events=ev2)
-ev3      = DosageRegimen(15, cmt=1, time=0)
-sub3     = Subject(id=3, events=ev3)
-ev4      = DosageRegimen(45, cmt=1, time=0)
-sub4     = Subject(id=4, events=ev4)
-pop4_sub = [sub1,sub2,sub3,sub4]
+dose = [1.5, 5, 15, 45]
+dose_ind(x) = DosageRegimen(dose[x], time=0, cmt=1)
+
+pop4_sub = map(i -> Subject(id=i, events=dose_ind(i)), 1:4)
 ```
 
 ### Simulation
