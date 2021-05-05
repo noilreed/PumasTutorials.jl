@@ -34,10 +34,9 @@ Call the "necessary" libraries to get started.
 
 ```julia
 using Pumas
-using Plots
-using CSV
-using StatsPlots
+using PumasUtilities
 using Random
+interactive!(false)
 ```
 
 ### Model
@@ -50,20 +49,34 @@ where A is proportionality constant between CL and C
 
 ```julia
 PK24                = @model begin
+    @metadata begin
+        desc = "Three Compartment Model"
+        timeu = u"hr"
+    end
+
     @param begin
+        "Volume of Central Compartment(L/kg)"
         tvvc        ∈ RealDomain(lower=0)
+        "Clearance(L/hr/kg)"
         tvclo       ∈ RealDomain(lower=0)
+        "Inter-compartmental (Shallow) Clearance(L/hr/kg)"
         tvq1        ∈ RealDomain(lower=0)
+        "Inter-compartmental (Deep) Clearance(L/hr/kg)"
         tvq2        ∈ RealDomain(lower=0)
+        "Volume of Shallow Compartment(L/kg)"
         tvvp1       ∈ RealDomain(lower=0)
+        "Volume of Deep Compartment(L/kg)"
         tvvp2       ∈ RealDomain(lower=0)
+        "Proportionality constant Between Cp and CL(L2/hr/μg/kg)"
         tva         ∈ RealDomain(lower=0)
         Ω           ∈ PDiagDomain(7)
         σ_prop      ∈ RealDomain(lower=0)
     end
+
     @random begin
         η           ~ MvNormal(Ω)
     end
+
     @pre begin
         Vc          = tvvc*exp(η[1])
         CLo         = tvclo*exp(η[2])
@@ -82,6 +95,9 @@ PK24                = @model begin
 
     @derived begin
         cp         = @. 1000*Central/Vc
+        """
+        Observed Concentration (ug/L)
+        """
         dv         ~ @. Normal(cp, sqrt(cp^2*σ_prop))
     end
 end
