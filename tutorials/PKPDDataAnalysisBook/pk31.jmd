@@ -34,10 +34,9 @@ call the "necessary" libraries to get start.
 
 ```julia
 using Pumas
-using Plots
-using CSV
-using StatsPlots
+using PumasUtilities
 using Random
+interactive!(false)
 ```
 
 ### Model
@@ -46,13 +45,24 @@ In this one compartment model PK31, we administer IV infusion dose to central co
 
 ```julia
 pk_31           = @model begin
+  @metadata begin
+    desc        = "Two Compartment Model"
+    timeu       = u"hr"
+  end
+
   @param begin
+    "Basal hormonal input (pmol/hr)"
     tvkin       ∈ RealDomain(lower=0)
+    "Central Volume of Distribution (L)"
     tvvc        ∈ RealDomain(lower=0)
+    "Clearance (L/hr)"
     tvcl        ∈ RealDomain(lower=0)
+    "Intercompartmental Clearance (L/hr)"
     tvq         ∈ RealDomain(lower=0)
+    "Peripheral Volume of Distribution (L)"
     tvvp        ∈ RealDomain(lower=0)
     Ω           ∈ PDiagDomain(5)
+    "Proportional RUV"
     σ²_prop     ∈ RealDomain(lower=0)
 
   end
@@ -76,10 +86,14 @@ pk_31           = @model begin
 
   @derived begin
     cp          = @. Central/Vc
+    """
+    Observed Concentration ((pmol/L)
+    """
     dv          ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
   end
 end
 ```
+
 ### Parameters
 
 The parameters are as given below. `tv` represents the typical value for parameters.
