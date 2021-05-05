@@ -62,6 +62,7 @@ pkpain_df = DataFrame(f)
 pkpain_df[!, :dosenum] .=  ifelse.(pkpain_df.Dose .== "Placebo",  0,
                            ifelse.(pkpain_df.Dose .== "5 mg", 5,
                            ifelse.(pkpain_df.Dose .== "20 mg", 20, 80)))
+transform!(groupby(pkpain_df, :Subject), :Conc => maximum => :cmax)                           
 ```
 
 ```julia
@@ -85,10 +86,6 @@ ax = f[1,1] = Axis(f,
     end
 end
 f
-#    barplot!(ax, 
-#			_[!,:dosenum], _[!,:PainRelief_mean],
-#            color = _.Time)
-f
 ```
 
 ```julia
@@ -101,21 +98,34 @@ ax = f[1,1] = Axis(f,
                     xlabel="Time (hr)", 
                     ylabel="Proportion of Pain Relief", 
                     title = "Pain Score Trends for CTMNopain")
-@chain pkpain_df begin
-    combine(groupby(_, [:Time, :dosenum]), :PainRelief => mean, ungroup=true)
-    barplot!(ax,
-            _.Time, 
-            _.PainRelief_mean
+#
+dd = combine(groupby(pkpain_df, [:Time, :dosenum]), :PainRelief => mean, ungroup=true)
+dd.dosenum_u = [findfirst((==)(x), unique(dd.dosenum)) for x in dd.dosenum]                    
+barplot!(ax,
+            dd.Time, 
+            dd.PainRelief_mean,
+            dodge = dd.dosenum_u,
+            color = palette[dd.dosenum_u], 
+            #label= ["20 mg", "80 mg", "Placebo", "5 mg"]
             )
-end
-ax.yticks = 0:0.1:1
+#axislegend()            
 f
 ```
 
 ### Logistic regression of pain relief
 
 ```julia
-binary_model = @model begin
+painrelief = read_pumas(pkpain_df,
+                          id           = :Subject,
+                          time         = :Time,
+                          amt          = :amt,
+                          observations = [:PainRelief],
+                          covariates   = [:dosenum, :cmax],
+                          event_data   = false)
+```
+
+```julia                          
+trt_model = @model begin
     @metadata begin
         desc = "Logistic Regression Model"
     end
@@ -135,27 +145,92 @@ binary_model = @model begin
     end
 
     @covariates begin
-        "Study Arm"
-        arm 
         "Dose (mg)"
-        dose
+        dosenum
     end
 
     @pre begin
-        rx = dose > 0 ? 1 : 0
+        rx = dosenum > 0 ? 1 : 0
         slope = tvslope*rx
         logit = intercept + slope + η[1]
     end
 
     @derived begin
         "Pain Relief"
-        dv ~ @. Bernoulli(logistic(logit))
+        PainRelief ~ @. Bernoulli(logistic(logit))
     end
 end
 
-param = (
+trt_param = (
     intercept = 0.001,
     tvslope = 0.0001,
     Ω = [1.0]
 )
+trt_model_fit = fit(trt_model,
+                painrelief,
+                trt_param,
+                Pumas.FOCE())
+```
+
+```julia
+trt_model_vpc = vpc(trt_model_fit, 
+                stratify_by=[:dosenum])
+
+trt_model_vpcplot = vpc_plot(trt_model_vpc; columns = 2, rows = 2)
+```
+
+```julia
+cmax_model = @model begin
+    @metadata begin
+        desc = "Logistic Regression Model"
+    end
+    @param begin
+        "Intercept"
+        intercept ∈ RealDomain(init=0.001)
+        "Slope"
+        tvslope ∈ RealDomain(init=0.0001)
+        """
+         - Ω
+        """
+        Ω ∈ VectorDomain(1)
+    end
+
+    @random begin
+        η ~ MvNormal(Ω)
+    end
+
+    @covariates begin
+        "Dose (mg)"
+        dosenum
+        "Maximum Concentration"
+        cmax
+    end
+
+    @pre begin
+        slope = tvslope*cmax
+        logit = intercept + slope + η[1]
+    end
+
+    @derived begin
+        "Pain Relief"
+        PainRelief ~ @. Bernoulli(logistic(logit))
+    end
+end
+
+cmax_param = (
+    intercept = 0.001,
+    tvslope = 0.0001,
+    Ω = [1.0]
+)
+cmax_model_fit = fit(cmax_model,
+                painrelief,
+                cmax_param,
+                Pumas.FOCE())
+```
+
+```julia
+cmax_model_vpc = vpc(cmax_model_fit, 
+                stratify_by=[:dosenum])
+
+cmax_model_vpcplot = vpc_plot(cmax_model_vpc; columns = 2, rows = 2)
 ```
