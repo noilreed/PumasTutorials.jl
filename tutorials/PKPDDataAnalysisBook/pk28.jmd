@@ -33,10 +33,9 @@ call the "necessary" libraries to get started
 
 ```julia
 using Pumas
-using Plots
-using CSV
-using StatsPlots
+using PumasUtilities
 using Random
+interactive!(false)
 ```
 
 ### Model
@@ -45,12 +44,22 @@ The given data follows a One-Compartment Model with linear eliminiation
 
 ```julia
 pk_28       = @model begin
+  @metadata begin
+    desc    = "One Compartment Model"
+    timeu   = u"hr"
+  end
+
   @param begin
+    "Clearance (L/hr)"
     a       ∈ RealDomain(lower=0)
+    "Scaling parameter for Cl"
     b       ∈ RealDomain(lower=0)
+    "Volume of Distribution (L)"
     c       ∈ RealDomain(lower=0)
+    "Scaling parameter for Vc"
     d       ∈ RealDomain(lower=0)
     Ω       ∈ PDiagDomain(2)
+    "proportional RUV"
     σ²_prop ∈ RealDomain(lower=0)
   end
 
@@ -71,6 +80,9 @@ pk_28       = @model begin
 
   @derived begin
     cp      = @. Central/Vc
+    """
+    Observed Concentration (ug/L)
+    """
     dv      ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
     nca    := @nca cp
     AUC     = NCA.auc(nca)
