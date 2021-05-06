@@ -23,10 +23,9 @@ call the "necessary" libraries to get started
 
 ```julia
 using Pumas
-using Plots
-using CSV
-using StatsPlots
+using PumasUtilities
 using Random
+interactive!(false)
 ```
 
 ### Model
@@ -35,15 +34,28 @@ It is multi-compartment Model with `Enterohepatic Recirculation`
 
 ```julia
 pk_40            = @model  begin
+   @metadata begin
+     desc        = "Enterohepatic Recirculation Model"
+     timeu       = u"hr"
+   end
+
    @param begin
+     "Clearance (L/hr)"
      tvcl        ∈ RealDomain(lower=0)
+     "Central Volume of Distribution (L)"
      tvvc        ∈ RealDomain(lower=0)
+     "Peripheral Volume of Distribution (L)"
      tvvp        ∈ RealDomain(lower=0)
+     "Intercompartmental Clearance (L/hr)"
      tvQ         ∈ RealDomain(lower=0)
+     "Absorption rate Constant (hr⁻¹)"
      tvka        ∈ RealDomain(lower=0)
+     "Bile Excretion rate constant (hr⁻¹)"
      tvklg       ∈ RealDomain(lower=0)
+     "Bile emptying Interval (hr)"
      tvτ         ∈ RealDomain(lower=0)
      Ω           ∈ PDiagDomain(7)
+     "Proportional RUV"
      σ²_prop     ∈ RealDomain(lower=0)
    end
 
@@ -60,7 +72,6 @@ pk_40            = @model  begin
      Klg         = tvklg * exp(η[6])
      τ           = tvτ * exp(η[7])
      Kempt       = (t>10 && t<(10+τ))*(1/τ)
-
    end
 
    @dynamics begin
@@ -72,6 +83,9 @@ pk_40            = @model  begin
 
    @derived begin
      cp          = @. Central/Vc
+     """
+     Observed Concentration (ug/L)
+     """
      dv          ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
    end
 end
@@ -120,7 +134,7 @@ Simulate the plasma concentration after IV administration
 
 ```julia; results="hidden"
 Random.seed!(123)
-sim1 = simobs(pk_40, sub1, param, obstimes=0:000.001:36)
+sim1 = simobs(pk_40, sub1, param, obstimes=0:0.001:36)
 df1  = DataFrame(sim1)
 ```
 
