@@ -28,21 +28,29 @@ call the necessary 'libraries' to get started
 
 ```julia
 using Pumas
-using Plots
-using CSV
-using StatsPlots
+using PumasUtilities
 using Random
+interactive!(false)
 ```
 
 ### Model - Competitive Inhibitory Model
 
 ```julia
 pk_44_cim        = @model begin
+  @metadata begin
+    desc         = "Competitive Inhibitory Model"
+    timeu        = u"minute"
+  end
+
   @param begin
+    "Maximum metabolic rate (μM*gm/min)"
     tvvmax       ∈ RealDomain(lower=0)
+    "Michaelis-Mentons constant (μmol/L)"
     tvkm         ∈ RealDomain(lower=0)
+    "Inhibitory constant (μmol/L)"
     tvki         ∈ RealDomain(lower=0)
     Ω            ∈ PDiagDomain(2)
+    "Additive RUV"
     σ_add        ∈ RealDomain(lower=0)
   end
 
@@ -63,6 +71,9 @@ pk_44_cim        = @model begin
   @derived begin
     ## Competitive Inhibiton Model
     rate_cim     = @. Vmax * _conc / ((Km * (1 + (_I/Ki)) + _conc))
+    """
+    Metabolic rate (nmol/min/mg)
+    """
     dv_rate_cim  ~ @. Normal(rate_cim, σ_add)
   end
 end
@@ -93,11 +104,11 @@ In this dataset we will be having time, concentration data and Exposure(I) which
 ```julia
 df_sub1 = map(i -> DataFrame(id=i,time = 1:1:1000, dv_rate_cim = missing, conc = 1:1:1000, I=0), 1:6)
 df      = vcat(DataFrame.(df_sub1)...)
-df[(df[:id] .== 2), :I] = 10
-df[(df[:id] .== 3), :I] = 25
-df[(df[:id] .== 4), :I] = 50
-df[(df[:id] .== 5), :I] = 75
-df[(df[:id] .== 6), :I] = 100
+df[!, :I] = ifelse.(df.id .== 2, 10, df.I)
+df[!, :I] = ifelse.(df.id .== 3, 25, df.I)
+df[!, :I] = ifelse.(df.id .== 4, 50, df.I)
+df[!, :I] = ifelse.(df.id .== 5, 75, df.I)
+df[!, :I] = ifelse.(df.id .== 6, 100, df.I)
 df_sub1 = df
 sub1    = read_pumas(df_sub1, observations=[:dv_rate_cim], covariates=[:conc, :I], event_data=false)
 ```
