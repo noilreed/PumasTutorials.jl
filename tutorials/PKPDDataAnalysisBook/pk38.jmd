@@ -31,22 +31,31 @@ call the "necessary" libraries to get started.
 
 ```julia
 using Pumas
-using Plots
-using CSV
-using StatsPlots
+using PumasUtilities
 using Random
+interactive!(false)
 ```
 
 ### Model
 
 ```julia
 pk_38        = @model begin
+  @metadata begin
+    desc = "Invitro/Invivo Extrapolation Model"
+    timeu = u"minute"
+  end
+
   @param begin
+    "Maximum Metabolic Capacity of System 1 (nmol/min)"
     tvvmax1  ∈ RealDomain(lower=0)
+    "Michelis Menten Constant of System 1 (μmol/l)"
     tvkm1    ∈ RealDomain(lower=0)
+    "Maximum Metabolic Capacity of System 2 (nmol/min)"
     tvvmax2  ∈ RealDomain(lower=0)
+    "Michelis Menten Constant of System 2 (μmol/l)"
     tvkm2    ∈ RealDomain(lower=0)
     Ω        ∈ PDiagDomain(4)
+    "Additive RUV"
     σ_add    ∈ RealDomain(lower=0)
   end
 
@@ -72,6 +81,9 @@ pk_38        = @model begin
 
   @derived begin
     cp       = @. Central/Vmedium
+    """
+    Observed Concentration (μmol/L)
+    """
     dv       ~ @. Normal(cp, σ_add)
   end
 end
