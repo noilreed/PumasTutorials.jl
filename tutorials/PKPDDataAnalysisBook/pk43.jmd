@@ -32,10 +32,9 @@ call the "necessary" libraries to get start.
 
 ```julia
 using Pumas
-using Plots
-using StatsPlots
-using CSV
+using PumasUtilities
 using Random
+interactive!(false)
 ```
 
 ### Model
@@ -44,14 +43,26 @@ In this one compartment model, we administer dose Sublingually.
 
 ```julia
 pk_43        = @model begin
+  @metadata begin
+    desc     = "Multiple Absorption Model"
+    timeu    = u"hr"
+  end
+
   @param begin
+    "Absorption rate constant(rapid from buccal) (hr⁻⅟)"
     tvkar    ∈ RealDomain(lower=0)
+    "Absorption rate constant(delayed from GI) (hr⁻⅟)"
     tvkad    ∈ RealDomain(lower=0)
+    "Volume of Central Compartment (L)"
     tvv      ∈ RealDomain(lower=0)
+    "Lagtime (hr)"
     tvlag    ∈ RealDomain(lower=0)
+    "Fraction of drug absorbed"
     tvfa     ∈ RealDomain(lower=0)
+    "Elimination rate constant (hr⁻⅟)"
     tvk      ∈ RealDomain(lower=0)
     Ω        ∈ PDiagDomain(4)
+    "Additive RUV"
     σ_add    ∈ RealDomain(lower=0)
   end
 
@@ -76,6 +87,9 @@ pk_43        = @model begin
 
   @derived begin
     cp       = @. Central/V
+    """
+    Observed Concentration (mcg/L)
+    """
     dv       ~ @. Normal(cp, σ_add)
   end
 end
