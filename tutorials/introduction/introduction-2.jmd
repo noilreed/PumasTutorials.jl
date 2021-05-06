@@ -120,7 +120,7 @@ painrelief = read_pumas(pkpain_df,
                           time         = :Time,
                           amt          = :amt,
                           observations = [:PainRelief],
-                          covariates   = [:dosenum, :cmax],
+                          covariates   = [:dosenum, :cmax, :Conc],
                           event_data   = false)
 ```
 
@@ -234,3 +234,222 @@ cmax_model_vpc = vpc(cmax_model_fit,
 
 cmax_model_vpcplot = vpc_plot(cmax_model_vpc; columns = 2, rows = 2)
 ```
+
+```julia
+cmax_model_vpc = vpc(cmax_model_fit, 
+                    stratify_by=[:dosenum], 
+                    covariates = [:cmax])
+
+cmax_model_vpcplot = vpc_plot(cmax_model_vpc)
+```
+
+
+```julia
+cmax_emax_model = @model begin
+    @metadata begin
+        desc = "Logistic Regression Model"
+    end
+    @param begin
+        "Intercept"
+        intercept ∈ RealDomain(init=0.001)
+        "EC50"
+        tvec50 ∈ RealDomain(init=4)
+        """
+         - Ω
+        """
+        Ω ∈ VectorDomain(1)
+    end
+
+    @random begin
+        η ~ MvNormal(Ω)
+    end
+
+    @covariates begin
+        "Dose (mg)"
+        dosenum
+        "Maximum Concentration"
+        cmax
+    end
+
+    @pre begin
+        ec50 = tvec50 
+        logit = intercept * (1 + cmax / (ec50 + cmax)) + η[1]
+    end
+
+    @derived begin
+        "Pain Relief"
+        PainRelief ~ @. Bernoulli(logistic(logit))
+    end
+end
+
+cmax_emax_param = (
+    intercept = 0.001,
+    tvec50 = 4,
+    Ω = [1.0]
+)
+cmax_emax_model_fit = fit(cmax_emax_model,
+                painrelief,
+                cmax_emax_param,
+                Pumas.FOCE())
+```
+
+```julia
+cmax_emax_model_vpc = vpc(cmax_emax_model_fit, 
+                stratify_by=[:dosenum])
+
+cmax_emax_model_vpcplot = vpc_plot(cmax_emax_model_vpc; columns = 2, rows = 2)[1]
+```
+
+```julia
+cmax_emax_model_vpc = vpc(cmax_emax_model_fit, 
+                    covariates = [:cmax])
+
+cmax_emax_model_vpcplot = vpc_plot(cmax_emax_model_vpc)[1]
+```
+
+
+```julia
+conc_model = @model begin
+    @metadata begin
+        desc = "Logistic Regression Model"
+    end
+    @param begin
+        "Intercept"
+        intercept ∈ RealDomain(init=0.001)
+        "EC50"
+        tvec50 ∈ RealDomain(init=4)
+        """
+         - Ω
+        """
+        Ω ∈ VectorDomain(1)
+    end
+
+    @random begin
+        η ~ MvNormal(Ω)
+    end
+
+    @covariates begin
+        "Dose (mg)"
+        dosenum
+        "Concentration"
+        Conc
+    end
+
+    @pre begin
+        ec50 = tvec50 
+        logit = intercept * (1 + Conc / (ec50 + Conc)) + η[1]
+    end
+
+    @derived begin
+        "Pain Relief"
+        PainRelief ~ @. Bernoulli(logistic(logit))
+    end
+end
+
+conc_param = (
+    intercept = 0.001,
+    tvec50 = 4,
+    Ω = [1.0]
+)
+conc_model_fit = fit(conc_model,
+                painrelief,
+                conc_param,
+                Pumas.FOCE())
+```
+
+```julia
+conc_model_vpc = vpc(conc_model_fit, 
+                stratify_by=[:dosenum])
+
+conc_model_vpcplot = vpc_plot(conc_model_vpc; columns = 2, rows = 2)[1]
+```
+
+```julia
+conc_model_vpc = vpc(conc_model_fit, 
+                    covariates = [:cmax])
+
+conc_model_vpcplot = vpc_plot(conc_model_vpc)[1]
+```
+
+### Ordinal Regression of Pain Score
+
+
+```julia
+pkpain_df.PainScore .+= 1
+```
+
+```julia
+pain_score = read_pumas(pkpain_df,
+  id = :Subject,
+  time = :Time,
+  observations = [:PainScore],
+  covariates = [:dosenum, :cmax, :Conc],
+  event_data=false)
+``` 
+
+```julia
+score_conc_model = @model begin
+  @param begin
+    b₁    ∈ RealDomain(init=2.90692)
+    b₂    ∈ RealDomain(init=-2.97771, lower=-1000000, upper=1)
+    b₃    ∈ RealDomain(init=-2.7541 , lower=-1000000, upper=1)
+    slope ∈ RealDomain(init=0.01)
+    ω     ∈ RealDomain(init=sqrt(3.10532), lower = 0.001)
+  end
+
+  @random begin
+    η ~ Normal(0.0, ω)
+  end
+
+  @covariates Conc dosenum
+
+  @pre begin
+    effect = slope * Conc
+    #Logit of cumulative probabilities
+    lge₀ = @. b₁ + η + effect
+    lge₁ = @. lge₀ + b₂
+    lge₂ = @. lge₁ + b₃
+
+    #Probabilities of >=0 and >=1 and >=2
+    pge₀ = @. exp(lge₀) / (1.0 + exp(lge₀))
+    pge₁ = @. exp(lge₁) / (1.0 + exp(lge₁))
+    pge₂ = @. exp(lge₂) / (1.0 + exp(lge₂))
+
+    #Probabilities of Y=0,1,2,3
+    p₀ = @. 1.0 - pge₀
+    p₁ = @. pge₀ - pge₁
+    p₂ = @. pge₁ - pge₂
+    p₃ = @. pge₂
+  end
+
+  @derived begin
+    PainScore ~ @. Categorical(p₀, p₁, p₂, p₃)
+  end
+end
+```
+
+```julia
+score_conc_model_fit = fit(score_conc_model,
+                pain_score,
+                init_params(score_conc_model),
+                Pumas.FOCE())
+```                
+
+```julia
+probtable = predict(score_conc_model_fit) |> DataFrame
+#probstable(score_conc_model_fit)
+#probfig = Figure()
+#Axis(probfig[1,1])
+#lines!(probtable.time, probtable.PainScore_pred, color=probtable.PainScore)
+#probfig
+```
+```julia
+score_conc_model_vpc = vpc(score_conc_model_fit, 
+                stratify_by=[:dosenum])
+
+score_conc_model_vpcplot = vpc_plot(score_conc_model_vpc, 
+                                    columns = 4, 
+                                    rows = 4, 
+                                    fontsize = 12)[1]   
+```
+### Survival Analysis'
