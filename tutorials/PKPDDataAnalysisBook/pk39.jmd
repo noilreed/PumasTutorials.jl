@@ -33,10 +33,9 @@ call the "necessary" libraries to get start.
 
 ```julia
 using Pumas
-using Plots
-using CSV
-using StatsPlots
+using PumasUtilities
 using Random
+interactive!(false)
 ```
 
 ### Model
@@ -47,12 +46,22 @@ In this two compartment model we administer three consecutive IV infusion for a
 
 ```julia
 pk_39           = @model begin
+  @metadata begin
+    desc        = "Two Compartment Model"
+    timeu       = u"hr"
+  end
+
   @param begin
+    "Clearance (L/kg/hr)"
     tvcl        ∈ RealDomain(lower=0)
+    "Volume of Central Compartment (L/kg)"
     tvvc        ∈ RealDomain(lower=0)
+    "Volume of Peripheral Compartment (L/kg)"
     tvvp        ∈ RealDomain(lower=0)
+    "Intercompartmental clearance (L/kg/hr)"
     tvq         ∈ RealDomain(lower=0)
     Ω           ∈ PDiagDomain(4)
+    "Proportional RUV"
     σ²_prop     ∈ RealDomain(lower=0)
   end
 
@@ -74,6 +83,9 @@ pk_39           = @model begin
 
   @derived begin
     cp          = @. Central/Vc
+    """
+    Observed Concentration (ug/L)
+    """
     dv          ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
   end
 end
@@ -107,11 +119,8 @@ Single subject receiving three consecutive IV infusion
   * 3rd dose: **138.95 mcg/kg between 8hr to 24hr**
 
 ```julia
-ev1  = DosageRegimen(26.9, time=0, cmt=1, duration=0.25)
-ev2  = DosageRegimen(139, time=0.25, cmt=1, duration=7.85)
-ev3  = DosageRegimen(138.95, time=8, cmt=1, duration=16)
-evs  = DosageRegimen(ev1,ev2,ev3)
-sub1 = Subject(id=1, events=evs)
+ev1  = DosageRegimen([26.9,139,138.95], time=[0,0.25,8], cmt=1, duration=[0.25,7.85,16])
+sub1 = Subject(id=1, events=ev1)
 ```
 
 ### Simulation
