@@ -31,10 +31,9 @@ call the "necessary" libraries to get started.
 
 ```julia
 using Pumas
-using Plots
-using CSV
-using StatsPlots
+using PumasUtilities
 using Random
+interactive!(false)
 ```
 
 ### Model
@@ -44,10 +43,18 @@ To build a one compartment model for a drug having short half life given a
 
 ```julia
 pk_46         = @model begin
+    @metadata begin
+      desc    = "One Compartment Model"
+      timeu   = u"hr"
+    end
+
     @param begin
+      "Volume at Steady State (L)"
       tvvss   ∈ RealDomain(lower=0)
+      "Clearance (L/hr)"
       tvcl    ∈ RealDomain(lower=0)
       Ω       ∈ PDiagDomain(2)
+      "Additive Error"
       σ_add   ∈ RealDomain(lower=0)
     end
 
@@ -67,6 +74,9 @@ pk_46         = @model begin
 
     @derived begin
       cp       = @. Central/Vss
+      """
+      Observed Concentration (ug/L)
+      """
       dv       ~ @. Normal(cp, σ_add)
     end
 end
