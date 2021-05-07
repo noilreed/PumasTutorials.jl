@@ -28,10 +28,9 @@ call the "necessary" libraries to get start.
 
 ```julia
 using Pumas
-using Plots
-using CSV
-using StatsPlots
+using PumasUtilities
 using Random
+interactive!(false)
 ```
 
 ### Model
@@ -40,16 +39,30 @@ Two compartment model for parent and one compartment model metabolite
 
 ```julia
 pk_45            = @model begin
+  @metadata begin
+    desc         = "Two Compartment Model with Metabolite Compartment"
+    timeu        = u"hr"
+  end
+
   @param begin
+    "Volume of Distribution - Central Parent (L/kg)"
     tvvcp        ∈ RealDomain(lower=0)
+    "Volume of Distribution - Peripheral Parent (L/kg)"
     tvvpp        ∈ RealDomain(lower=0)
+    "Intercompartmental Clearance - Parent (L/hr/kg)"
     tvqp         ∈ RealDomain(lower=0)
+    "Clearance - Parent (L/hr/kg)"
     tvclp        ∈ RealDomain(lower=0)
+    "Volume of Distribution - Metabolite Parent (L/kg)"
     tvvcm        ∈ RealDomain(lower=0)
+    "Clearance - Metabolite (L/hr/kg)"
     tvclm        ∈ RealDomain(lower=0)
+    "Conversion of Parent to Metabolite (L/hr/kg)"
     tvclpm       ∈ RealDomain(lower=0)
+    "Conversion of Metabolite to Parent (L/hr/kg)"
     tvclmp       ∈ RealDomain(lower=0)
     Ω            ∈ PDiagDomain(8)
+    "Proportional RUV"
     σ²_prop      ∈ RealDomain(lower=0)
   end
 
@@ -77,7 +90,13 @@ pk_45            = @model begin
   @derived begin
     cp           = @. Centralp/Vcp
     met          = @. Centralm/Vcm
+    """
+    Observed Concentration - Parent (uM)
+    """
     dv_cp        ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
+    """
+    Observed Concentration - Metabolite (uM)
+    """
     dv_met       ~ @. Normal(met, sqrt(cp^2*σ²_prop))
   end
 end
