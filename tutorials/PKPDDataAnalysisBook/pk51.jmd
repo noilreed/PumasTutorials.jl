@@ -34,10 +34,9 @@ call the "necessary" libraries to get start.
 
 ```julia
 using Pumas
-using Plots
-using CSV
-using StatsPlots
+using PumasUtilities
 using Random
+interactive!(false)
 ```
 
 ### Model
@@ -47,20 +46,38 @@ at two different occasions.
 
 ```julia
 pk_51               = @model begin
+  @metadata begin
+    desc            = "Two Compartment Model with Metabolite Compartment"
+    timeu           = u"hr"
+  end
+
   @param begin
+    "Volume of Central Compartment (L)"
     tvvc            ∈ RealDomain(lower=0)
+    "Clearance (L/hr)"
     tvcl            ∈ RealDomain(lower=0)
+    "Inter Compartmental Clearance (L/hr)"
     tvcld           ∈ RealDomain(lower=0)
+    "Volume of Peripheral Compartment (L)"
     tvvt            ∈ RealDomain(lower=0)
+    "Volume of Central Compartment of Metabolite (L)"
     tvvcm           ∈ RealDomain(lower=0)
+    "Clearance of metabolite (L/hr)"
     tvclm           ∈ RealDomain(lower=0)
+    "Inter Compartmental Clearance of Metabolite (L/hr)"
     tvcldm          ∈ RealDomain(lower=0)
+    "Volume of Peripheral Compartment of Metabolite (L)"
     tvvtm           ∈ RealDomain(lower=0)
+    "Absorption rate constant (hr⁻¹)"
     tvka            ∈ RealDomain(lower=0)
+    "Fraction of drug absorbed"
     tvf             ∈ RealDomain(lower=0)
+    "Lag time (hr)"
     tvlag           ∈ RealDomain(lower=0)
     Ω               ∈ PDiagDomain(9)
+    "Proportional RUV - Plasma"
     σ²_prop_cp      ∈ RealDomain(lower=0)
+    "Proportional RUV - Metabolite"
     σ²_prop_met     ∈ RealDomain(lower=0)
   end
 
@@ -92,8 +109,14 @@ pk_51               = @model begin
 
   @derived begin
     cp              = @. Central/Vc
+    """
+    Observed Concentration (...)
+    """
     dv_cp           ~ @. Normal(cp, sqrt(cp^2*σ²_prop_cp))
     met             = @. Metabolite/Vcm
+    """
+    Observed Concentration (...)
+    """
     dv_met          ~ @. Normal(met, sqrt(met^2*σ²_prop_met))
   end
 end
@@ -161,7 +184,7 @@ Simulate using the `simobs` function.
 ```julia; results="hidden"
 Random.seed!(123)
 sim_pop2_sub = simobs(pk_51, pop2_sub, param, obstimes=0:0.1:1500)
-df1          = DataFrame(sim_pop2_sub);
+df1          = DataFrame(sim_pop2_sub)
 ```
 
 ### Dataframe & Plot
@@ -174,7 +197,7 @@ df1_id1 = filter(x -> x.id == "1", df1)
 df1_id2 = filter(x -> x.id == "2", df1)
 
 @df df1_id1 plot(:time, :cp, yaxis=:log, legend=:bottomright,
-                 title="Concentratio vs Time",  xlabel="Time (min)", ylabel="Concentration (..)", label="Pred - ID1 Parent", linewidth=3,
+                 title="Concentration vs Time",  xlabel="Time (min)", ylabel="Concentration (..)", label="Pred - ID1 Parent", linewidth=3,
                  yticks=[0.01,0.1,1,10,100,1000], ylims=(0.01,1000), xticks=[0,150,300,450,600,750,900,1050,1200,1350,1500], xlims=(0,1500))
 @df df1_id2 plot!(:time, :cp, label="Pred - ID2 Parent", linewidth=3)
 @df df1_id1 plot!(:time, :met, label="Pred - ID1 Metabolite", linewidth=3)
