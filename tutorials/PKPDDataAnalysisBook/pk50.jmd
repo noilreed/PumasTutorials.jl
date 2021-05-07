@@ -32,10 +32,9 @@ call the "necessary" libraries to get started.
 
 ```julia
 using Pumas
-using Plots
-using CSV
-using StatsPlots
+using PumasUtilities
 using Random
+interactive!(false)
 ```
 
 ### Model
@@ -45,16 +44,30 @@ To build a sequential two compartment PKPD model for a drug after infusion
 
 ```julia
 pk_50           = @model begin
+  @metadata begin
+    desc        = "Two Compartment Model"
+    timeu       = u"hr"
+  end
+
   @param begin
+    "Clearance (L/hr)"
     tvcl        ∈ RealDomain(lower=0)
+    "Intercompartmental Clearance (L/hr)"
     tvcld       ∈ RealDomain(lower=0)
+    "Volume of Disttibution - Central (L)"
     tvvc        ∈ RealDomain(lower=0)
+    "Volume of Disttibution - Peripheral (L)"
     tvvt        ∈ RealDomain(lower=0)
+    "Concentration which produces 50% effect (μg/L)"
     tvec50      ∈ RealDomain(lower=0)
+    "Maximum Effect"
     tvemax      ∈ RealDomain(lower=0)
+    "Sigmoidicity factor"
     tvsigma     ∈ RealDomain(lower=0)
     Ω           ∈ PDiagDomain(7)
+    "Proportional RUV"
     σ_prop      ∈ RealDomain(lower=0)
+    "Additive RUV"
     σ_add       ∈ RealDomain(lower=0)
   end
 
@@ -81,8 +94,14 @@ pk_50           = @model begin
 
   @derived begin
     cp          = @. Central/Vc
+    """
+    Observed Concentration (ug/L)
+    """
     dv_cp       ~ @. Normal(cp, sqrt(cp^2*σ_prop))
     ef          = @. Emax*(cp^sigma)/(EC50^sigma+cp^sigma)
+    """
+    Observed Response
+    """
     dv_ef       ~ @. Normal(ef, σ_add)
   end
 end
