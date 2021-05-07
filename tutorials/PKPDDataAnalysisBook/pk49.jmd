@@ -27,10 +27,9 @@ call the "necessary" libraries to get started.
 
 ```julia
 using Pumas
-using CSV
-using StatsPlots
-using Plots
+using PumasUtilities
 using Random
+interactive!(false)
 ```
 
 ### Model
@@ -39,11 +38,20 @@ In this one compartment model, we administer dose on central compartment.
 
 ```julia
 pk_49            = @model begin
+  @metadata begin
+    desc         = "One Compartment Model"
+    timeu        = u"hr"
+  end
+
   @param begin
+    "Clearance (L/hr)"
     tvcl         ∈ RealDomain(lower=0)
+    "Volume of Central Compartment (L)"
     tvvc         ∈ RealDomain(lower=0)
+    "Synthesis of endogenous coagulation Factor II (mg/hr)"
     tvsynthesis  ∈ RealDomain(lower=0)
     Ω            ∈ PDiagDomain(3)
+    "Additive RUV"
     σ_add        ∈ RealDomain(lower=0)
   end
 
@@ -67,6 +75,9 @@ pk_49            = @model begin
 
    @derived begin
      cp          = @. Central/Vc
+     """
+     Observed Concentration (ug/L)
+     """
      dv          ~ @. Normal(cp, σ_add)
    end
 end
