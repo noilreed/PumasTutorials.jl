@@ -75,6 +75,9 @@ pk_04_1_2    = @model begin
     Ka       = tvka * exp(η[1])
     K        = tvk * exp(η[2])
     Vc       = tvvc * exp(η[3])
+  end
+
+  @dosecontrol begin
     lags     = (Depot = tvlag,)
   end
 
@@ -84,9 +87,12 @@ pk_04_1_2    = @model begin
   end
 
   @derived begin
+    """
+    PK04 Concentration (ug/L)
+    """
     cp       = @. Central/Vc
     """
-    Observed Concentration (ug/L)
+    PK04 Concentration (ug/L)
     """
     dv       ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
   end
@@ -97,29 +103,30 @@ end
 
 The parameters are as given below. `tv` represents the typical value for parameters.
 
-  * Ka - Absorption Rate Constant (hr⁻¹),
-  * K  - Elimination Rate Constant (hr⁻¹),
-  * Vc - Volume of Central Compartment(L),
-  * Ω - Between Subject Variability,
-  * σ - Residual error
+  * ``Ka`` - Absorption Rate Constant (hr⁻¹),
+  * ``K``  - Elimination Rate Constant (hr⁻¹),
+  * ``Vc`` - Volume of Central Compartment(L),
+  * ``Ω`` - Between Subject Variability,
+  * ``σ`` - Residual error
 
 
 ```julia
-param1 = (tvka    = 0.14,
+param = [
+          (tvka    = 0.14,
           tvk     = 0.14,
           tvvc    = 56.6,
           tvlag   = 0,
           Ω       = Diagonal([0.0,0.0,0.0]),
-          σ²_prop = 0.015)
-```
+          σ²_prop = 0.015),
 
-```julia
-param2 = (tvka    = 0.20,
+         (tvka    = 0.20,
           tvk     = 0.12,
           tvvc    = 64.9,
           tvlag   = 0.70,
           Ω       = Diagonal([0.0,0.0,0.0]),
           σ²_prop = 0.01)
+        ]
+
 ```
 
 ### Dosage Regimen
@@ -128,8 +135,7 @@ Subject received 352.3 μg of oral dose once a day for 10 days.
 
 ```julia; results="hidden"
 ev1  = DosageRegimen(352.3, time=0, ii=24, addl=9, cmt=1)
-sub1 = Subject(id=1, events=ev1)
-sub2 = Subject(id=2, events=ev1)
+sub = Subject(id=1, events=ev1)
 ```
 
 ### Simulation
@@ -137,28 +143,14 @@ sub2 = Subject(id=2, events=ev1)
 Simulation the plasma concentration of the drug after multiple oral dosing
 
 ```julia; results="hidden"
-## Model 1 - without lag time
 Random.seed!(123)
-sim_sub1 = simobs(pk_04_1_2,sub1,param1,obstimes= 0:0.1:240)
-df1      = DataFrame(sim_sub1)
-
-## Model 2 - with lag time
-Random.seed!(123)
-sim_sub2 = simobs(pk_04_1_2,sub2,param2,obstimes= 0:0.1:240)
-df2      = DataFrame(sim_sub2)
+sim = simobs(pk_04_1_2, sub, param, obstimes = 0:0.1:240)
 ```
 
-### Plots
+### Visualize results
 
 ```julia
-df2_dv = filter(x -> x.time in [1,2,3,4,5,6,7,8,10,12,14,24,216,216.5,217,218,219,220,221,222,223,224,226,228,230,240], df2)
-
-@df df1 plot(:time, :cp,
-              xlabel = "Time (hr)", ylabel = "Concentration (ug/L)", label = "Pred-Without lag-time",
-              title = "Plasma Concentration vs Time", linewidth = 3, legend=:outerright,
-              xticks = [0,24,48,72,96,120,144,168,192,216,240], ylims=(0,3.0))
-@df df2 plot!(:time, :cp, label = "Pred-With lag-time", linewidth=3)
-@df df2_dv scatter!(:time, :dv, label="Obs-Conc")
+sim_plot(pk_04_1_2, sim, observations=:cp)[1]
 ```
 
 ```julia; echo=false, eval=false
