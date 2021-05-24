@@ -34,10 +34,10 @@ In this exercise you will learn how to
 call the "necessary" libraries to get start.
 
 ```julia
-using Pumas
-using CSV
 using Random
+using Pumas
 using PumasUtilities
+using CSV
 interactive!(false)
 ```
 
@@ -74,6 +74,9 @@ pk_02        = @model begin
     Ka       = tvka * exp(η[1])
     Kel      = tvkel * exp(η[2])
     Vc       = tvvc * exp(η[3])
+  end
+
+  @dosecontrol begin
     lags     = (Depot=tvlag * exp(η[4]),)
   end
 
@@ -83,9 +86,12 @@ pk_02        = @model begin
   end
 
   @derived begin
+    """
+    PK02 Concentration (ug/L)
+    """
     cp       = @. Central/Vc
     """
-    Observed Concentration (ug/L)
+    PK02 Concentration (ug/L)
     """
     dv       ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
   end
@@ -95,28 +101,29 @@ end
 ### Parameters
 
 The compound follows a one compartment model, in which the various parameters are as mentioned below:
-  * Ka   - Absorption Rate Constant (min⁻¹)
-  * Kel  - Elimination Rate Constant(min⁻¹)
-  * Vc   - Central Volume of distribution (L)
-  * tlag - Lag-time (min)
-  * Ω    - Between Subject Variability
-  * σ    - Residual error
+  * ``Ka``   - Absorption Rate Constant (min⁻¹)
+  * ``Kel``  - Elimination Rate Constant(min⁻¹)
+  * ``Vc``   - Central Volume of distribution (L)
+  * ``tlag`` - Lag-time (min)
+  * ``Ω``    - Between Subject Variability
+  * ``σ``    - Residual error
 
-```julia
-param1 = (tvka    = 0.013,
+```julia; results="hidden"
+param = [ 
+          (tvka    = 0.013,
           tvkel   = 0.013,
           tvvc    = 32,
           tvlag   = 0,
           Ω       = Diagonal([0.0,0.0,0.0,0.0]),
-          σ²_prop = 0.015)
-```
-```julia
-param2 = (tvka    = 0.043,
+          σ²_prop = 0.015),
+
+          (tvka    = 0.043,
           tvkel   = 0.0088,
           tvvc    = 32,
           tvlag   = 16,
           Ω       = Diagonal([0.0,0.0,0.0,0.0]),
           σ²_prop = 0.015)
+        ]    
 ```
 
 ### Dosage Regimen
@@ -126,43 +133,27 @@ In this section the Dosage regimen is mentioned:
 
 ```julia
 ev1  = DosageRegimen(100,time=0,cmt=1)
-sub1 = Subject(id=1,events=ev1)
+sub = Subject(id=1,events=ev1)
 ```
 
 ### Simulation
 
-Let's simulate for plasma concentration after oral administration, **without lag-time**.
+When simulating a single subject, we can pass in an array of parameters to visualize 
+multiple curves for the same subject. 
 
-#### Without lag-time
-```julia; results = "hidden"
-Random.seed!(123)
-sim_sub1 = simobs(pk_02,sub1,param1,obstimes=0:1:400)
-df1      = DataFrame(sim_sub1)
-```
-
-#### With lag-time
-Let's simulate for plasma concentration after oral administration, **with lag-time**.
-
-```julia; results = "hidden"
-Random.seed!(123)
-sim_sub2 = simobs(pk_02,sub1,param2,obstimes=0:1:400)
-df2      = DataFrame(sim_sub2)
-```
-
-### Dataframe & Plot
 
 ```julia
-df_lag = filter(x -> x.time in [0,10,15,20,30,40,60,90,120,180,210,240,300,360], df2)
-@df df1 plot(:time, :cp,
-              label="Predicted Data - Without lag-time",  xlabel="Time (min)", ylabel="Concentration (ug/L)",
-              title="Concentration vs Time",
-              color=[:aqua], linestyle=[:dash], linewidth=3,
-              xticks=[0,50,100,150,200,250,300,350,400], yticks=[0.0,0.5,1.0,1.5,2.0,2.5], xlims=(-5,400), ylims=(-0.05,2.5))
-@df df2 plot!(:time, :cp,
-                 label="Pred Conc - With lag-time",
-                 color=[:darkblue], linewidth=3)
-@df df_lag scatter!(:time,:dv,
-                    label="Observed Conc", color=[:red])
+Random.seed!(123)
+sim = simobs(pk_02,sub,param,obstimes=0:1:400)
+```
+
+
+### Visualize results
+
+From the plot below, we can clearly identify the subject with and without lag time.
+
+```julia
+sim_plot(pk_02, sim, observations=:cp)[1]
 ```
 
 

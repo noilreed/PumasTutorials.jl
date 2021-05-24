@@ -37,6 +37,7 @@ call the "necessary" libraries to get started.
 using Random
 using Pumas
 using PumasUtilities
+using CSV
 interactive!(false)
 ```
 
@@ -71,6 +72,9 @@ pk_03        = @model begin
   @pre begin
     Cl       = tvcl * exp(η[1])
     Vc       = tvvc * exp(η[2])
+  end
+
+  @dosecontrol begin
     duration = (Central = tvTabs * exp(η[3]),)
   end
 
@@ -79,9 +83,12 @@ pk_03        = @model begin
   end
 
   @derived begin
+    """
+    PK03 Concentration (mcg/L)
+    """
     cp       = @. 1000*(Central/Vc)
     """
-    Observed Concentration (mcg/L)
+    PK03 Concentration (mcg/L)
     """
     dv       ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
   end
@@ -113,7 +120,7 @@ Single **20 mg or 20000μg** Oral dose given to a subject.
 
 ```julia
 ev1   = DosageRegimen(20,rate=-2)
-sub1  = Subject(id=1,events=ev1,observations = (dv = nothing,))
+sub  = Subject(id=1,events=ev1,observations = (dv = nothing,))
 ```
 
 ### Simulation
@@ -122,24 +129,13 @@ Lets simulate for plasma concentration with the specific observation time points
 
 ```julia; results="hidden"
 Random.seed!(123)
-sim_sub1 = simobs(pk_03, sub1, param, obstimes=0:0.1:10)
+sim = simobs(pk_03, sub, param, obstimes=0:0.1:10)
 ```
 
-### Dataframe & Plot
-
-Create a dataframe of simulated data.
+### Visualize results
 
 ```julia
-df1    = DataFrame(sim_sub1)
-df1_dv = filter(x -> x.time in [0.5,1,1.5,2,3,4,5,6,7,8,9,10], df1)
-
-#Plot the simulated plasma concentration data.
-
-@df df1 plot(:time, :cp,
-             label= "Pred - Conc",  xlabel="Time (Hrs)", ylabel="Concentration (mcg/L)",
-             color=[:blue],linewidth=3, title="Plasma Concentration vs Time",
-             xlims=(-0.2,10.2), xticks=[0,1,2,3,4,5,6,7,8,9,10], yticks=[0,10,20,30,40,50,60,70,80,90], ylims=(-1,90))
-@df df1_dv scatter!(:time, :dv, label="Obs - Conc", color=[:red])
+sim_plot(pk_03, sim, observations=:cp)[1]
 ```
 
 ```julia; echo=false, eval=false
