@@ -1,0 +1,597 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[a4paper,text={16.5cm,25.2cm},centering]{geometry}
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{bm}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{hyperref}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{1.2ex}
+
+\hypersetup
+       {   pdfauthor = { Shamir Kalaria },
+           pdftitle={ Indirect Response Models },
+           colorlinks=TRUE,
+           linkcolor=black,
+           citecolor=blue,
+           urlcolor=blue
+       }
+
+\title{ Indirect Response Models }
+
+\author{ Shamir Kalaria }
+
+\date{ July 18, 2019 }
+
+\usepackage[T1]{fontenc}
+\usepackage{textcomp}
+\usepackage{upquote}
+\usepackage{listings}
+\usepackage{xcolor}
+\lstset{
+    basicstyle=\ttfamily\footnotesize,
+    upquote=true,
+    breaklines=true,
+    keepspaces=true,
+    showspaces=false,
+    columns=fullflexible,
+    showtabs=false,
+    showstringspaces=false,
+    escapeinside={(*@}{@*)},
+    extendedchars=true,
+}
+\newcommand{\HLJLt}[1]{#1}
+\newcommand{\HLJLw}[1]{#1}
+\newcommand{\HLJLe}[1]{#1}
+\newcommand{\HLJLeB}[1]{#1}
+\newcommand{\HLJLo}[1]{#1}
+\newcommand{\HLJLk}[1]{\textcolor[RGB]{148,91,176}{\textbf{#1}}}
+\newcommand{\HLJLkc}[1]{\textcolor[RGB]{59,151,46}{\textit{#1}}}
+\newcommand{\HLJLkd}[1]{\textcolor[RGB]{214,102,97}{\textit{#1}}}
+\newcommand{\HLJLkn}[1]{\textcolor[RGB]{148,91,176}{\textbf{#1}}}
+\newcommand{\HLJLkp}[1]{\textcolor[RGB]{148,91,176}{\textbf{#1}}}
+\newcommand{\HLJLkr}[1]{\textcolor[RGB]{148,91,176}{\textbf{#1}}}
+\newcommand{\HLJLkt}[1]{\textcolor[RGB]{148,91,176}{\textbf{#1}}}
+\newcommand{\HLJLn}[1]{#1}
+\newcommand{\HLJLna}[1]{#1}
+\newcommand{\HLJLnb}[1]{#1}
+\newcommand{\HLJLnbp}[1]{#1}
+\newcommand{\HLJLnc}[1]{#1}
+\newcommand{\HLJLncB}[1]{#1}
+\newcommand{\HLJLnd}[1]{\textcolor[RGB]{214,102,97}{#1}}
+\newcommand{\HLJLne}[1]{#1}
+\newcommand{\HLJLneB}[1]{#1}
+\newcommand{\HLJLnf}[1]{\textcolor[RGB]{66,102,213}{#1}}
+\newcommand{\HLJLnfm}[1]{\textcolor[RGB]{66,102,213}{#1}}
+\newcommand{\HLJLnp}[1]{#1}
+\newcommand{\HLJLnl}[1]{#1}
+\newcommand{\HLJLnn}[1]{#1}
+\newcommand{\HLJLno}[1]{#1}
+\newcommand{\HLJLnt}[1]{#1}
+\newcommand{\HLJLnv}[1]{#1}
+\newcommand{\HLJLnvc}[1]{#1}
+\newcommand{\HLJLnvg}[1]{#1}
+\newcommand{\HLJLnvi}[1]{#1}
+\newcommand{\HLJLnvm}[1]{#1}
+\newcommand{\HLJLl}[1]{#1}
+\newcommand{\HLJLld}[1]{\textcolor[RGB]{148,91,176}{\textit{#1}}}
+\newcommand{\HLJLs}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLsa}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLsb}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLsc}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLsd}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLsdB}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLsdC}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLse}[1]{\textcolor[RGB]{59,151,46}{#1}}
+\newcommand{\HLJLsh}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLsi}[1]{#1}
+\newcommand{\HLJLso}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLsr}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLss}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLssB}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLnB}[1]{\textcolor[RGB]{59,151,46}{#1}}
+\newcommand{\HLJLnbB}[1]{\textcolor[RGB]{59,151,46}{#1}}
+\newcommand{\HLJLnfB}[1]{\textcolor[RGB]{59,151,46}{#1}}
+\newcommand{\HLJLnh}[1]{\textcolor[RGB]{59,151,46}{#1}}
+\newcommand{\HLJLni}[1]{\textcolor[RGB]{59,151,46}{#1}}
+\newcommand{\HLJLnil}[1]{\textcolor[RGB]{59,151,46}{#1}}
+\newcommand{\HLJLnoB}[1]{\textcolor[RGB]{59,151,46}{#1}}
+\newcommand{\HLJLoB}[1]{\textcolor[RGB]{102,102,102}{\textbf{#1}}}
+\newcommand{\HLJLow}[1]{\textcolor[RGB]{102,102,102}{\textbf{#1}}}
+\newcommand{\HLJLp}[1]{#1}
+\newcommand{\HLJLc}[1]{\textcolor[RGB]{153,153,119}{\textit{#1}}}
+\newcommand{\HLJLch}[1]{\textcolor[RGB]{153,153,119}{\textit{#1}}}
+\newcommand{\HLJLcm}[1]{\textcolor[RGB]{153,153,119}{\textit{#1}}}
+\newcommand{\HLJLcp}[1]{\textcolor[RGB]{153,153,119}{\textit{#1}}}
+\newcommand{\HLJLcpB}[1]{\textcolor[RGB]{153,153,119}{\textit{#1}}}
+\newcommand{\HLJLcs}[1]{\textcolor[RGB]{153,153,119}{\textit{#1}}}
+\newcommand{\HLJLcsB}[1]{\textcolor[RGB]{153,153,119}{\textit{#1}}}
+\newcommand{\HLJLg}[1]{#1}
+\newcommand{\HLJLgd}[1]{#1}
+\newcommand{\HLJLge}[1]{#1}
+\newcommand{\HLJLgeB}[1]{#1}
+\newcommand{\HLJLgh}[1]{#1}
+\newcommand{\HLJLgi}[1]{#1}
+\newcommand{\HLJLgo}[1]{#1}
+\newcommand{\HLJLgp}[1]{#1}
+\newcommand{\HLJLgs}[1]{#1}
+\newcommand{\HLJLgsB}[1]{#1}
+\newcommand{\HLJLgt}[1]{#1}
+
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+This is an introduction to how to excute individual and population level simulations for indirect response models driven by continuous PK. For the following simulation, we have chosen use an oral drug formulation that is intended to
+
+\begin{itemize}
+\item inhibit the production of a potential biomarker - \texttt{irm1}
+
+
+\item inhibit of degredation of a potential biomarker - \texttt{irm2}
+
+
+\item stimulate the production of a potential biomarker - \texttt{irm3}
+
+
+\item stimulate the degredation of a potential biomarker - \texttt{irm4}
+
+\end{itemize}
+\subsection{Getting Started}
+
+\begin{lstlisting}
+(*@\HLJLk{using}@*) (*@\HLJLn{Pumas}@*)(*@\HLJLp{,}@*) (*@\HLJLn{LinearAlgebra}@*)(*@\HLJLp{,}@*) (*@\HLJLn{Plots}@*)
+\end{lstlisting}
+
+
+\subsection{Model Code}
+The following provides specifics to the model code:
+
+\begin{itemize}
+\item One compartment pharmacokinetic model was used to drive pharmacodynamics
+
+
+\item \texttt{Cp} is defined in "derived" and represents the plasma concentration in the central compartment
+
+
+\item \texttt{IMAX}/\texttt{EMAX} parameter was fixed to 1 for maximal inhibition/simulation
+
+
+\item Random effects on \texttt{Ka1}, \texttt{CL}, \texttt{Vc}, \texttt{Kin}, \texttt{Kout}, and \texttt{IC50}, \texttt{EC50} were assumed to follow a log-normal distribution
+
+\end{itemize}
+\subsection{\texttt{irm1}}
+
+\begin{lstlisting}
+(*@\HLJLn{irm1}@*) (*@\HLJLoB{=}@*) (*@\HLJLnd{@model}@*) (*@\HLJLk{begin}@*)
+    (*@\HLJLnd{@param}@*) (*@\HLJLk{begin}@*)
+        (*@\HLJLn{\ensuremath{\theta}}@*) (*@\HLJLoB{\ensuremath{\in}}@*) (*@\HLJLnf{VectorDomain}@*)(*@\HLJLp{(}@*)(*@\HLJLni{6}@*)(*@\HLJLp{)}@*)
+        (*@\HLJLn{\ensuremath{\Omega}}@*) (*@\HLJLoB{\ensuremath{\in}}@*)  (*@\HLJLnf{PDiagDomain}@*)(*@\HLJLp{(}@*)(*@\HLJLni{5}@*)(*@\HLJLp{)}@*)
+    (*@\HLJLk{end}@*)
+
+    (*@\HLJLnd{@random}@*) (*@\HLJLk{begin}@*)
+        (*@\HLJLn{\ensuremath{\eta}}@*) (*@\HLJLoB{{\textasciitilde}}@*) (*@\HLJLnf{MvNormal}@*)(*@\HLJLp{(}@*)(*@\HLJLn{\ensuremath{\Omega}}@*)(*@\HLJLp{)}@*)
+    (*@\HLJLk{end}@*)
+
+    (*@\HLJLnd{@pre}@*) (*@\HLJLk{begin}@*)
+        (*@\HLJLn{Ka}@*)      (*@\HLJLoB{=}@*) (*@\HLJLn{\ensuremath{\theta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{1}@*)(*@\HLJLp{]}@*)
+        (*@\HLJLn{CL}@*)      (*@\HLJLoB{=}@*) (*@\HLJLn{\ensuremath{\theta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{2}@*)(*@\HLJLp{]}@*)(*@\HLJLoB{*}@*)(*@\HLJLnf{exp}@*)(*@\HLJLp{(}@*)(*@\HLJLn{\ensuremath{\eta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{1}@*)(*@\HLJLp{])}@*)
+        (*@\HLJLn{Vc}@*)      (*@\HLJLoB{=}@*) (*@\HLJLn{\ensuremath{\theta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{3}@*)(*@\HLJLp{]}@*)(*@\HLJLoB{*}@*)(*@\HLJLnf{exp}@*)(*@\HLJLp{(}@*)(*@\HLJLn{\ensuremath{\eta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{2}@*)(*@\HLJLp{])}@*)
+        (*@\HLJLn{Kin}@*)     (*@\HLJLoB{=}@*) (*@\HLJLn{\ensuremath{\theta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{4}@*)(*@\HLJLp{]}@*)(*@\HLJLoB{*}@*)(*@\HLJLnf{exp}@*)(*@\HLJLp{(}@*)(*@\HLJLn{\ensuremath{\eta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{3}@*)(*@\HLJLp{])}@*)
+        (*@\HLJLn{Kout}@*)    (*@\HLJLoB{=}@*) (*@\HLJLn{\ensuremath{\theta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{5}@*)(*@\HLJLp{]}@*)(*@\HLJLoB{*}@*)(*@\HLJLnf{exp}@*)(*@\HLJLp{(}@*)(*@\HLJLn{\ensuremath{\eta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{4}@*)(*@\HLJLp{])}@*)
+        (*@\HLJLn{IC50}@*)    (*@\HLJLoB{=}@*) (*@\HLJLn{\ensuremath{\theta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{6}@*)(*@\HLJLp{]}@*)(*@\HLJLoB{*}@*)(*@\HLJLnf{exp}@*)(*@\HLJLp{(}@*)(*@\HLJLn{\ensuremath{\eta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{5}@*)(*@\HLJLp{])}@*)
+        (*@\HLJLn{IMAX}@*)    (*@\HLJLoB{=}@*) (*@\HLJLni{1}@*)
+    (*@\HLJLk{end}@*)
+
+    (*@\HLJLnd{@init}@*) (*@\HLJLk{begin}@*)
+        (*@\HLJLn{Resp}@*) (*@\HLJLoB{=}@*) (*@\HLJLn{Kin}@*)(*@\HLJLoB{/}@*)(*@\HLJLn{Kout}@*)
+    (*@\HLJLk{end}@*)
+
+    (*@\HLJLnd{@vars}@*) (*@\HLJLk{begin}@*)
+        (*@\HLJLn{cp}@*) (*@\HLJLoB{=}@*) (*@\HLJLn{Cent}@*)(*@\HLJLoB{/}@*)(*@\HLJLn{Vc}@*)
+        (*@\HLJLn{inhibition}@*) (*@\HLJLoB{=}@*) (*@\HLJLni{1}@*)(*@\HLJLoB{-}@*)(*@\HLJLp{(}@*)(*@\HLJLn{IMAX}@*)(*@\HLJLoB{*}@*)(*@\HLJLn{cp}@*)(*@\HLJLoB{/}@*)(*@\HLJLp{(}@*)(*@\HLJLn{IC50}@*)(*@\HLJLoB{+}@*)(*@\HLJLn{cp}@*)(*@\HLJLp{))}@*)
+    (*@\HLJLk{end}@*)
+
+    (*@\HLJLnd{@dynamics}@*) (*@\HLJLk{begin}@*)
+        (*@\HLJLn{Gut}@*)(*@\HLJLoB{{\textquotesingle}}@*)    (*@\HLJLoB{=}@*) (*@\HLJLoB{-}@*)(*@\HLJLn{Ka}@*)(*@\HLJLoB{*}@*)(*@\HLJLn{Gut}@*)
+        (*@\HLJLn{Cent}@*)(*@\HLJLoB{{\textquotesingle}}@*)   (*@\HLJLoB{=}@*)  (*@\HLJLn{Ka}@*)(*@\HLJLoB{*}@*)(*@\HLJLn{Gut}@*) (*@\HLJLoB{-}@*) (*@\HLJLp{(}@*)(*@\HLJLn{CL}@*)(*@\HLJLoB{/}@*)(*@\HLJLn{Vc}@*)(*@\HLJLp{)}@*)(*@\HLJLoB{*}@*)(*@\HLJLn{Cent}@*)
+        (*@\HLJLn{Resp}@*)(*@\HLJLoB{{\textquotesingle}}@*)   (*@\HLJLoB{=}@*)  (*@\HLJLn{Kin}@*)(*@\HLJLoB{*}@*)(*@\HLJLn{inhibition}@*) (*@\HLJLoB{-}@*) (*@\HLJLn{Kout}@*)(*@\HLJLoB{*}@*)(*@\HLJLn{Resp}@*)
+    (*@\HLJLk{end}@*)
+
+    (*@\HLJLnd{@derived}@*) (*@\HLJLk{begin}@*)
+        (*@\HLJLn{cp}@*)     (*@\HLJLoB{=}@*) (*@\HLJLn{Cent}@*) (*@\HLJLoB{/}@*) (*@\HLJLn{Vc}@*)
+        (*@\HLJLn{resp}@*)   (*@\HLJLoB{=}@*) (*@\HLJLn{Resp}@*)
+    (*@\HLJLk{end}@*)
+(*@\HLJLk{end}@*)
+\end{lstlisting}
+
+
+\subsection{Specified Parameters}
+The initial estimates of the parameters to simulate from. The fixed effects are provided in the \ensuremath{\theta} vector and the between-subject variability parameteres are provided in the \ensuremath{\Omega} vector as variances. A variance of 0.04 suggests a 20\% coefficient of variation.
+
+
+\begin{lstlisting}
+(*@\HLJLn{param}@*) (*@\HLJLoB{=}@*) (*@\HLJLp{(}@*)(*@\HLJLn{\ensuremath{\theta}}@*) (*@\HLJLoB{=}@*) (*@\HLJLp{[}@*)
+          (*@\HLJLnfB{0.5}@*)(*@\HLJLp{,}@*) (*@\HLJLcs{{\#} Ka  Absorption rate constant 1 (1/time)}@*)
+          (*@\HLJLni{5}@*)(*@\HLJLp{,}@*) (*@\HLJLcs{{\#} CL   Clearance (volume/time)}@*)
+          (*@\HLJLni{30}@*)(*@\HLJLp{,}@*) (*@\HLJLcs{{\#} Vc   Central volume (volume)}@*)
+          (*@\HLJLni{10}@*)(*@\HLJLp{,}@*) (*@\HLJLcs{{\#} Kin  Response in rate constant (1/time)}@*)
+          (*@\HLJLnfB{0.02}@*)(*@\HLJLp{,}@*) (*@\HLJLcs{{\#} Kout Response out rate constant (1/time)}@*)
+          (*@\HLJLni{10}@*)(*@\HLJLp{,}@*) (*@\HLJLcs{{\#} IC50 Concentration for 50{\%} of max inhibition (mass/volume)}@*)
+          (*@\HLJLni{1}@*)(*@\HLJLp{,}@*) (*@\HLJLcs{{\#} IMAX Maximum inhibition}@*)
+          (*@\HLJLp{],}@*)
+    (*@\HLJLn{\ensuremath{\Omega}}@*) (*@\HLJLoB{=}@*) (*@\HLJLnf{Diagonal}@*)(*@\HLJLp{([}@*)(*@\HLJLnfB{0.04}@*)(*@\HLJLp{,}@*)(*@\HLJLnfB{0.04}@*)(*@\HLJLp{,}@*)(*@\HLJLnfB{0.04}@*)(*@\HLJLp{,}@*)(*@\HLJLnfB{0.04}@*)(*@\HLJLp{,}@*)(*@\HLJLnfB{0.04}@*)(*@\HLJLp{]));}@*)
+\end{lstlisting}
+
+
+\subsection{Simulation}
+For the purpose of this tutorial, a simulation of a single subject receiving a single oral dose is shown below:
+
+\begin{itemize}
+\item \texttt{regimen1} provides the single oral dose at \texttt{time=0} into the gut compartment (\texttt{cmt=1})
+
+
+\item \texttt{subject1} provides a single subject receiving regimen1
+
+\end{itemize}
+
+\begin{lstlisting}
+(*@\HLJLn{regimen1}@*) (*@\HLJLoB{=}@*) (*@\HLJLnf{DosageRegimen}@*)(*@\HLJLp{(}@*)(*@\HLJLni{1500}@*)(*@\HLJLp{,}@*) (*@\HLJLn{time}@*)(*@\HLJLoB{=}@*)(*@\HLJLni{0}@*)(*@\HLJLp{,}@*)(*@\HLJLn{cmt}@*)(*@\HLJLoB{=}@*)(*@\HLJLni{1}@*)(*@\HLJLp{)}@*)
+(*@\HLJLn{subject1}@*) (*@\HLJLoB{=}@*) (*@\HLJLnf{Subject}@*)(*@\HLJLp{(}@*)(*@\HLJLn{id}@*)(*@\HLJLoB{=}@*)(*@\HLJLni{1}@*)(*@\HLJLp{,}@*)(*@\HLJLn{evs}@*)(*@\HLJLoB{=}@*)(*@\HLJLn{regimen1}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Subject
+  ID: 1
+  Events: 1
+\end{lstlisting}
+
+
+The simobs function will call in the model object \texttt{irm1}, subject characteristics, parameters. For this simulation, a 100 hour simulation legnth was selected, with observations at every 0.1 hours. The \texttt{plot()} function can be used to visualize the simulation output.
+
+
+\begin{lstlisting}
+(*@\HLJLn{sim}@*) (*@\HLJLoB{=}@*) (*@\HLJLnf{simobs}@*)(*@\HLJLp{(}@*)(*@\HLJLn{irm1}@*)(*@\HLJLp{,}@*)(*@\HLJLn{subject1}@*)(*@\HLJLp{,}@*)(*@\HLJLn{param}@*)(*@\HLJLp{,}@*)(*@\HLJLn{obstimes}@*)(*@\HLJLoB{=}@*)(*@\HLJLni{0}@*)(*@\HLJLoB{:}@*)(*@\HLJLnfB{0.1}@*)(*@\HLJLoB{:}@*)(*@\HLJLni{100}@*)(*@\HLJLp{)}@*)
+(*@\HLJLnf{plot}@*)(*@\HLJLp{(}@*)(*@\HLJLn{sim}@*)(*@\HLJLp{,}@*) (*@\HLJLn{obsnames}@*)(*@\HLJLoB{=}@*)(*@\HLJLp{[}@*)(*@\HLJLsc{:cp}@*)(*@\HLJLp{,}@*)(*@\HLJLoB{:}@*)(*@\HLJLn{resp}@*)(*@\HLJLp{])}@*)
+\end{lstlisting}
+
+\includegraphics[width=\linewidth]{C:/Users/accou/.julia/external/PumasTutorials.jl/pdf/pkpd/jl_2977.tmp/indirect_response_models_5_1.pdf}
+
+You can now try out the other indirect response models by changing the \texttt{@dynamics}.
+
+\subsection{\texttt{irm2}}
+
+\begin{lstlisting}
+(*@\HLJLn{irm2}@*) (*@\HLJLoB{=}@*) (*@\HLJLnd{@model}@*) (*@\HLJLk{begin}@*)
+    (*@\HLJLnd{@param}@*) (*@\HLJLk{begin}@*)
+        (*@\HLJLn{\ensuremath{\theta}}@*) (*@\HLJLoB{\ensuremath{\in}}@*) (*@\HLJLnf{VectorDomain}@*)(*@\HLJLp{(}@*)(*@\HLJLni{6}@*)(*@\HLJLp{)}@*)
+        (*@\HLJLn{\ensuremath{\Omega}}@*) (*@\HLJLoB{\ensuremath{\in}}@*)  (*@\HLJLnf{PDiagDomain}@*)(*@\HLJLp{(}@*)(*@\HLJLni{5}@*)(*@\HLJLp{)}@*)
+    (*@\HLJLk{end}@*)
+
+    (*@\HLJLnd{@random}@*) (*@\HLJLk{begin}@*)
+        (*@\HLJLn{\ensuremath{\eta}}@*) (*@\HLJLoB{{\textasciitilde}}@*) (*@\HLJLnf{MvNormal}@*)(*@\HLJLp{(}@*)(*@\HLJLn{\ensuremath{\Omega}}@*)(*@\HLJLp{)}@*)
+    (*@\HLJLk{end}@*)
+
+    (*@\HLJLnd{@pre}@*) (*@\HLJLk{begin}@*)
+        (*@\HLJLn{Ka}@*)      (*@\HLJLoB{=}@*) (*@\HLJLn{\ensuremath{\theta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{1}@*)(*@\HLJLp{]}@*)
+        (*@\HLJLn{CL}@*)      (*@\HLJLoB{=}@*) (*@\HLJLn{\ensuremath{\theta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{2}@*)(*@\HLJLp{]}@*)(*@\HLJLoB{*}@*)(*@\HLJLnf{exp}@*)(*@\HLJLp{(}@*)(*@\HLJLn{\ensuremath{\eta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{1}@*)(*@\HLJLp{])}@*)
+        (*@\HLJLn{Vc}@*)      (*@\HLJLoB{=}@*) (*@\HLJLn{\ensuremath{\theta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{3}@*)(*@\HLJLp{]}@*)(*@\HLJLoB{*}@*)(*@\HLJLnf{exp}@*)(*@\HLJLp{(}@*)(*@\HLJLn{\ensuremath{\eta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{2}@*)(*@\HLJLp{])}@*)
+        (*@\HLJLn{Kin}@*)     (*@\HLJLoB{=}@*) (*@\HLJLn{\ensuremath{\theta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{4}@*)(*@\HLJLp{]}@*)(*@\HLJLoB{*}@*)(*@\HLJLnf{exp}@*)(*@\HLJLp{(}@*)(*@\HLJLn{\ensuremath{\eta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{3}@*)(*@\HLJLp{])}@*)
+        (*@\HLJLn{Kout}@*)    (*@\HLJLoB{=}@*) (*@\HLJLn{\ensuremath{\theta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{5}@*)(*@\HLJLp{]}@*)(*@\HLJLoB{*}@*)(*@\HLJLnf{exp}@*)(*@\HLJLp{(}@*)(*@\HLJLn{\ensuremath{\eta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{4}@*)(*@\HLJLp{])}@*)
+        (*@\HLJLn{IC50}@*)    (*@\HLJLoB{=}@*) (*@\HLJLn{\ensuremath{\theta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{6}@*)(*@\HLJLp{]}@*)(*@\HLJLoB{*}@*)(*@\HLJLnf{exp}@*)(*@\HLJLp{(}@*)(*@\HLJLn{\ensuremath{\eta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{5}@*)(*@\HLJLp{])}@*)
+        (*@\HLJLn{IMAX}@*)    (*@\HLJLoB{=}@*) (*@\HLJLni{1}@*)
+    (*@\HLJLk{end}@*)
+
+    (*@\HLJLnd{@init}@*) (*@\HLJLk{begin}@*)
+        (*@\HLJLn{Resp}@*) (*@\HLJLoB{=}@*) (*@\HLJLn{Kin}@*)(*@\HLJLoB{/}@*)(*@\HLJLn{Kout}@*)
+    (*@\HLJLk{end}@*)
+
+    (*@\HLJLnd{@vars}@*) (*@\HLJLk{begin}@*)
+        (*@\HLJLn{cp}@*) (*@\HLJLoB{=}@*) (*@\HLJLn{Cent}@*)(*@\HLJLoB{/}@*)(*@\HLJLn{Vc}@*)
+        (*@\HLJLn{inhibition}@*) (*@\HLJLoB{=}@*) (*@\HLJLni{1}@*)(*@\HLJLoB{-}@*)(*@\HLJLp{(}@*)(*@\HLJLn{IMAX}@*)(*@\HLJLoB{*}@*)(*@\HLJLn{cp}@*)(*@\HLJLoB{/}@*)(*@\HLJLp{(}@*)(*@\HLJLn{IC50}@*)(*@\HLJLoB{+}@*)(*@\HLJLn{cp}@*)(*@\HLJLp{))}@*)
+    (*@\HLJLk{end}@*)
+
+    (*@\HLJLnd{@dynamics}@*) (*@\HLJLk{begin}@*)
+        (*@\HLJLn{Gut}@*)(*@\HLJLoB{{\textquotesingle}}@*)    (*@\HLJLoB{=}@*) (*@\HLJLoB{-}@*)(*@\HLJLn{Ka}@*)(*@\HLJLoB{*}@*)(*@\HLJLn{Gut}@*)
+        (*@\HLJLn{Cent}@*)(*@\HLJLoB{{\textquotesingle}}@*)   (*@\HLJLoB{=}@*)  (*@\HLJLn{Ka}@*)(*@\HLJLoB{*}@*)(*@\HLJLn{Gut}@*) (*@\HLJLoB{-}@*) (*@\HLJLp{(}@*)(*@\HLJLn{CL}@*)(*@\HLJLoB{/}@*)(*@\HLJLn{Vc}@*)(*@\HLJLp{)}@*)(*@\HLJLoB{*}@*)(*@\HLJLn{Cent}@*)
+        (*@\HLJLn{Resp}@*)(*@\HLJLoB{{\textquotesingle}}@*)   (*@\HLJLoB{=}@*)  (*@\HLJLn{Kin}@*) (*@\HLJLoB{-}@*) (*@\HLJLn{Kout}@*)(*@\HLJLoB{*}@*)(*@\HLJLn{inhibition}@*)(*@\HLJLoB{*}@*)(*@\HLJLn{Resp}@*)
+    (*@\HLJLk{end}@*)
+
+    (*@\HLJLnd{@derived}@*) (*@\HLJLk{begin}@*)
+        (*@\HLJLn{cp}@*)     (*@\HLJLoB{=}@*) (*@\HLJLn{Cent}@*) (*@\HLJLoB{/}@*) (*@\HLJLn{Vc}@*)
+        (*@\HLJLn{resp}@*)   (*@\HLJLoB{=}@*) (*@\HLJLn{Resp}@*)
+    (*@\HLJLk{end}@*)
+(*@\HLJLk{end}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+PumasModel
+  Parameters: (*@\ensuremath{\theta}@*), (*@\ensuremath{\Omega}@*)
+  Random effects: (*@\ensuremath{\eta}@*)
+  Covariates: 
+  Dynamical variables: Gut, Cent, Resp
+  Derived: cp, inhibition, resp
+  Observed: cp, inhibition, resp
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{sim}@*) (*@\HLJLoB{=}@*) (*@\HLJLnf{simobs}@*)(*@\HLJLp{(}@*)(*@\HLJLn{irm2}@*)(*@\HLJLp{,}@*)(*@\HLJLn{subject1}@*)(*@\HLJLp{,}@*)(*@\HLJLn{param}@*)(*@\HLJLp{,}@*)(*@\HLJLn{obstimes}@*)(*@\HLJLoB{=}@*)(*@\HLJLni{0}@*)(*@\HLJLoB{:}@*)(*@\HLJLnfB{0.1}@*)(*@\HLJLoB{:}@*)(*@\HLJLni{100}@*)(*@\HLJLp{)}@*)
+(*@\HLJLnf{plot}@*)(*@\HLJLp{(}@*)(*@\HLJLn{sim}@*)(*@\HLJLp{,}@*) (*@\HLJLn{obsnames}@*)(*@\HLJLoB{=}@*)(*@\HLJLp{[}@*)(*@\HLJLsc{:cp}@*)(*@\HLJLp{,}@*)(*@\HLJLoB{:}@*)(*@\HLJLn{resp}@*)(*@\HLJLp{])}@*)
+\end{lstlisting}
+
+\includegraphics[width=\linewidth]{C:/Users/accou/.julia/external/PumasTutorials.jl/pdf/pkpd/jl_2977.tmp/indirect_response_models_7_1.pdf}
+
+\subsection{\texttt{irm3}}
+Change IMAX and IC50 to EMAX and EC50 in the \texttt{@param} block and the subsequent equations
+
+
+\begin{lstlisting}
+(*@\HLJLn{irm3}@*) (*@\HLJLoB{=}@*) (*@\HLJLnd{@model}@*) (*@\HLJLk{begin}@*)
+    (*@\HLJLnd{@param}@*) (*@\HLJLk{begin}@*)
+        (*@\HLJLn{\ensuremath{\theta}}@*) (*@\HLJLoB{\ensuremath{\in}}@*) (*@\HLJLnf{VectorDomain}@*)(*@\HLJLp{(}@*)(*@\HLJLni{6}@*)(*@\HLJLp{)}@*)
+        (*@\HLJLn{\ensuremath{\Omega}}@*) (*@\HLJLoB{\ensuremath{\in}}@*)  (*@\HLJLnf{PDiagDomain}@*)(*@\HLJLp{(}@*)(*@\HLJLni{5}@*)(*@\HLJLp{)}@*)
+    (*@\HLJLk{end}@*)
+
+    (*@\HLJLnd{@random}@*) (*@\HLJLk{begin}@*)
+        (*@\HLJLn{\ensuremath{\eta}}@*) (*@\HLJLoB{{\textasciitilde}}@*) (*@\HLJLnf{MvNormal}@*)(*@\HLJLp{(}@*)(*@\HLJLn{\ensuremath{\Omega}}@*)(*@\HLJLp{)}@*)
+    (*@\HLJLk{end}@*)
+
+    (*@\HLJLnd{@pre}@*) (*@\HLJLk{begin}@*)
+        (*@\HLJLn{Ka}@*)      (*@\HLJLoB{=}@*) (*@\HLJLn{\ensuremath{\theta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{1}@*)(*@\HLJLp{]}@*)
+        (*@\HLJLn{CL}@*)      (*@\HLJLoB{=}@*) (*@\HLJLn{\ensuremath{\theta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{2}@*)(*@\HLJLp{]}@*)(*@\HLJLoB{*}@*)(*@\HLJLnf{exp}@*)(*@\HLJLp{(}@*)(*@\HLJLn{\ensuremath{\eta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{1}@*)(*@\HLJLp{])}@*)
+        (*@\HLJLn{Vc}@*)      (*@\HLJLoB{=}@*) (*@\HLJLn{\ensuremath{\theta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{3}@*)(*@\HLJLp{]}@*)(*@\HLJLoB{*}@*)(*@\HLJLnf{exp}@*)(*@\HLJLp{(}@*)(*@\HLJLn{\ensuremath{\eta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{2}@*)(*@\HLJLp{])}@*)
+        (*@\HLJLn{Kin}@*)     (*@\HLJLoB{=}@*) (*@\HLJLn{\ensuremath{\theta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{4}@*)(*@\HLJLp{]}@*)(*@\HLJLoB{*}@*)(*@\HLJLnf{exp}@*)(*@\HLJLp{(}@*)(*@\HLJLn{\ensuremath{\eta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{3}@*)(*@\HLJLp{])}@*)
+        (*@\HLJLn{Kout}@*)    (*@\HLJLoB{=}@*) (*@\HLJLn{\ensuremath{\theta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{5}@*)(*@\HLJLp{]}@*)(*@\HLJLoB{*}@*)(*@\HLJLnf{exp}@*)(*@\HLJLp{(}@*)(*@\HLJLn{\ensuremath{\eta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{4}@*)(*@\HLJLp{])}@*)
+        (*@\HLJLn{EC50}@*)    (*@\HLJLoB{=}@*) (*@\HLJLn{\ensuremath{\theta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{6}@*)(*@\HLJLp{]}@*)(*@\HLJLoB{*}@*)(*@\HLJLnf{exp}@*)(*@\HLJLp{(}@*)(*@\HLJLn{\ensuremath{\eta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{5}@*)(*@\HLJLp{])}@*)
+        (*@\HLJLn{EMAX}@*)    (*@\HLJLoB{=}@*) (*@\HLJLni{1}@*)
+    (*@\HLJLk{end}@*)
+
+    (*@\HLJLnd{@init}@*) (*@\HLJLk{begin}@*)
+        (*@\HLJLn{Resp}@*) (*@\HLJLoB{=}@*) (*@\HLJLn{Kin}@*)(*@\HLJLoB{/}@*)(*@\HLJLn{Kout}@*)
+    (*@\HLJLk{end}@*)
+
+    (*@\HLJLnd{@vars}@*) (*@\HLJLk{begin}@*)
+        (*@\HLJLn{cp}@*) (*@\HLJLoB{=}@*) (*@\HLJLn{Cent}@*)(*@\HLJLoB{/}@*)(*@\HLJLn{Vc}@*)
+        (*@\HLJLn{stimulation}@*) (*@\HLJLoB{=}@*) (*@\HLJLni{1}@*) (*@\HLJLoB{+}@*) (*@\HLJLp{(}@*)(*@\HLJLn{EMAX}@*)(*@\HLJLoB{*}@*)(*@\HLJLn{cp}@*)(*@\HLJLoB{/}@*)(*@\HLJLp{(}@*)(*@\HLJLn{EC50}@*)(*@\HLJLoB{+}@*)(*@\HLJLn{cp}@*)(*@\HLJLp{))}@*)
+    (*@\HLJLk{end}@*)
+
+    (*@\HLJLnd{@dynamics}@*) (*@\HLJLk{begin}@*)
+        (*@\HLJLn{Gut}@*)(*@\HLJLoB{{\textquotesingle}}@*)    (*@\HLJLoB{=}@*) (*@\HLJLoB{-}@*)(*@\HLJLn{Ka}@*)(*@\HLJLoB{*}@*)(*@\HLJLn{Gut}@*)
+        (*@\HLJLn{Cent}@*)(*@\HLJLoB{{\textquotesingle}}@*)   (*@\HLJLoB{=}@*)  (*@\HLJLn{Ka}@*)(*@\HLJLoB{*}@*)(*@\HLJLn{Gut}@*) (*@\HLJLoB{-}@*) (*@\HLJLp{(}@*)(*@\HLJLn{CL}@*)(*@\HLJLoB{/}@*)(*@\HLJLn{Vc}@*)(*@\HLJLp{)}@*)(*@\HLJLoB{*}@*)(*@\HLJLn{Cent}@*)
+        (*@\HLJLn{Resp}@*)(*@\HLJLoB{{\textquotesingle}}@*)   (*@\HLJLoB{=}@*)  (*@\HLJLn{Kin}@*)(*@\HLJLoB{*}@*)(*@\HLJLn{stimulation}@*) (*@\HLJLoB{-}@*) (*@\HLJLn{Kout}@*)(*@\HLJLoB{*}@*)(*@\HLJLn{Resp}@*)
+    (*@\HLJLk{end}@*)
+
+    (*@\HLJLnd{@derived}@*) (*@\HLJLk{begin}@*)
+        (*@\HLJLn{cp}@*)     (*@\HLJLoB{=}@*) (*@\HLJLn{Cent}@*) (*@\HLJLoB{/}@*) (*@\HLJLn{Vc}@*)
+        (*@\HLJLn{resp}@*)   (*@\HLJLoB{=}@*) (*@\HLJLn{Resp}@*)
+    (*@\HLJLk{end}@*)
+(*@\HLJLk{end}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+PumasModel
+  Parameters: (*@\ensuremath{\theta}@*), (*@\ensuremath{\Omega}@*)
+  Random effects: (*@\ensuremath{\eta}@*)
+  Covariates: 
+  Dynamical variables: Gut, Cent, Resp
+  Derived: cp, stimulation, resp
+  Observed: cp, stimulation, resp
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{sim}@*) (*@\HLJLoB{=}@*) (*@\HLJLnf{simobs}@*)(*@\HLJLp{(}@*)(*@\HLJLn{irm3}@*)(*@\HLJLp{,}@*)(*@\HLJLn{subject1}@*)(*@\HLJLp{,}@*)(*@\HLJLn{param}@*)(*@\HLJLp{,}@*)(*@\HLJLn{obstimes}@*)(*@\HLJLoB{=}@*)(*@\HLJLni{0}@*)(*@\HLJLoB{:}@*)(*@\HLJLnfB{0.1}@*)(*@\HLJLoB{:}@*)(*@\HLJLni{100}@*)(*@\HLJLp{)}@*)
+(*@\HLJLnf{plot}@*)(*@\HLJLp{(}@*)(*@\HLJLn{sim}@*)(*@\HLJLp{,}@*) (*@\HLJLn{obsnames}@*)(*@\HLJLoB{=}@*)(*@\HLJLp{[}@*)(*@\HLJLsc{:cp}@*)(*@\HLJLp{,}@*)(*@\HLJLoB{:}@*)(*@\HLJLn{resp}@*)(*@\HLJLp{])}@*)
+\end{lstlisting}
+
+\includegraphics[width=\linewidth]{C:/Users/accou/.julia/external/PumasTutorials.jl/pdf/pkpd/jl_2977.tmp/indirect_response_models_9_1.pdf}
+
+\begin{figure}
+\centering
+\includegraphics{https://user-images.githubusercontent.com/1425562/61530217-78c68780-a9f1-11e9-8ab3-f0bfcdc516ac.png}
+\caption{irm3}
+\end{figure}
+
+
+\subsection{\texttt{irm4}}
+
+\begin{lstlisting}
+(*@\HLJLn{irm4}@*) (*@\HLJLoB{=}@*) (*@\HLJLnd{@model}@*) (*@\HLJLk{begin}@*)
+    (*@\HLJLnd{@param}@*) (*@\HLJLk{begin}@*)
+        (*@\HLJLn{\ensuremath{\theta}}@*) (*@\HLJLoB{\ensuremath{\in}}@*) (*@\HLJLnf{VectorDomain}@*)(*@\HLJLp{(}@*)(*@\HLJLni{6}@*)(*@\HLJLp{)}@*)
+        (*@\HLJLn{\ensuremath{\Omega}}@*) (*@\HLJLoB{\ensuremath{\in}}@*)  (*@\HLJLnf{PDiagDomain}@*)(*@\HLJLp{(}@*)(*@\HLJLni{5}@*)(*@\HLJLp{)}@*)
+    (*@\HLJLk{end}@*)
+
+    (*@\HLJLnd{@random}@*) (*@\HLJLk{begin}@*)
+        (*@\HLJLn{\ensuremath{\eta}}@*) (*@\HLJLoB{{\textasciitilde}}@*) (*@\HLJLnf{MvNormal}@*)(*@\HLJLp{(}@*)(*@\HLJLn{\ensuremath{\Omega}}@*)(*@\HLJLp{)}@*)
+    (*@\HLJLk{end}@*)
+
+    (*@\HLJLnd{@pre}@*) (*@\HLJLk{begin}@*)
+        (*@\HLJLn{Ka}@*)      (*@\HLJLoB{=}@*) (*@\HLJLn{\ensuremath{\theta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{1}@*)(*@\HLJLp{]}@*)
+        (*@\HLJLn{CL}@*)      (*@\HLJLoB{=}@*) (*@\HLJLn{\ensuremath{\theta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{2}@*)(*@\HLJLp{]}@*)(*@\HLJLoB{*}@*)(*@\HLJLnf{exp}@*)(*@\HLJLp{(}@*)(*@\HLJLn{\ensuremath{\eta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{1}@*)(*@\HLJLp{])}@*)
+        (*@\HLJLn{Vc}@*)      (*@\HLJLoB{=}@*) (*@\HLJLn{\ensuremath{\theta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{3}@*)(*@\HLJLp{]}@*)(*@\HLJLoB{*}@*)(*@\HLJLnf{exp}@*)(*@\HLJLp{(}@*)(*@\HLJLn{\ensuremath{\eta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{2}@*)(*@\HLJLp{])}@*)
+        (*@\HLJLn{Kin}@*)     (*@\HLJLoB{=}@*) (*@\HLJLn{\ensuremath{\theta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{4}@*)(*@\HLJLp{]}@*)(*@\HLJLoB{*}@*)(*@\HLJLnf{exp}@*)(*@\HLJLp{(}@*)(*@\HLJLn{\ensuremath{\eta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{3}@*)(*@\HLJLp{])}@*)
+        (*@\HLJLn{Kout}@*)    (*@\HLJLoB{=}@*) (*@\HLJLn{\ensuremath{\theta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{5}@*)(*@\HLJLp{]}@*)(*@\HLJLoB{*}@*)(*@\HLJLnf{exp}@*)(*@\HLJLp{(}@*)(*@\HLJLn{\ensuremath{\eta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{4}@*)(*@\HLJLp{])}@*)
+        (*@\HLJLn{EC50}@*)    (*@\HLJLoB{=}@*) (*@\HLJLn{\ensuremath{\theta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{6}@*)(*@\HLJLp{]}@*)(*@\HLJLoB{*}@*)(*@\HLJLnf{exp}@*)(*@\HLJLp{(}@*)(*@\HLJLn{\ensuremath{\eta}}@*)(*@\HLJLp{[}@*)(*@\HLJLni{5}@*)(*@\HLJLp{])}@*)
+        (*@\HLJLn{EMAX}@*)    (*@\HLJLoB{=}@*) (*@\HLJLni{1}@*)
+    (*@\HLJLk{end}@*)
+
+    (*@\HLJLnd{@init}@*) (*@\HLJLk{begin}@*)
+        (*@\HLJLn{Resp}@*) (*@\HLJLoB{=}@*) (*@\HLJLn{Kin}@*)(*@\HLJLoB{/}@*)(*@\HLJLn{Kout}@*)
+    (*@\HLJLk{end}@*)
+
+    (*@\HLJLnd{@vars}@*) (*@\HLJLk{begin}@*)
+        (*@\HLJLn{cp}@*) (*@\HLJLoB{=}@*) (*@\HLJLn{Cent}@*)(*@\HLJLoB{/}@*)(*@\HLJLn{Vc}@*)
+        (*@\HLJLn{stimulation}@*) (*@\HLJLoB{=}@*) (*@\HLJLni{1}@*) (*@\HLJLoB{+}@*) (*@\HLJLp{(}@*)(*@\HLJLn{EMAX}@*)(*@\HLJLoB{*}@*)(*@\HLJLn{cp}@*)(*@\HLJLoB{/}@*)(*@\HLJLp{(}@*)(*@\HLJLn{EC50}@*)(*@\HLJLoB{+}@*)(*@\HLJLn{cp}@*)(*@\HLJLp{))}@*)
+    (*@\HLJLk{end}@*)
+
+    (*@\HLJLnd{@dynamics}@*) (*@\HLJLk{begin}@*)
+        (*@\HLJLn{Gut}@*)(*@\HLJLoB{{\textquotesingle}}@*)    (*@\HLJLoB{=}@*) (*@\HLJLoB{-}@*)(*@\HLJLn{Ka}@*)(*@\HLJLoB{*}@*)(*@\HLJLn{Gut}@*)
+        (*@\HLJLn{Cent}@*)(*@\HLJLoB{{\textquotesingle}}@*)   (*@\HLJLoB{=}@*)  (*@\HLJLn{Ka}@*)(*@\HLJLoB{*}@*)(*@\HLJLn{Gut}@*) (*@\HLJLoB{-}@*) (*@\HLJLp{(}@*)(*@\HLJLn{CL}@*)(*@\HLJLoB{/}@*)(*@\HLJLn{Vc}@*)(*@\HLJLp{)}@*)(*@\HLJLoB{*}@*)(*@\HLJLn{Cent}@*)
+        (*@\HLJLn{Resp}@*)(*@\HLJLoB{{\textquotesingle}}@*)   (*@\HLJLoB{=}@*)  (*@\HLJLn{Kin}@*) (*@\HLJLoB{-}@*) (*@\HLJLn{Kout}@*)(*@\HLJLoB{*}@*)(*@\HLJLn{stimulation}@*)(*@\HLJLoB{*}@*)(*@\HLJLn{Resp}@*)
+    (*@\HLJLk{end}@*)
+
+    (*@\HLJLnd{@derived}@*) (*@\HLJLk{begin}@*)
+        (*@\HLJLn{cp}@*)     (*@\HLJLoB{=}@*) (*@\HLJLn{Cent}@*) (*@\HLJLoB{/}@*) (*@\HLJLn{Vc}@*)
+        (*@\HLJLn{resp}@*)   (*@\HLJLoB{=}@*) (*@\HLJLn{Resp}@*)
+    (*@\HLJLk{end}@*)
+(*@\HLJLk{end}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+PumasModel
+  Parameters: (*@\ensuremath{\theta}@*), (*@\ensuremath{\Omega}@*)
+  Random effects: (*@\ensuremath{\eta}@*)
+  Covariates: 
+  Dynamical variables: Gut, Cent, Resp
+  Derived: cp, stimulation, resp
+  Observed: cp, stimulation, resp
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{sim}@*) (*@\HLJLoB{=}@*) (*@\HLJLnf{simobs}@*)(*@\HLJLp{(}@*)(*@\HLJLn{irm4}@*)(*@\HLJLp{,}@*)(*@\HLJLn{subject1}@*)(*@\HLJLp{,}@*)(*@\HLJLn{param}@*)(*@\HLJLp{,}@*)(*@\HLJLn{obstimes}@*)(*@\HLJLoB{=}@*)(*@\HLJLni{0}@*)(*@\HLJLoB{:}@*)(*@\HLJLnfB{0.1}@*)(*@\HLJLoB{:}@*)(*@\HLJLni{100}@*)(*@\HLJLp{)}@*)
+(*@\HLJLnf{plot}@*)(*@\HLJLp{(}@*)(*@\HLJLn{sim}@*)(*@\HLJLp{,}@*) (*@\HLJLn{obsnames}@*)(*@\HLJLoB{=}@*)(*@\HLJLp{[}@*)(*@\HLJLsc{:cp}@*)(*@\HLJLp{,}@*)(*@\HLJLoB{:}@*)(*@\HLJLn{resp}@*)(*@\HLJLp{])}@*)
+\end{lstlisting}
+
+\includegraphics[width=\linewidth]{C:/Users/accou/.julia/external/PumasTutorials.jl/pdf/pkpd/jl_2977.tmp/indirect_response_models_11_1.pdf}
+
+\begin{lstlisting}
+(*@\HLJLk{using}@*) (*@\HLJLn{PumasTutorials}@*)
+(*@\HLJLn{PumasTutorials}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{tutorial{\_}footer}@*)(*@\HLJLp{(}@*)(*@\HLJLn{WEAVE{\_}ARGS}@*)(*@\HLJLp{[}@*)(*@\HLJLsc{:folder}@*)(*@\HLJLp{],}@*)(*@\HLJLn{WEAVE{\_}ARGS}@*)(*@\HLJLp{[}@*)(*@\HLJLsc{:file}@*)(*@\HLJLp{])}@*)
+\end{lstlisting}
+
+
+\subsection{Appendix}
+These tutorials are part of the PumasTutorials.jl repository, found at: \href{https://github.com/JuliaDiffEq/DiffEqTutorials.jl}{https://github.com/JuliaDiffEq/DiffEqTutorials.jl}
+
+
+To locally run this tutorial, do the following commands:
+
+\begin{verbatim}
+using PumasTutorials
+PumasTutorials.weave_file("pkpd","indirect_response_models.jmd")
+\end{verbatim}
+
+Computer Information:
+
+
+\begin{verbatim}
+Julia Version 1.1.1
+Commit 55e36cc308 (2019-05-16 04:10 UTC)
+Platform Info:
+  OS: Windows (x86_64-w64-mingw32)
+  CPU: Intel(R) Core(TM) i7-8550U CPU @ 1.80GHz
+  WORD_SIZE: 64
+  LIBM: libopenlibm
+  LLVM: libLLVM-6.0.1 (ORCJIT, skylake)
+Environment:
+  JULIA_EDITOR = "C:\Users\accou\AppData\Local\atom\app-1.38.2\atom.exe"  -a
+  JULIA_NUM_THREADS = 4
+
+\end{verbatim}
+
+Package Information:
+
+
+\begin{verbatim}
+Status `C:\Users\accou\.julia\environments\v1.1\Project.toml`
+[621f4979-c628-5d54-868e-fcf4e3e8185c] AbstractFFTs 0.4.1
+[c52e3926-4ff0-5f6e-af25-54175e0327b1] Atom 0.8.8
+[f0abef60-9ec0-11e9-27de-db6506a91768] AutoOffload 0.1.0
+[6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf] BenchmarkTools 0.4.2
+[4ece37e6-a012-11e8-38cd-91247efc2c34] Bioequivalence 0.1.0
+[336ed68f-0bac-5ca0-87d4-7b16caf5d00b] CSV 0.5.9
+[c5f51814-7f29-56b8-a69c-e4d8f6be1fde] CUDAdrv 3.0.1
+[be33ccc6-a3ff-5ff2-a52e-74243cff1e17] CUDAnative 2.2.1
+[49dc2e85-a5d0-5ad3-a950-438e2897f1b9] Calculus 0.5.0
+[7057c7e9-c182-5462-911a-8362d720325c] Cassette 0.2.5
+[34da2185-b29b-5c13-b0c7-acf172513d20] Compat 2.1.0
+[3a865a2d-5b23-5a0f-bc46-62713ec82fae] CuArrays 1.1.0
+[667455a9-e2ce-5579-9412-b964f529a492] Cubature 1.4.0
+[a93c6f00-e57d-5684-b7b6-d8193f3e46c0] DataFrames 0.18.4
+[82cc6244-b520-54b8-b5a6-8a565e85f1d0] DataInterpolations 0.2.0
+[31a5f54b-26ea-5ae9-a837-f05ce5417438] Debugger 0.5.0
+[bcd4f6db-9728-5f36-b5f7-82caef46ccdb] DelayDiffEq 5.9.1
+[2b5f629d-d688-5b77-993f-72d75c75574e] DiffEqBase 5.16.3
+[ebbdde9d-f333-5424-9be2-dbf1e9acfb5e] DiffEqBayes 1.2.0
+[31c91b34-3c75-11e9-0341-95557aab0344] DiffEqBenchmarks 0.1.0
+[459566f4-90b8-5000-8ac3-15dfb0a30def] DiffEqCallbacks 2.5.2+
+[f3b72e0c-5b89-59e1-b016-84e28bfd966d] DiffEqDevTools 2.13.0
+[01453d9d-ee7c-5054-8395-0335cb756afa] DiffEqDiffTools 0.14.0
+[aae7a2af-3d4f-5e19-a356-7da93b79d9d0] DiffEqFlux 0.5.2
+[071ae1c0-96b5-11e9-1965-c90190d839ea] DiffEqGPU 0.1.0
+[c894b116-72e5-5b58-be3c-e6d8d4ac2b12] DiffEqJump 6.1.1+
+[8f2b45d5-b17b-5532-9e92-98ae0077e2e3] DiffEqMachineLearning 0.1.0
+[78ddff82-25fc-5f2b-89aa-309469cbf16f] DiffEqMonteCarlo 0.15.1
+[77a26b50-5914-5dd7-bc55-306e6241c503] DiffEqNoiseProcess 3.3.1
+[9fdde737-9c7f-55bf-ade8-46b3f136cc48] DiffEqOperators 3.5.0
+[055956cb-9e8b-5191-98cc-73ae4a59e68a] DiffEqPhysics 3.2.0
+[a077e3f3-b75c-5d7f-a0c6-6bc4c8ec64a9] DiffEqProblemLibrary 4.3.0
+[41bf760c-e81c-5289-8e54-58b1f1f8abe2] DiffEqSensitivity 3.3.0
+[6d1b261a-3be8-11e9-3f2f-0b112a9a8436] DiffEqTutorials 0.1.0
+[0c46a032-eb83-5123-abaf-570d42b7fbaa] DifferentialEquations 6.6.0
+[31c24e10-a181-5473-b8eb-7969acd0382f] Distributions 0.20.0
+[e30172f5-a6a5-5a46-863b-614d45cd2de4] Documenter 0.23.0
+[587475ba-b771-5e3f-ad9e-33799f191a9c] Flux 0.8.3
+[f6369f11-7733-5829-9624-2563aa707210] ForwardDiff 0.10.3+
+[ba82f77b-6841-5d2e-bd9f-4daf811aec27] GPUifyLoops 0.2.5
+[c91e804a-d5a3-530f-b6f0-dfbca275c004] Gadfly 1.1.0
+[bc5e4493-9b4d-5f90-b8aa-2b2bcaad7a26] GitHub 5.1.1
+[7073ff75-c697-5162-941a-fcdaad2a7d2a] IJulia 1.18.1
+[42fd0dbc-a981-5370-80f2-aaf504508153] IterativeSolvers 0.8.1
+[033835bb-8acc-5ee8-8aae-3f567f8a3819] JLD2 0.1.2
+[e5e0dc1b-0480-54bc-9374-aad01c23163d] Juno 0.7.0
+[2d691ee1-e668-5016-a719-b2531b85e0f5] LIBLINEAR 0.5.1
+[7f56f5a3-f504-529b-bc02-0b1fe5e64312] LSODA 0.4.0
+[6f1fad26-d15e-5dc8-ae53-837a1d7b8c9f] Libtask 0.3.0
+[c7f686f2-ff18-58e9-bc7b-31028e88f75d] MCMCChains 0.3.10
+[33e6dc65-8f57-5167-99aa-e5a354878fb2] MKL 0.0.0
+[cc2ba9b6-d476-5e6d-8eaf-a92d5412d41d] MLDataUtils 0.5.0
+[eb30cadb-4394-5ae3-aed4-317e484a6458] MLDatasets 0.3.0
+[961ee093-0014-501f-94e3-6117800e7a78] ModelingToolkit 0.5.0
+[4886b29c-78c9-11e9-0a6e-41e1f4161f7b] MonteCarloIntegration 0.0.1
+[2774e3e8-f4cf-5e23-947b-6d7e65073b56] NLsolve 4.0.0
+[872c559c-99b0-510c-b3b7-b6c96a88d5cd] NNlib 0.6.0
+[8faf48c0-8b73-11e9-0e63-2155955bfa4d] NeuralNetDiffEq 0.1.0
+[09606e27-ecf5-54fc-bb29-004bd9f985bf] ODEInterfaceDiffEq 3.3.1
+[1dea7af3-3e70-54e6-95c3-0bf5283fa5ed] OrdinaryDiffEq 5.12.0
+[65888b18-ceab-5e60-b2b9-181511a3b968] ParameterizedFunctions 4.2.0
+[14b8a8f1-9102-5b29-a752-f990bacb7fe1] PkgTemplates 0.6.1
+[91a5bcdd-55d7-5caf-9e0b-520d859cae80] Plots 0.25.3
+[92933f4c-e287-5a05-a399-4b506db050ca] ProgressMeter 1.0.0
+[d7b8c89e-ad89-52e0-b9fd-d0ed321fa021] Pumas 0.1.0
+[b7b41870-aa11-11e9-048a-09266ec4a62f] PumasTutorials 0.0.1
+[438e738f-606a-5dbb-bf0a-cddfbfd45ab0] PyCall 1.91.2
+[d330b81b-6aea-500a-939a-2ce795aea3ee] PyPlot 2.8.1
+[1fd47b50-473d-5c70-9696-f719f8f3bcdc] QuadGK 2.1.0
+[612083be-0b0f-5412-89c1-4e7c75506a58] Queryverse 0.3.1
+[6f49c342-dc21-5d91-9882-a32aef131414] RCall 0.13.3
+[731186ca-8d62-57ce-b412-fbd966d074cd] RecursiveArrayTools 0.20.0
+[37e2e3b7-166d-5795-8a7a-e32c996b4267] ReverseDiff 0.3.1
+[295af30f-e4ad-537b-8983-00126c2a3abe] Revise 2.1.6
+[2b6d1eac-7baa-5078-8adc-e6a3e659f14f] SingleFloats 0.1.3
+[47a9eef4-7e08-11e9-0b38-333d64bd3804] SparseDiffTools 0.4.0
+[90137ffa-7385-5640-81b9-e52037218182] StaticArrays 0.11.0
+[4c63d2b9-4356-54db-8cca-17b64c39e42c] StatsFuns 0.8.0
+[f3b207a7-027a-5e70-b257-86293d7955fd] StatsPlots 0.11.0
+[9672c7b4-1e72-59bd-8a11-6ac3964bc41f] SteadyStateDiffEq 1.5.0
+[789caeaf-c7a9-5a7d-9973-96adeb23e2a0] StochasticDiffEq 6.6.0
+[c3572dad-4567-51f8-b174-8c6c989267f4] Sundials 3.6.1
+[fd094767-a336-5f1f-9728-57cf17d0bbfb] Suppressor 0.1.1
+[6fc51010-71bc-11e9-0e15-a3fcc6593c49] Surrogates 0.1.0
+[9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c] Tracker 0.2.2
+[fce5fe82-541a-59a6-adf8-730c64b5f9a0] Turing 0.6.18
+[1986cc42-f94f-5a68-af5c-568840ba703d] Unitful 0.16.0
+[44d3d7a6-8a23-5bf8-98c5-b353f8df5ec9] Weave 0.9.1
+[e88e6eb3-aa80-5325-afca-941959d7151f] Zygote 0.3.2
+\end{verbatim}
+
+
+
+\end{document}

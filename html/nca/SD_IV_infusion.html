@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<HTML lang = "en">
+<HEAD>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Pumas NCA Tutorial - Analyzing infusion data</title>
+  
+
+  <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]},
+      TeX: { equationNumbers: { autoNumber: "AMS" } }
+    });
+  </script>
+
+  <script type="text/javascript" async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+  </script>
+
+  
+<style>
+pre.hljl {
+    border: 1px solid #ccc;
+    margin: 5px;
+    padding: 5px;
+    overflow-x: auto;
+    color: rgb(68,68,68); background-color: rgb(251,251,251); }
+pre.hljl > span.hljl-t { }
+pre.hljl > span.hljl-w { }
+pre.hljl > span.hljl-e { }
+pre.hljl > span.hljl-eB { }
+pre.hljl > span.hljl-o { }
+pre.hljl > span.hljl-k { color: rgb(148,91,176); font-weight: bold; }
+pre.hljl > span.hljl-kc { color: rgb(59,151,46); font-style: italic; }
+pre.hljl > span.hljl-kd { color: rgb(214,102,97); font-style: italic; }
+pre.hljl > span.hljl-kn { color: rgb(148,91,176); font-weight: bold; }
+pre.hljl > span.hljl-kp { color: rgb(148,91,176); font-weight: bold; }
+pre.hljl > span.hljl-kr { color: rgb(148,91,176); font-weight: bold; }
+pre.hljl > span.hljl-kt { color: rgb(148,91,176); font-weight: bold; }
+pre.hljl > span.hljl-n { }
+pre.hljl > span.hljl-na { }
+pre.hljl > span.hljl-nb { }
+pre.hljl > span.hljl-nbp { }
+pre.hljl > span.hljl-nc { }
+pre.hljl > span.hljl-ncB { }
+pre.hljl > span.hljl-nd { color: rgb(214,102,97); }
+pre.hljl > span.hljl-ne { }
+pre.hljl > span.hljl-neB { }
+pre.hljl > span.hljl-nf { color: rgb(66,102,213); }
+pre.hljl > span.hljl-nfm { color: rgb(66,102,213); }
+pre.hljl > span.hljl-np { }
+pre.hljl > span.hljl-nl { }
+pre.hljl > span.hljl-nn { }
+pre.hljl > span.hljl-no { }
+pre.hljl > span.hljl-nt { }
+pre.hljl > span.hljl-nv { }
+pre.hljl > span.hljl-nvc { }
+pre.hljl > span.hljl-nvg { }
+pre.hljl > span.hljl-nvi { }
+pre.hljl > span.hljl-nvm { }
+pre.hljl > span.hljl-l { }
+pre.hljl > span.hljl-ld { color: rgb(148,91,176); font-style: italic; }
+pre.hljl > span.hljl-s { color: rgb(201,61,57); }
+pre.hljl > span.hljl-sa { color: rgb(201,61,57); }
+pre.hljl > span.hljl-sb { color: rgb(201,61,57); }
+pre.hljl > span.hljl-sc { color: rgb(201,61,57); }
+pre.hljl > span.hljl-sd { color: rgb(201,61,57); }
+pre.hljl > span.hljl-sdB { color: rgb(201,61,57); }
+pre.hljl > span.hljl-sdC { color: rgb(201,61,57); }
+pre.hljl > span.hljl-se { color: rgb(59,151,46); }
+pre.hljl > span.hljl-sh { color: rgb(201,61,57); }
+pre.hljl > span.hljl-si { }
+pre.hljl > span.hljl-so { color: rgb(201,61,57); }
+pre.hljl > span.hljl-sr { color: rgb(201,61,57); }
+pre.hljl > span.hljl-ss { color: rgb(201,61,57); }
+pre.hljl > span.hljl-ssB { color: rgb(201,61,57); }
+pre.hljl > span.hljl-nB { color: rgb(59,151,46); }
+pre.hljl > span.hljl-nbB { color: rgb(59,151,46); }
+pre.hljl > span.hljl-nfB { color: rgb(59,151,46); }
+pre.hljl > span.hljl-nh { color: rgb(59,151,46); }
+pre.hljl > span.hljl-ni { color: rgb(59,151,46); }
+pre.hljl > span.hljl-nil { color: rgb(59,151,46); }
+pre.hljl > span.hljl-noB { color: rgb(59,151,46); }
+pre.hljl > span.hljl-oB { color: rgb(102,102,102); font-weight: bold; }
+pre.hljl > span.hljl-ow { color: rgb(102,102,102); font-weight: bold; }
+pre.hljl > span.hljl-p { }
+pre.hljl > span.hljl-c { color: rgb(153,153,119); font-style: italic; }
+pre.hljl > span.hljl-ch { color: rgb(153,153,119); font-style: italic; }
+pre.hljl > span.hljl-cm { color: rgb(153,153,119); font-style: italic; }
+pre.hljl > span.hljl-cp { color: rgb(153,153,119); font-style: italic; }
+pre.hljl > span.hljl-cpB { color: rgb(153,153,119); font-style: italic; }
+pre.hljl > span.hljl-cs { color: rgb(153,153,119); font-style: italic; }
+pre.hljl > span.hljl-csB { color: rgb(153,153,119); font-style: italic; }
+pre.hljl > span.hljl-g { }
+pre.hljl > span.hljl-gd { }
+pre.hljl > span.hljl-ge { }
+pre.hljl > span.hljl-geB { }
+pre.hljl > span.hljl-gh { }
+pre.hljl > span.hljl-gi { }
+pre.hljl > span.hljl-go { }
+pre.hljl > span.hljl-gp { }
+pre.hljl > span.hljl-gs { }
+pre.hljl > span.hljl-gsB { }
+pre.hljl > span.hljl-gt { }
+</style>
+
+
+
+  <style type="text/css">
+  @font-face {
+  font-style: normal;
+  font-weight: 300;
+}
+@font-face {
+  font-style: normal;
+  font-weight: 400;
+}
+@font-face {
+  font-style: normal;
+  font-weight: 600;
+}
+html {
+  font-family: sans-serif; /* 1 */
+  -ms-text-size-adjust: 100%; /* 2 */
+  -webkit-text-size-adjust: 100%; /* 2 */
+}
+body {
+  margin: 0;
+}
+article,
+aside,
+details,
+figcaption,
+figure,
+footer,
+header,
+hgroup,
+main,
+menu,
+nav,
+section,
+summary {
+  display: block;
+}
+audio,
+canvas,
+progress,
+video {
+  display: inline-block; /* 1 */
+  vertical-align: baseline; /* 2 */
+}
+audio:not([controls]) {
+  display: none;
+  height: 0;
+}
+[hidden],
+template {
+  display: none;
+}
+a:active,
+a:hover {
+  outline: 0;
+}
+abbr[title] {
+  border-bottom: 1px dotted;
+}
+b,
+strong {
+  font-weight: bold;
+}
+dfn {
+  font-style: italic;
+}
+h1 {
+  font-size: 2em;
+  margin: 0.67em 0;
+}
+mark {
+  background: #ff0;
+  color: #000;
+}
+small {
+  font-size: 80%;
+}
+sub,
+sup {
+  font-size: 75%;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+sup {
+  top: -0.5em;
+}
+sub {
+  bottom: -0.25em;
+}
+img {
+  border: 0;
+}
+svg:not(:root) {
+  overflow: hidden;
+}
+figure {
+  margin: 1em 40px;
+}
+hr {
+  -moz-box-sizing: content-box;
+  box-sizing: content-box;
+  height: 0;
+}
+pre {
+  overflow: auto;
+}
+code,
+kbd,
+pre,
+samp {
+  font-family: monospace, monospace;
+  font-size: 1em;
+}
+button,
+input,
+optgroup,
+select,
+textarea {
+  color: inherit; /* 1 */
+  font: inherit; /* 2 */
+  margin: 0; /* 3 */
+}
+button {
+  overflow: visible;
+}
+button,
+select {
+  text-transform: none;
+}
+button,
+html input[type="button"], /* 1 */
+input[type="reset"],
+input[type="submit"] {
+  -webkit-appearance: button; /* 2 */
+  cursor: pointer; /* 3 */
+}
+button[disabled],
+html input[disabled] {
+  cursor: default;
+}
+button::-moz-focus-inner,
+input::-moz-focus-inner {
+  border: 0;
+  padding: 0;
+}
+input {
+  line-height: normal;
+}
+input[type="checkbox"],
+input[type="radio"] {
+  box-sizing: border-box; /* 1 */
+  padding: 0; /* 2 */
+}
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  height: auto;
+}
+input[type="search"] {
+  -webkit-appearance: textfield; /* 1 */
+  -moz-box-sizing: content-box;
+  -webkit-box-sizing: content-box; /* 2 */
+  box-sizing: content-box;
+}
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-decoration {
+  -webkit-appearance: none;
+}
+fieldset {
+  border: 1px solid #c0c0c0;
+  margin: 0 2px;
+  padding: 0.35em 0.625em 0.75em;
+}
+legend {
+  border: 0; /* 1 */
+  padding: 0; /* 2 */
+}
+textarea {
+  overflow: auto;
+}
+optgroup {
+  font-weight: bold;
+}
+table {
+  font-family: monospace, monospace;
+  font-size : 0.8em;
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+td,
+th {
+  padding: 0;
+}
+thead th {
+    border-bottom: 1px solid black;
+    background-color: white;
+}
+tr:nth-child(odd){
+  background-color: rgb(248,248,248);
+}
+
+
+/*
+* Skeleton V2.0.4
+* Copyright 2014, Dave Gamache
+* www.getskeleton.com
+* Free to use under the MIT license.
+* http://www.opensource.org/licenses/mit-license.php
+* 12/29/2014
+*/
+.container {
+  position: relative;
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 20px;
+  box-sizing: border-box; }
+.column,
+.columns {
+  width: 100%;
+  float: left;
+  box-sizing: border-box; }
+@media (min-width: 400px) {
+  .container {
+    width: 85%;
+    padding: 0; }
+}
+@media (min-width: 550px) {
+  .container {
+    width: 80%; }
+  .column,
+  .columns {
+    margin-left: 4%; }
+  .column:first-child,
+  .columns:first-child {
+    margin-left: 0; }
+
+  .one.column,
+  .one.columns                    { width: 4.66666666667%; }
+  .two.columns                    { width: 13.3333333333%; }
+  .three.columns                  { width: 22%;            }
+  .four.columns                   { width: 30.6666666667%; }
+  .five.columns                   { width: 39.3333333333%; }
+  .six.columns                    { width: 48%;            }
+  .seven.columns                  { width: 56.6666666667%; }
+  .eight.columns                  { width: 65.3333333333%; }
+  .nine.columns                   { width: 74.0%;          }
+  .ten.columns                    { width: 82.6666666667%; }
+  .eleven.columns                 { width: 91.3333333333%; }
+  .twelve.columns                 { width: 100%; margin-left: 0; }
+
+  .one-third.column               { width: 30.6666666667%; }
+  .two-thirds.column              { width: 65.3333333333%; }
+
+  .one-half.column                { width: 48%; }
+
+  /* Offsets */
+  .offset-by-one.column,
+  .offset-by-one.columns          { margin-left: 8.66666666667%; }
+  .offset-by-two.column,
+  .offset-by-two.columns          { margin-left: 17.3333333333%; }
+  .offset-by-three.column,
+  .offset-by-three.columns        { margin-left: 26%;            }
+  .offset-by-four.column,
+  .offset-by-four.columns         { margin-left: 34.6666666667%; }
+  .offset-by-five.column,
+  .offset-by-five.columns         { margin-left: 43.3333333333%; }
+  .offset-by-six.column,
+  .offset-by-six.columns          { margin-left: 52%;            }
+  .offset-by-seven.column,
+  .offset-by-seven.columns        { margin-left: 60.6666666667%; }
+  .offset-by-eight.column,
+  .offset-by-eight.columns        { margin-left: 69.3333333333%; }
+  .offset-by-nine.column,
+  .offset-by-nine.columns         { margin-left: 78.0%;          }
+  .offset-by-ten.column,
+  .offset-by-ten.columns          { margin-left: 86.6666666667%; }
+  .offset-by-eleven.column,
+  .offset-by-eleven.columns       { margin-left: 95.3333333333%; }
+
+  .offset-by-one-third.column,
+  .offset-by-one-third.columns    { margin-left: 34.6666666667%; }
+  .offset-by-two-thirds.column,
+  .offset-by-two-thirds.columns   { margin-left: 69.3333333333%; }
+
+  .offset-by-one-half.column,
+  .offset-by-one-half.columns     { margin-left: 52%; }
+
+}
+html {
+  font-size: 62.5%; }
+body {
+  font-size: 1.5em; /* currently ems cause chrome bug misinterpreting rems on body element */
+  line-height: 1.6;
+  font-weight: 400;
+  font-family: "Raleway", "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color: #222; }
+h1, h2, h3, h4, h5, h6 {
+  margin-top: 0;
+  margin-bottom: 2rem;
+  font-weight: 300; }
+h1 { font-size: 3.6rem; line-height: 1.2;  letter-spacing: -.1rem;}
+h2 { font-size: 3.4rem; line-height: 1.25; letter-spacing: -.1rem; }
+h3 { font-size: 3.2rem; line-height: 1.3;  letter-spacing: -.1rem; }
+h4 { font-size: 2.8rem; line-height: 1.35; letter-spacing: -.08rem; }
+h5 { font-size: 2.4rem; line-height: 1.5;  letter-spacing: -.05rem; }
+h6 { font-size: 1.5rem; line-height: 1.6;  letter-spacing: 0; }
+
+p {
+  margin-top: 0; }
+a {
+  color: #1EAEDB; }
+a:hover {
+  color: #0FA0CE; }
+.button,
+button,
+input[type="submit"],
+input[type="reset"],
+input[type="button"] {
+  display: inline-block;
+  height: 38px;
+  padding: 0 30px;
+  color: #555;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 38px;
+  letter-spacing: .1rem;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  background-color: transparent;
+  border-radius: 4px;
+  border: 1px solid #bbb;
+  cursor: pointer;
+  box-sizing: border-box; }
+.button:hover,
+button:hover,
+input[type="submit"]:hover,
+input[type="reset"]:hover,
+input[type="button"]:hover,
+.button:focus,
+button:focus,
+input[type="submit"]:focus,
+input[type="reset"]:focus,
+input[type="button"]:focus {
+  color: #333;
+  border-color: #888;
+  outline: 0; }
+.button.button-primary,
+button.button-primary,
+input[type="submit"].button-primary,
+input[type="reset"].button-primary,
+input[type="button"].button-primary {
+  color: #FFF;
+  background-color: #33C3F0;
+  border-color: #33C3F0; }
+.button.button-primary:hover,
+button.button-primary:hover,
+input[type="submit"].button-primary:hover,
+input[type="reset"].button-primary:hover,
+input[type="button"].button-primary:hover,
+.button.button-primary:focus,
+button.button-primary:focus,
+input[type="submit"].button-primary:focus,
+input[type="reset"].button-primary:focus,
+input[type="button"].button-primary:focus {
+  color: #FFF;
+  background-color: #1EAEDB;
+  border-color: #1EAEDB; }
+input[type="email"],
+input[type="number"],
+input[type="search"],
+input[type="text"],
+input[type="tel"],
+input[type="url"],
+input[type="password"],
+textarea,
+select {
+  height: 38px;
+  padding: 6px 10px; /* The 6px vertically centers text on FF, ignored by Webkit */
+  background-color: #fff;
+  border: 1px solid #D1D1D1;
+  border-radius: 4px;
+  box-shadow: none;
+  box-sizing: border-box; }
+/* Removes awkward default styles on some inputs for iOS */
+input[type="email"],
+input[type="number"],
+input[type="search"],
+input[type="text"],
+input[type="tel"],
+input[type="url"],
+input[type="password"],
+textarea {
+  -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none; }
+textarea {
+  min-height: 65px;
+  padding-top: 6px;
+  padding-bottom: 6px; }
+input[type="email"]:focus,
+input[type="number"]:focus,
+input[type="search"]:focus,
+input[type="text"]:focus,
+input[type="tel"]:focus,
+input[type="url"]:focus,
+input[type="password"]:focus,
+textarea:focus,
+select:focus {
+  border: 1px solid #33C3F0;
+  outline: 0; }
+label,
+legend {
+  display: block;
+  margin-bottom: .5rem;
+  font-weight: 600; }
+fieldset {
+  padding: 0;
+  border-width: 0; }
+input[type="checkbox"],
+input[type="radio"] {
+  display: inline; }
+label > .label-body {
+  display: inline-block;
+  margin-left: .5rem;
+  font-weight: normal; }
+ul {
+  list-style: circle; }
+ol {
+  list-style: decimal; }
+ul ul,
+ul ol,
+ol ol,
+ol ul {
+  margin: 1.5rem 0 1.5rem 3rem;
+  font-size: 90%; }
+li > p {margin : 0;}
+th,
+td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #E1E1E1; }
+th:first-child,
+td:first-child {
+  padding-left: 0; }
+th:last-child,
+td:last-child {
+  padding-right: 0; }
+button,
+.button {
+  margin-bottom: 1rem; }
+input,
+textarea,
+select,
+fieldset {
+  margin-bottom: 1.5rem; }
+pre,
+blockquote,
+dl,
+figure,
+table,
+p,
+ul,
+ol,
+form {
+  margin-bottom: 1.0rem; }
+.u-full-width {
+  width: 100%;
+  box-sizing: border-box; }
+.u-max-full-width {
+  max-width: 100%;
+  box-sizing: border-box; }
+.u-pull-right {
+  float: right; }
+.u-pull-left {
+  float: left; }
+hr {
+  margin-top: 3rem;
+  margin-bottom: 3.5rem;
+  border-width: 0;
+  border-top: 1px solid #E1E1E1; }
+.container:after,
+.row:after,
+.u-cf {
+  content: "";
+  display: table;
+  clear: both; }
+
+pre {
+  display: block;
+  padding: 9.5px;
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.42857143;
+  word-break: break-all;
+  word-wrap: break-word;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+pre.hljl {
+  margin: 0 0 10px;
+  display: block;
+  background: #f5f5f5;
+  border-radius: 4px;
+  padding : 5px;
+}
+
+pre.output {
+  background: #ffffff;
+}
+
+pre.code {
+  background: #ffffff;
+}
+
+pre.julia-error {
+  color : red
+}
+
+code,
+kbd,
+pre,
+samp {
+  font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+  font-size: 13px;
+}
+
+
+@media (min-width: 400px) {}
+@media (min-width: 550px) {}
+@media (min-width: 750px) {}
+@media (min-width: 1000px) {}
+@media (min-width: 1200px) {}
+
+h1.title {margin-top : 20px}
+img {max-width : 100%}
+div.title {text-align: center;}
+
+  </style>
+
+
+
+</HEAD>
+  <BODY>
+    <div class ="container">
+      <div class = "row">
+        <div class = "col-md-12 twelve columns">
+
+          <div class="title">
+            <h1 class="title">Pumas NCA Tutorial - Analyzing infusion data</h1>
+            <h5>Beatriz Guglieri Lopez, Shamir Kalaria, Vijay Ivaturi</h5>
+            <h5>July 19, 2019</h5>
+          </div>
+
+          
+
+<pre class='hljl'>
+<span class='hljl-k'>using</span><span class='hljl-t'> </span><span class='hljl-n'>Pumas</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>PumasTutorials</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>CSV</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>Plots</span>
+</pre>
+
+
+
+<h1>Introduction</h1>
+<p>In this tutorial, we will cover the fundamentals of performing an NCA analysis with Pumas using an example dataset in which an intravenous infusion was administered.</p>
+<h1>The dataset</h1>
+<ul>
+<li><p>Single 2000 mg 2-hour IV infusion dose to 24 subjects</p>
+</li>
+<li><p>Blood samples for pharmacokinetic analysis were collected every 30 minutes</p>
+</li>
+</ul>
+
+
+<pre class='hljl'>
+<span class='hljl-n'>data</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>PumasTutorials</span><span class='hljl-oB'>.</span><span class='hljl-nf'>tutorial_data</span><span class='hljl-p'>(</span><span class='hljl-s'>&quot;data/nca&quot;</span><span class='hljl-p'>,</span><span class='hljl-s'>&quot;SD_IV_infusion&quot;</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>data</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>CSV</span><span class='hljl-oB'>.</span><span class='hljl-nf'>read</span><span class='hljl-p'>(</span><span class='hljl-n'>data</span><span class='hljl-p'>,</span><span class='hljl-n'>missingstring</span><span class='hljl-oB'>=</span><span class='hljl-s'>&quot;NA&quot;</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-nf'>first</span><span class='hljl-p'>(</span><span class='hljl-n'>data</span><span class='hljl-p'>,</span><span class='hljl-ni'>10</span><span class='hljl-p'>)</span>
+</pre>
+
+
+
+<table class="data-frame"><thead><tr><th></th><th>ID</th><th>time</th><th>DV</th><th>BLQ</th><th>DOSE</th><th>Infusion_Time</th><th>Formulation</th></tr><tr><th></th><th>Int64</th><th>Float64</th><th>Float64</th><th>Int64</th><th>Int64</th><th>Int64</th><th>String</th></tr></thead><tbody><p>10 rows × 7 columns</p><tr><th>1</th><td>1</td><td>0.0</td><td>0.0</td><td>0</td><td>2000</td><td>2</td><td>iv</td></tr><tr><th>2</th><td>1</td><td>0.5</td><td>9.1425</td><td>0</td><td>0</td><td>0</td><td>iv</td></tr><tr><th>3</th><td>1</td><td>1.0</td><td>17.9045</td><td>0</td><td>0</td><td>0</td><td>iv</td></tr><tr><th>4</th><td>1</td><td>1.5</td><td>25.2709</td><td>0</td><td>0</td><td>0</td><td>iv</td></tr><tr><th>5</th><td>1</td><td>2.0</td><td>29.4367</td><td>0</td><td>0</td><td>0</td><td>iv</td></tr><tr><th>6</th><td>1</td><td>2.5</td><td>29.1849</td><td>0</td><td>0</td><td>0</td><td>iv</td></tr><tr><th>7</th><td>1</td><td>3.0</td><td>26.8687</td><td>0</td><td>0</td><td>0</td><td>iv</td></tr><tr><th>8</th><td>1</td><td>3.5</td><td>20.8217</td><td>0</td><td>0</td><td>0</td><td>iv</td></tr><tr><th>9</th><td>1</td><td>4.0</td><td>19.6429</td><td>0</td><td>0</td><td>0</td><td>iv</td></tr><tr><th>10</th><td>1</td><td>4.5</td><td>17.5575</td><td>0</td><td>0</td><td>0</td><td>iv</td></tr></tbody></table>
+
+<p>Please, note that the <code>DOSE</code> and the <code>Infusion_Time</code> column must only contain a value at the time the dose was administered.</p>
+<h1>Defining the units</h1>
+
+
+<pre class='hljl'>
+<span class='hljl-n'>timeu</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-so'>u&quot;hr&quot;</span><span class='hljl-t'>
+</span><span class='hljl-n'>concu</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-so'>u&quot;mg/L&quot;</span><span class='hljl-t'>
+</span><span class='hljl-n'>amtu</span><span class='hljl-t'>  </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-so'>u&quot;mg&quot;</span>
+</pre>
+
+
+<pre class="output">
+mg
+</pre>
+
+
+<h1>Defining the population object</h1>
+<p>In the case of the infusion, the <code>read_nca</code> function should</p>
+<ul>
+<li><p>carry the name of the column that contains the duration of the infusion &#40;<code>duration&#61;</code>&#41;.</p>
+</li>
+</ul>
+
+
+<pre class='hljl'>
+<span class='hljl-n'>pop</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>read_nca</span><span class='hljl-p'>(</span><span class='hljl-n'>data</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>id</span><span class='hljl-oB'>=:</span><span class='hljl-n'>ID</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>time</span><span class='hljl-oB'>=:</span><span class='hljl-n'>time</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>conc</span><span class='hljl-oB'>=:</span><span class='hljl-n'>DV</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>amt</span><span class='hljl-oB'>=:</span><span class='hljl-n'>DOSE</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>ii</span><span class='hljl-oB'>=</span><span class='hljl-ni'>24</span><span class='hljl-n'>timeu</span><span class='hljl-p'>,</span><span class='hljl-t'>
+    </span><span class='hljl-n'>route</span><span class='hljl-oB'>=:</span><span class='hljl-n'>Formulation</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>duration</span><span class='hljl-oB'>=:</span><span class='hljl-n'>Infusion_Time</span><span class='hljl-p'>,</span><span class='hljl-n'>timeu</span><span class='hljl-oB'>=</span><span class='hljl-n'>timeu</span><span class='hljl-p'>,</span><span class='hljl-t'>
+    </span><span class='hljl-n'>concu</span><span class='hljl-oB'>=</span><span class='hljl-n'>concu</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>amtu</span><span class='hljl-oB'>=</span><span class='hljl-n'>amtu</span><span class='hljl-p'>,</span><span class='hljl-n'>lloq</span><span class='hljl-oB'>=</span><span class='hljl-nfB'>0.4</span><span class='hljl-n'>concu</span><span class='hljl-p'>)</span>
+</pre>
+
+
+<pre class="output">
+NCAPopulation &#40;24 subjects&#41;:
+  ID: &#91;1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 2
+0, 21, 22, 23, 24&#93;
+    concentration: mg L^-1
+    time:          hr
+    auc:           mg hr L^-1
+    aumc:          mg hr^2 L^-1
+    λz:            hr^-1
+    dose:          mg
+</pre>
+
+
+<p>Note that in the above syntanx:</p>
+<ul>
+<li><p><code>route&#61;</code> is mapped to the <code>Formulation</code> column that should specify <code>iv</code></p>
+</li>
+<li><p>LLOQ was set to 0.4 by <code>llq&#61;0.4concu</code></p>
+</li>
+</ul>
+<p>A basic plot function exists for single dose data without grouping or multiple analytes. More functionality will be added soon. In this example of single dose data, here is the plot output</p>
+
+
+<pre class='hljl'>
+<span class='hljl-nf'>plot</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>)</span>
+</pre>
+
+
+<img src="data:image/png;base64,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"  />
+
+<h1>NCA functions</h1>
+<h3><code>NCA.auc</code></h3>
+
+
+<pre class='hljl'>
+<span class='hljl-n'>NCA</span><span class='hljl-oB'>.</span><span class='hljl-nf'>auc</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>,</span><span class='hljl-n'>auctype</span><span class='hljl-oB'>=:</span><span class='hljl-n'>last</span><span class='hljl-p'>,</span><span class='hljl-n'>method</span><span class='hljl-oB'>=:</span><span class='hljl-n'>linear</span><span class='hljl-p'>)</span>
+</pre>
+
+
+
+<table class="data-frame"><thead><tr><th></th><th>id</th><th>auc</th></tr><tr><th></th><th>Int64</th><th>Unitful…</th></tr></thead><tbody><p>24 rows × 2 columns</p><tr><th>1</th><td>1</td><td>170.557 mg hr L^-1</td></tr><tr><th>2</th><td>2</td><td>171.183 mg hr L^-1</td></tr><tr><th>3</th><td>3</td><td>177.307 mg hr L^-1</td></tr><tr><th>4</th><td>4</td><td>170.187 mg hr L^-1</td></tr><tr><th>5</th><td>5</td><td>168.923 mg hr L^-1</td></tr><tr><th>6</th><td>6</td><td>174.448 mg hr L^-1</td></tr><tr><th>7</th><td>7</td><td>177.059 mg hr L^-1</td></tr><tr><th>8</th><td>8</td><td>173.479 mg hr L^-1</td></tr><tr><th>9</th><td>9</td><td>174.841 mg hr L^-1</td></tr><tr><th>10</th><td>10</td><td>170.972 mg hr L^-1</td></tr><tr><th>11</th><td>11</td><td>168.468 mg hr L^-1</td></tr><tr><th>12</th><td>12</td><td>173.454 mg hr L^-1</td></tr><tr><th>13</th><td>13</td><td>172.529 mg hr L^-1</td></tr><tr><th>14</th><td>14</td><td>174.262 mg hr L^-1</td></tr><tr><th>15</th><td>15</td><td>172.386 mg hr L^-1</td></tr><tr><th>16</th><td>16</td><td>169.952 mg hr L^-1</td></tr><tr><th>17</th><td>17</td><td>170.451 mg hr L^-1</td></tr><tr><th>18</th><td>18</td><td>173.565 mg hr L^-1</td></tr><tr><th>19</th><td>19</td><td>174.075 mg hr L^-1</td></tr><tr><th>20</th><td>20</td><td>174.062 mg hr L^-1</td></tr><tr><th>21</th><td>21</td><td>172.185 mg hr L^-1</td></tr><tr><th>22</th><td>22</td><td>169.771 mg hr L^-1</td></tr><tr><th>23</th><td>23</td><td>176.241 mg hr L^-1</td></tr><tr><th>24</th><td>24</td><td>168.571 mg hr L^-1</td></tr></tbody></table>
+
+<p>To change the methods to log-linear trapezoidal &#40;<code>method&#61;:linuplogdown</code>&#41; or to linear-log &#40;<code>method&#61;:linlog</code>&#41; one can use</p>
+
+
+
+<pre class='hljl'>
+<span class='hljl-n'>NCA</span><span class='hljl-oB'>.</span><span class='hljl-nf'>auc</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>,</span><span class='hljl-n'>auctype</span><span class='hljl-oB'>=:</span><span class='hljl-n'>inf</span><span class='hljl-p'>,</span><span class='hljl-n'>method</span><span class='hljl-oB'>=:</span><span class='hljl-n'>linuplogdown</span><span class='hljl-p'>)</span>
+</pre>
+
+
+<p>To compute the AUC over an interval, one could do</p>
+
+
+
+<pre class='hljl'>
+<span class='hljl-n'>NCA</span><span class='hljl-oB'>.</span><span class='hljl-nf'>auc</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>interval</span><span class='hljl-oB'>=</span><span class='hljl-p'>(</span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-ni'>12</span><span class='hljl-p'>)</span><span class='hljl-oB'>.*</span><span class='hljl-n'>timeu</span><span class='hljl-p'>)</span>
+</pre>
+
+
+<p>where we need to apply the time unit &#40;<code>timeu</code>&#41; to the <code>interval</code> for units compatibility. Multiple intervals can also be specified:</p>
+
+
+
+<pre class='hljl'>
+<span class='hljl-n'>NCA</span><span class='hljl-oB'>.</span><span class='hljl-nf'>auc</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>interval</span><span class='hljl-oB'>=</span><span class='hljl-p'>[(</span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-ni'>12</span><span class='hljl-p'>)</span><span class='hljl-oB'>.*</span><span class='hljl-n'>timeu</span><span class='hljl-p'>,(</span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-ni'>6</span><span class='hljl-p'>)</span><span class='hljl-oB'>.*</span><span class='hljl-n'>timeu</span><span class='hljl-p'>])</span>
+</pre>
+
+
+<h3><code>NCA.lambdaz</code></h3>
+<p>The function to calculate the terminal rate constant &#40;λz&#41; is:</p>
+
+
+
+<pre class='hljl'>
+<span class='hljl-n'>NCA</span><span class='hljl-oB'>.</span><span class='hljl-nf'>lambdaz</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>)</span>
+</pre>
+
+
+<p>This function has options that allow</p>
+<ul>
+<li><p>to specify the maximum number of points to be used for lambdaz - <code>threshold&#61;3</code></p>
+</li>
+<li><p>calculation to be peformed over specified indices - <code>idxs&#61;&#91;18,19,20&#93;</code> where index 18,19,20 of the subject will be used for lambdaz</p>
+</li>
+<li><p>speification of exact time points to use for lambdaz - <code>slopetimes&#61;&#91;18.5,19,19.5&#93;.*timeu</code></p>
+</li>
+</ul>
+
+
+
+<pre class='hljl'>
+<span class='hljl-n'>NCA</span><span class='hljl-oB'>.</span><span class='hljl-nf'>lambdaz</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>threshold</span><span class='hljl-oB'>=</span><span class='hljl-ni'>3</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>NCA</span><span class='hljl-oB'>.</span><span class='hljl-nf'>lambdaz</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>idxs</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-ni'>18</span><span class='hljl-p'>,</span><span class='hljl-ni'>19</span><span class='hljl-p'>,</span><span class='hljl-ni'>20</span><span class='hljl-p'>])</span><span class='hljl-t'>
+</span><span class='hljl-n'>NCA</span><span class='hljl-oB'>.</span><span class='hljl-nf'>lambdaz</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>slopetimes</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-nfB'>18.5</span><span class='hljl-p'>,</span><span class='hljl-ni'>19</span><span class='hljl-p'>,</span><span class='hljl-nfB'>19.5</span><span class='hljl-p'>]</span><span class='hljl-oB'>.*</span><span class='hljl-n'>timeu</span><span class='hljl-p'>)</span>
+</pre>
+
+
+<h3><code>NCA.cmax</code></h3>
+<p>To calculate the maximum concentration for the first subject we would use:</p>
+
+
+<pre class='hljl'>
+<span class='hljl-n'>cmax</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>NCA</span><span class='hljl-oB'>.</span><span class='hljl-nf'>cmax</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>[</span><span class='hljl-ni'>1</span><span class='hljl-p'>])</span>
+</pre>
+
+
+<pre class="output">
+29.4367368 mg L^-1
+</pre>
+
+
+<h3><code>NCA.normalizedose</code></h3>
+<p>If we want dose-normalized Cmax for that same subject:</p>
+
+
+<pre class='hljl'>
+<span class='hljl-n'>NCA</span><span class='hljl-oB'>.</span><span class='hljl-nf'>normalizedose</span><span class='hljl-p'>(</span><span class='hljl-n'>cmax</span><span class='hljl-p'>,</span><span class='hljl-n'>pop</span><span class='hljl-p'>[</span><span class='hljl-ni'>1</span><span class='hljl-p'>])</span>
+</pre>
+
+
+<pre class="output">
+0.0147183684 L^-1
+</pre>
+
+
+<p>This can be used on any parameter that can be dose normalized.</p>
+<p>Other functions to calculate single PK parameters are the following:</p>
+
+
+<pre class='hljl'>
+<span class='hljl-n'>NCA</span><span class='hljl-oB'>.</span><span class='hljl-nf'>lambdazr2</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>NCA</span><span class='hljl-oB'>.</span><span class='hljl-nf'>lambdazadjr2</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>NCA</span><span class='hljl-oB'>.</span><span class='hljl-nf'>lambdazintercept</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>NCA</span><span class='hljl-oB'>.</span><span class='hljl-nf'>lambdaztimefirst</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>NCA</span><span class='hljl-oB'>.</span><span class='hljl-nf'>lambdaznpoints</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>)</span><span class='hljl-t'>
+
+</span><span class='hljl-n'>NCA</span><span class='hljl-oB'>.</span><span class='hljl-nf'>tmax</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>NCA</span><span class='hljl-oB'>.</span><span class='hljl-nf'>cmin</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>NCA</span><span class='hljl-oB'>.</span><span class='hljl-nf'>tmin</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>)</span><span class='hljl-t'>
+
+</span><span class='hljl-n'>NCA</span><span class='hljl-oB'>.</span><span class='hljl-nf'>tlast</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>NCA</span><span class='hljl-oB'>.</span><span class='hljl-nf'>clast</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>)</span><span class='hljl-t'>
+
+</span><span class='hljl-n'>NCA</span><span class='hljl-oB'>.</span><span class='hljl-nf'>aumc</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>NCA</span><span class='hljl-oB'>.</span><span class='hljl-nf'>aumclast</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>)</span><span class='hljl-t'>
+
+</span><span class='hljl-n'>NCA</span><span class='hljl-oB'>.</span><span class='hljl-nf'>thalf</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>)</span><span class='hljl-t'>
+
+</span><span class='hljl-n'>NCA</span><span class='hljl-oB'>.</span><span class='hljl-nf'>cl</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>)</span><span class='hljl-t'>
+
+</span><span class='hljl-n'>NCA</span><span class='hljl-oB'>.</span><span class='hljl-nf'>vss</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>NCA</span><span class='hljl-oB'>.</span><span class='hljl-nf'>vz</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>)</span>
+</pre>
+
+
+
+<table class="data-frame"><thead><tr><th></th><th>id</th><th>vz</th></tr><tr><th></th><th>Int64</th><th>Unitful…</th></tr></thead><tbody><p>24 rows × 2 columns</p><tr><th>1</th><td>1</td><td>30.6639 L</td></tr><tr><th>2</th><td>2</td><td>32.3386 L</td></tr><tr><th>3</th><td>3</td><td>10.3627 L</td></tr><tr><th>4</th><td>4</td><td>24.7198 L</td></tr><tr><th>5</th><td>5</td><td>-19.3688 L</td></tr><tr><th>6</th><td>6</td><td>37.0702 L</td></tr><tr><th>7</th><td>7</td><td>45.5432 L</td></tr><tr><th>8</th><td>8</td><td>22.8918 L</td></tr><tr><th>9</th><td>9</td><td>-23.0548 L</td></tr><tr><th>10</th><td>10</td><td>33.1127 L</td></tr><tr><th>11</th><td>11</td><td>-9.75512 L</td></tr><tr><th>12</th><td>12</td><td>32.7396 L</td></tr><tr><th>13</th><td>13</td><td>46.5234 L</td></tr><tr><th>14</th><td>14</td><td>54.7095 L</td></tr><tr><th>15</th><td>15</td><td>-34.0404 L</td></tr><tr><th>16</th><td>16</td><td>7.99809 L</td></tr><tr><th>17</th><td>17</td><td>26.6045 L</td></tr><tr><th>18</th><td>18</td><td>-27.3057 L</td></tr><tr><th>19</th><td>19</td><td>39.0445 L</td></tr><tr><th>20</th><td>20</td><td>16.3506 L</td></tr><tr><th>21</th><td>21</td><td>43.5989 L</td></tr><tr><th>22</th><td>22</td><td>6.49356 L</td></tr><tr><th>23</th><td>23</td><td>8.78626 L</td></tr><tr><th>24</th><td>24</td><td>-4.95184 L</td></tr></tbody></table>
+
+<h1>NCA report</h1>
+<p>If we want a complete report of the NCA analysis we can just use the function <code>NCAreport</code> to obtain a data frame that contains all the above mentioned pharmacokinetic parameters.</p>
+
+
+<pre class='hljl'>
+<span class='hljl-n'>report</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>NCAReport</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>report</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>NCA</span><span class='hljl-oB'>.</span><span class='hljl-nf'>to_dataframe</span><span class='hljl-p'>(</span><span class='hljl-n'>report</span><span class='hljl-p'>)</span>
+</pre>
+
+
+
+<table class="data-frame"><thead><tr><th></th><th>id</th><th>doseamt</th><th>lambda_z</th><th>half_life</th><th>tmax</th><th>cmax</th><th>clast</th><th>clast_pred</th><th>auclast</th><th>tlast</th><th>aucinf_obs</th><th>vz_obs</th><th>cl_obs</th><th>aucinf_pred</th><th>vz_pred</th><th>cl_pred</th><th>vss_obs</th><th>vss_pred</th><th>cmax_d</th><th>auclast_d</th><th>aucinf_d_obs</th><th>auc_extrap_obs</th><th>aucinf_d_pred</th><th>auc_extrap_pred</th><th>aumclast</th><th>aumcinf_obs</th><th>aumc_extrap_obs</th><th>aumcinf_pred</th><th>aumc_extrap_pred</th><th>mrtlast</th><th>mrtinf_obs</th><th>mrtinf_pred</th><th>n_samples</th><th>rsq</th><th>rsq_adjusted</th><th>corr_xy</th><th>no_points_lambda_z</th><th>lambda_z_intercept</th><th>lambda_z_lower</th><th>lambda_z_upper</th><th>span</th><th>route</th></tr><tr><th></th><th>Int64</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Float64</th><th>Unitful…</th><th>Float64</th><th>Unitful…</th><th>Unitful…</th><th>Float64</th><th>Unitful…</th><th>Float64</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Int64</th><th>Float64</th><th>Float64</th><th>Float64</th><th>Int64</th><th>Float64</th><th>Unitful…</th><th>Unitful…</th><th>Float64</th><th>String</th></tr></thead><tbody><p>24 rows × 42 columns</p><tr><th>1</th><td>1</td><td>2000 mg</td><td>0.380768 hr^-1</td><td>1.82039 hr</td><td>2.0 hr</td><td>29.4367 mg L^-1</td><td>0.280525 mg L^-1</td><td>0.277895 mg L^-1</td><td>170.557 mg hr L^-1</td><td>24.0 hr</td><td>171.294 mg hr L^-1</td><td>30.6639 L</td><td>11.6758 L hr^-1</td><td>171.287 mg hr L^-1</td><td>30.6652 L</td><td>11.6763 L hr^-1</td><td>50.524 L</td><td>50.516 L</td><td>29.4367 mg L^-1</td><td>0.0852785 hr L^-1</td><td>0.0856469 hr L^-1</td><td>0.4301</td><td>0.0856434 hr L^-1</td><td>0.426085</td><td>892.903 mg hr^2 L^-1</td><td>912.519 mg hr^2 L^-1</td><td>2.14971</td><td>912.335 mg hr^2 L^-1</td><td>2.12998</td><td>4.23522 hr</td><td>4.32722 hr</td><td>4.32636 hr</td><td>49</td><td>0.99271</td><td>0.985419</td><td>0.996348</td><td>3</td><td>7.85793</td><td>23.0 hr</td><td>24.0 hr</td><td>0.549332</td><td>IVInfusion</td></tr><tr><th>2</th><td>2</td><td>2000 mg</td><td>0.359903 hr^-1</td><td>1.92593 hr</td><td>2.0 hr</td><td>34.6225 mg L^-1</td><td>0.23629 mg L^-1</td><td>0.207712 mg L^-1</td><td>171.183 mg hr L^-1</td><td>24.0 hr</td><td>171.839 mg hr L^-1</td><td>32.3386 L</td><td>11.6388 L hr^-1</td><td>171.76 mg hr L^-1</td><td>32.3536 L</td><td>11.6442 L hr^-1</td><td>50.2286 L</td><td>50.1362 L</td><td>34.6225 mg L^-1</td><td>0.0855915 hr L^-1</td><td>0.0859197 hr L^-1</td><td>0.382065</td><td>0.08588 hr L^-1</td><td>0.336012</td><td>895.853 mg hr^2 L^-1</td><td>913.434 mg hr^2 L^-1</td><td>1.92473</td><td>911.307 mg hr^2 L^-1</td><td>1.69589</td><td>4.23331 hr</td><td>4.31562 hr</td><td>4.3057 hr</td><td>49</td><td>0.785835</td><td>0.732294</td><td>0.886473</td><td>6</td><td>7.06607</td><td>21.5 hr</td><td>24.0 hr</td><td>1.29808</td><td>IVInfusion</td></tr><tr><th>3</th><td>3</td><td>2000 mg</td><td>1.08775 hr^-1</td><td>0.637233 hr</td><td>2.0 hr</td><td>34.9916 mg L^-1</td><td>0.13635 mg L^-1</td><td>0.166371 mg L^-1</td><td>177.307 mg hr L^-1</td><td>24.0 hr</td><td>177.432 mg hr L^-1</td><td>10.3627 L</td><td>11.2719 L hr^-1</td><td>177.46 mg hr L^-1</td><td>10.361 L</td><td>11.2702 L hr^-1</td><td>47.2388 L</td><td>47.2661 L</td><td>34.9916 mg L^-1</td><td>0.0886533 hr L^-1</td><td>0.088716 hr L^-1</td><td>0.0706472</td><td>0.0887298 hr L^-1</td><td>0.0861888</td><td>917.897 mg hr^2 L^-1</td><td>921.021 mg hr^2 L^-1</td><td>0.339151</td><td>921.709 mg hr^2 L^-1</td><td>0.413517</td><td>4.17689 hr</td><td>4.19084 hr</td><td>4.19391 hr</td><td>49</td><td>0.713456</td><td>0.426912</td><td>0.844663</td><td>3</td><td>24.3124</td><td>23.0 hr</td><td>24.0 hr</td><td>1.56928</td><td>IVInfusion</td></tr><tr><th>4</th><td>4</td><td>2000 mg</td><td>0.473609 hr^-1</td><td>1.46354 hr</td><td>2.0 hr</td><td>31.1252 mg L^-1</td><td>0.304896 mg L^-1</td><td>0.318759 mg L^-1</td><td>170.187 mg hr L^-1</td><td>24.0 hr</td><td>170.831 mg hr L^-1</td><td>24.7198 L</td><td>11.7075 L hr^-1</td><td>170.86 mg hr L^-1</td><td>24.7155 L</td><td>11.7055 L hr^-1</td><td>51.1091 L</td><td>51.142 L</td><td>31.1252 mg L^-1</td><td>0.0850934 hr L^-1</td><td>0.0854153 hr L^-1</td><td>0.376848</td><td>0.08543 hr L^-1</td><td>0.393915</td><td>899.782 mg hr^2 L^-1</td><td>916.592 mg hr^2 L^-1</td><td>1.83395</td><td>917.356 mg hr^2 L^-1</td><td>1.91573</td><td>4.28702 hr</td><td>4.3655 hr</td><td>4.36906 hr</td><td>49</td><td>0.904354</td><td>0.808708</td><td>0.950975</td><td>3</td><td>10.2233</td><td>23.0 hr</td><td>24.0 hr</td><td>0.683273</td><td>IVInfusion</td></tr><tr><th>5</th><td>5</td><td>2000 mg</td><td>-0.613372 hr^-1</td><td>-1.13006 hr</td><td>2.0 hr</td><td>30.2427 mg L^-1</td><td>0.354381 mg L^-1</td><td>0.490728 mg L^-1</td><td>168.923 mg hr L^-1</td><td>24.0 hr</td><td>168.346 mg hr L^-1</td><td>-19.3688 L</td><td>11.8803 L hr^-1</td><td>168.123 mg hr L^-1</td><td>-19.3945 L</td><td>11.896 L hr^-1</td><td>49.7136 L</td><td>49.509 L</td><td>30.2427 mg L^-1</td><td>0.0844617 hr L^-1</td><td>0.0841728 hr L^-1</td><td>-0.343197</td><td>0.0840617 hr L^-1</td><td>-0.47587</td><td>885.718 mg hr^2 L^-1</td><td>872.793 mg hr^2 L^-1</td><td>-1.48079</td><td>867.821 mg hr^2 L^-1</td><td>-2.06227</td><td>4.24331 hr</td><td>4.18453 hr</td><td>4.16181 hr</td><td>49</td><td>0.550092</td><td>0.400123</td><td>0.741682</td><td>5</td><td>-15.4328</td><td>22.0 hr</td><td>24.0 hr</td><td>-1.76982</td><td>IVInfusion</td></tr><tr><th>6</th><td>6</td><td>2000 mg</td><td>0.307699 hr^-1</td><td>2.25268 hr</td><td>2.0 hr</td><td>32.8505 mg L^-1</td><td>0.274121 mg L^-1</td><td>0.16763 mg L^-1</td><td>174.448 mg hr L^-1</td><td>24.0 hr</td><td>175.339 mg hr L^-1</td><td>37.0702 L</td><td>11.4065 L hr^-1</td><td>174.993 mg hr L^-1</td><td>37.1435 L</td><td>11.429 L hr^-1</td><td>49.6129 L</td><td>49.216 L</td><td>32.8505 mg L^-1</td><td>0.0872241 hr L^-1</td><td>0.0876695 hr L^-1</td><td>0.508087</td><td>0.0874964 hr L^-1</td><td>0.311319</td><td>913.706 mg hr^2 L^-1</td><td>937.982 mg hr^2 L^-1</td><td>2.58814</td><td>928.551 mg hr^2 L^-1</td><td>1.59877</td><td>4.23769 hr</td><td>4.34954 hr</td><td>4.30622 hr</td><td>49</td><td>0.458424</td><td>0.390727</td><td>0.67707</td><td>10</td><td>5.59879</td><td>19.5 hr</td><td>24.0 hr</td><td>1.99762</td><td>IVInfusion</td></tr><tr><th>7</th><td>7</td><td>2000 mg</td><td>0.246005 hr^-1</td><td>2.81761 hr</td><td>2.0 hr</td><td>34.0576 mg L^-1</td><td>0.35681 mg L^-1</td><td>0.194951 mg L^-1</td><td>177.059 mg hr L^-1</td><td>24.0 hr</td><td>178.509 mg hr L^-1</td><td>45.5432 L</td><td>11.2039 L hr^-1</td><td>177.851 mg hr L^-1</td><td>45.7117 L</td><td>11.2453 L hr^-1</td><td>49.3636 L</td><td>48.6036 L</td><td>34.0576 mg L^-1</td><td>0.0885295 hr L^-1</td><td>0.0892547 hr L^-1</td><td>0.812515</td><td>0.0889257 hr L^-1</td><td>0.445577</td><td>924.304 mg hr^2 L^-1</td><td>965.01 mg hr^2 L^-1</td><td>4.21818</td><td>946.545 mg hr^2 L^-1</td><td>2.34965</td><td>4.22032 hr</td><td>4.40593 hr</td><td>4.32211 hr</td><td>49</td><td>0.360011</td><td>0.280013</td><td>0.60001</td><td>10</td><td>4.26912</td><td>19.5 hr</td><td>24.0 hr</td><td>1.5971</td><td>IVInfusion</td></tr><tr><th>8</th><td>8</td><td>2000 mg</td><td>0.502704 hr^-1</td><td>1.37884 hr</td><td>2.0 hr</td><td>33.253 mg L^-1</td><td>0.159291 mg L^-1</td><td>0.0855787 mg L^-1</td><td>173.479 mg hr L^-1</td><td>24.0 hr</td><td>173.796 mg hr L^-1</td><td>22.8918 L</td><td>11.5078 L hr^-1</td><td>173.649 mg hr L^-1</td><td>22.9111 L</td><td>11.5175 L hr^-1</td><td>49.6072 L</td><td>49.448 L</td><td>33.253 mg L^-1</td><td>0.0867393 hr L^-1</td><td>0.0868978 hr L^-1</td><td>0.182323</td><td>0.0868244 hr L^-1</td><td>0.0980352</td><td>914.75 mg hr^2 L^-1</td><td>922.985 mg hr^2 L^-1</td><td>0.892233</td><td>919.174 mg hr^2 L^-1</td><td>0.481338</td><td>4.27298 hr</td><td>4.31075 hr</td><td>4.29329 hr</td><td>49</td><td>0.718376</td><td>0.683173</td><td>0.84757</td><td>10</td><td>9.60657</td><td>19.5 hr</td><td>24.0 hr</td><td>3.26362</td><td>IVInfusion</td></tr><tr><th>9</th><td>9</td><td>2000 mg</td><td>-0.497009 hr^-1</td><td>-1.39464 hr</td><td>2.0 hr</td><td>35.928 mg L^-1</td><td>0.147872 mg L^-1</td><td>0.307347 mg L^-1</td><td>174.841 mg hr L^-1</td><td>24.0 hr</td><td>174.544 mg hr L^-1</td><td>-23.0548 L</td><td>11.4585 L hr^-1</td><td>174.223 mg hr L^-1</td><td>-23.0973 L</td><td>11.4796 L hr^-1</td><td>47.4767 L</td><td>47.208 L</td><td>35.928 mg L^-1</td><td>0.0874205 hr L^-1</td><td>0.0872718 hr L^-1</td><td>-0.170458</td><td>0.0871113 hr L^-1</td><td>-0.354944</td><td>904.284 mg hr^2 L^-1</td><td>897.742 mg hr^2 L^-1</td><td>-0.728709</td><td>890.687 mg hr^2 L^-1</td><td>-1.5266</td><td>4.17204 hr</td><td>4.14337 hr</td><td>4.11235 hr</td><td>49</td><td>0.449118</td><td>0.338941</td><td>0.670162</td><td>7</td><td>-13.108</td><td>21.0 hr</td><td>24.0 hr</td><td>-2.1511</td><td>IVInfusion</td></tr><tr><th>10</th><td>10</td><td>2000 mg</td><td>0.351833 hr^-1</td><td>1.9701 hr</td><td>2.0 hr</td><td>30.314 mg L^-1</td><td>0.246073 mg L^-1</td><td>0.159466 mg L^-1</td><td>170.972 mg hr L^-1</td><td>24.0 hr</td><td>171.672 mg hr L^-1</td><td>33.1127 L</td><td>11.6502 L hr^-1</td><td>171.425 mg hr L^-1</td><td>33.1603 L</td><td>11.6669 L hr^-1</td><td>51.3432 L</td><td>51.0578 L</td><td>30.314 mg L^-1</td><td>0.0854861 hr L^-1</td><td>0.0858358 hr L^-1</td><td>0.407407</td><td>0.0857127 hr L^-1</td><td>0.264397</td><td>909.469 mg hr^2 L^-1</td><td>928.242 mg hr^2 L^-1</td><td>2.02248</td><td>921.635 mg hr^2 L^-1</td><td>1.32006</td><td>4.3194 hr</td><td>4.40708 hr</td><td>4.3763 hr</td><td>49</td><td>0.661703</td><td>0.619416</td><td>0.813451</td><td>10</td><td>6.60808</td><td>19.5 hr</td><td>24.0 hr</td><td>2.28415</td><td>IVInfusion</td></tr><tr><th>11</th><td>11</td><td>2000 mg</td><td>-1.21993 hr^-1</td><td>-0.568187 hr</td><td>2.0 hr</td><td>32.7331 mg L^-1</td><td>0.498754 mg L^-1</td><td>0.537989 mg L^-1</td><td>168.468 mg hr L^-1</td><td>24.0 hr</td><td>168.06 mg hr L^-1</td><td>-9.75512 L</td><td>11.9005 L hr^-1</td><td>168.027 mg hr L^-1</td><td>-9.75699 L</td><td>11.9028 L hr^-1</td><td>50.659 L</td><td>50.6279 L</td><td>32.7331 mg L^-1</td><td>0.0842342 hr L^-1</td><td>0.0840298 hr L^-1</td><td>-0.24327</td><td>0.0840137 hr L^-1</td><td>-0.262457</td><td>892.943 mg hr^2 L^-1</td><td>883.466 mg hr^2 L^-1</td><td>-1.07271</td><td>882.721 mg hr^2 L^-1</td><td>-1.15807</td><td>4.30036 hr</td><td>4.25686 hr</td><td>4.25343 hr</td><td>49</td><td>0.955807</td><td>0.911614</td><td>0.977654</td><td>3</td><td>-29.8982</td><td>23.0 hr</td><td>24.0 hr</td><td>-1.75998</td><td>IVInfusion</td></tr><tr><th>12</th><td>12</td><td>2000 mg</td><td>0.350243 hr^-1</td><td>1.97905 hr</td><td>2.0 hr</td><td>34.1103 mg L^-1</td><td>0.337286 mg L^-1</td><td>0.156769 mg L^-1</td><td>173.454 mg hr L^-1</td><td>24.0 hr</td><td>174.417 mg hr L^-1</td><td>32.7396 L</td><td>11.4668 L hr^-1</td><td>173.901 mg hr L^-1</td><td>32.8366 L</td><td>11.5008 L hr^-1</td><td>49.3411 L</td><td>48.7527 L</td><td>34.1103 mg L^-1</td><td>0.0867268 hr L^-1</td><td>0.0872083 hr L^-1</td><td>0.55213</td><td>0.0869506 hr L^-1</td><td>0.257389</td><td>899.061 mg hr^2 L^-1</td><td>924.923 mg hr^2 L^-1</td><td>2.79609</td><td>911.081 mg hr^2 L^-1</td><td>1.31936</td><td>4.1833 hr</td><td>4.30295 hr</td><td>4.23908 hr</td><td>49</td><td>0.603085</td><td>0.553471</td><td>0.776586</td><td>10</td><td>6.55285</td><td>19.5 hr</td><td>24.0 hr</td><td>2.27382</td><td>IVInfusion</td></tr><tr><th>13</th><td>13</td><td>2000 mg</td><td>0.247839 hr^-1</td><td>2.79676 hr</td><td>2.0 hr</td><td>30.7831 mg L^-1</td><td>0.229543 mg L^-1</td><td>0.242102 mg L^-1</td><td>172.529 mg hr L^-1</td><td>24.0 hr</td><td>173.456 mg hr L^-1</td><td>46.5234 L</td><td>11.5303 L hr^-1</td><td>173.506 mg hr L^-1</td><td>46.5098 L</td><td>11.527 L hr^-1</td><td>50.8078 L</td><td>50.8691 L</td><td>30.7831 mg L^-1</td><td>0.0862647 hr L^-1</td><td>0.0867278 hr L^-1</td><td>0.533955</td><td>0.0867531 hr L^-1</td><td>0.563005</td><td>911.812 mg hr^2 L^-1</td><td>937.778 mg hr^2 L^-1</td><td>2.7688</td><td>939.198 mg hr^2 L^-1</td><td>2.91587</td><td>4.28497 hr</td><td>4.40644 hr</td><td>4.41305 hr</td><td>49</td><td>0.585607</td><td>0.516541</td><td>0.765249</td><td>8</td><td>4.52975</td><td>20.5 hr</td><td>24.0 hr</td><td>1.25145</td><td>IVInfusion</td></tr><tr><th>14</th><td>14</td><td>2000 mg</td><td>0.207269 hr^-1</td><td>3.3442 hr</td><td>2.0 hr</td><td>30.4458 mg L^-1</td><td>0.437615 mg L^-1</td><td>0.267391 mg L^-1</td><td>174.262 mg hr L^-1</td><td>24.0 hr</td><td>176.374 mg hr L^-1</td><td>54.7095 L</td><td>11.3396 L hr^-1</td><td>175.552 mg hr L^-1</td><td>54.9654 L</td><td>11.3926 L hr^-1</td><td>51.9006 L</td><td>50.9044 L</td><td>30.4458 mg L^-1</td><td>0.0871311 hr L^-1</td><td>0.0881868 hr L^-1</td><td>1.19708</td><td>0.0877761 hr L^-1</td><td>0.734862</td><td>922.768 mg hr^2 L^-1</td><td>983.626 mg hr^2 L^-1</td><td>6.18717</td><td>959.953 mg hr^2 L^-1</td><td>3.8737</td><td>4.29528 hr</td><td>4.57695 hr</td><td>4.46819 hr</td><td>49</td><td>0.363113</td><td>0.283502</td><td>0.602589</td><td>10</td><td>3.65541</td><td>19.5 hr</td><td>24.0 hr</td><td>1.34562</td><td>IVInfusion</td></tr><tr><th>15</th><td>15</td><td>2000 mg</td><td>-0.342741 hr^-1</td><td>-2.02237 hr</td><td>2.0 hr</td><td>33.1621 mg L^-1</td><td>0.329866 mg L^-1</td><td>0.337305 mg L^-1</td><td>172.386 mg hr L^-1</td><td>24.0 hr</td><td>171.423 mg hr L^-1</td><td>-34.0404 L</td><td>11.667 L hr^-1</td><td>171.402 mg hr L^-1</td><td>-34.0447 L</td><td>11.6685 L hr^-1</td><td>48.2303 L</td><td>48.2128 L</td><td>33.1621 mg L^-1</td><td>0.0861928 hr L^-1</td><td>0.0857116 hr L^-1</td><td>-0.561439</td><td>0.0857008 hr L^-1</td><td>-0.574172</td><td>900.359 mg hr^2 L^-1</td><td>880.069 mg hr^2 L^-1</td><td>-2.30555</td><td>879.611 mg hr^2 L^-1</td><td>-2.35877</td><td>4.22294 hr</td><td>4.13389 hr</td><td>4.13188 hr</td><td>49</td><td>0.605116</td><td>0.407674</td><td>0.777892</td><td>4</td><td>-9.31255</td><td>22.5 hr</td><td>24.0 hr</td><td>-0.741706</td><td>IVInfusion</td></tr><tr><th>16</th><td>16</td><td>2000 mg</td><td>1.47088 hr^-1</td><td>0.471246 hr</td><td>2.0 hr</td><td>30.9219 mg L^-1</td><td>0.080925 mg L^-1</td><td>0.0987905 mg L^-1</td><td>169.952 mg hr L^-1</td><td>24.0 hr</td><td>170.007 mg hr L^-1</td><td>7.99809 L</td><td>11.7642 L hr^-1</td><td>170.019 mg hr L^-1</td><td>7.99752 L</td><td>11.7634 L hr^-1</td><td>49.7608 L</td><td>49.7736 L</td><td>30.9219 mg L^-1</td><td>0.0849759 hr L^-1</td><td>0.0850034 hr L^-1</td><td>0.0323623</td><td>0.0850095 hr L^-1</td><td>0.0395039</td><td>887.751 mg hr^2 L^-1</td><td>889.109 mg hr^2 L^-1</td><td>0.152719</td><td>889.408 mg hr^2 L^-1</td><td>0.186371</td><td>4.22354 hr</td><td>4.22984 hr</td><td>4.23123 hr</td><td>49</td><td>0.819197</td><td>0.638393</td><td>0.905095</td><td>3</td><td>32.9864</td><td>23.0 hr</td><td>24.0 hr</td><td>2.12203</td><td>IVInfusion</td></tr><tr><th>17</th><td>17</td><td>2000 mg</td><td>0.439428 hr^-1</td><td>1.57739 hr</td><td>2.0 hr</td><td>31.4966 mg L^-1</td><td>0.274488 mg L^-1</td><td>0.248973 mg L^-1</td><td>170.451 mg hr L^-1</td><td>24.0 hr</td><td>171.076 mg hr L^-1</td><td>26.6045 L</td><td>11.6907 L hr^-1</td><td>171.018 mg hr L^-1</td><td>26.6135 L</td><td>11.6947 L hr^-1</td><td>50.1842 L</td><td>50.1179 L</td><td>31.4966 mg L^-1</td><td>0.0852255 hr L^-1</td><td>0.0855378 hr L^-1</td><td>0.36513</td><td>0.0855088 hr L^-1</td><td>0.331302</td><td>889.031 mg hr^2 L^-1</td><td>905.444 mg hr^2 L^-1</td><td>1.81271</td><td>903.918 mg hr^2 L^-1</td><td>1.64699</td><td>4.21575 hr</td><td>4.29265 hr</td><td>4.28553 hr</td><td>49</td><td>0.62834</td><td>0.25668</td><td>0.792679</td><td>3</td><td>9.15585</td><td>23.0 hr</td><td>24.0 hr</td><td>0.63396</td><td>IVInfusion</td></tr><tr><th>18</th><td>18</td><td>2000 mg</td><td>-0.424339 hr^-1</td><td>-1.63348 hr</td><td>2.0 hr</td><td>33.1599 mg L^-1</td><td>0.405454 mg L^-1</td><td>0.362363 mg L^-1</td><td>173.565 mg hr L^-1</td><td>24.0 hr</td><td>172.609 mg hr L^-1</td><td>-27.3057 L</td><td>11.5869 L hr^-1</td><td>172.711 mg hr L^-1</td><td>-27.2896 L</td><td>11.58 L hr^-1</td><td>48.3389 L</td><td>48.4226 L</td><td>33.1599 mg L^-1</td><td>0.0867825 hr L^-1</td><td>0.0863047 hr L^-1</td><td>-0.553559</td><td>0.0863555 hr L^-1</td><td>-0.494438</td><td>913.394 mg hr^2 L^-1</td><td>892.714 mg hr^2 L^-1</td><td>-2.31655</td><td>894.912 mg hr^2 L^-1</td><td>-2.06527</td><td>4.26255 hr</td><td>4.17187 hr</td><td>4.18156 hr</td><td>49</td><td>0.532441</td><td>0.298662</td><td>0.729686</td><td>4</td><td>-11.1992</td><td>22.5 hr</td><td>24.0 hr</td><td>-0.918287</td><td>IVInfusion</td></tr><tr><th>19</th><td>19</td><td>2000 mg</td><td>0.29365 hr^-1</td><td>2.36046 hr</td><td>2.0 hr</td><td>31.3835 mg L^-1</td><td>0.106554 mg L^-1</td><td>0.129262 mg L^-1</td><td>174.075 mg hr L^-1</td><td>24.0 hr</td><td>174.438 mg hr L^-1</td><td>39.0445 L</td><td>11.4654 L hr^-1</td><td>174.515 mg hr L^-1</td><td>39.0272 L</td><td>11.4603 L hr^-1</td><td>49.1036 L</td><td>49.1942 L</td><td>31.3835 mg L^-1</td><td>0.0870375 hr L^-1</td><td>0.0872189 hr L^-1</td><td>0.208018</td><td>0.0872576 hr L^-1</td><td>0.252237</td><td>911.57 mg hr^2 L^-1</td><td>921.514 mg hr^2 L^-1</td><td>1.07914</td><td>923.634 mg hr^2 L^-1</td><td>1.30611</td><td>4.23665 hr</td><td>4.28277 hr</td><td>4.29257 hr</td><td>49</td><td>0.360551</td><td>0.28062</td><td>0.600459</td><td>10</td><td>5.00168</td><td>19.5 hr</td><td>24.0 hr</td><td>1.90641</td><td>IVInfusion</td></tr><tr><th>20</th><td>20</td><td>2000 mg</td><td>0.701601 hr^-1</td><td>0.987951 hr</td><td>2.0 hr</td><td>32.7522 mg L^-1</td><td>0.197867 mg L^-1</td><td>0.0615773 mg L^-1</td><td>174.062 mg hr L^-1</td><td>24.0 hr</td><td>174.344 mg hr L^-1</td><td>16.3506 L</td><td>11.4716 L hr^-1</td><td>174.15 mg hr L^-1</td><td>16.3688 L</td><td>11.4844 L hr^-1</td><td>49.0118 L</td><td>48.8083 L</td><td>32.7522 mg L^-1</td><td>0.087031 hr L^-1</td><td>0.087172 hr L^-1</td><td>0.161762</td><td>0.0870748 hr L^-1</td><td>0.0503974</td><td>912.05 mg hr^2 L^-1</td><td>919.22 mg hr^2 L^-1</td><td>0.780064</td><td>914.281 mg hr^2 L^-1</td><td>0.244072</td><td>4.2398 hr</td><td>4.27245 hr</td><td>4.24997 hr</td><td>49</td><td>0.378581</td><td>0.289807</td><td>0.615289</td><td>9</td><td>14.051</td><td>20.0 hr</td><td>24.0 hr</td><td>4.04878</td><td>IVInfusion</td></tr><tr><th>21</th><td>21</td><td>2000 mg</td><td>0.265666 hr^-1</td><td>2.6091 hr</td><td>2.0 hr</td><td>30.867 mg L^-1</td><td>0.129004 mg L^-1</td><td>0.176805 mg L^-1</td><td>172.185 mg hr L^-1</td><td>24.0 hr</td><td>172.671 mg hr L^-1</td><td>43.5989 L</td><td>11.5827 L hr^-1</td><td>172.851 mg hr L^-1</td><td>43.5535 L</td><td>11.5707 L hr^-1</td><td>50.0824 L</td><td>50.3006 L</td><td>30.867 mg L^-1</td><td>0.0860926 hr L^-1</td><td>0.0863354 hr L^-1</td><td>0.281222</td><td>0.0864253 hr L^-1</td><td>0.385023</td><td>905.797 mg hr^2 L^-1</td><td>919.279 mg hr^2 L^-1</td><td>1.46658</td><td>924.274 mg hr^2 L^-1</td><td>1.99913</td><td>4.2606 hr</td><td>4.32388 hr</td><td>4.34724 hr</td><td>49</td><td>0.333892</td><td>0.238734</td><td>0.577834</td><td>9</td><td>4.64327</td><td>20.0 hr</td><td>24.0 hr</td><td>1.5331</td><td>IVInfusion</td></tr><tr><th>22</th><td>22</td><td>2000 mg</td><td>1.81378 hr^-1</td><td>0.382157 hr</td><td>2.0 hr</td><td>31.9961 mg L^-1</td><td>0.0710516 mg L^-1</td><td>0.0973101 mg L^-1</td><td>169.771 mg hr L^-1</td><td>24.0 hr</td><td>169.81 mg hr L^-1</td><td>6.49356 L</td><td>11.7779 L hr^-1</td><td>169.825 mg hr L^-1</td><td>6.493 L</td><td>11.7769 L hr^-1</td><td>50.3619 L</td><td>50.377 L</td><td>31.9961 mg L^-1</td><td>0.0848855 hr L^-1</td><td>0.0849051 hr L^-1</td><td>0.0230689</td><td>0.0849123 hr L^-1</td><td>0.0315917</td><td>894.953 mg hr^2 L^-1</td><td>895.915 mg hr^2 L^-1</td><td>0.107349</td><td>896.27 mg hr^2 L^-1</td><td>0.146964</td><td>4.27153 hr</td><td>4.27598 hr</td><td>4.27762 hr</td><td>49</td><td>0.734871</td><td>0.469743</td><td>0.857246</td><td>3</td><td>41.2008</td><td>23.0 hr</td><td>24.0 hr</td><td>2.61673</td><td>IVInfusion</td></tr><tr><th>23</th><td>23</td><td>2000 mg</td><td>1.29115 hr^-1</td><td>0.536844 hr</td><td>2.0 hr</td><td>33.5559 mg L^-1</td><td>0.0743402 mg L^-1</td><td>0.0798485 mg L^-1</td><td>176.241 mg hr L^-1</td><td>24.0 hr</td><td>176.299 mg hr L^-1</td><td>8.78626 L</td><td>11.3444 L hr^-1</td><td>176.303 mg hr L^-1</td><td>8.78605 L</td><td>11.3441 L hr^-1</td><td>47.5991 L</td><td>47.6033 L</td><td>33.5559 mg L^-1</td><td>0.0881205 hr L^-1</td><td>0.0881493 hr L^-1</td><td>0.0326586</td><td>0.0881514 hr L^-1</td><td>0.0350776</td><td>914.591 mg hr^2 L^-1</td><td>916.017 mg hr^2 L^-1</td><td>0.155721</td><td>916.123 mg hr^2 L^-1</td><td>0.16724</td><td>4.18943 hr</td><td>4.19583 hr</td><td>4.1963 hr</td><td>49</td><td>0.964527</td><td>0.929055</td><td>0.982103</td><td>3</td><td>28.46</td><td>23.0 hr</td><td>24.0 hr</td><td>1.86274</td><td>IVInfusion</td></tr><tr><th>24</th><td>24</td><td>2000 mg</td><td>-2.39769 hr^-1</td><td>-0.289089 hr</td><td>2.0 hr</td><td>35.0072 mg L^-1</td><td>0.291334 mg L^-1</td><td>0.310504 mg L^-1</td><td>168.571 mg hr L^-1</td><td>24.0 hr</td><td>168.449 mg hr L^-1</td><td>-4.95184 L</td><td>11.873 L hr^-1</td><td>168.441 mg hr L^-1</td><td>-4.95208 L</td><td>11.8736 L hr^-1</td><td>49.1346 L</td><td>49.1265 L</td><td>35.0072 mg L^-1</td><td>0.0842855 hr L^-1</td><td>0.0842247 hr L^-1</td><td>-0.0721319</td><td>0.0842207 hr L^-1</td><td>-0.0768819</td><td>868.417 mg hr^2 L^-1</td><td>865.551 mg hr^2 L^-1</td><td>-0.331057</td><td>865.363 mg hr^2 L^-1</td><td>-0.352917</td><td>4.15164 hr</td><td>4.13834 hr</td><td>4.13747 hr</td><td>49</td><td>0.991595</td><td>0.983189</td><td>0.995788</td><td>3</td><td>-58.7142</td><td>23.0 hr</td><td>24.0 hr</td><td>-3.45914</td><td>IVInfusion</td></tr></tbody></table>
+
+<p>By default, the AUC and AUMC reported are observed. If predicted PK parameters are needed instead, the following code should be used:</p>
+
+
+<pre class='hljl'>
+<span class='hljl-n'>report</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>NCAReport</span><span class='hljl-p'>(</span><span class='hljl-n'>pop</span><span class='hljl-p'>,</span><span class='hljl-n'>pred</span><span class='hljl-oB'>=</span><span class='hljl-kc'>true</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>report</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>NCA</span><span class='hljl-oB'>.</span><span class='hljl-nf'>to_dataframe</span><span class='hljl-p'>(</span><span class='hljl-n'>report</span><span class='hljl-p'>)</span>
+</pre>
+
+
+
+<table class="data-frame"><thead><tr><th></th><th>id</th><th>doseamt</th><th>lambda_z</th><th>half_life</th><th>tmax</th><th>cmax</th><th>clast</th><th>clast_pred</th><th>auclast</th><th>tlast</th><th>aucinf_obs</th><th>vz_obs</th><th>cl_obs</th><th>aucinf_pred</th><th>vz_pred</th><th>cl_pred</th><th>vss_obs</th><th>vss_pred</th><th>cmax_d</th><th>auclast_d</th><th>aucinf_d_obs</th><th>auc_extrap_obs</th><th>aucinf_d_pred</th><th>auc_extrap_pred</th><th>aumclast</th><th>aumcinf_obs</th><th>aumc_extrap_obs</th><th>aumcinf_pred</th><th>aumc_extrap_pred</th><th>mrtlast</th><th>mrtinf_obs</th><th>mrtinf_pred</th><th>n_samples</th><th>rsq</th><th>rsq_adjusted</th><th>corr_xy</th><th>no_points_lambda_z</th><th>lambda_z_intercept</th><th>lambda_z_lower</th><th>lambda_z_upper</th><th>span</th><th>route</th></tr><tr><th></th><th>Int64</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Float64</th><th>Unitful…</th><th>Float64</th><th>Unitful…</th><th>Unitful…</th><th>Float64</th><th>Unitful…</th><th>Float64</th><th>Unitful…</th><th>Unitful…</th><th>Unitful…</th><th>Int64</th><th>Float64</th><th>Float64</th><th>Float64</th><th>Int64</th><th>Float64</th><th>Unitful…</th><th>Unitful…</th><th>Float64</th><th>String</th></tr></thead><tbody><p>24 rows × 42 columns</p><tr><th>1</th><td>1</td><td>2000 mg</td><td>0.380768 hr^-1</td><td>1.82039 hr</td><td>2.0 hr</td><td>29.4367 mg L^-1</td><td>0.280525 mg L^-1</td><td>0.277895 mg L^-1</td><td>170.557 mg hr L^-1</td><td>24.0 hr</td><td>171.294 mg hr L^-1</td><td>30.6639 L</td><td>11.6758 L hr^-1</td><td>171.287 mg hr L^-1</td><td>30.6652 L</td><td>11.6763 L hr^-1</td><td>50.524 L</td><td>50.516 L</td><td>29.4367 mg L^-1</td><td>0.0852785 hr L^-1</td><td>0.0856469 hr L^-1</td><td>0.4301</td><td>0.0856434 hr L^-1</td><td>0.426085</td><td>892.903 mg hr^2 L^-1</td><td>912.519 mg hr^2 L^-1</td><td>2.14971</td><td>912.335 mg hr^2 L^-1</td><td>2.12998</td><td>4.23522 hr</td><td>4.32722 hr</td><td>4.32636 hr</td><td>49</td><td>0.99271</td><td>0.985419</td><td>0.996348</td><td>3</td><td>7.85793</td><td>23.0 hr</td><td>24.0 hr</td><td>0.549332</td><td>IVInfusion</td></tr><tr><th>2</th><td>2</td><td>2000 mg</td><td>0.359903 hr^-1</td><td>1.92593 hr</td><td>2.0 hr</td><td>34.6225 mg L^-1</td><td>0.23629 mg L^-1</td><td>0.207712 mg L^-1</td><td>171.183 mg hr L^-1</td><td>24.0 hr</td><td>171.839 mg hr L^-1</td><td>32.3386 L</td><td>11.6388 L hr^-1</td><td>171.76 mg hr L^-1</td><td>32.3536 L</td><td>11.6442 L hr^-1</td><td>50.2286 L</td><td>50.1362 L</td><td>34.6225 mg L^-1</td><td>0.0855915 hr L^-1</td><td>0.0859197 hr L^-1</td><td>0.382065</td><td>0.08588 hr L^-1</td><td>0.336012</td><td>895.853 mg hr^2 L^-1</td><td>913.434 mg hr^2 L^-1</td><td>1.92473</td><td>911.307 mg hr^2 L^-1</td><td>1.69589</td><td>4.23331 hr</td><td>4.31562 hr</td><td>4.3057 hr</td><td>49</td><td>0.785835</td><td>0.732294</td><td>0.886473</td><td>6</td><td>7.06607</td><td>21.5 hr</td><td>24.0 hr</td><td>1.29808</td><td>IVInfusion</td></tr><tr><th>3</th><td>3</td><td>2000 mg</td><td>1.08775 hr^-1</td><td>0.637233 hr</td><td>2.0 hr</td><td>34.9916 mg L^-1</td><td>0.13635 mg L^-1</td><td>0.166371 mg L^-1</td><td>177.307 mg hr L^-1</td><td>24.0 hr</td><td>177.432 mg hr L^-1</td><td>10.3627 L</td><td>11.2719 L hr^-1</td><td>177.46 mg hr L^-1</td><td>10.361 L</td><td>11.2702 L hr^-1</td><td>47.2388 L</td><td>47.2661 L</td><td>34.9916 mg L^-1</td><td>0.0886533 hr L^-1</td><td>0.088716 hr L^-1</td><td>0.0706472</td><td>0.0887298 hr L^-1</td><td>0.0861888</td><td>917.897 mg hr^2 L^-1</td><td>921.021 mg hr^2 L^-1</td><td>0.339151</td><td>921.709 mg hr^2 L^-1</td><td>0.413517</td><td>4.17689 hr</td><td>4.19084 hr</td><td>4.19391 hr</td><td>49</td><td>0.713456</td><td>0.426912</td><td>0.844663</td><td>3</td><td>24.3124</td><td>23.0 hr</td><td>24.0 hr</td><td>1.56928</td><td>IVInfusion</td></tr><tr><th>4</th><td>4</td><td>2000 mg</td><td>0.473609 hr^-1</td><td>1.46354 hr</td><td>2.0 hr</td><td>31.1252 mg L^-1</td><td>0.304896 mg L^-1</td><td>0.318759 mg L^-1</td><td>170.187 mg hr L^-1</td><td>24.0 hr</td><td>170.831 mg hr L^-1</td><td>24.7198 L</td><td>11.7075 L hr^-1</td><td>170.86 mg hr L^-1</td><td>24.7155 L</td><td>11.7055 L hr^-1</td><td>51.1091 L</td><td>51.142 L</td><td>31.1252 mg L^-1</td><td>0.0850934 hr L^-1</td><td>0.0854153 hr L^-1</td><td>0.376848</td><td>0.08543 hr L^-1</td><td>0.393915</td><td>899.782 mg hr^2 L^-1</td><td>916.592 mg hr^2 L^-1</td><td>1.83395</td><td>917.356 mg hr^2 L^-1</td><td>1.91573</td><td>4.28702 hr</td><td>4.3655 hr</td><td>4.36906 hr</td><td>49</td><td>0.904354</td><td>0.808708</td><td>0.950975</td><td>3</td><td>10.2233</td><td>23.0 hr</td><td>24.0 hr</td><td>0.683273</td><td>IVInfusion</td></tr><tr><th>5</th><td>5</td><td>2000 mg</td><td>-0.613372 hr^-1</td><td>-1.13006 hr</td><td>2.0 hr</td><td>30.2427 mg L^-1</td><td>0.354381 mg L^-1</td><td>0.490728 mg L^-1</td><td>168.923 mg hr L^-1</td><td>24.0 hr</td><td>168.346 mg hr L^-1</td><td>-19.3688 L</td><td>11.8803 L hr^-1</td><td>168.123 mg hr L^-1</td><td>-19.3945 L</td><td>11.896 L hr^-1</td><td>49.7136 L</td><td>49.509 L</td><td>30.2427 mg L^-1</td><td>0.0844617 hr L^-1</td><td>0.0841728 hr L^-1</td><td>-0.343197</td><td>0.0840617 hr L^-1</td><td>-0.47587</td><td>885.718 mg hr^2 L^-1</td><td>872.793 mg hr^2 L^-1</td><td>-1.48079</td><td>867.821 mg hr^2 L^-1</td><td>-2.06227</td><td>4.24331 hr</td><td>4.18453 hr</td><td>4.16181 hr</td><td>49</td><td>0.550092</td><td>0.400123</td><td>0.741682</td><td>5</td><td>-15.4328</td><td>22.0 hr</td><td>24.0 hr</td><td>-1.76982</td><td>IVInfusion</td></tr><tr><th>6</th><td>6</td><td>2000 mg</td><td>0.307699 hr^-1</td><td>2.25268 hr</td><td>2.0 hr</td><td>32.8505 mg L^-1</td><td>0.274121 mg L^-1</td><td>0.16763 mg L^-1</td><td>174.448 mg hr L^-1</td><td>24.0 hr</td><td>175.339 mg hr L^-1</td><td>37.0702 L</td><td>11.4065 L hr^-1</td><td>174.993 mg hr L^-1</td><td>37.1435 L</td><td>11.429 L hr^-1</td><td>49.6129 L</td><td>49.216 L</td><td>32.8505 mg L^-1</td><td>0.0872241 hr L^-1</td><td>0.0876695 hr L^-1</td><td>0.508087</td><td>0.0874964 hr L^-1</td><td>0.311319</td><td>913.706 mg hr^2 L^-1</td><td>937.982 mg hr^2 L^-1</td><td>2.58814</td><td>928.551 mg hr^2 L^-1</td><td>1.59877</td><td>4.23769 hr</td><td>4.34954 hr</td><td>4.30622 hr</td><td>49</td><td>0.458424</td><td>0.390727</td><td>0.67707</td><td>10</td><td>5.59879</td><td>19.5 hr</td><td>24.0 hr</td><td>1.99762</td><td>IVInfusion</td></tr><tr><th>7</th><td>7</td><td>2000 mg</td><td>0.246005 hr^-1</td><td>2.81761 hr</td><td>2.0 hr</td><td>34.0576 mg L^-1</td><td>0.35681 mg L^-1</td><td>0.194951 mg L^-1</td><td>177.059 mg hr L^-1</td><td>24.0 hr</td><td>178.509 mg hr L^-1</td><td>45.5432 L</td><td>11.2039 L hr^-1</td><td>177.851 mg hr L^-1</td><td>45.7117 L</td><td>11.2453 L hr^-1</td><td>49.3636 L</td><td>48.6036 L</td><td>34.0576 mg L^-1</td><td>0.0885295 hr L^-1</td><td>0.0892547 hr L^-1</td><td>0.812515</td><td>0.0889257 hr L^-1</td><td>0.445577</td><td>924.304 mg hr^2 L^-1</td><td>965.01 mg hr^2 L^-1</td><td>4.21818</td><td>946.545 mg hr^2 L^-1</td><td>2.34965</td><td>4.22032 hr</td><td>4.40593 hr</td><td>4.32211 hr</td><td>49</td><td>0.360011</td><td>0.280013</td><td>0.60001</td><td>10</td><td>4.26912</td><td>19.5 hr</td><td>24.0 hr</td><td>1.5971</td><td>IVInfusion</td></tr><tr><th>8</th><td>8</td><td>2000 mg</td><td>0.502704 hr^-1</td><td>1.37884 hr</td><td>2.0 hr</td><td>33.253 mg L^-1</td><td>0.159291 mg L^-1</td><td>0.0855787 mg L^-1</td><td>173.479 mg hr L^-1</td><td>24.0 hr</td><td>173.796 mg hr L^-1</td><td>22.8918 L</td><td>11.5078 L hr^-1</td><td>173.649 mg hr L^-1</td><td>22.9111 L</td><td>11.5175 L hr^-1</td><td>49.6072 L</td><td>49.448 L</td><td>33.253 mg L^-1</td><td>0.0867393 hr L^-1</td><td>0.0868978 hr L^-1</td><td>0.182323</td><td>0.0868244 hr L^-1</td><td>0.0980352</td><td>914.75 mg hr^2 L^-1</td><td>922.985 mg hr^2 L^-1</td><td>0.892233</td><td>919.174 mg hr^2 L^-1</td><td>0.481338</td><td>4.27298 hr</td><td>4.31075 hr</td><td>4.29329 hr</td><td>49</td><td>0.718376</td><td>0.683173</td><td>0.84757</td><td>10</td><td>9.60657</td><td>19.5 hr</td><td>24.0 hr</td><td>3.26362</td><td>IVInfusion</td></tr><tr><th>9</th><td>9</td><td>2000 mg</td><td>-0.497009 hr^-1</td><td>-1.39464 hr</td><td>2.0 hr</td><td>35.928 mg L^-1</td><td>0.147872 mg L^-1</td><td>0.307347 mg L^-1</td><td>174.841 mg hr L^-1</td><td>24.0 hr</td><td>174.544 mg hr L^-1</td><td>-23.0548 L</td><td>11.4585 L hr^-1</td><td>174.223 mg hr L^-1</td><td>-23.0973 L</td><td>11.4796 L hr^-1</td><td>47.4767 L</td><td>47.208 L</td><td>35.928 mg L^-1</td><td>0.0874205 hr L^-1</td><td>0.0872718 hr L^-1</td><td>-0.170458</td><td>0.0871113 hr L^-1</td><td>-0.354944</td><td>904.284 mg hr^2 L^-1</td><td>897.742 mg hr^2 L^-1</td><td>-0.728709</td><td>890.687 mg hr^2 L^-1</td><td>-1.5266</td><td>4.17204 hr</td><td>4.14337 hr</td><td>4.11235 hr</td><td>49</td><td>0.449118</td><td>0.338941</td><td>0.670162</td><td>7</td><td>-13.108</td><td>21.0 hr</td><td>24.0 hr</td><td>-2.1511</td><td>IVInfusion</td></tr><tr><th>10</th><td>10</td><td>2000 mg</td><td>0.351833 hr^-1</td><td>1.9701 hr</td><td>2.0 hr</td><td>30.314 mg L^-1</td><td>0.246073 mg L^-1</td><td>0.159466 mg L^-1</td><td>170.972 mg hr L^-1</td><td>24.0 hr</td><td>171.672 mg hr L^-1</td><td>33.1127 L</td><td>11.6502 L hr^-1</td><td>171.425 mg hr L^-1</td><td>33.1603 L</td><td>11.6669 L hr^-1</td><td>51.3432 L</td><td>51.0578 L</td><td>30.314 mg L^-1</td><td>0.0854861 hr L^-1</td><td>0.0858358 hr L^-1</td><td>0.407407</td><td>0.0857127 hr L^-1</td><td>0.264397</td><td>909.469 mg hr^2 L^-1</td><td>928.242 mg hr^2 L^-1</td><td>2.02248</td><td>921.635 mg hr^2 L^-1</td><td>1.32006</td><td>4.3194 hr</td><td>4.40708 hr</td><td>4.3763 hr</td><td>49</td><td>0.661703</td><td>0.619416</td><td>0.813451</td><td>10</td><td>6.60808</td><td>19.5 hr</td><td>24.0 hr</td><td>2.28415</td><td>IVInfusion</td></tr><tr><th>11</th><td>11</td><td>2000 mg</td><td>-1.21993 hr^-1</td><td>-0.568187 hr</td><td>2.0 hr</td><td>32.7331 mg L^-1</td><td>0.498754 mg L^-1</td><td>0.537989 mg L^-1</td><td>168.468 mg hr L^-1</td><td>24.0 hr</td><td>168.06 mg hr L^-1</td><td>-9.75512 L</td><td>11.9005 L hr^-1</td><td>168.027 mg hr L^-1</td><td>-9.75699 L</td><td>11.9028 L hr^-1</td><td>50.659 L</td><td>50.6279 L</td><td>32.7331 mg L^-1</td><td>0.0842342 hr L^-1</td><td>0.0840298 hr L^-1</td><td>-0.24327</td><td>0.0840137 hr L^-1</td><td>-0.262457</td><td>892.943 mg hr^2 L^-1</td><td>883.466 mg hr^2 L^-1</td><td>-1.07271</td><td>882.721 mg hr^2 L^-1</td><td>-1.15807</td><td>4.30036 hr</td><td>4.25686 hr</td><td>4.25343 hr</td><td>49</td><td>0.955807</td><td>0.911614</td><td>0.977654</td><td>3</td><td>-29.8982</td><td>23.0 hr</td><td>24.0 hr</td><td>-1.75998</td><td>IVInfusion</td></tr><tr><th>12</th><td>12</td><td>2000 mg</td><td>0.350243 hr^-1</td><td>1.97905 hr</td><td>2.0 hr</td><td>34.1103 mg L^-1</td><td>0.337286 mg L^-1</td><td>0.156769 mg L^-1</td><td>173.454 mg hr L^-1</td><td>24.0 hr</td><td>174.417 mg hr L^-1</td><td>32.7396 L</td><td>11.4668 L hr^-1</td><td>173.901 mg hr L^-1</td><td>32.8366 L</td><td>11.5008 L hr^-1</td><td>49.3411 L</td><td>48.7527 L</td><td>34.1103 mg L^-1</td><td>0.0867268 hr L^-1</td><td>0.0872083 hr L^-1</td><td>0.55213</td><td>0.0869506 hr L^-1</td><td>0.257389</td><td>899.061 mg hr^2 L^-1</td><td>924.923 mg hr^2 L^-1</td><td>2.79609</td><td>911.081 mg hr^2 L^-1</td><td>1.31936</td><td>4.1833 hr</td><td>4.30295 hr</td><td>4.23908 hr</td><td>49</td><td>0.603085</td><td>0.553471</td><td>0.776586</td><td>10</td><td>6.55285</td><td>19.5 hr</td><td>24.0 hr</td><td>2.27382</td><td>IVInfusion</td></tr><tr><th>13</th><td>13</td><td>2000 mg</td><td>0.247839 hr^-1</td><td>2.79676 hr</td><td>2.0 hr</td><td>30.7831 mg L^-1</td><td>0.229543 mg L^-1</td><td>0.242102 mg L^-1</td><td>172.529 mg hr L^-1</td><td>24.0 hr</td><td>173.456 mg hr L^-1</td><td>46.5234 L</td><td>11.5303 L hr^-1</td><td>173.506 mg hr L^-1</td><td>46.5098 L</td><td>11.527 L hr^-1</td><td>50.8078 L</td><td>50.8691 L</td><td>30.7831 mg L^-1</td><td>0.0862647 hr L^-1</td><td>0.0867278 hr L^-1</td><td>0.533955</td><td>0.0867531 hr L^-1</td><td>0.563005</td><td>911.812 mg hr^2 L^-1</td><td>937.778 mg hr^2 L^-1</td><td>2.7688</td><td>939.198 mg hr^2 L^-1</td><td>2.91587</td><td>4.28497 hr</td><td>4.40644 hr</td><td>4.41305 hr</td><td>49</td><td>0.585607</td><td>0.516541</td><td>0.765249</td><td>8</td><td>4.52975</td><td>20.5 hr</td><td>24.0 hr</td><td>1.25145</td><td>IVInfusion</td></tr><tr><th>14</th><td>14</td><td>2000 mg</td><td>0.207269 hr^-1</td><td>3.3442 hr</td><td>2.0 hr</td><td>30.4458 mg L^-1</td><td>0.437615 mg L^-1</td><td>0.267391 mg L^-1</td><td>174.262 mg hr L^-1</td><td>24.0 hr</td><td>176.374 mg hr L^-1</td><td>54.7095 L</td><td>11.3396 L hr^-1</td><td>175.552 mg hr L^-1</td><td>54.9654 L</td><td>11.3926 L hr^-1</td><td>51.9006 L</td><td>50.9044 L</td><td>30.4458 mg L^-1</td><td>0.0871311 hr L^-1</td><td>0.0881868 hr L^-1</td><td>1.19708</td><td>0.0877761 hr L^-1</td><td>0.734862</td><td>922.768 mg hr^2 L^-1</td><td>983.626 mg hr^2 L^-1</td><td>6.18717</td><td>959.953 mg hr^2 L^-1</td><td>3.8737</td><td>4.29528 hr</td><td>4.57695 hr</td><td>4.46819 hr</td><td>49</td><td>0.363113</td><td>0.283502</td><td>0.602589</td><td>10</td><td>3.65541</td><td>19.5 hr</td><td>24.0 hr</td><td>1.34562</td><td>IVInfusion</td></tr><tr><th>15</th><td>15</td><td>2000 mg</td><td>-0.342741 hr^-1</td><td>-2.02237 hr</td><td>2.0 hr</td><td>33.1621 mg L^-1</td><td>0.329866 mg L^-1</td><td>0.337305 mg L^-1</td><td>172.386 mg hr L^-1</td><td>24.0 hr</td><td>171.423 mg hr L^-1</td><td>-34.0404 L</td><td>11.667 L hr^-1</td><td>171.402 mg hr L^-1</td><td>-34.0447 L</td><td>11.6685 L hr^-1</td><td>48.2303 L</td><td>48.2128 L</td><td>33.1621 mg L^-1</td><td>0.0861928 hr L^-1</td><td>0.0857116 hr L^-1</td><td>-0.561439</td><td>0.0857008 hr L^-1</td><td>-0.574172</td><td>900.359 mg hr^2 L^-1</td><td>880.069 mg hr^2 L^-1</td><td>-2.30555</td><td>879.611 mg hr^2 L^-1</td><td>-2.35877</td><td>4.22294 hr</td><td>4.13389 hr</td><td>4.13188 hr</td><td>49</td><td>0.605116</td><td>0.407674</td><td>0.777892</td><td>4</td><td>-9.31255</td><td>22.5 hr</td><td>24.0 hr</td><td>-0.741706</td><td>IVInfusion</td></tr><tr><th>16</th><td>16</td><td>2000 mg</td><td>1.47088 hr^-1</td><td>0.471246 hr</td><td>2.0 hr</td><td>30.9219 mg L^-1</td><td>0.080925 mg L^-1</td><td>0.0987905 mg L^-1</td><td>169.952 mg hr L^-1</td><td>24.0 hr</td><td>170.007 mg hr L^-1</td><td>7.99809 L</td><td>11.7642 L hr^-1</td><td>170.019 mg hr L^-1</td><td>7.99752 L</td><td>11.7634 L hr^-1</td><td>49.7608 L</td><td>49.7736 L</td><td>30.9219 mg L^-1</td><td>0.0849759 hr L^-1</td><td>0.0850034 hr L^-1</td><td>0.0323623</td><td>0.0850095 hr L^-1</td><td>0.0395039</td><td>887.751 mg hr^2 L^-1</td><td>889.109 mg hr^2 L^-1</td><td>0.152719</td><td>889.408 mg hr^2 L^-1</td><td>0.186371</td><td>4.22354 hr</td><td>4.22984 hr</td><td>4.23123 hr</td><td>49</td><td>0.819197</td><td>0.638393</td><td>0.905095</td><td>3</td><td>32.9864</td><td>23.0 hr</td><td>24.0 hr</td><td>2.12203</td><td>IVInfusion</td></tr><tr><th>17</th><td>17</td><td>2000 mg</td><td>0.439428 hr^-1</td><td>1.57739 hr</td><td>2.0 hr</td><td>31.4966 mg L^-1</td><td>0.274488 mg L^-1</td><td>0.248973 mg L^-1</td><td>170.451 mg hr L^-1</td><td>24.0 hr</td><td>171.076 mg hr L^-1</td><td>26.6045 L</td><td>11.6907 L hr^-1</td><td>171.018 mg hr L^-1</td><td>26.6135 L</td><td>11.6947 L hr^-1</td><td>50.1842 L</td><td>50.1179 L</td><td>31.4966 mg L^-1</td><td>0.0852255 hr L^-1</td><td>0.0855378 hr L^-1</td><td>0.36513</td><td>0.0855088 hr L^-1</td><td>0.331302</td><td>889.031 mg hr^2 L^-1</td><td>905.444 mg hr^2 L^-1</td><td>1.81271</td><td>903.918 mg hr^2 L^-1</td><td>1.64699</td><td>4.21575 hr</td><td>4.29265 hr</td><td>4.28553 hr</td><td>49</td><td>0.62834</td><td>0.25668</td><td>0.792679</td><td>3</td><td>9.15585</td><td>23.0 hr</td><td>24.0 hr</td><td>0.63396</td><td>IVInfusion</td></tr><tr><th>18</th><td>18</td><td>2000 mg</td><td>-0.424339 hr^-1</td><td>-1.63348 hr</td><td>2.0 hr</td><td>33.1599 mg L^-1</td><td>0.405454 mg L^-1</td><td>0.362363 mg L^-1</td><td>173.565 mg hr L^-1</td><td>24.0 hr</td><td>172.609 mg hr L^-1</td><td>-27.3057 L</td><td>11.5869 L hr^-1</td><td>172.711 mg hr L^-1</td><td>-27.2896 L</td><td>11.58 L hr^-1</td><td>48.3389 L</td><td>48.4226 L</td><td>33.1599 mg L^-1</td><td>0.0867825 hr L^-1</td><td>0.0863047 hr L^-1</td><td>-0.553559</td><td>0.0863555 hr L^-1</td><td>-0.494438</td><td>913.394 mg hr^2 L^-1</td><td>892.714 mg hr^2 L^-1</td><td>-2.31655</td><td>894.912 mg hr^2 L^-1</td><td>-2.06527</td><td>4.26255 hr</td><td>4.17187 hr</td><td>4.18156 hr</td><td>49</td><td>0.532441</td><td>0.298662</td><td>0.729686</td><td>4</td><td>-11.1992</td><td>22.5 hr</td><td>24.0 hr</td><td>-0.918287</td><td>IVInfusion</td></tr><tr><th>19</th><td>19</td><td>2000 mg</td><td>0.29365 hr^-1</td><td>2.36046 hr</td><td>2.0 hr</td><td>31.3835 mg L^-1</td><td>0.106554 mg L^-1</td><td>0.129262 mg L^-1</td><td>174.075 mg hr L^-1</td><td>24.0 hr</td><td>174.438 mg hr L^-1</td><td>39.0445 L</td><td>11.4654 L hr^-1</td><td>174.515 mg hr L^-1</td><td>39.0272 L</td><td>11.4603 L hr^-1</td><td>49.1036 L</td><td>49.1942 L</td><td>31.3835 mg L^-1</td><td>0.0870375 hr L^-1</td><td>0.0872189 hr L^-1</td><td>0.208018</td><td>0.0872576 hr L^-1</td><td>0.252237</td><td>911.57 mg hr^2 L^-1</td><td>921.514 mg hr^2 L^-1</td><td>1.07914</td><td>923.634 mg hr^2 L^-1</td><td>1.30611</td><td>4.23665 hr</td><td>4.28277 hr</td><td>4.29257 hr</td><td>49</td><td>0.360551</td><td>0.28062</td><td>0.600459</td><td>10</td><td>5.00168</td><td>19.5 hr</td><td>24.0 hr</td><td>1.90641</td><td>IVInfusion</td></tr><tr><th>20</th><td>20</td><td>2000 mg</td><td>0.701601 hr^-1</td><td>0.987951 hr</td><td>2.0 hr</td><td>32.7522 mg L^-1</td><td>0.197867 mg L^-1</td><td>0.0615773 mg L^-1</td><td>174.062 mg hr L^-1</td><td>24.0 hr</td><td>174.344 mg hr L^-1</td><td>16.3506 L</td><td>11.4716 L hr^-1</td><td>174.15 mg hr L^-1</td><td>16.3688 L</td><td>11.4844 L hr^-1</td><td>49.0118 L</td><td>48.8083 L</td><td>32.7522 mg L^-1</td><td>0.087031 hr L^-1</td><td>0.087172 hr L^-1</td><td>0.161762</td><td>0.0870748 hr L^-1</td><td>0.0503974</td><td>912.05 mg hr^2 L^-1</td><td>919.22 mg hr^2 L^-1</td><td>0.780064</td><td>914.281 mg hr^2 L^-1</td><td>0.244072</td><td>4.2398 hr</td><td>4.27245 hr</td><td>4.24997 hr</td><td>49</td><td>0.378581</td><td>0.289807</td><td>0.615289</td><td>9</td><td>14.051</td><td>20.0 hr</td><td>24.0 hr</td><td>4.04878</td><td>IVInfusion</td></tr><tr><th>21</th><td>21</td><td>2000 mg</td><td>0.265666 hr^-1</td><td>2.6091 hr</td><td>2.0 hr</td><td>30.867 mg L^-1</td><td>0.129004 mg L^-1</td><td>0.176805 mg L^-1</td><td>172.185 mg hr L^-1</td><td>24.0 hr</td><td>172.671 mg hr L^-1</td><td>43.5989 L</td><td>11.5827 L hr^-1</td><td>172.851 mg hr L^-1</td><td>43.5535 L</td><td>11.5707 L hr^-1</td><td>50.0824 L</td><td>50.3006 L</td><td>30.867 mg L^-1</td><td>0.0860926 hr L^-1</td><td>0.0863354 hr L^-1</td><td>0.281222</td><td>0.0864253 hr L^-1</td><td>0.385023</td><td>905.797 mg hr^2 L^-1</td><td>919.279 mg hr^2 L^-1</td><td>1.46658</td><td>924.274 mg hr^2 L^-1</td><td>1.99913</td><td>4.2606 hr</td><td>4.32388 hr</td><td>4.34724 hr</td><td>49</td><td>0.333892</td><td>0.238734</td><td>0.577834</td><td>9</td><td>4.64327</td><td>20.0 hr</td><td>24.0 hr</td><td>1.5331</td><td>IVInfusion</td></tr><tr><th>22</th><td>22</td><td>2000 mg</td><td>1.81378 hr^-1</td><td>0.382157 hr</td><td>2.0 hr</td><td>31.9961 mg L^-1</td><td>0.0710516 mg L^-1</td><td>0.0973101 mg L^-1</td><td>169.771 mg hr L^-1</td><td>24.0 hr</td><td>169.81 mg hr L^-1</td><td>6.49356 L</td><td>11.7779 L hr^-1</td><td>169.825 mg hr L^-1</td><td>6.493 L</td><td>11.7769 L hr^-1</td><td>50.3619 L</td><td>50.377 L</td><td>31.9961 mg L^-1</td><td>0.0848855 hr L^-1</td><td>0.0849051 hr L^-1</td><td>0.0230689</td><td>0.0849123 hr L^-1</td><td>0.0315917</td><td>894.953 mg hr^2 L^-1</td><td>895.915 mg hr^2 L^-1</td><td>0.107349</td><td>896.27 mg hr^2 L^-1</td><td>0.146964</td><td>4.27153 hr</td><td>4.27598 hr</td><td>4.27762 hr</td><td>49</td><td>0.734871</td><td>0.469743</td><td>0.857246</td><td>3</td><td>41.2008</td><td>23.0 hr</td><td>24.0 hr</td><td>2.61673</td><td>IVInfusion</td></tr><tr><th>23</th><td>23</td><td>2000 mg</td><td>1.29115 hr^-1</td><td>0.536844 hr</td><td>2.0 hr</td><td>33.5559 mg L^-1</td><td>0.0743402 mg L^-1</td><td>0.0798485 mg L^-1</td><td>176.241 mg hr L^-1</td><td>24.0 hr</td><td>176.299 mg hr L^-1</td><td>8.78626 L</td><td>11.3444 L hr^-1</td><td>176.303 mg hr L^-1</td><td>8.78605 L</td><td>11.3441 L hr^-1</td><td>47.5991 L</td><td>47.6033 L</td><td>33.5559 mg L^-1</td><td>0.0881205 hr L^-1</td><td>0.0881493 hr L^-1</td><td>0.0326586</td><td>0.0881514 hr L^-1</td><td>0.0350776</td><td>914.591 mg hr^2 L^-1</td><td>916.017 mg hr^2 L^-1</td><td>0.155721</td><td>916.123 mg hr^2 L^-1</td><td>0.16724</td><td>4.18943 hr</td><td>4.19583 hr</td><td>4.1963 hr</td><td>49</td><td>0.964527</td><td>0.929055</td><td>0.982103</td><td>3</td><td>28.46</td><td>23.0 hr</td><td>24.0 hr</td><td>1.86274</td><td>IVInfusion</td></tr><tr><th>24</th><td>24</td><td>2000 mg</td><td>-2.39769 hr^-1</td><td>-0.289089 hr</td><td>2.0 hr</td><td>35.0072 mg L^-1</td><td>0.291334 mg L^-1</td><td>0.310504 mg L^-1</td><td>168.571 mg hr L^-1</td><td>24.0 hr</td><td>168.449 mg hr L^-1</td><td>-4.95184 L</td><td>11.873 L hr^-1</td><td>168.441 mg hr L^-1</td><td>-4.95208 L</td><td>11.8736 L hr^-1</td><td>49.1346 L</td><td>49.1265 L</td><td>35.0072 mg L^-1</td><td>0.0842855 hr L^-1</td><td>0.0842247 hr L^-1</td><td>-0.0721319</td><td>0.0842207 hr L^-1</td><td>-0.0768819</td><td>868.417 mg hr^2 L^-1</td><td>865.551 mg hr^2 L^-1</td><td>-0.331057</td><td>865.363 mg hr^2 L^-1</td><td>-0.352917</td><td>4.15164 hr</td><td>4.13834 hr</td><td>4.13747 hr</td><td>49</td><td>0.991595</td><td>0.983189</td><td>0.995788</td><td>3</td><td>-58.7142</td><td>23.0 hr</td><td>24.0 hr</td><td>-3.45914</td><td>IVInfusion</td></tr></tbody></table>
+
+<p>Finally, we can save this data frame as a csv file if desired.</p>
+
+
+<pre class='hljl'>
+<span class='hljl-n'>CSV</span><span class='hljl-oB'>.</span><span class='hljl-nf'>write</span><span class='hljl-p'>(</span><span class='hljl-s'>&quot;./tutorials/nca/report_SD_IV_infusion.csv&quot;</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>report</span><span class='hljl-p'>)</span>
+</pre>
+
+
+<pre class="julia-error">
+ERROR: SystemError: opening file &quot;./tutorials/nca/report_SD_IV_infusion.csv&quot;: No such file or directory
+</pre>
+
+
+
+<pre class='hljl'>
+<span class='hljl-k'>using</span><span class='hljl-t'> </span><span class='hljl-n'>PumasTutorials</span><span class='hljl-t'>
+</span><span class='hljl-n'>PumasTutorials</span><span class='hljl-oB'>.</span><span class='hljl-nf'>tutorial_footer</span><span class='hljl-p'>(</span><span class='hljl-n'>WEAVE_ARGS</span><span class='hljl-p'>[</span><span class='hljl-sc'>:folder</span><span class='hljl-p'>],</span><span class='hljl-n'>WEAVE_ARGS</span><span class='hljl-p'>[</span><span class='hljl-sc'>:file</span><span class='hljl-p'>])</span>
+</pre>
+
+
+
+<div class="markdown"><h2>Appendix</h2>
+<p>These tutorials are part of the PumasTutorials.jl repository, found at: <a href="https://github.com/JuliaDiffEq/DiffEqTutorials.jl">https://github.com/JuliaDiffEq/DiffEqTutorials.jl</a></p>
+</div>
+<div class="markdown"><p>To locally run this tutorial, do the following commands:</p>
+<pre><code>using PumasTutorials
+PumasTutorials.weave_file&#40;&quot;nca&quot;,&quot;SD_IV_infusion.jmd&quot;&#41;</code></pre>
+</div>
+<div class="markdown"><p>Computer Information:</p>
+</div>
+<div class="markdown"><pre><code>Julia Version 1.1.1
+Commit 55e36cc308 &#40;2019-05-16 04:10 UTC&#41;
+Platform Info:
+  OS: Windows &#40;x86_64-w64-mingw32&#41;
+  CPU: Intel&#40;R&#41; Core&#40;TM&#41; i7-8550U CPU @ 1.80GHz
+  WORD_SIZE: 64
+  LIBM: libopenlibm
+  LLVM: libLLVM-6.0.1 &#40;ORCJIT, skylake&#41;
+Environment:
+  JULIA_EDITOR &#61; &quot;C:\Users\accou\AppData\Local\atom\app-1.38.2\atom.exe&quot;  -a
+  JULIA_NUM_THREADS &#61; 4
+</code></pre>
+</div>
+<div class="markdown"><p>Package Information:</p>
+</div>
+<div class="markdown"><pre><code>Status &#96;C:\Users\accou\.julia\environments\v1.1\Project.toml&#96;
+&#91;621f4979-c628-5d54-868e-fcf4e3e8185c&#93; AbstractFFTs 0.4.1
+&#91;c52e3926-4ff0-5f6e-af25-54175e0327b1&#93; Atom 0.8.8
+&#91;f0abef60-9ec0-11e9-27de-db6506a91768&#93; AutoOffload 0.1.0
+&#91;6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf&#93; BenchmarkTools 0.4.2
+&#91;4ece37e6-a012-11e8-38cd-91247efc2c34&#93; Bioequivalence 0.1.0
+&#91;336ed68f-0bac-5ca0-87d4-7b16caf5d00b&#93; CSV 0.5.9
+&#91;c5f51814-7f29-56b8-a69c-e4d8f6be1fde&#93; CUDAdrv 3.0.1
+&#91;be33ccc6-a3ff-5ff2-a52e-74243cff1e17&#93; CUDAnative 2.2.1
+&#91;49dc2e85-a5d0-5ad3-a950-438e2897f1b9&#93; Calculus 0.5.0
+&#91;7057c7e9-c182-5462-911a-8362d720325c&#93; Cassette 0.2.5
+&#91;34da2185-b29b-5c13-b0c7-acf172513d20&#93; Compat 2.1.0
+&#91;3a865a2d-5b23-5a0f-bc46-62713ec82fae&#93; CuArrays 1.1.0
+&#91;667455a9-e2ce-5579-9412-b964f529a492&#93; Cubature 1.4.0
+&#91;a93c6f00-e57d-5684-b7b6-d8193f3e46c0&#93; DataFrames 0.18.4
+&#91;82cc6244-b520-54b8-b5a6-8a565e85f1d0&#93; DataInterpolations 0.2.0
+&#91;31a5f54b-26ea-5ae9-a837-f05ce5417438&#93; Debugger 0.5.0
+&#91;bcd4f6db-9728-5f36-b5f7-82caef46ccdb&#93; DelayDiffEq 5.9.1
+&#91;2b5f629d-d688-5b77-993f-72d75c75574e&#93; DiffEqBase 5.16.3
+&#91;ebbdde9d-f333-5424-9be2-dbf1e9acfb5e&#93; DiffEqBayes 1.2.0
+&#91;31c91b34-3c75-11e9-0341-95557aab0344&#93; DiffEqBenchmarks 0.1.0
+&#91;459566f4-90b8-5000-8ac3-15dfb0a30def&#93; DiffEqCallbacks 2.5.2&#43;
+&#91;f3b72e0c-5b89-59e1-b016-84e28bfd966d&#93; DiffEqDevTools 2.13.0
+&#91;01453d9d-ee7c-5054-8395-0335cb756afa&#93; DiffEqDiffTools 0.14.0
+&#91;aae7a2af-3d4f-5e19-a356-7da93b79d9d0&#93; DiffEqFlux 0.6.0
+&#91;071ae1c0-96b5-11e9-1965-c90190d839ea&#93; DiffEqGPU 0.1.0
+&#91;c894b116-72e5-5b58-be3c-e6d8d4ac2b12&#93; DiffEqJump 6.1.1&#43;
+&#91;8f2b45d5-b17b-5532-9e92-98ae0077e2e3&#93; DiffEqMachineLearning 0.1.0
+&#91;78ddff82-25fc-5f2b-89aa-309469cbf16f&#93; DiffEqMonteCarlo 0.15.1
+&#91;77a26b50-5914-5dd7-bc55-306e6241c503&#93; DiffEqNoiseProcess 3.3.1
+&#91;9fdde737-9c7f-55bf-ade8-46b3f136cc48&#93; DiffEqOperators 3.5.0
+&#91;055956cb-9e8b-5191-98cc-73ae4a59e68a&#93; DiffEqPhysics 3.2.0
+&#91;a077e3f3-b75c-5d7f-a0c6-6bc4c8ec64a9&#93; DiffEqProblemLibrary 4.3.0
+&#91;41bf760c-e81c-5289-8e54-58b1f1f8abe2&#93; DiffEqSensitivity 3.3.0
+&#91;6d1b261a-3be8-11e9-3f2f-0b112a9a8436&#93; DiffEqTutorials 0.1.0
+&#91;0c46a032-eb83-5123-abaf-570d42b7fbaa&#93; DifferentialEquations 6.6.0
+&#91;31c24e10-a181-5473-b8eb-7969acd0382f&#93; Distributions 0.20.0
+&#91;e30172f5-a6a5-5a46-863b-614d45cd2de4&#93; Documenter 0.23.0
+&#91;587475ba-b771-5e3f-ad9e-33799f191a9c&#93; Flux 0.8.3
+&#91;f6369f11-7733-5829-9624-2563aa707210&#93; ForwardDiff 0.10.3&#43;
+&#91;ba82f77b-6841-5d2e-bd9f-4daf811aec27&#93; GPUifyLoops 0.2.5
+&#91;c91e804a-d5a3-530f-b6f0-dfbca275c004&#93; Gadfly 1.1.0
+&#91;bc5e4493-9b4d-5f90-b8aa-2b2bcaad7a26&#93; GitHub 5.1.1
+&#91;7073ff75-c697-5162-941a-fcdaad2a7d2a&#93; IJulia 1.18.1
+&#91;42fd0dbc-a981-5370-80f2-aaf504508153&#93; IterativeSolvers 0.8.1
+&#91;033835bb-8acc-5ee8-8aae-3f567f8a3819&#93; JLD2 0.1.2
+&#91;e5e0dc1b-0480-54bc-9374-aad01c23163d&#93; Juno 0.7.0
+&#91;2d691ee1-e668-5016-a719-b2531b85e0f5&#93; LIBLINEAR 0.5.1
+&#91;7f56f5a3-f504-529b-bc02-0b1fe5e64312&#93; LSODA 0.4.0
+&#91;6f1fad26-d15e-5dc8-ae53-837a1d7b8c9f&#93; Libtask 0.3.0
+&#91;c7f686f2-ff18-58e9-bc7b-31028e88f75d&#93; MCMCChains 0.3.10
+&#91;33e6dc65-8f57-5167-99aa-e5a354878fb2&#93; MKL 0.0.0
+&#91;cc2ba9b6-d476-5e6d-8eaf-a92d5412d41d&#93; MLDataUtils 0.5.0
+&#91;eb30cadb-4394-5ae3-aed4-317e484a6458&#93; MLDatasets 0.3.0
+&#91;961ee093-0014-501f-94e3-6117800e7a78&#93; ModelingToolkit 0.5.0
+&#91;4886b29c-78c9-11e9-0a6e-41e1f4161f7b&#93; MonteCarloIntegration 0.0.1
+&#91;2774e3e8-f4cf-5e23-947b-6d7e65073b56&#93; NLsolve 4.0.0
+&#91;872c559c-99b0-510c-b3b7-b6c96a88d5cd&#93; NNlib 0.6.0
+&#91;8faf48c0-8b73-11e9-0e63-2155955bfa4d&#93; NeuralNetDiffEq 0.1.0
+&#91;09606e27-ecf5-54fc-bb29-004bd9f985bf&#93; ODEInterfaceDiffEq 3.3.1
+&#91;1dea7af3-3e70-54e6-95c3-0bf5283fa5ed&#93; OrdinaryDiffEq 5.12.0
+&#91;65888b18-ceab-5e60-b2b9-181511a3b968&#93; ParameterizedFunctions 4.2.0
+&#91;14b8a8f1-9102-5b29-a752-f990bacb7fe1&#93; PkgTemplates 0.6.1
+&#91;91a5bcdd-55d7-5caf-9e0b-520d859cae80&#93; Plots 0.25.3
+&#91;92933f4c-e287-5a05-a399-4b506db050ca&#93; ProgressMeter 1.0.0
+&#91;d7b8c89e-ad89-52e0-b9fd-d0ed321fa021&#93; Pumas 0.1.0
+&#91;b7b41870-aa11-11e9-048a-09266ec4a62f&#93; PumasTutorials 0.0.1
+&#91;438e738f-606a-5dbb-bf0a-cddfbfd45ab0&#93; PyCall 1.91.2
+&#91;d330b81b-6aea-500a-939a-2ce795aea3ee&#93; PyPlot 2.8.1
+&#91;1fd47b50-473d-5c70-9696-f719f8f3bcdc&#93; QuadGK 2.1.0
+&#91;612083be-0b0f-5412-89c1-4e7c75506a58&#93; Queryverse 0.3.1
+&#91;6f49c342-dc21-5d91-9882-a32aef131414&#93; RCall 0.13.3
+&#91;731186ca-8d62-57ce-b412-fbd966d074cd&#93; RecursiveArrayTools 0.20.0
+&#91;37e2e3b7-166d-5795-8a7a-e32c996b4267&#93; ReverseDiff 0.3.1
+&#91;295af30f-e4ad-537b-8983-00126c2a3abe&#93; Revise 2.1.6
+&#91;2b6d1eac-7baa-5078-8adc-e6a3e659f14f&#93; SingleFloats 0.1.3
+&#91;47a9eef4-7e08-11e9-0b38-333d64bd3804&#93; SparseDiffTools 0.5.0
+&#91;90137ffa-7385-5640-81b9-e52037218182&#93; StaticArrays 0.11.0
+&#91;4c63d2b9-4356-54db-8cca-17b64c39e42c&#93; StatsFuns 0.8.0
+&#91;f3b207a7-027a-5e70-b257-86293d7955fd&#93; StatsPlots 0.11.0
+&#91;9672c7b4-1e72-59bd-8a11-6ac3964bc41f&#93; SteadyStateDiffEq 1.5.0
+&#91;789caeaf-c7a9-5a7d-9973-96adeb23e2a0&#93; StochasticDiffEq 6.6.0
+&#91;c3572dad-4567-51f8-b174-8c6c989267f4&#93; Sundials 3.6.1
+&#91;fd094767-a336-5f1f-9728-57cf17d0bbfb&#93; Suppressor 0.1.1
+&#91;6fc51010-71bc-11e9-0e15-a3fcc6593c49&#93; Surrogates 0.1.0
+&#91;9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c&#93; Tracker 0.2.2
+&#91;fce5fe82-541a-59a6-adf8-730c64b5f9a0&#93; Turing 0.6.18
+&#91;1986cc42-f94f-5a68-af5c-568840ba703d&#93; Unitful 0.16.0
+&#91;44d3d7a6-8a23-5bf8-98c5-b353f8df5ec9&#93; Weave 0.9.1
+&#91;e88e6eb3-aa80-5325-afca-941959d7151f&#93; Zygote 0.3.2</code></pre>
+</div>
+
+
+
+          <HR/>
+          <div class="footer"><p>
+          Published from <a href="SD_IV_infusion.jmd">SD_IV_infusion.jmd</a> using
+          <a href="http://github.com/mpastell/Weave.jl">Weave.jl</a>
+           on 2019-07-21.
+          <p></div>
+
+
+        </div>
+      </div>
+    </div>
+  </BODY>
+</HTML>

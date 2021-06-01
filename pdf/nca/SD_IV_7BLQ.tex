@@ -1,0 +1,673 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[a4paper,text={16.5cm,25.2cm},centering]{geometry}
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{bm}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{hyperref}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{1.2ex}
+
+\hypersetup
+       {   pdfauthor = { Beatriz Guglieri Lopez },
+           pdftitle={ PuMaS NCA Tutorial - Single dose IV administration },
+           colorlinks=TRUE,
+           linkcolor=black,
+           citecolor=blue,
+           urlcolor=blue
+       }
+
+\title{ PuMaS NCA Tutorial - Single dose IV administration }
+
+\author{ Beatriz Guglieri Lopez }
+
+\date{ April 12, 2019 }
+
+\usepackage[T1]{fontenc}
+\usepackage{textcomp}
+\usepackage{upquote}
+\usepackage{listings}
+\usepackage{xcolor}
+\lstset{
+    basicstyle=\ttfamily\footnotesize,
+    upquote=true,
+    breaklines=true,
+    keepspaces=true,
+    showspaces=false,
+    columns=fullflexible,
+    showtabs=false,
+    showstringspaces=false,
+    escapeinside={(*@}{@*)},
+    extendedchars=true,
+}
+\newcommand{\HLJLt}[1]{#1}
+\newcommand{\HLJLw}[1]{#1}
+\newcommand{\HLJLe}[1]{#1}
+\newcommand{\HLJLeB}[1]{#1}
+\newcommand{\HLJLo}[1]{#1}
+\newcommand{\HLJLk}[1]{\textcolor[RGB]{148,91,176}{\textbf{#1}}}
+\newcommand{\HLJLkc}[1]{\textcolor[RGB]{59,151,46}{\textit{#1}}}
+\newcommand{\HLJLkd}[1]{\textcolor[RGB]{214,102,97}{\textit{#1}}}
+\newcommand{\HLJLkn}[1]{\textcolor[RGB]{148,91,176}{\textbf{#1}}}
+\newcommand{\HLJLkp}[1]{\textcolor[RGB]{148,91,176}{\textbf{#1}}}
+\newcommand{\HLJLkr}[1]{\textcolor[RGB]{148,91,176}{\textbf{#1}}}
+\newcommand{\HLJLkt}[1]{\textcolor[RGB]{148,91,176}{\textbf{#1}}}
+\newcommand{\HLJLn}[1]{#1}
+\newcommand{\HLJLna}[1]{#1}
+\newcommand{\HLJLnb}[1]{#1}
+\newcommand{\HLJLnbp}[1]{#1}
+\newcommand{\HLJLnc}[1]{#1}
+\newcommand{\HLJLncB}[1]{#1}
+\newcommand{\HLJLnd}[1]{\textcolor[RGB]{214,102,97}{#1}}
+\newcommand{\HLJLne}[1]{#1}
+\newcommand{\HLJLneB}[1]{#1}
+\newcommand{\HLJLnf}[1]{\textcolor[RGB]{66,102,213}{#1}}
+\newcommand{\HLJLnfm}[1]{\textcolor[RGB]{66,102,213}{#1}}
+\newcommand{\HLJLnp}[1]{#1}
+\newcommand{\HLJLnl}[1]{#1}
+\newcommand{\HLJLnn}[1]{#1}
+\newcommand{\HLJLno}[1]{#1}
+\newcommand{\HLJLnt}[1]{#1}
+\newcommand{\HLJLnv}[1]{#1}
+\newcommand{\HLJLnvc}[1]{#1}
+\newcommand{\HLJLnvg}[1]{#1}
+\newcommand{\HLJLnvi}[1]{#1}
+\newcommand{\HLJLnvm}[1]{#1}
+\newcommand{\HLJLl}[1]{#1}
+\newcommand{\HLJLld}[1]{\textcolor[RGB]{148,91,176}{\textit{#1}}}
+\newcommand{\HLJLs}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLsa}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLsb}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLsc}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLsd}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLsdB}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLsdC}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLse}[1]{\textcolor[RGB]{59,151,46}{#1}}
+\newcommand{\HLJLsh}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLsi}[1]{#1}
+\newcommand{\HLJLso}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLsr}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLss}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLssB}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLnB}[1]{\textcolor[RGB]{59,151,46}{#1}}
+\newcommand{\HLJLnbB}[1]{\textcolor[RGB]{59,151,46}{#1}}
+\newcommand{\HLJLnfB}[1]{\textcolor[RGB]{59,151,46}{#1}}
+\newcommand{\HLJLnh}[1]{\textcolor[RGB]{59,151,46}{#1}}
+\newcommand{\HLJLni}[1]{\textcolor[RGB]{59,151,46}{#1}}
+\newcommand{\HLJLnil}[1]{\textcolor[RGB]{59,151,46}{#1}}
+\newcommand{\HLJLnoB}[1]{\textcolor[RGB]{59,151,46}{#1}}
+\newcommand{\HLJLoB}[1]{\textcolor[RGB]{102,102,102}{\textbf{#1}}}
+\newcommand{\HLJLow}[1]{\textcolor[RGB]{102,102,102}{\textbf{#1}}}
+\newcommand{\HLJLp}[1]{#1}
+\newcommand{\HLJLc}[1]{\textcolor[RGB]{153,153,119}{\textit{#1}}}
+\newcommand{\HLJLch}[1]{\textcolor[RGB]{153,153,119}{\textit{#1}}}
+\newcommand{\HLJLcm}[1]{\textcolor[RGB]{153,153,119}{\textit{#1}}}
+\newcommand{\HLJLcp}[1]{\textcolor[RGB]{153,153,119}{\textit{#1}}}
+\newcommand{\HLJLcpB}[1]{\textcolor[RGB]{153,153,119}{\textit{#1}}}
+\newcommand{\HLJLcs}[1]{\textcolor[RGB]{153,153,119}{\textit{#1}}}
+\newcommand{\HLJLcsB}[1]{\textcolor[RGB]{153,153,119}{\textit{#1}}}
+\newcommand{\HLJLg}[1]{#1}
+\newcommand{\HLJLgd}[1]{#1}
+\newcommand{\HLJLge}[1]{#1}
+\newcommand{\HLJLgeB}[1]{#1}
+\newcommand{\HLJLgh}[1]{#1}
+\newcommand{\HLJLgi}[1]{#1}
+\newcommand{\HLJLgo}[1]{#1}
+\newcommand{\HLJLgp}[1]{#1}
+\newcommand{\HLJLgs}[1]{#1}
+\newcommand{\HLJLgsB}[1]{#1}
+\newcommand{\HLJLgt}[1]{#1}
+
+
+\begin{document}
+
+\maketitle
+
+
+\begin{lstlisting}
+(*@\HLJLk{using}@*) (*@\HLJLn{Pumas}@*)(*@\HLJLp{,}@*) (*@\HLJLn{PumasTutorials}@*)(*@\HLJLp{,}@*) (*@\HLJLn{CSV}@*)
+\end{lstlisting}
+
+
+\section{Introduction}
+In this tutorial, we will cover the fundamentals of performing an NCA analysis with PuMaS of an example dataset in which a single intravenous (IV) bolus dose was administered.
+
+\section{The dataset}
+A single IV bolus dose of 2000 mg was administered to 24 different subjects. Samples were collected every 30 minutes until 21 hours after dose administration. Two different datasets are available, one with 7\% of the samples below the limit of quantification (BLQ) and the other with 18\% of the samples BLQ.
+
+Let's start reading the dataset. By using the \texttt{missingstring} option we are specifying how the missing values are labeled in our dataset.
+
+
+\begin{lstlisting}
+(*@\HLJLn{data7BLQ}@*) (*@\HLJLoB{=}@*) (*@\HLJLn{CSV}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{read}@*)(*@\HLJLp{(}@*)(*@\HLJLs{"./tutorials/nca/data/single{\_}dose{\_}IVbolus{\_}7BLQ.csv"}@*)(*@\HLJLp{,}@*)(*@\HLJLn{missingstring}@*)(*@\HLJLoB{=}@*)(*@\HLJLs{"NA"}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: ArgumentError: "./tutorials/nca/data/single_dose_IVbolus_7BLQ.csv" i
+s not a valid file
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{data7BLQ}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: data7BLQ not defined
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{data18BLQ}@*) (*@\HLJLoB{=}@*) (*@\HLJLn{CSV}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{read}@*)(*@\HLJLp{(}@*)(*@\HLJLs{"./tutorials/nca/data/single{\_}dose{\_}IVbolus{\_}18BLQ.csv"}@*)(*@\HLJLp{,}@*)(*@\HLJLn{missingstring}@*)(*@\HLJLoB{=}@*)(*@\HLJLs{"NA"}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: ArgumentError: "./tutorials/nca/data/single_dose_IVbolus_18BLQ.csv" 
+is not a valid file
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{data18BLQ}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: data18BLQ not defined
+\end{lstlisting}
+
+
+\section{Defining the units}
+Next we can define time, concentration and dose units so the report includes the units for the pharmacokinetic parameters.
+
+
+\begin{lstlisting}
+(*@\HLJLn{timeu}@*) (*@\HLJLoB{=}@*) (*@\HLJLso{u"hr"}@*)
+(*@\HLJLn{concu}@*) (*@\HLJLoB{=}@*) (*@\HLJLso{u"mg/L"}@*)
+(*@\HLJLn{amtu}@*)  (*@\HLJLoB{=}@*) (*@\HLJLso{u"mg"}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+mg
+\end{lstlisting}
+
+
+\section{Defining the population object}
+Using the \texttt{read\_nca} function, the next step would be to define the population that we are going to use for the NCA. Within this function we need to specify the dataset, the name of the column with the subject identifier (\texttt{id=}), name of the time column (\texttt{time=}), name of the concentration column (\texttt{conc=}), name of the dose column (\texttt{amt=}), the interdose interval (\texttt{ii=}) multiplied by the time units, and the route of administration (\texttt{route=}).
+
+
+\begin{lstlisting}
+(*@\HLJLn{pop7}@*) (*@\HLJLoB{=}@*) (*@\HLJLnf{read{\_}nca}@*)(*@\HLJLp{(}@*)(*@\HLJLn{data7BLQ}@*)(*@\HLJLp{,}@*) (*@\HLJLn{id}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{ID}@*)(*@\HLJLp{,}@*) (*@\HLJLn{time}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{time}@*)(*@\HLJLp{,}@*) (*@\HLJLn{conc}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{DV}@*)(*@\HLJLp{,}@*) (*@\HLJLn{amt}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{DOSE}@*)(*@\HLJLp{,}@*) (*@\HLJLn{ii}@*)(*@\HLJLoB{=}@*)(*@\HLJLni{24}@*)(*@\HLJLn{timeu}@*)(*@\HLJLp{,}@*)
+    (*@\HLJLn{route}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{Formulation}@*)(*@\HLJLp{,}@*)(*@\HLJLn{timeu}@*)(*@\HLJLoB{=}@*)(*@\HLJLn{timeu}@*)(*@\HLJLp{,}@*) (*@\HLJLn{concu}@*)(*@\HLJLoB{=}@*)(*@\HLJLn{concu}@*)(*@\HLJLp{,}@*) (*@\HLJLn{amtu}@*)(*@\HLJLoB{=}@*)(*@\HLJLn{amtu}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: data7BLQ not defined
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{pop18}@*) (*@\HLJLoB{=}@*) (*@\HLJLnf{read{\_}nca}@*)(*@\HLJLp{(}@*)(*@\HLJLn{data18BLQ}@*)(*@\HLJLp{,}@*) (*@\HLJLn{id}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{ID}@*)(*@\HLJLp{,}@*) (*@\HLJLn{time}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{time}@*)(*@\HLJLp{,}@*) (*@\HLJLn{conc}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{DV}@*)(*@\HLJLp{,}@*) (*@\HLJLn{amt}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{DOSE}@*)(*@\HLJLp{,}@*) (*@\HLJLn{ii}@*)(*@\HLJLoB{=}@*)(*@\HLJLni{24}@*)(*@\HLJLn{timeu}@*)(*@\HLJLp{,}@*)
+    (*@\HLJLn{route}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{Formulation}@*)(*@\HLJLp{,}@*) (*@\HLJLn{timeu}@*)(*@\HLJLoB{=}@*)(*@\HLJLn{timeu}@*)(*@\HLJLp{,}@*) (*@\HLJLn{concu}@*)(*@\HLJLoB{=}@*)(*@\HLJLn{concu}@*)(*@\HLJLp{,}@*) (*@\HLJLn{amtu}@*)(*@\HLJLoB{=}@*)(*@\HLJLn{amtu}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: data18BLQ not defined
+\end{lstlisting}
+
+
+Please, note that in the \texttt{route=} option the name between quotes should match the name of the route of administration in the dataset. Routes include "iv" or "ev".
+
+Also note that in the function above by default the lower limit of quantification (LLQ) is 0 and concentrations that are below LLQ (BLQ) are dropped.
+
+Let's say we want to specify an LLQ value of 0.4 mg/L, then we need to add \texttt{llq=0.4concu} to the function above:
+
+
+\begin{lstlisting}
+(*@\HLJLn{pop7}@*) (*@\HLJLoB{=}@*) (*@\HLJLnf{read{\_}nca}@*)(*@\HLJLp{(}@*)(*@\HLJLn{data7BLQ}@*)(*@\HLJLp{,}@*) (*@\HLJLn{id}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{ID}@*)(*@\HLJLp{,}@*) (*@\HLJLn{time}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{time}@*)(*@\HLJLp{,}@*) (*@\HLJLn{conc}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{DV}@*)(*@\HLJLp{,}@*) (*@\HLJLn{amt}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{DOSE}@*)(*@\HLJLp{,}@*) (*@\HLJLn{ii}@*)(*@\HLJLoB{=}@*)(*@\HLJLni{24}@*)(*@\HLJLn{timeu}@*)(*@\HLJLp{,}@*)
+    (*@\HLJLn{route}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{Formulation}@*)(*@\HLJLp{,}@*)(*@\HLJLn{timeu}@*)(*@\HLJLoB{=}@*)(*@\HLJLn{timeu}@*)(*@\HLJLp{,}@*) (*@\HLJLn{concu}@*)(*@\HLJLoB{=}@*)(*@\HLJLn{concu}@*)(*@\HLJLp{,}@*) (*@\HLJLn{amtu}@*)(*@\HLJLoB{=}@*)(*@\HLJLn{amtu}@*)(*@\HLJLp{,}@*)(*@\HLJLn{llq}@*)(*@\HLJLoB{=}@*)(*@\HLJLnfB{0.4}@*)(*@\HLJLn{concu}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: data7BLQ not defined
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{pop18}@*) (*@\HLJLoB{=}@*) (*@\HLJLnf{read{\_}nca}@*)(*@\HLJLp{(}@*)(*@\HLJLn{data18BLQ}@*)(*@\HLJLp{,}@*) (*@\HLJLn{id}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{ID}@*)(*@\HLJLp{,}@*) (*@\HLJLn{time}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{time}@*)(*@\HLJLp{,}@*) (*@\HLJLn{conc}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{DV}@*)(*@\HLJLp{,}@*) (*@\HLJLn{amt}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{DOSE}@*)(*@\HLJLp{,}@*) (*@\HLJLn{ii}@*)(*@\HLJLoB{=}@*)(*@\HLJLni{24}@*)(*@\HLJLn{timeu}@*)(*@\HLJLp{,}@*)
+    (*@\HLJLn{route}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{Formulation}@*)(*@\HLJLp{,}@*)(*@\HLJLn{timeu}@*)(*@\HLJLoB{=}@*)(*@\HLJLn{timeu}@*)(*@\HLJLp{,}@*) (*@\HLJLn{concu}@*)(*@\HLJLoB{=}@*)(*@\HLJLn{concu}@*)(*@\HLJLp{,}@*) (*@\HLJLn{amtu}@*)(*@\HLJLoB{=}@*)(*@\HLJLn{amtu}@*)(*@\HLJLp{,}@*)(*@\HLJLn{llq}@*)(*@\HLJLoB{=}@*)(*@\HLJLnfB{0.4}@*)(*@\HLJLn{concu}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: data18BLQ not defined
+\end{lstlisting}
+
+
+\section{Single PK parameter calculation}
+We can use different functions to calculate single PK parameters. For example, we can calculate the area under the concentration-time curve from time 0 to the last observation using the linear trapezoidal rule by writing the following code.
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{auc}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{,}@*)(*@\HLJLn{auctype}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{last}@*)(*@\HLJLp{,}@*)(*@\HLJLn{method}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{linear}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{auc}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop18}@*)(*@\HLJLp{,}@*)(*@\HLJLn{auctype}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{last}@*)(*@\HLJLp{,}@*)(*@\HLJLn{method}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{linear}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop18 not defined
+\end{lstlisting}
+
+
+In the function above, the type of AUC by default is AUC from zero to infinity and the method by default is linear.
+
+We could also use the function above to calculate AUC from time 0 to infinity, and we could also change the method of calculation to log-linear trapezoidal (\texttt{method=:linuplogdown}) or to linear-log (\texttt{method=:linlog}).
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{auc}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{,}@*)(*@\HLJLn{auctype}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{inf}@*)(*@\HLJLp{,}@*)(*@\HLJLn{method}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{linuplogdown}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+If we want to calculate the percentage of AUC that is being extrapolated, we need to use the following function:
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{auc{\_}extrap{\_}percent}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+One could also compute AUC on a certain time interval. To compute AUC from time 0 to 12 hours after dose on the first individual:
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{auc}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{[}@*)(*@\HLJLni{1}@*)(*@\HLJLp{],}@*) (*@\HLJLn{interval}@*)(*@\HLJLoB{=}@*)(*@\HLJLp{(}@*)(*@\HLJLni{0}@*)(*@\HLJLp{,}@*)(*@\HLJLni{12}@*)(*@\HLJLp{)}@*)(*@\HLJLoB{.*}@*)(*@\HLJLn{timeu}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+Please, note that \texttt{pop7[1]} refers to the first subject in the dataset, not necessarily to the subject with ID=1.
+
+
+\begin{lstlisting}
+(*@\HLJLn{pop7}@*)(*@\HLJLp{[}@*)(*@\HLJLni{1}@*)(*@\HLJLp{]}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+Also note that we need to apply the time unit (\texttt{timeu}) to the interval for units compatibility.
+
+Multiple intervals can also be specified:
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{auc}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{[}@*)(*@\HLJLni{1}@*)(*@\HLJLp{],}@*) (*@\HLJLn{interval}@*)(*@\HLJLoB{=}@*)(*@\HLJLp{[(}@*)(*@\HLJLni{0}@*)(*@\HLJLp{,}@*)(*@\HLJLni{12}@*)(*@\HLJLp{)}@*)(*@\HLJLoB{.*}@*)(*@\HLJLn{timeu}@*)(*@\HLJLp{,(}@*)(*@\HLJLni{0}@*)(*@\HLJLp{,}@*)(*@\HLJLni{6}@*)(*@\HLJLp{)}@*)(*@\HLJLoB{.*}@*)(*@\HLJLn{timeu}@*)(*@\HLJLp{])}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+The function to calculate the terminal rate constant (\ensuremath{\lambda}z) is:
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{lambdaz}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+By default, \ensuremath{\lambda}z calculation checks the last 10 or less data points, but this can be changed by using the following code:
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{lambdaz}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{[}@*)(*@\HLJLni{1}@*)(*@\HLJLp{],}@*) (*@\HLJLn{threshold}@*)(*@\HLJLoB{=}@*)(*@\HLJLni{3}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+The exact data points to be used for \ensuremath{\lambda}z calculation can also be specified using their indices:
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{lambdaz}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{[}@*)(*@\HLJLni{1}@*)(*@\HLJLp{],}@*) (*@\HLJLn{idxs}@*)(*@\HLJLoB{=}@*)(*@\HLJLp{[}@*)(*@\HLJLni{18}@*)(*@\HLJLp{,}@*)(*@\HLJLni{19}@*)(*@\HLJLp{,}@*)(*@\HLJLni{20}@*)(*@\HLJLp{])}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+or using the time point:
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{lambdaz}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{[}@*)(*@\HLJLni{1}@*)(*@\HLJLp{],}@*) (*@\HLJLn{slopetimes}@*)(*@\HLJLoB{=}@*)(*@\HLJLp{[}@*)(*@\HLJLnfB{18.5}@*)(*@\HLJLp{,}@*)(*@\HLJLni{19}@*)(*@\HLJLp{,}@*)(*@\HLJLnfB{19.5}@*)(*@\HLJLp{]}@*)(*@\HLJLoB{.*}@*)(*@\HLJLn{timeu}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+The concentration at a specific time can also be interpolated or extrapolated. For example, to extrapolate the concentration at time = 22 hours using linear interpolation:
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{interpextrapconc}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{,}@*) (*@\HLJLni{22}@*)(*@\HLJLn{timeu}@*)(*@\HLJLp{,}@*) (*@\HLJLn{method}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{linear}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+Other methods can be used such as \texttt{:linuplogdown} or \texttt{:linlog}.
+
+To calculate the maximum concentration for the first subject we would use:
+
+
+\begin{lstlisting}
+(*@\HLJLn{cmax}@*) (*@\HLJLoB{=}@*) (*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{cmax}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{[}@*)(*@\HLJLni{1}@*)(*@\HLJLp{])}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+If we want dose-normalized Cmax for that same subject:
+
+
+\begin{lstlisting}
+(*@\HLJLnf{normalizedose}@*)(*@\HLJLp{(}@*)(*@\HLJLn{cmax}@*)(*@\HLJLp{,}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{[}@*)(*@\HLJLni{1}@*)(*@\HLJLp{])}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+The same function can be used to compute dose-normalized AUClast:
+
+
+\begin{lstlisting}
+(*@\HLJLn{AUClast}@*) (*@\HLJLoB{=}@*) (*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{auc}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{[}@*)(*@\HLJLni{1}@*)(*@\HLJLp{],}@*)(*@\HLJLn{auctype}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{last}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLnf{normalizedose}@*)(*@\HLJLp{(}@*)(*@\HLJLn{AUClast}@*)(*@\HLJLp{,}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{[}@*)(*@\HLJLni{1}@*)(*@\HLJLp{])}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+Other functions to calculate single PK parameters are the following:
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{lambdazr2}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{lambdazadjr2}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{lambdazintercept}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{lambdaztimefirst}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{lambdaznpoints}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{tmax}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{cmin}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{tmin}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{tlast}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{clast}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{aumc}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{aumclast}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{thalf}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{cl}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{vss}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{vz}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{accumulationindex}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+If we want to calculate one of these PK parameters just in one subject, we just need to specify the index of the subject. In this case \texttt{pop7[24]} is the index of subject with ID=24 in the dataset.
+
+
+\begin{lstlisting}
+(*@\HLJLn{pop7}@*)(*@\HLJLp{[}@*)(*@\HLJLni{24}@*)(*@\HLJLp{]}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{cl}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{[}@*)(*@\HLJLni{24}@*)(*@\HLJLp{])}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+\section{NCA report}
+If we want a complete report of the NCA analysis we can just use the function \texttt{NCAreport} to obtain a data frame that contains all the above mentioned pharmacokinetic parameters.
+
+
+\begin{lstlisting}
+(*@\HLJLn{report}@*) (*@\HLJLoB{=}@*) (*@\HLJLnf{NCAReport}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{report}@*) (*@\HLJLoB{=}@*) (*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{to{\_}dataframe}@*)(*@\HLJLp{(}@*)(*@\HLJLn{report}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: report not defined
+\end{lstlisting}
+
+
+By default, the AUC and AUMC reported are observed. If predicted PK parameters are needed instead, the following code should be used:
+
+
+\begin{lstlisting}
+(*@\HLJLn{report}@*) (*@\HLJLoB{=}@*) (*@\HLJLnf{NCAReport}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop7}@*)(*@\HLJLp{,}@*)(*@\HLJLn{pred}@*)(*@\HLJLoB{=}@*)(*@\HLJLkc{true}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: pop7 not defined
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{report}@*) (*@\HLJLoB{=}@*) (*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{to{\_}dataframe}@*)(*@\HLJLp{(}@*)(*@\HLJLn{report}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: report not defined
+\end{lstlisting}
+
+
+Finally, we can save this data frame as a csv file if desired.
+
+
+\begin{lstlisting}
+(*@\HLJLn{CSV}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{write}@*)(*@\HLJLp{(}@*)(*@\HLJLs{"./tutorials/nca/report{\_}SD{\_}IVbolus{\_}7BLQ.csv"}@*)(*@\HLJLp{,}@*) (*@\HLJLn{report}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: report not defined
+\end{lstlisting}
+
+
+
+\end{document}

@@ -1,0 +1,163 @@
+---
+title : Exercise PK40 - Enterohepatic Recirculation
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+### Background
+
+  * Structural model        - Enterohepatic Recirculation (EHS)
+  * Route of administration - IV Bolus dose
+  * Dosage Regimen          - 5617.3 ug IV bolus dose was administered and drug
+                              plasma concentration was measured for 36 hrs
+  * Number of Subjects      - 1 Subject
+
+![PK40 Graphic Model](https://user-images.githubusercontent.com/62241298/82119327-2681fe80-979b-11ea-915f-7f862f94a9a6.png)
+
+### Libraries
+
+call the "necessary" libraries to get started
+
+```julia
+using Pumas
+using Plots
+using CSV
+using StatsPlots
+using Random
+```
+
+### Model
+
+It is multi-compartment Model with `Enterohepatic Recirculation`
+
+```julia
+pk_40            = @model  begin
+   @param begin
+     tvcl        ∈ RealDomain(lower=0)
+     tvvc        ∈ RealDomain(lower=0)
+     tvvp        ∈ RealDomain(lower=0)
+     tvQ         ∈ RealDomain(lower=0)
+     tvka        ∈ RealDomain(lower=0)
+     tvklg       ∈ RealDomain(lower=0)
+     tvτ         ∈ RealDomain(lower=0)
+     Ω           ∈ PDiagDomain(7)
+     σ²_prop     ∈ RealDomain(lower=0)
+   end
+
+   @random begin
+     η           ~ MvNormal(Ω)
+   end
+
+   @pre begin
+     Cl          = tvcl * exp(η[1])
+     Vc          = tvvc * exp(η[2])
+     Vp          = tvvp * exp(η[3])
+     Q           = tvQ * exp(η[4])
+     Ka          = tvka * exp(η[5])
+     Klg         = tvklg * exp(η[6])
+     τ           = tvτ * exp(η[7])
+     Kempt       = (t>10 && t<(10+τ))*(1/τ)
+
+   end
+
+   @dynamics begin
+     Central'    = Ka*Depot - (Cl/Vc)*Central + (Q/Vp)*Peripheral - (Q/Vc)*Central - Klg*Central
+     Peripheral' = (Q/Vc)*Central - (Q/Vp)*Peripheral
+     Bile'       = Klg*Central - Bile*Kempt
+     Depot'      = Bile*Kempt - Ka*Depot
+   end
+
+   @derived begin
+     cp          = @. Central/Vc
+     dv          ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
+   end
+end
+```
+
+### Parameters
+
+Parameters are provided for the simulation as below. `tv` represents the typical value for parameters.
+
+  * tvcl - Clearance (L/hr)
+  * tvvc - Central Volume of Distribution (L)
+  * tvvp - Peripheral Volume of Distribution (L)
+  * tvQ  - Intercompartmental Clearance (L/hr)
+  * tvka - Absorption rate Constant (hr⁻¹)
+  * tvklg - Bile Excretion rate constant (hr⁻¹)
+  * tvτ - Typical Value bile emptying Interval (hr)
+  * Kempt - Bile Emptying rate constant (hr⁻¹)
+  * Ω - Between Subject Variability
+  * σ - Residual error
+
+```julia
+param     =  (tvcl    = 0.842102,
+              tvvc    = 12.8201,
+              tvvp    = 29.0867,
+              tvQ     = 11.3699,
+              tvka    = 3.01245,
+              tvklg   = 0.609319,
+              tvτ     = 2.79697,
+              Ω       = Diagonal([0.0001,0.0001,0.0001,0.0001,0.0001,0.0001,0.0001]),
+              σ²_prop = 0.005)
+```
+
+### Dosage Regimen
+
+A dose of **5617.3 ug** IV bolus dose is administered at `time 0` and
+ drug plasma concentration was measured for `36 hrs`
+
+```julia
+ev1  = DosageRegimen(5617.3, time=0, cmt=1)
+sub1 = Subject(id=1, events=ev1)
+```
+
+### Simulation
+
+Simulate the plasma concentration after IV administration
+
+```julia; results="hidden"
+Random.seed!(123)
+sim1 = simobs(pk_40, sub1, param, obstimes=0:000.001:36)
+df1  = DataFrame(sim1)
+```
+
+### Dataframe & Plot
+
+Use the dataframe for plotting
+
+```julia
+df1_dv = filter(x -> x.time in [0.03,0.083,0.15,0.17,0.33,0.5,0.67,0.83,1,1.5,2,4,6,8,10,10.5,11,11.5,12,12.5,13,15,16,17,18,20,24,26,28,30,32,36], df1)
+
+@df df1 plot(:time, :cp,
+            yaxis=:log, label= "Pred - Conc", xlabel="Time (hr)", ylabel="Concentration (ug/L)",
+            color=[:green], linewidth=3, title = "Enterohepatic Recirculation Model, Concentration vs Time",
+            xticks = [0,5,10,15,20,25,30,35,40], yticks = [1,10,100,1000], xlims=(0,40), ylims=(1,1000))
+@df df1_dv scatter!(:time, :dv, yaxis=:log, label="Obs - Conc", color=[:red])
+```
+
+
+```julia; echo=false, eval=false
+par       =  (tvcl    = 0.842102,
+              tvvc    = 12.8201,
+              tvvp    = 29.0867,
+              tvQ     = 11.3699,
+              tvka    = 3.01245,
+              tvklg   = 0.609319,
+              tvτ     = 2.79697,
+              Ω       = Diagonal([0.012,0.0423,0.0342,0.0465,0.0129,0.0278,0.0532]),
+              σ²_prop = 0.0677818)
+
+ev1 = DosageRegimen(5617.3, time=0, cmt=1)
+pop = map(i -> Subject(id=i,events=ev1), 1:50)
+
+Random.seed!(1234)
+pop_sim = simobs(pk_40, pop, par, obstimes=[0.03,0.083,0.15,0.17,0.33,0.5,0.67,0.83,1,1.5,2,4,6,8,10,10.5,11,11.5,12,12.5,13,15,16,17,18,20,24,26,28,30,32,36])
+plot(pop_sim, yaxis=:log)
+
+df_sim = DataFrame(pop_sim)
+
+CSV.write("./data/generated/pk_40.csv", df_sim)
+```

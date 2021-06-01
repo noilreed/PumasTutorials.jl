@@ -1,50 +1,49 @@
-# PuMaSTutorials.jl
+# PumasTutorials.jl
 
-PuMaSTutorials.jl holds PDFs, webpages, and interactive Jupyter notebooks
-showing how to do pharmaceutical modeling and simulation with PuMaS.jl.
-
-## Interactive Notebooks
-
-To run the tutorials interactively via Jupyter notebooks, install the package
-and open the tutorials like:
-
-```julia
-using Pkg
-pkg"add https://github.com/UMCTM/PuMaSTutorials.jl"
-using PuMaSTutorials
-PuMaSTutorials.open_notebooks()
-```
+PumasTutorials.jl holds PDFs, webpages, and interactive Jupyter notebooks
+showing how to do pharmaceutical modeling and simulation with Pumas.jl.
 
 ## Table of Contents
 
 - Introduction
-  - [Introduction to PuMaS](https://github.com/UMCTM/PuMaSTutorials.jl/blob/master/pdf/introduction/introduction.pdf)
-  - [Generating and Simulating Populations](https://github.com/UMCTM/PuMaSTutorials.jl/blob/master/pdf/introduction/simulating_populations.pdf)
-  
-  - [Introduction to Noncompartmental Analysis (NCA)](https://github.com/UMCTM/PuMaSTutorials.jl/blob/master/pdf/nca/basic_nca.pdf)
+  - [Introduction to Pumas](https://tutorials.pumas.ai/html/introduction/introduction.html)
+  - [Generating and Simulating Populations](https://tutorials.pumas.ai/html/introduction/simulating_populations.html)
+  - [Introduction to Noncompartmental Analysis (NCA)](https://tutorials.pumas.ai/html/nca/basic_nca.html)
+- Workshop Materials
+  - [Workshop Exercises](https://tutorials.pumas.ai/html/exercises/workshop_exercises.html)
+  - [Workshop Exercise Solutions](https://tutorials.pumas.ai/html/exercises/workshop_solutions.html)
+  - [Workshop Exercise Fitting](https://tutorials.pumas.ai/html/exercises/fitting.html)
 - Models
-  - [PBPK in PuMaS, A Model for ACAT](https://github.com/UMCTM/PuMaSTutorials.jl/blob/master/pdf/pbpk/pbpk_acat.pdf)
+  - [Absorption models](https://tutorials.pumas.ai/html/pkpd/absorption_models.html)
+  - [Discrete Response Models](https://tutorials.pumas.ai/html/discrete/discrete_response_models.html)
+  - [Indirect Response Models](https://tutorials.pumas.ai/html/pkpd/indirect_response_models.html)
 
 # Developer Documentation
 
 ## Contributing
 
-First of all, make sure that your current directory is `PuMaSTutorials`. All
+First of all, make sure that your current directory is `PumasTutorials`. All
 of the files are generated from the Weave.jl files in the `tutorials` folder.
 To run the generation process, do for example:
 
 ```julia
-using Pkg, PuMaSTutorials
-cd(joinpath(dirname(pathof(PuMaSTutorials)), ".."))
+using Pkg, PumasTutorials
+cd(joinpath(dirname(pathof(PumasTutorials)), ".."))
 Pkg.pkg"activate ."
 Pkg.pkg"instantiate"
-PuMaSTutorials.weave_file("introduction","introduction.jmd")
+PumasTutorials.weave_file("introduction","introduction.jmd")
 ```
 
 To generate all of the notebooks, do:
 
 ```julia
-PuMaSTutorials.weave_all()
+PumasTutorials.weave_all()
+```
+
+or to generate all in a folder, use
+
+```julia
+PumasTutorials.weave_folder("introduction")
 ```
 
 If you add new tutorials which require new packages, simply updating your local

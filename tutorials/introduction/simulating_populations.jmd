@@ -1,23 +1,23 @@
 ---
 title : Defining and Simulating Populations
-author : Vijay Ivaturi, Chris Rackauckas
-date:  February 10, 2019
+author : PumasAI
+date:  August, 2020
 ---
 
 ```julia
-using PuMaS, DataFrames, LinearAlgebra, Plots
+using Pumas, DataFrames, LinearAlgebra, Plots
 ```
 
 # Introduction
 
 In this tutorial, we will cover the fundamentals of generating populations
-to simulate with PuMaS. We will demonstrate how to specify dosage regimens and
+to simulate with Pumas. We will demonstrate how to specify dosage regimens and
 covariates, and then how to piece these together to form a population to
 simulate.
 
 ## The model
 
-Below is a PuMaS model that specifies a 1-compartment oral absorption system
+Below is a Pumas model that specifies a 1-compartment oral absorption system
 with between-subject variability on all the parameters. Details of the model
 specification are provided in the introduction tutorial.
 
@@ -33,10 +33,9 @@ model = @model begin
     η ~ MvNormal(Ω)
   end
 
-  @covariates isPM Wt
+  @covariates Wt
 
   @pre begin
-    TVCL = isPM == 1 ? θ[1] : θ[4]
     CL = θ[1]*(Wt/70)^0.75*exp(η[1])
     V = θ[2]*(Wt/70)^0.75*exp(η[2])
     Ka = θ[3]*exp(η[3])
@@ -68,7 +67,7 @@ proportional residual error.
 ```julia
 fixeffs = (
   θ = [0.4,20,1.1,2],
-  Ω = PDMat(diagm(0 => [0.04,0.04,0.04])),
+  Ω = diagm(0 => [0.04,0.04,0.04]),
   σ_prop = 0.04
   )
 ```
@@ -97,21 +96,21 @@ Note that `ev` is of type `DosageRegimen`. Specified like above,
 Let's create a single subject
 
 ```julia
-s1 = Subject(id=1,evs=ev,cvs=(isPM=0, Wt=70))
+s1 = Subject(id=1,events=ev,covariates=(Wt=70,))
 for fn in fieldnames(Subject)
-           x = getproperty(s1, fn)
-           if !isa(x, Nothing)
-               println(fn)
-               println(x)
-           end
+    x = getproperty(s1, fn)
+    if !isa(x, Nothing)
+        println(fn)
+        println(x)
+    end
 end
 ```
 Note that each `Subject` is an individual composed of:
 
   - `id`: an unique identifier
-  - `obs`: observations, represented by `PuMaS.Observation[]`
+  - `obs`: observations, represented by `Pumas.Observation[]`
   - `cvs`: covariates
-  - `evs`: events, represented by `PuMaS.Event[]`
+  - `evs`: events, represented by `Pumas.Event[]`
 
 In the example above, we only provided the `id`, `evs`, and the `cvs`. Since  `obs` were not
 provided, they are represented by an empty array. Lets take a closer at the events for this
@@ -144,7 +143,7 @@ plot(obs)
 Now, lets create one more subject, `s2`.
 
 ```julia
-s2 = Subject(id=2,evs=ev,cvs=(isPM=1,Wt=70))
+s2 = Subject(id=2,events=ev,covariates=(Wt=70,))
 ```
 
 If we want to simulate both `s1` and `s2` together, we need to bring these subjects together to form a `Population`. A `Population` is
@@ -157,11 +156,11 @@ twosubjs =  Population([s1,s2])
 Let's see the details of the first and the second subject
 
 ```julia
-twosubjs.subjects[1]
+twosubjs[1]
 ```
 
 ```julia
-twosubjs.subjects[2]
+twosubjs[2]
 ```
 Now, we can simulate this `Population` of 2 subjects as below
 
@@ -188,8 +187,7 @@ The second covariate is a continuous covariate where body weight `Wt` impacts
 both `CL` and `V`. Let us now specify covariates to a population of 10 subjects.
 
 ```julia
-choose_covariates() = (isPM = rand([1, 0]),
-                    Wt = rand(55:80))
+choose_covariates() = (Wt = rand(55:80),)
 ```
 `choose_covariates` will randomly choose a `isPM` and an `Wt` between 55-80 kgs
 
@@ -206,13 +204,13 @@ build's a subject with the randomly chosen covariates in order to build a
 population:
 
 ```julia
-pop_with_covariates = Population(map(i -> Subject(id=i,evs=ev,cvs=choose_covariates()),1:10))
+pop_with_covariates = Population(map(i -> Subject(id=i,events=ev,covariates=choose_covariates()),1:10))
 ```
 
 Simulate into the population
 
 ```julia
-obs = simobs(model,pop_with_covariates,fixeffs,obstimes=0:0.1:120)
+obs = simobs(model,pop_with_covariates,fixeffs,obstimes=0:0.1:120);
 ```
 
 and visualize the output
@@ -236,7 +234,7 @@ md =  DosageRegimen(100,ii=24,addl=6)
 Let's create a new subject, `s3` with this dosage regimen:
 
 ```julia
-s3 = Subject(id=3,evs=md, cvs=(isPM=0,Wt=70))
+s3 = Subject(id=3,events=md, covariates=(Wt=70,))
 ```
 
 and see the results:
@@ -260,7 +258,7 @@ ldmd = DosageRegimen([500,100],cmt=1, time=[0,24], addl=[0,6],ii=[0,24])
 Let's see if this result matches our intuition:
 
 ```julia
-s4 = Subject(id=4, evs=ldmd, cvs=(isPM=0,Wt=70))
+s4 = Subject(id=4, events=ldmd, covariates=(Wt=70,))
 obs = simobs(model, s4, fixeffs,obstimes=0:0.1:120)
 plot(obs, ylims=(0,50))
 ```
@@ -289,9 +287,9 @@ e3 = DosageRegimen(200, ii=24, addl=2)
 ```
 
 ```julia
-pop1 = Population(map(i -> Subject(id=i,evs=e1,cvs=choose_covariates()),1:5))
-pop2 = Population(map(i -> Subject(id=i,evs=e2,cvs=choose_covariates()),6:8))
-pop3 = Population(map(i -> Subject(id=i,evs=e3,cvs=choose_covariates()),9:10))
+pop1 = Population(map(i -> Subject(id=i,events=e1,covariates=choose_covariates()),1:5))
+pop2 = Population(map(i -> Subject(id=i,events=e2,covariates=choose_covariates()),6:8))
+pop3 = Population(map(i -> Subject(id=i,events=e3,covariates=choose_covariates()),9:10))
 pop = Population(vcat(pop1,pop2,pop3))
 ```
 
@@ -314,7 +312,7 @@ inf = DosageRegimen(100, rate=3, cmt=2)
 Now let's simulate a subject undergoing this treatment strategy:
 
 ```julia
-s5 = Subject(id=5, evs=inf, cvs=(isPM=0,Wt=70))
+s5 = Subject(id=5, events=inf, covariates=(Wt=70,))
 obs = simobs(model, s5, fixeffs, obstimes=0:0.1:120)
 plot(obs)
 ```
@@ -324,7 +322,7 @@ plot(obs)
 Note that all of these functions are standard Julia functions, and thus standard
 Julia programming constructions can be utilized to simplify the construction of
 large populations. We already demonstrated the use of `map` and a comprehension,
-but we can also make use of constructs like for loops.
+but we can also make use of constructs like `for` loops.
 
 ## Conclusion
 

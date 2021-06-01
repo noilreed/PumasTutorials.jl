@@ -1,0 +1,100 @@
+---
+title: Pumas.jl Workshop Exercises
+author: PumasAI
+date: August 2020
+---
+
+These exercises teach common workflows which involve Pumas.jl. This exercise
+worksheet is meant to be a living document leading new users through a deep dive
+of the Pumas.jl feature set. If you have further suggestions or want to contribute
+new problems, please open an issue or PR at the
+[PumasTutorials.jl](https://github.com/PumasAI/PumasTutorials.jl) repository.
+
+The exercises are described as follows:
+
+- Exercise 1 takes you through simulating a compartmental system in Pumas. The
+  user will gain experience in writing a model using the Pumas Domain Specific
+  Language (DSL), setting up a dosing regimen and population, simulating the
+  model into the designed population and finally plotting the results of the
+  simulation.
+- Exercise 2 takes the user through performing an Non-compartmental analysis
+  (NCA). The user will get familiarized with reading data sets in a spread
+  sheet format (e.g, .csv) or as the simulated output as in exercise 1 and
+  perform a simple NCA analysis.
+- Exercise 3 introduces the user to perform a non-linear mixed effects modeling
+  estimation (NLME) on pharmacokinetic data. The user will learn how to read and
+  set up the data for NLME estimation, fit the model, infer and inspect the
+  results of the model fit.
+- Exercise 4 introduces the user to various post-processing steps of model
+  fitting, including using the final
+  model fits to peform simulation into an alternate dosing regimen or populaion
+  of interest.
+
+# Problem 1: Simulate a first-order absorption model with linear elimination after a 100 mg oral dose in 24 subjects
+
+In this poblem, we will walk through the basics of writing a model with Pumas.jl.
+The pharmacokinetics after an oral dose are commonly described by a first-order
+process. In our example we will use a linear one-compartmental system for
+elimination of the drugs.
+
+## Part 1: Understand the system
+
+Let's understand the system by setting up the differential equation or the
+analytical solution that describes the systems
+
+$$\begin{align}
+\frac{dDepot}{dt} &= -K_a.Depot\\
+\frac{dCentral}{dt} &= K_a.Depot - (CL/V).Central\end{align}$$
+
+The analytical form of this equation to calculate the concentration, `Cp` at
+any given time can be written as
+
+$$Cp = \frac{F \times Dose \times K_a}{V (K_a-K_{el})}(e^{-K_{el} t} - e^{-K_a t})$$
+
+where the parameters are: `Ka = 1 hr-1`, `CL = 1 L/hr`, `V = 20 L/hr`.
+
+## Part 2: Setup the population
+
+Setting up a dosing regimen and population of subjects. Go through the section on [Generating and simulating populations](https://tutorials.pumas.ai/html/introduction/simulating_populations.html) in the
+tutorials to set up a population of 24 subjects that receives 100 mg dose via the mouth and assign a random body weight to each subjects
+
+## Part 3: Write the model
+
+Write up a first-order absorption model where body weight is a covariate on `CL` and `V`.
+understand the different steps of writing up a model by referring to the
+documentation on [models](https://docs.pumas.ai/basics/models/).
+
+## Part 4: Simulate
+
+Perform the simulation by using the `simobs` function. The details on the use of `simobs` can be seen in the documentation on [simulation](https://docs.pumas.ai/dev/basics/simulation/) and by
+looking at one of the [tutorials](https://tutorials.pumas.ai/html/introduction/introduction.html). Finish by plotting the result of the simulation.
+
+# Problem 2: Peform Non-compartmental analysis
+
+Use the dataset generated from Problem 1 by converting a simulation to a `DataFrame`
+to read in the data using the `read_nca` function and
+generate a NCA report. You can know more about how to do this by looking at
+one of the [NCA tutorials](https://tutorials.pumas.ai/html/nca/nca_introduction.html)
+
+# Problem 3: Estimate using Non-linear mixed effects
+
+The same dataset that was read in for NCA analysis will be used for fitting a
+NLME model. You can learn more on how to read the data in for NLME estimation
+using `read_pumas` by following the [tutorial](https://tutorials.pumas.ai/html/introduction/fitting.html) or the
+[documentation](https://docs.pumas.ai/basics/estimation/).
+
+## Part 1: Read datasets for NLME estimation
+
+Read the dataset and evaluate the Population
+
+## Part 2: Perform a model fit
+
+Fit the model using FOCEI() estimation
+
+## Part 3: Infer the results
+
+Infer the results of your `fit`
+
+## Part 4: Inspect the results
+
+Inspect the results of your `fit`

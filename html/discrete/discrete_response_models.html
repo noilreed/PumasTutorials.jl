@@ -1,0 +1,1651 @@
+<!DOCTYPE html>
+<HTML lang = "en">
+<HEAD>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Discrete Response Models</title>
+  
+
+  <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]},
+      TeX: { equationNumbers: { autoNumber: "AMS" } }
+    });
+  </script>
+
+  <script type="text/javascript" async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+  </script>
+
+  
+<style>
+pre.hljl {
+    border: 1px solid #ccc;
+    margin: 5px;
+    padding: 5px;
+    overflow-x: auto;
+    color: rgb(68,68,68); background-color: rgb(251,251,251); }
+pre.hljl > span.hljl-t { }
+pre.hljl > span.hljl-w { }
+pre.hljl > span.hljl-e { }
+pre.hljl > span.hljl-eB { }
+pre.hljl > span.hljl-o { }
+pre.hljl > span.hljl-k { color: rgb(148,91,176); font-weight: bold; }
+pre.hljl > span.hljl-kc { color: rgb(59,151,46); font-style: italic; }
+pre.hljl > span.hljl-kd { color: rgb(214,102,97); font-style: italic; }
+pre.hljl > span.hljl-kn { color: rgb(148,91,176); font-weight: bold; }
+pre.hljl > span.hljl-kp { color: rgb(148,91,176); font-weight: bold; }
+pre.hljl > span.hljl-kr { color: rgb(148,91,176); font-weight: bold; }
+pre.hljl > span.hljl-kt { color: rgb(148,91,176); font-weight: bold; }
+pre.hljl > span.hljl-n { }
+pre.hljl > span.hljl-na { }
+pre.hljl > span.hljl-nb { }
+pre.hljl > span.hljl-nbp { }
+pre.hljl > span.hljl-nc { }
+pre.hljl > span.hljl-ncB { }
+pre.hljl > span.hljl-nd { color: rgb(214,102,97); }
+pre.hljl > span.hljl-ne { }
+pre.hljl > span.hljl-neB { }
+pre.hljl > span.hljl-nf { color: rgb(66,102,213); }
+pre.hljl > span.hljl-nfm { color: rgb(66,102,213); }
+pre.hljl > span.hljl-np { }
+pre.hljl > span.hljl-nl { }
+pre.hljl > span.hljl-nn { }
+pre.hljl > span.hljl-no { }
+pre.hljl > span.hljl-nt { }
+pre.hljl > span.hljl-nv { }
+pre.hljl > span.hljl-nvc { }
+pre.hljl > span.hljl-nvg { }
+pre.hljl > span.hljl-nvi { }
+pre.hljl > span.hljl-nvm { }
+pre.hljl > span.hljl-l { }
+pre.hljl > span.hljl-ld { color: rgb(148,91,176); font-style: italic; }
+pre.hljl > span.hljl-s { color: rgb(201,61,57); }
+pre.hljl > span.hljl-sa { color: rgb(201,61,57); }
+pre.hljl > span.hljl-sb { color: rgb(201,61,57); }
+pre.hljl > span.hljl-sc { color: rgb(201,61,57); }
+pre.hljl > span.hljl-sd { color: rgb(201,61,57); }
+pre.hljl > span.hljl-sdB { color: rgb(201,61,57); }
+pre.hljl > span.hljl-sdC { color: rgb(201,61,57); }
+pre.hljl > span.hljl-se { color: rgb(59,151,46); }
+pre.hljl > span.hljl-sh { color: rgb(201,61,57); }
+pre.hljl > span.hljl-si { }
+pre.hljl > span.hljl-so { color: rgb(201,61,57); }
+pre.hljl > span.hljl-sr { color: rgb(201,61,57); }
+pre.hljl > span.hljl-ss { color: rgb(201,61,57); }
+pre.hljl > span.hljl-ssB { color: rgb(201,61,57); }
+pre.hljl > span.hljl-nB { color: rgb(59,151,46); }
+pre.hljl > span.hljl-nbB { color: rgb(59,151,46); }
+pre.hljl > span.hljl-nfB { color: rgb(59,151,46); }
+pre.hljl > span.hljl-nh { color: rgb(59,151,46); }
+pre.hljl > span.hljl-ni { color: rgb(59,151,46); }
+pre.hljl > span.hljl-nil { color: rgb(59,151,46); }
+pre.hljl > span.hljl-noB { color: rgb(59,151,46); }
+pre.hljl > span.hljl-oB { color: rgb(102,102,102); font-weight: bold; }
+pre.hljl > span.hljl-ow { color: rgb(102,102,102); font-weight: bold; }
+pre.hljl > span.hljl-p { }
+pre.hljl > span.hljl-c { color: rgb(153,153,119); font-style: italic; }
+pre.hljl > span.hljl-ch { color: rgb(153,153,119); font-style: italic; }
+pre.hljl > span.hljl-cm { color: rgb(153,153,119); font-style: italic; }
+pre.hljl > span.hljl-cp { color: rgb(153,153,119); font-style: italic; }
+pre.hljl > span.hljl-cpB { color: rgb(153,153,119); font-style: italic; }
+pre.hljl > span.hljl-cs { color: rgb(153,153,119); font-style: italic; }
+pre.hljl > span.hljl-csB { color: rgb(153,153,119); font-style: italic; }
+pre.hljl > span.hljl-g { }
+pre.hljl > span.hljl-gd { }
+pre.hljl > span.hljl-ge { }
+pre.hljl > span.hljl-geB { }
+pre.hljl > span.hljl-gh { }
+pre.hljl > span.hljl-gi { }
+pre.hljl > span.hljl-go { }
+pre.hljl > span.hljl-gp { }
+pre.hljl > span.hljl-gs { }
+pre.hljl > span.hljl-gsB { }
+pre.hljl > span.hljl-gt { }
+</style>
+
+
+
+  <style type="text/css">
+  @font-face {
+  font-style: normal;
+  font-weight: 300;
+}
+@font-face {
+  font-style: normal;
+  font-weight: 400;
+}
+@font-face {
+  font-style: normal;
+  font-weight: 600;
+}
+html {
+  font-family: sans-serif; /* 1 */
+  -ms-text-size-adjust: 100%; /* 2 */
+  -webkit-text-size-adjust: 100%; /* 2 */
+}
+body {
+  margin: 0;
+}
+article,
+aside,
+details,
+figcaption,
+figure,
+footer,
+header,
+hgroup,
+main,
+menu,
+nav,
+section,
+summary {
+  display: block;
+}
+audio,
+canvas,
+progress,
+video {
+  display: inline-block; /* 1 */
+  vertical-align: baseline; /* 2 */
+}
+audio:not([controls]) {
+  display: none;
+  height: 0;
+}
+[hidden],
+template {
+  display: none;
+}
+a:active,
+a:hover {
+  outline: 0;
+}
+abbr[title] {
+  border-bottom: 1px dotted;
+}
+b,
+strong {
+  font-weight: bold;
+}
+dfn {
+  font-style: italic;
+}
+h1 {
+  font-size: 2em;
+  margin: 0.67em 0;
+}
+mark {
+  background: #ff0;
+  color: #000;
+}
+small {
+  font-size: 80%;
+}
+sub,
+sup {
+  font-size: 75%;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+sup {
+  top: -0.5em;
+}
+sub {
+  bottom: -0.25em;
+}
+img {
+  border: 0;
+}
+svg:not(:root) {
+  overflow: hidden;
+}
+figure {
+  margin: 1em 40px;
+}
+hr {
+  -moz-box-sizing: content-box;
+  box-sizing: content-box;
+  height: 0;
+}
+pre {
+  overflow: auto;
+}
+code,
+kbd,
+pre,
+samp {
+  font-family: monospace, monospace;
+  font-size: 1em;
+}
+button,
+input,
+optgroup,
+select,
+textarea {
+  color: inherit; /* 1 */
+  font: inherit; /* 2 */
+  margin: 0; /* 3 */
+}
+button {
+  overflow: visible;
+}
+button,
+select {
+  text-transform: none;
+}
+button,
+html input[type="button"], /* 1 */
+input[type="reset"],
+input[type="submit"] {
+  -webkit-appearance: button; /* 2 */
+  cursor: pointer; /* 3 */
+}
+button[disabled],
+html input[disabled] {
+  cursor: default;
+}
+button::-moz-focus-inner,
+input::-moz-focus-inner {
+  border: 0;
+  padding: 0;
+}
+input {
+  line-height: normal;
+}
+input[type="checkbox"],
+input[type="radio"] {
+  box-sizing: border-box; /* 1 */
+  padding: 0; /* 2 */
+}
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  height: auto;
+}
+input[type="search"] {
+  -webkit-appearance: textfield; /* 1 */
+  -moz-box-sizing: content-box;
+  -webkit-box-sizing: content-box; /* 2 */
+  box-sizing: content-box;
+}
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-decoration {
+  -webkit-appearance: none;
+}
+fieldset {
+  border: 1px solid #c0c0c0;
+  margin: 0 2px;
+  padding: 0.35em 0.625em 0.75em;
+}
+legend {
+  border: 0; /* 1 */
+  padding: 0; /* 2 */
+}
+textarea {
+  overflow: auto;
+}
+optgroup {
+  font-weight: bold;
+}
+table {
+  font-family: monospace, monospace;
+  font-size : 0.8em;
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+td,
+th {
+  padding: 0;
+}
+thead th {
+    border-bottom: 1px solid black;
+    background-color: white;
+}
+tr:nth-child(odd){
+  background-color: rgb(248,248,248);
+}
+
+
+/*
+* Skeleton V2.0.4
+* Copyright 2014, Dave Gamache
+* www.getskeleton.com
+* Free to use under the MIT license.
+* http://www.opensource.org/licenses/mit-license.php
+* 12/29/2014
+*/
+.container {
+  position: relative;
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 20px;
+  box-sizing: border-box; }
+.column,
+.columns {
+  width: 100%;
+  float: left;
+  box-sizing: border-box; }
+@media (min-width: 400px) {
+  .container {
+    width: 85%;
+    padding: 0; }
+}
+@media (min-width: 550px) {
+  .container {
+    width: 80%; }
+  .column,
+  .columns {
+    margin-left: 4%; }
+  .column:first-child,
+  .columns:first-child {
+    margin-left: 0; }
+
+  .one.column,
+  .one.columns                    { width: 4.66666666667%; }
+  .two.columns                    { width: 13.3333333333%; }
+  .three.columns                  { width: 22%;            }
+  .four.columns                   { width: 30.6666666667%; }
+  .five.columns                   { width: 39.3333333333%; }
+  .six.columns                    { width: 48%;            }
+  .seven.columns                  { width: 56.6666666667%; }
+  .eight.columns                  { width: 65.3333333333%; }
+  .nine.columns                   { width: 74.0%;          }
+  .ten.columns                    { width: 82.6666666667%; }
+  .eleven.columns                 { width: 91.3333333333%; }
+  .twelve.columns                 { width: 100%; margin-left: 0; }
+
+  .one-third.column               { width: 30.6666666667%; }
+  .two-thirds.column              { width: 65.3333333333%; }
+
+  .one-half.column                { width: 48%; }
+
+  /* Offsets */
+  .offset-by-one.column,
+  .offset-by-one.columns          { margin-left: 8.66666666667%; }
+  .offset-by-two.column,
+  .offset-by-two.columns          { margin-left: 17.3333333333%; }
+  .offset-by-three.column,
+  .offset-by-three.columns        { margin-left: 26%;            }
+  .offset-by-four.column,
+  .offset-by-four.columns         { margin-left: 34.6666666667%; }
+  .offset-by-five.column,
+  .offset-by-five.columns         { margin-left: 43.3333333333%; }
+  .offset-by-six.column,
+  .offset-by-six.columns          { margin-left: 52%;            }
+  .offset-by-seven.column,
+  .offset-by-seven.columns        { margin-left: 60.6666666667%; }
+  .offset-by-eight.column,
+  .offset-by-eight.columns        { margin-left: 69.3333333333%; }
+  .offset-by-nine.column,
+  .offset-by-nine.columns         { margin-left: 78.0%;          }
+  .offset-by-ten.column,
+  .offset-by-ten.columns          { margin-left: 86.6666666667%; }
+  .offset-by-eleven.column,
+  .offset-by-eleven.columns       { margin-left: 95.3333333333%; }
+
+  .offset-by-one-third.column,
+  .offset-by-one-third.columns    { margin-left: 34.6666666667%; }
+  .offset-by-two-thirds.column,
+  .offset-by-two-thirds.columns   { margin-left: 69.3333333333%; }
+
+  .offset-by-one-half.column,
+  .offset-by-one-half.columns     { margin-left: 52%; }
+
+}
+html {
+  font-size: 62.5%; }
+body {
+  font-size: 1.5em; /* currently ems cause chrome bug misinterpreting rems on body element */
+  line-height: 1.6;
+  font-weight: 400;
+  font-family: "Raleway", "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color: #222; }
+h1, h2, h3, h4, h5, h6 {
+  margin-top: 0;
+  margin-bottom: 2rem;
+  font-weight: 300; }
+h1 { font-size: 3.6rem; line-height: 1.2;  letter-spacing: -.1rem;}
+h2 { font-size: 3.4rem; line-height: 1.25; letter-spacing: -.1rem; }
+h3 { font-size: 3.2rem; line-height: 1.3;  letter-spacing: -.1rem; }
+h4 { font-size: 2.8rem; line-height: 1.35; letter-spacing: -.08rem; }
+h5 { font-size: 2.4rem; line-height: 1.5;  letter-spacing: -.05rem; }
+h6 { font-size: 1.5rem; line-height: 1.6;  letter-spacing: 0; }
+
+p {
+  margin-top: 0; }
+a {
+  color: #1EAEDB; }
+a:hover {
+  color: #0FA0CE; }
+.button,
+button,
+input[type="submit"],
+input[type="reset"],
+input[type="button"] {
+  display: inline-block;
+  height: 38px;
+  padding: 0 30px;
+  color: #555;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 38px;
+  letter-spacing: .1rem;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  background-color: transparent;
+  border-radius: 4px;
+  border: 1px solid #bbb;
+  cursor: pointer;
+  box-sizing: border-box; }
+.button:hover,
+button:hover,
+input[type="submit"]:hover,
+input[type="reset"]:hover,
+input[type="button"]:hover,
+.button:focus,
+button:focus,
+input[type="submit"]:focus,
+input[type="reset"]:focus,
+input[type="button"]:focus {
+  color: #333;
+  border-color: #888;
+  outline: 0; }
+.button.button-primary,
+button.button-primary,
+input[type="submit"].button-primary,
+input[type="reset"].button-primary,
+input[type="button"].button-primary {
+  color: #FFF;
+  background-color: #33C3F0;
+  border-color: #33C3F0; }
+.button.button-primary:hover,
+button.button-primary:hover,
+input[type="submit"].button-primary:hover,
+input[type="reset"].button-primary:hover,
+input[type="button"].button-primary:hover,
+.button.button-primary:focus,
+button.button-primary:focus,
+input[type="submit"].button-primary:focus,
+input[type="reset"].button-primary:focus,
+input[type="button"].button-primary:focus {
+  color: #FFF;
+  background-color: #1EAEDB;
+  border-color: #1EAEDB; }
+input[type="email"],
+input[type="number"],
+input[type="search"],
+input[type="text"],
+input[type="tel"],
+input[type="url"],
+input[type="password"],
+textarea,
+select {
+  height: 38px;
+  padding: 6px 10px; /* The 6px vertically centers text on FF, ignored by Webkit */
+  background-color: #fff;
+  border: 1px solid #D1D1D1;
+  border-radius: 4px;
+  box-shadow: none;
+  box-sizing: border-box; }
+/* Removes awkward default styles on some inputs for iOS */
+input[type="email"],
+input[type="number"],
+input[type="search"],
+input[type="text"],
+input[type="tel"],
+input[type="url"],
+input[type="password"],
+textarea {
+  -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none; }
+textarea {
+  min-height: 65px;
+  padding-top: 6px;
+  padding-bottom: 6px; }
+input[type="email"]:focus,
+input[type="number"]:focus,
+input[type="search"]:focus,
+input[type="text"]:focus,
+input[type="tel"]:focus,
+input[type="url"]:focus,
+input[type="password"]:focus,
+textarea:focus,
+select:focus {
+  border: 1px solid #33C3F0;
+  outline: 0; }
+label,
+legend {
+  display: block;
+  margin-bottom: .5rem;
+  font-weight: 600; }
+fieldset {
+  padding: 0;
+  border-width: 0; }
+input[type="checkbox"],
+input[type="radio"] {
+  display: inline; }
+label > .label-body {
+  display: inline-block;
+  margin-left: .5rem;
+  font-weight: normal; }
+ul {
+  list-style: circle; }
+ol {
+  list-style: decimal; }
+ul ul,
+ul ol,
+ol ol,
+ol ul {
+  margin: 1.5rem 0 1.5rem 3rem;
+  font-size: 90%; }
+li > p {margin : 0;}
+th,
+td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #E1E1E1; }
+th:first-child,
+td:first-child {
+  padding-left: 0; }
+th:last-child,
+td:last-child {
+  padding-right: 0; }
+button,
+.button {
+  margin-bottom: 1rem; }
+input,
+textarea,
+select,
+fieldset {
+  margin-bottom: 1.5rem; }
+pre,
+blockquote,
+dl,
+figure,
+table,
+p,
+ul,
+ol,
+form {
+  margin-bottom: 1.0rem; }
+.u-full-width {
+  width: 100%;
+  box-sizing: border-box; }
+.u-max-full-width {
+  max-width: 100%;
+  box-sizing: border-box; }
+.u-pull-right {
+  float: right; }
+.u-pull-left {
+  float: left; }
+hr {
+  margin-top: 3rem;
+  margin-bottom: 3.5rem;
+  border-width: 0;
+  border-top: 1px solid #E1E1E1; }
+.container:after,
+.row:after,
+.u-cf {
+  content: "";
+  display: table;
+  clear: both; }
+
+pre {
+  display: block;
+  padding: 9.5px;
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.42857143;
+  word-break: break-all;
+  word-wrap: break-word;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+pre.hljl {
+  margin: 0 0 10px;
+  display: block;
+  background: #f5f5f5;
+  border-radius: 4px;
+  padding : 5px;
+}
+
+pre.output {
+  background: #ffffff;
+}
+
+pre.code {
+  background: #ffffff;
+}
+
+pre.julia-error {
+  color : red
+}
+
+code,
+kbd,
+pre,
+samp {
+  font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+  font-size: 0.9em;
+}
+
+
+@media (min-width: 400px) {}
+@media (min-width: 550px) {}
+@media (min-width: 750px) {}
+@media (min-width: 1000px) {}
+@media (min-width: 1200px) {}
+
+h1.title {margin-top : 20px}
+img {max-width : 100%}
+div.title {text-align: center;}
+
+  </style>
+</HEAD>
+
+<BODY>
+  <div class ="container">
+    <div class = "row">
+      <div class = "col-md-12 twelve columns">
+        <div class="title">
+          <h1 class="title">Discrete Response Models</h1>
+          
+          <h5>November 2020</h5>
+        </div>
+
+        <h1>Introduction</h1>
+<p>In this tutorial we will go over the simulation of discrete responses. Many pharmacometrics scenarios have observables, such as pain scores or counts, which necessarily have to be discrete. Handling this discreteness can be paramount to getting an appropriate data fit and to properly understand the variation.</p>
+<p>Luckily, in Pumas, discrete outputs are handled no differently from the rest of the Pumas toolchain. In Pumas, to have a discrete distribution as output, simply have that your <code>derived</code> or <code>observed</code> variables come from a discrete distribution like a <code>Poisson</code> process.</p>
+
+
+<pre class='hljl'>
+<span class='hljl-k'>using</span><span class='hljl-t'> </span><span class='hljl-n'>PumasTutorials</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>Pumas</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>CSV</span>
+</pre>
+
+
+
+<h2>Poisson Response Example</h2>
+<p>Next let&#39;s use a <code>Poisson</code> counting process in our model. Here we generate a population where everyone is receiving the same doses as a covariate.</p>
+
+
+<pre class='hljl'>
+<span class='hljl-n'>pop</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>map</span><span class='hljl-p'>(</span><span class='hljl-n'>i</span><span class='hljl-t'> </span><span class='hljl-oB'>-&gt;</span><span class='hljl-t'> </span><span class='hljl-nf'>Subject</span><span class='hljl-p'>(</span><span class='hljl-n'>id</span><span class='hljl-oB'>=</span><span class='hljl-n'>i</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>(</span><span class='hljl-n'>dose</span><span class='hljl-oB'>=</span><span class='hljl-n'>i</span><span class='hljl-oB'>.*</span><span class='hljl-ni'>10</span><span class='hljl-p'>,),</span><span class='hljl-t'> </span><span class='hljl-n'>time</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-nfB'>0.0</span><span class='hljl-p'>]),</span><span class='hljl-t'> </span><span class='hljl-ni'>1</span><span class='hljl-oB'>:</span><span class='hljl-ni'>10</span><span class='hljl-p'>)</span>
+</pre>
+
+
+<pre class="output">
+Population
+  Subjects: 10
+  Covariates: dose
+</pre>
+
+
+<p>Now we define our model without dynamics, and directly use the dose information to predict the count for some observable <code>dv</code>:</p>
+
+
+<pre class='hljl'>
+<span class='hljl-n'>poisson_model</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nd'>@model</span><span class='hljl-t'> </span><span class='hljl-k'>begin</span><span class='hljl-t'>
+  </span><span class='hljl-nd'>@param</span><span class='hljl-t'> </span><span class='hljl-k'>begin</span><span class='hljl-t'>
+    </span><span class='hljl-n'>tvbase</span><span class='hljl-t'> </span><span class='hljl-oB'>∈</span><span class='hljl-t'> </span><span class='hljl-nf'>RealDomain</span><span class='hljl-p'>(</span><span class='hljl-n'>init</span><span class='hljl-oB'>=</span><span class='hljl-nfB'>3.0</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>lower</span><span class='hljl-oB'>=</span><span class='hljl-nfB'>0.1</span><span class='hljl-p'>)</span><span class='hljl-t'>
+    </span><span class='hljl-n'>d50</span><span class='hljl-t'> </span><span class='hljl-oB'>∈</span><span class='hljl-t'> </span><span class='hljl-nf'>RealDomain</span><span class='hljl-p'>(</span><span class='hljl-n'>init</span><span class='hljl-oB'>=</span><span class='hljl-ni'>50</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>lower</span><span class='hljl-oB'>=</span><span class='hljl-nfB'>0.1</span><span class='hljl-p'>)</span><span class='hljl-t'>
+    </span><span class='hljl-n'>Ω</span><span class='hljl-t'>  </span><span class='hljl-oB'>∈</span><span class='hljl-t'> </span><span class='hljl-nf'>PSDDomain</span><span class='hljl-p'>(</span><span class='hljl-nf'>fill</span><span class='hljl-p'>(</span><span class='hljl-nfB'>0.1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-ni'>1</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-ni'>1</span><span class='hljl-p'>))</span><span class='hljl-t'>
+  </span><span class='hljl-k'>end</span><span class='hljl-t'>
+
+  </span><span class='hljl-nd'>@random</span><span class='hljl-t'> </span><span class='hljl-k'>begin</span><span class='hljl-t'>
+    </span><span class='hljl-n'>η</span><span class='hljl-t'> </span><span class='hljl-oB'>~</span><span class='hljl-t'> </span><span class='hljl-nf'>MvNormal</span><span class='hljl-p'>(</span><span class='hljl-n'>Ω</span><span class='hljl-p'>)</span><span class='hljl-t'>
+  </span><span class='hljl-k'>end</span><span class='hljl-t'>
+
+ </span><span class='hljl-nd'>@covariates</span><span class='hljl-t'> </span><span class='hljl-n'>dose</span><span class='hljl-t'>
+
+  </span><span class='hljl-nd'>@pre</span><span class='hljl-t'> </span><span class='hljl-k'>begin</span><span class='hljl-t'>
+    </span><span class='hljl-n'>_dose</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>dose</span><span class='hljl-t'>
+    </span><span class='hljl-n'>baseline</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>tvbase</span><span class='hljl-oB'>*</span><span class='hljl-nf'>exp</span><span class='hljl-p'>(</span><span class='hljl-n'>η</span><span class='hljl-p'>[</span><span class='hljl-ni'>1</span><span class='hljl-p'>])</span><span class='hljl-t'>
+  </span><span class='hljl-k'>end</span><span class='hljl-t'>
+
+  </span><span class='hljl-nd'>@derived</span><span class='hljl-t'> </span><span class='hljl-k'>begin</span><span class='hljl-t'>
+    </span><span class='hljl-n'>dv</span><span class='hljl-t'> </span><span class='hljl-oB'>~</span><span class='hljl-t'> @</span><span class='hljl-oB'>.</span><span class='hljl-t'> </span><span class='hljl-nf'>Poisson</span><span class='hljl-p'>(</span><span class='hljl-n'>baseline</span><span class='hljl-oB'>*</span><span class='hljl-p'>(</span><span class='hljl-ni'>1</span><span class='hljl-oB'>-</span><span class='hljl-n'>_dose</span><span class='hljl-oB'>/</span><span class='hljl-p'>(</span><span class='hljl-n'>_dose</span><span class='hljl-t'> </span><span class='hljl-oB'>+</span><span class='hljl-t'> </span><span class='hljl-n'>d50</span><span class='hljl-p'>)))</span><span class='hljl-t'>
+  </span><span class='hljl-k'>end</span><span class='hljl-t'>
+</span><span class='hljl-k'>end</span>
+</pre>
+
+
+<pre class="output">
+PumasModel
+  Parameters: tvbase, d50, Ω
+  Random effects: η
+  Covariates: dose
+  Dynamical variables: 
+  Derived: dv
+  Observed: dv
+</pre>
+
+
+<p>and simulate runs from the model:</p>
+
+
+<pre class='hljl'>
+<span class='hljl-n'>sim</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>simobs</span><span class='hljl-p'>(</span><span class='hljl-n'>poisson_model</span><span class='hljl-p'>,</span><span class='hljl-n'>pop</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>simdf</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>DataFrame</span><span class='hljl-p'>(</span><span class='hljl-n'>sim</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>include_events</span><span class='hljl-oB'>=</span><span class='hljl-kc'>false</span><span class='hljl-p'>)</span>
+</pre>
+
+
+
+<table class="data-frame"><thead><tr><th></th><th>id</th><th>time</th><th>dv</th><th>dose</th></tr><tr><th></th><th>String</th><th>Float64</th><th>Int64?</th><th>Int64</th></tr></thead><tbody><p>10 rows × 4 columns</p><tr><th>1</th><td>1</td><td>0.0</td><td>0</td><td>10</td></tr><tr><th>2</th><td>2</td><td>0.0</td><td>2</td><td>20</td></tr><tr><th>3</th><td>3</td><td>0.0</td><td>3</td><td>30</td></tr><tr><th>4</th><td>4</td><td>0.0</td><td>3</td><td>40</td></tr><tr><th>5</th><td>5</td><td>0.0</td><td>1</td><td>50</td></tr><tr><th>6</th><td>6</td><td>0.0</td><td>1</td><td>60</td></tr><tr><th>7</th><td>7</td><td>0.0</td><td>5</td><td>70</td></tr><tr><th>8</th><td>8</td><td>0.0</td><td>2</td><td>80</td></tr><tr><th>9</th><td>9</td><td>0.0</td><td>2</td><td>90</td></tr><tr><th>10</th><td>10</td><td>0.0</td><td>0</td><td>100</td></tr></tbody></table>
+
+<p>Here <code>dv</code> is an integer output probabilistically dependent on the dose.</p>
+<p>Let&#39;s read the data back in to re-estimate the model parameters</p>
+
+
+<pre class='hljl'>
+<span class='hljl-n'>poisson_pop</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>read_pumas</span><span class='hljl-p'>(</span><span class='hljl-n'>simdf</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>observations</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:dv</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:dose</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>event_data</span><span class='hljl-oB'>=</span><span class='hljl-kc'>false</span><span class='hljl-p'>)</span>
+</pre>
+
+
+<pre class="output">
+Population
+  Subjects: 10
+  Covariates: dose
+  Observables: dv
+</pre>
+
+
+
+<pre class='hljl'>
+<span class='hljl-n'>poisson_res</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>fit</span><span class='hljl-p'>(</span><span class='hljl-n'>poisson_model</span><span class='hljl-p'>,</span><span class='hljl-n'>poisson_pop</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-nf'>init_param</span><span class='hljl-p'>(</span><span class='hljl-n'>poisson_model</span><span class='hljl-p'>),</span><span class='hljl-n'>Pumas</span><span class='hljl-oB'>.</span><span class='hljl-nf'>FOCE</span><span class='hljl-p'>())</span><span class='hljl-t'>
+</span><span class='hljl-nf'>coeftable</span><span class='hljl-p'>(</span><span class='hljl-n'>poisson_res</span><span class='hljl-p'>)</span>
+</pre>
+
+
+<pre class="output">
+Iter     Function value   Gradient norm 
+     0     1.837736e&#43;01     2.438069e&#43;00
+ * time: 8.893013000488281e-5
+     1     1.804005e&#43;01     6.986553e-01
+ * time: 0.031138896942138672
+     2     1.783401e&#43;01     5.954670e-01
+ * time: 0.038372039794921875
+     3     1.749664e&#43;01     1.271697e&#43;00
+ * time: 0.04592704772949219
+     4     1.742326e&#43;01     5.138982e-01
+ * time: 0.053856849670410156
+     5     1.733529e&#43;01     1.702632e-01
+ * time: 0.06073498725891113
+     6     1.727485e&#43;01     2.174638e-01
+ * time: 0.06707382202148438
+     7     1.724957e&#43;01     2.066825e-01
+ * time: 0.07513689994812012
+     8     1.723941e&#43;01     2.787934e-02
+ * time: 0.08196592330932617
+     9     1.723580e&#43;01     1.267279e-01
+ * time: 0.08817791938781738
+    10     1.723449e&#43;01     2.596766e-02
+ * time: 0.09417104721069336
+    11     1.723405e&#43;01     3.361258e-02
+ * time: 0.10069799423217773
+    12     1.723361e&#43;01     3.055200e-02
+ * time: 0.10691094398498535
+    13     1.723284e&#43;01     2.770729e-02
+ * time: 0.11296701431274414
+    14     1.723131e&#43;01     2.892494e-02
+ * time: 0.11925697326660156
+    15     1.722866e&#43;01     3.060697e-02
+ * time: 0.12533998489379883
+    16     1.722719e&#43;01     4.387555e-03
+ * time: 0.1318349838256836
+    17     1.722714e&#43;01     1.509543e-02
+ * time: 0.13791298866271973
+    18     1.722709e&#43;01     1.553463e-02
+ * time: 0.144273042678833
+    19     1.722695e&#43;01     2.180326e-02
+ * time: 0.15015888214111328
+    20     1.722686e&#43;01     1.032108e-02
+ * time: 0.1558518409729004
+    21     1.722678e&#43;01     1.514685e-02
+ * time: 0.16093087196350098
+    22     1.722674e&#43;01     1.496457e-03
+ * time: 0.16606497764587402
+    23     1.722672e&#43;01     3.704382e-03
+ * time: 0.1710219383239746
+    24     1.722670e&#43;01     2.409635e-03
+ * time: 0.18017983436584473
+    25     1.722670e&#43;01     1.209760e-03
+ * time: 0.1867969036102295
+    26     1.722669e&#43;01     7.732973e-04
+ * time: 0.19261503219604492
+</pre>
+
+
+<table class="data-frame"><thead><tr><th></th><th>parameter</th><th>estimate</th></tr><tr><th></th><th>String</th><th>Float64</th></tr></thead><tbody><p>3 rows × 2 columns</p><tr><th>1</th><td>tvbase</td><td>1.84179</td></tr><tr><th>2</th><td>d50</td><td>1.22131e6</td></tr><tr><th>3</th><td>Ω₁,₁</td><td>0.0627795</td></tr></tbody></table>
+
+<h2>Negative Binomial Example</h2>
+<p>Next let&#39;s use a <code>NegativeBinomial</code> counting process in our model. We will use an internal dataset as an example.</p>
+
+
+<pre class='hljl'>
+<span class='hljl-n'>pd_poisson</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>read_pumas</span><span class='hljl-p'>(</span><span class='hljl-nf'>example_data</span><span class='hljl-p'>(</span><span class='hljl-s'>&quot;sim_poisson&quot;</span><span class='hljl-p'>),</span><span class='hljl-t'> </span><span class='hljl-n'>covariates</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-p'>[</span><span class='hljl-sc'>:dose</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>event_data</span><span class='hljl-oB'>=</span><span class='hljl-kc'>false</span><span class='hljl-p'>)</span>
+</pre>
+
+
+<pre class="output">
+Population
+  Subjects: 20
+  Covariates: dose
+  Observables: dv
+</pre>
+
+
+<p>Now we define our model without dynamics, and directly use the dose information to predict the count for some observable <code>dv</code>:</p>
+
+
+<pre class='hljl'>
+<span class='hljl-n'>negativebinomial_model</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nd'>@model</span><span class='hljl-t'> </span><span class='hljl-k'>begin</span><span class='hljl-t'>
+  </span><span class='hljl-nd'>@param</span><span class='hljl-t'> </span><span class='hljl-k'>begin</span><span class='hljl-t'>
+    </span><span class='hljl-n'>θ₁</span><span class='hljl-t'> </span><span class='hljl-oB'>∈</span><span class='hljl-t'> </span><span class='hljl-nf'>RealDomain</span><span class='hljl-p'>(</span><span class='hljl-n'>init</span><span class='hljl-oB'>=</span><span class='hljl-nfB'>3.0</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>lower</span><span class='hljl-oB'>=</span><span class='hljl-nfB'>0.1</span><span class='hljl-p'>)</span><span class='hljl-t'>
+    </span><span class='hljl-n'>θ₂</span><span class='hljl-t'> </span><span class='hljl-oB'>∈</span><span class='hljl-t'> </span><span class='hljl-nf'>RealDomain</span><span class='hljl-p'>(</span><span class='hljl-n'>init</span><span class='hljl-oB'>=</span><span class='hljl-nfB'>0.5</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>lower</span><span class='hljl-oB'>=</span><span class='hljl-nfB'>0.1</span><span class='hljl-p'>)</span><span class='hljl-t'>
+    </span><span class='hljl-n'>ω</span><span class='hljl-t'>  </span><span class='hljl-oB'>∈</span><span class='hljl-t'> </span><span class='hljl-nf'>RealDomain</span><span class='hljl-p'>(</span><span class='hljl-n'>init</span><span class='hljl-oB'>=</span><span class='hljl-nfB'>1.0</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>lower</span><span class='hljl-oB'>=</span><span class='hljl-nfB'>0.0</span><span class='hljl-p'>)</span><span class='hljl-t'>
+    </span><span class='hljl-n'>θr</span><span class='hljl-t'>  </span><span class='hljl-oB'>∈</span><span class='hljl-t'> </span><span class='hljl-nf'>RealDomain</span><span class='hljl-p'>(</span><span class='hljl-n'>init</span><span class='hljl-oB'>=</span><span class='hljl-nfB'>1.0</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>lower</span><span class='hljl-oB'>=</span><span class='hljl-nfB'>0.0</span><span class='hljl-p'>)</span><span class='hljl-t'>
+  </span><span class='hljl-k'>end</span><span class='hljl-t'>
+
+  </span><span class='hljl-nd'>@random</span><span class='hljl-t'> </span><span class='hljl-k'>begin</span><span class='hljl-t'>
+    </span><span class='hljl-n'>η</span><span class='hljl-t'> </span><span class='hljl-oB'>~</span><span class='hljl-t'> </span><span class='hljl-nf'>Normal</span><span class='hljl-p'>(</span><span class='hljl-nfB'>0.0</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>ω</span><span class='hljl-p'>)</span><span class='hljl-t'>
+  </span><span class='hljl-k'>end</span><span class='hljl-t'>
+
+  </span><span class='hljl-nd'>@pre</span><span class='hljl-t'> </span><span class='hljl-k'>begin</span><span class='hljl-t'>
+    </span><span class='hljl-n'>baseline</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>θ₁</span><span class='hljl-oB'>*</span><span class='hljl-nf'>exp</span><span class='hljl-p'>(</span><span class='hljl-n'>η</span><span class='hljl-p'>[</span><span class='hljl-ni'>1</span><span class='hljl-p'>])</span><span class='hljl-t'>
+    </span><span class='hljl-n'>d50</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>θ₂</span><span class='hljl-t'>
+    </span><span class='hljl-n'>dose_d50</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>dose</span><span class='hljl-oB'>/</span><span class='hljl-p'>(</span><span class='hljl-n'>dose</span><span class='hljl-oB'>+</span><span class='hljl-n'>d50</span><span class='hljl-p'>)</span><span class='hljl-t'>
+    </span><span class='hljl-n'>r</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>θr</span><span class='hljl-t'>
+  </span><span class='hljl-k'>end</span><span class='hljl-t'>
+
+  </span><span class='hljl-nd'>@covariates</span><span class='hljl-t'> </span><span class='hljl-n'>dose</span><span class='hljl-t'>
+
+  </span><span class='hljl-nd'>@vars</span><span class='hljl-t'> </span><span class='hljl-k'>begin</span><span class='hljl-t'>
+    </span><span class='hljl-n'>m</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>baseline</span><span class='hljl-oB'>*</span><span class='hljl-p'>(</span><span class='hljl-ni'>1</span><span class='hljl-t'> </span><span class='hljl-oB'>-</span><span class='hljl-t'> </span><span class='hljl-n'>dose_d50</span><span class='hljl-p'>)</span><span class='hljl-t'>
+    </span><span class='hljl-n'>p</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>r</span><span class='hljl-oB'>/</span><span class='hljl-p'>(</span><span class='hljl-n'>m</span><span class='hljl-t'> </span><span class='hljl-oB'>+</span><span class='hljl-t'> </span><span class='hljl-n'>r</span><span class='hljl-p'>)</span><span class='hljl-t'>
+  </span><span class='hljl-k'>end</span><span class='hljl-t'>
+
+  </span><span class='hljl-nd'>@derived</span><span class='hljl-t'> </span><span class='hljl-k'>begin</span><span class='hljl-t'>
+    </span><span class='hljl-n'>dv</span><span class='hljl-t'> </span><span class='hljl-oB'>~</span><span class='hljl-t'> @</span><span class='hljl-oB'>.</span><span class='hljl-t'> </span><span class='hljl-nf'>NegativeBinomial</span><span class='hljl-p'>(</span><span class='hljl-n'>r</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>p</span><span class='hljl-p'>)</span><span class='hljl-t'>
+  </span><span class='hljl-k'>end</span><span class='hljl-t'>
+</span><span class='hljl-k'>end</span><span class='hljl-t'>
+
+</span><span class='hljl-n'>param</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>init_param</span><span class='hljl-p'>(</span><span class='hljl-n'>negativebinomial_model</span><span class='hljl-p'>)</span>
+</pre>
+
+
+<pre class="output">
+&#40;θ₁ &#61; 3.0, θ₂ &#61; 0.5, ω &#61; 1.0, θr &#61; 1.0&#41;
+</pre>
+
+
+<p>and simulate runs from the model:</p>
+
+
+<pre class='hljl'>
+<span class='hljl-n'>sim_negativebinomial</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>simobs</span><span class='hljl-p'>(</span><span class='hljl-n'>negativebinomial_model</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>pd_poisson</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>param</span><span class='hljl-p'>;</span><span class='hljl-t'> </span><span class='hljl-n'>ensemblealg</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>EnsembleSerial</span><span class='hljl-p'>())</span>
+</pre>
+
+
+<pre class="output">
+20-element Array&#123;Pumas.SimulatedObservations&#123;Pumas.Subject&#123;NamedTuple&#123;&#40;:dv,
+&#41;,Tuple&#123;Array&#123;Union&#123;Missing, Float64&#125;,1&#125;&#125;&#125;,Pumas.ConstantInterpolationStruc
+tArray&#123;Array&#123;Float64,1&#125;,StructArrays.StructArray&#123;NamedTuple&#123;&#40;:dose,&#41;,Tuple&#123;
+Float64&#125;&#125;,1,NamedTuple&#123;&#40;:dose,&#41;,Tuple&#123;Array&#123;Float64,1&#125;&#125;&#125;,Int64&#125;,Symbol&#125;,Arr
+ay&#123;Pumas.Event&#123;Float64,Float64,Float64,Float64,Float64,Float64,Nothing,Int6
+4&#125;,1&#125;,Array&#123;Float64,1&#125;&#125;,Array&#123;Float64,1&#125;,NamedTuple&#123;&#40;:dv, :m, :p&#41;,Tuple&#123;Arr
+ay&#123;Int64,1&#125;,Array&#123;Float64,1&#125;,Array&#123;Float64,1&#125;&#125;&#125;&#125;,1&#125;:
+ Pumas.SimulatedObservations&#123;Pumas.Subject&#123;NamedTuple&#123;&#40;:dv,&#41;,Tuple&#123;Array&#123;Un
+ion&#123;Missing, Float64&#125;,1&#125;&#125;&#125;,Pumas.ConstantInterpolationStructArray&#123;Array&#123;Flo
+at64,1&#125;,StructArrays.StructArray&#123;NamedTuple&#123;&#40;:dose,&#41;,Tuple&#123;Float64&#125;&#125;,1,Name
+dTuple&#123;&#40;:dose,&#41;,Tuple&#123;Array&#123;Float64,1&#125;&#125;&#125;,Int64&#125;,Symbol&#125;,Array&#123;Pumas.Event&#123;F
+loat64,Float64,Float64,Float64,Float64,Float64,Nothing,Int64&#125;,1&#125;,Array&#123;Floa
+t64,1&#125;&#125;,Array&#123;Float64,1&#125;,NamedTuple&#123;&#40;:dv, :m, :p&#41;,Tuple&#123;Array&#123;Int64,1&#125;,Arra
+y&#123;Float64,1&#125;,Array&#123;Float64,1&#125;&#125;&#125;&#125;&#40;Subject
+  ID: 1
+  Events: 0
+  Observables: dv: &#40;n&#61;90&#41;
+  Covariates: dose
+, &#91;0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0  …  80.0, 81.0, 82.0, 8
+3.0, 84.0, 85.0, 86.0, 87.0, 88.0, 89.0&#93;, &#40;dv &#61; &#91;5, 0, 11, 5, 4, 0, 1, 4, 2
+, 0  …  0, 2, 2, 1, 0, 2, 2, 0, 3, 1&#93;, m &#61; &#91;4.154333314642176, 4.1543333146
+42176, 4.154333314642176, 4.154333314642176, 4.154333314642176, 4.154333314
+642176, 4.154333314642176, 4.154333314642176, 4.154333314642176, 4.15433331
+4642176  …  1.7309722144342397, 1.7309722144342397, 1.7309722144342397, 1.7
+309722144342397, 1.7309722144342397, 1.7309722144342397, 1.7309722144342397
+, 1.7309722144342397, 1.7309722144342397, 1.7309722144342397&#93;, p &#61; &#91;0.19401
+151205321732, 0.19401151205321732, 0.19401151205321732, 0.19401151205321732
+, 0.19401151205321732, 0.19401151205321732, 0.19401151205321732, 0.19401151
+205321732, 0.19401151205321732, 0.19401151205321732  …  0.3661699649357892,
+ 0.3661699649357892, 0.3661699649357892, 0.3661699649357892, 0.366169964935
+7892, 0.3661699649357892, 0.3661699649357892, 0.3661699649357892, 0.3661699
+649357892, 0.3661699649357892&#93;&#41;, :Success&#41;
+ Pumas.SimulatedObservations&#123;Pumas.Subject&#123;NamedTuple&#123;&#40;:dv,&#41;,Tuple&#123;Array&#123;Un
+ion&#123;Missing, Float64&#125;,1&#125;&#125;&#125;,Pumas.ConstantInterpolationStructArray&#123;Array&#123;Flo
+at64,1&#125;,StructArrays.StructArray&#123;NamedTuple&#123;&#40;:dose,&#41;,Tuple&#123;Float64&#125;&#125;,1,Name
+dTuple&#123;&#40;:dose,&#41;,Tuple&#123;Array&#123;Float64,1&#125;&#125;&#125;,Int64&#125;,Symbol&#125;,Array&#123;Pumas.Event&#123;F
+loat64,Float64,Float64,Float64,Float64,Float64,Nothing,Int64&#125;,1&#125;,Array&#123;Floa
+t64,1&#125;&#125;,Array&#123;Float64,1&#125;,NamedTuple&#123;&#40;:dv, :m, :p&#41;,Tuple&#123;Array&#123;Int64,1&#125;,Arra
+y&#123;Float64,1&#125;,Array&#123;Float64,1&#125;&#125;&#125;&#125;&#40;Subject
+  ID: 2
+  Events: 0
+  Observables: dv: &#40;n&#61;90&#41;
+  Covariates: dose
+, &#91;0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0  …  80.0, 81.0, 82.0, 8
+3.0, 84.0, 85.0, 86.0, 87.0, 88.0, 89.0&#93;, &#40;dv &#61; &#91;0, 0, 0, 2, 0, 0, 1, 1, 0,
+ 0  …  0, 2, 0, 0, 1, 0, 0, 0, 1, 0&#93;, m &#61; &#91;0.6588758872281433, 0.6588758872
+281433, 0.6588758872281433, 0.6588758872281433, 0.6588758872281433, 0.65887
+58872281433, 0.6588758872281433, 0.6588758872281433, 0.6588758872281433, 0.
+6588758872281433  …  0.274531619678393, 0.274531619678393, 0.27453161967839
+3, 0.274531619678393, 0.274531619678393, 0.274531619678393, 0.2745316196783
+93, 0.274531619678393, 0.274531619678393, 0.274531619678393&#93;, p &#61; &#91;0.602817
+8525585327, 0.6028178525585327, 0.6028178525585327, 0.6028178525585327, 0.6
+028178525585327, 0.6028178525585327, 0.6028178525585327, 0.6028178525585327
+, 0.6028178525585327, 0.6028178525585327  …  0.7846019546006504, 0.78460195
+46006504, 0.7846019546006504, 0.7846019546006504, 0.7846019546006504, 0.784
+6019546006504, 0.7846019546006504, 0.7846019546006504, 0.7846019546006504, 
+0.7846019546006504&#93;&#41;, :Success&#41;
+ Pumas.SimulatedObservations&#123;Pumas.Subject&#123;NamedTuple&#123;&#40;:dv,&#41;,Tuple&#123;Array&#123;Un
+ion&#123;Missing, Float64&#125;,1&#125;&#125;&#125;,Pumas.ConstantInterpolationStructArray&#123;Array&#123;Flo
+at64,1&#125;,StructArrays.StructArray&#123;NamedTuple&#123;&#40;:dose,&#41;,Tuple&#123;Float64&#125;&#125;,1,Name
+dTuple&#123;&#40;:dose,&#41;,Tuple&#123;Array&#123;Float64,1&#125;&#125;&#125;,Int64&#125;,Symbol&#125;,Array&#123;Pumas.Event&#123;F
+loat64,Float64,Float64,Float64,Float64,Float64,Nothing,Int64&#125;,1&#125;,Array&#123;Floa
+t64,1&#125;&#125;,Array&#123;Float64,1&#125;,NamedTuple&#123;&#40;:dv, :m, :p&#41;,Tuple&#123;Array&#123;Int64,1&#125;,Arra
+y&#123;Float64,1&#125;,Array&#123;Float64,1&#125;&#125;&#125;&#125;&#40;Subject
+  ID: 3
+  Events: 0
+  Observables: dv: &#40;n&#61;90&#41;
+  Covariates: dose
+, &#91;0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0  …  80.0, 81.0, 82.0, 8
+3.0, 84.0, 85.0, 86.0, 87.0, 88.0, 89.0&#93;, &#40;dv &#61; &#91;1, 0, 1, 2, 0, 2, 1, 5, 0,
+ 2  …  0, 0, 0, 0, 0, 0, 0, 0, 0, 1&#93;, m &#61; &#91;0.5622775745847337, 0.5622775745
+847337, 0.5622775745847337, 0.5622775745847337, 0.5622775745847337, 0.56227
+75745847337, 0.5622775745847337, 0.5622775745847337, 0.5622775745847337, 0.
+5622775745847337  …  0.23428232274363903, 0.23428232274363903, 0.2342823227
+4363903, 0.23428232274363903, 0.23428232274363903, 0.23428232274363903, 0.2
+3428232274363903, 0.23428232274363903, 0.23428232274363903, 0.2342823227436
+3903&#93;, p &#61; &#91;0.6400911184210067, 0.6400911184210067, 0.6400911184210067, 0.6
+400911184210067, 0.6400911184210067, 0.6400911184210067, 0.6400911184210067
+, 0.6400911184210067, 0.6400911184210067, 0.6400911184210067  …  0.81018741
+13996368, 0.8101874113996368, 0.8101874113996368, 0.8101874113996368, 0.810
+1874113996368, 0.8101874113996368, 0.8101874113996368, 0.8101874113996368, 
+0.8101874113996368, 0.8101874113996368&#93;&#41;, :Success&#41;
+ Pumas.SimulatedObservations&#123;Pumas.Subject&#123;NamedTuple&#123;&#40;:dv,&#41;,Tuple&#123;Array&#123;Un
+ion&#123;Missing, Float64&#125;,1&#125;&#125;&#125;,Pumas.ConstantInterpolationStructArray&#123;Array&#123;Flo
+at64,1&#125;,StructArrays.StructArray&#123;NamedTuple&#123;&#40;:dose,&#41;,Tuple&#123;Float64&#125;&#125;,1,Name
+dTuple&#123;&#40;:dose,&#41;,Tuple&#123;Array&#123;Float64,1&#125;&#125;&#125;,Int64&#125;,Symbol&#125;,Array&#123;Pumas.Event&#123;F
+loat64,Float64,Float64,Float64,Float64,Float64,Nothing,Int64&#125;,1&#125;,Array&#123;Floa
+t64,1&#125;&#125;,Array&#123;Float64,1&#125;,NamedTuple&#123;&#40;:dv, :m, :p&#41;,Tuple&#123;Array&#123;Int64,1&#125;,Arra
+y&#123;Float64,1&#125;,Array&#123;Float64,1&#125;&#125;&#125;&#125;&#40;Subject
+  ID: 4
+  Events: 0
+  Observables: dv: &#40;n&#61;90&#41;
+  Covariates: dose
+, &#91;0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0  …  80.0, 81.0, 82.0, 8
+3.0, 84.0, 85.0, 86.0, 87.0, 88.0, 89.0&#93;, &#40;dv &#61; &#91;2, 3, 0, 0, 0, 0, 0, 3, 1,
+ 1  …  1, 1, 0, 0, 0, 0, 0, 0, 0, 0&#93;, m &#61; &#91;0.79648453752687, 0.796484537526
+87, 0.79648453752687, 0.79648453752687, 0.79648453752687, 0.79648453752687,
+ 0.79648453752687, 0.79648453752687, 0.79648453752687, 0.79648453752687  … 
+ 0.33186855730286247, 0.33186855730286247, 0.33186855730286247, 0.331868557
+30286247, 0.33186855730286247, 0.33186855730286247, 0.33186855730286247, 0.
+33186855730286247, 0.33186855730286247, 0.33186855730286247&#93;, p &#61; &#91;0.556642
+6980644374, 0.5566426980644374, 0.5566426980644374, 0.5566426980644374, 0.5
+566426980644374, 0.5566426980644374, 0.5566426980644374, 0.5566426980644374
+, 0.5566426980644374, 0.5566426980644374  …  0.7508248426744737, 0.75082484
+26744737, 0.7508248426744737, 0.7508248426744737, 0.7508248426744737, 0.750
+8248426744737, 0.7508248426744737, 0.7508248426744737, 0.7508248426744737, 
+0.7508248426744737&#93;&#41;, :Success&#41;
+ Pumas.SimulatedObservations&#123;Pumas.Subject&#123;NamedTuple&#123;&#40;:dv,&#41;,Tuple&#123;Array&#123;Un
+ion&#123;Missing, Float64&#125;,1&#125;&#125;&#125;,Pumas.ConstantInterpolationStructArray&#123;Array&#123;Flo
+at64,1&#125;,StructArrays.StructArray&#123;NamedTuple&#123;&#40;:dose,&#41;,Tuple&#123;Float64&#125;&#125;,1,Name
+dTuple&#123;&#40;:dose,&#41;,Tuple&#123;Array&#123;Float64,1&#125;&#125;&#125;,Int64&#125;,Symbol&#125;,Array&#123;Pumas.Event&#123;F
+loat64,Float64,Float64,Float64,Float64,Float64,Nothing,Int64&#125;,1&#125;,Array&#123;Floa
+t64,1&#125;&#125;,Array&#123;Float64,1&#125;,NamedTuple&#123;&#40;:dv, :m, :p&#41;,Tuple&#123;Array&#123;Int64,1&#125;,Arra
+y&#123;Float64,1&#125;,Array&#123;Float64,1&#125;&#125;&#125;&#125;&#40;Subject
+  ID: 5
+  Events: 0
+  Observables: dv: &#40;n&#61;90&#41;
+  Covariates: dose
+, &#91;0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0  …  80.0, 81.0, 82.0, 8
+3.0, 84.0, 85.0, 86.0, 87.0, 88.0, 89.0&#93;, &#40;dv &#61; &#91;3, 3, 2, 3, 9, 14, 28, 15,
+ 4, 11  …  1, 2, 2, 1, 1, 2, 3, 5, 0, 0&#93;, m &#61; &#91;9.077738336678, 9.0777383366
+78, 9.077738336678, 9.077738336678, 9.077738336678, 9.077738336678, 9.07773
+8336678, 9.077738336678, 9.077738336678, 9.077738336678  …  3.7823909736158
+328, 3.7823909736158328, 3.7823909736158328, 3.7823909736158328, 3.78239097
+36158328, 3.7823909736158328, 3.7823909736158328, 3.7823909736158328, 3.782
+3909736158328, 3.7823909736158328&#93;, p &#61; &#91;0.09922861326538843, 0.09922861326
+538843, 0.09922861326538843, 0.09922861326538843, 0.09922861326538843, 0.09
+922861326538843, 0.09922861326538843, 0.09922861326538843, 0.09922861326538
+843, 0.09922861326538843  …  0.20910042811575646, 0.20910042811575646, 0.20
+910042811575646, 0.20910042811575646, 0.20910042811575646, 0.20910042811575
+646, 0.20910042811575646, 0.20910042811575646, 0.20910042811575646, 0.20910
+042811575646&#93;&#41;, :Success&#41;
+ Pumas.SimulatedObservations&#123;Pumas.Subject&#123;NamedTuple&#123;&#40;:dv,&#41;,Tuple&#123;Array&#123;Un
+ion&#123;Missing, Float64&#125;,1&#125;&#125;&#125;,Pumas.ConstantInterpolationStructArray&#123;Array&#123;Flo
+at64,1&#125;,StructArrays.StructArray&#123;NamedTuple&#123;&#40;:dose,&#41;,Tuple&#123;Float64&#125;&#125;,1,Name
+dTuple&#123;&#40;:dose,&#41;,Tuple&#123;Array&#123;Float64,1&#125;&#125;&#125;,Int64&#125;,Symbol&#125;,Array&#123;Pumas.Event&#123;F
+loat64,Float64,Float64,Float64,Float64,Float64,Nothing,Int64&#125;,1&#125;,Array&#123;Floa
+t64,1&#125;&#125;,Array&#123;Float64,1&#125;,NamedTuple&#123;&#40;:dv, :m, :p&#41;,Tuple&#123;Array&#123;Int64,1&#125;,Arra
+y&#123;Float64,1&#125;,Array&#123;Float64,1&#125;&#125;&#125;&#125;&#40;Subject
+  ID: 6
+  Events: 0
+  Observables: dv: &#40;n&#61;90&#41;
+  Covariates: dose
+, &#91;0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0  …  80.0, 81.0, 82.0, 8
+3.0, 84.0, 85.0, 86.0, 87.0, 88.0, 89.0&#93;, &#40;dv &#61; &#91;0, 8, 1, 1, 1, 0, 5, 5, 0,
+ 1  …  1, 0, 4, 0, 0, 1, 2, 0, 2, 2&#93;, m &#61; &#91;2.718436049368227, 2.71843604936
+8227, 2.718436049368227, 2.718436049368227, 2.718436049368227, 2.7184360493
+68227, 2.718436049368227, 2.718436049368227, 2.718436049368227, 2.718436049
+368227  …  1.132681687236761, 1.132681687236761, 1.132681687236761, 1.13268
+1687236761, 1.132681687236761, 1.132681687236761, 1.132681687236761, 1.1326
+81687236761, 1.132681687236761, 1.132681687236761&#93;, p &#61; &#91;0.2689302671132136
+, 0.2689302671132136, 0.2689302671132136, 0.2689302671132136, 0.26893026711
+32136, 0.2689302671132136, 0.2689302671132136, 0.2689302671132136, 0.268930
+2671132136, 0.2689302671132136  …  0.46889322770697395, 0.46889322770697395
+, 0.46889322770697395, 0.46889322770697395, 0.46889322770697395, 0.46889322
+770697395, 0.46889322770697395, 0.46889322770697395, 0.46889322770697395, 0
+.46889322770697395&#93;&#41;, :Success&#41;
+ Pumas.SimulatedObservations&#123;Pumas.Subject&#123;NamedTuple&#123;&#40;:dv,&#41;,Tuple&#123;Array&#123;Un
+ion&#123;Missing, Float64&#125;,1&#125;&#125;&#125;,Pumas.ConstantInterpolationStructArray&#123;Array&#123;Flo
+at64,1&#125;,StructArrays.StructArray&#123;NamedTuple&#123;&#40;:dose,&#41;,Tuple&#123;Float64&#125;&#125;,1,Name
+dTuple&#123;&#40;:dose,&#41;,Tuple&#123;Array&#123;Float64,1&#125;&#125;&#125;,Int64&#125;,Symbol&#125;,Array&#123;Pumas.Event&#123;F
+loat64,Float64,Float64,Float64,Float64,Float64,Nothing,Int64&#125;,1&#125;,Array&#123;Floa
+t64,1&#125;&#125;,Array&#123;Float64,1&#125;,NamedTuple&#123;&#40;:dv, :m, :p&#41;,Tuple&#123;Array&#123;Int64,1&#125;,Arra
+y&#123;Float64,1&#125;,Array&#123;Float64,1&#125;&#125;&#125;&#125;&#40;Subject
+  ID: 7
+  Events: 0
+  Observables: dv: &#40;n&#61;90&#41;
+  Covariates: dose
+, &#91;0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0  …  80.0, 81.0, 82.0, 8
+3.0, 84.0, 85.0, 86.0, 87.0, 88.0, 89.0&#93;, &#40;dv &#61; &#91;6, 2, 0, 8, 14, 3, 2, 33, 
+1, 10  …  13, 13, 18, 5, 9, 5, 9, 1, 19, 4&#93;, m &#61; &#91;13.953250020519185, 13.95
+3250020519185, 13.953250020519185, 13.953250020519185, 13.953250020519185, 
+13.953250020519185, 13.953250020519185, 13.953250020519185, 13.953250020519
+185, 13.953250020519185  …  5.813854175216327, 5.813854175216327, 5.8138541
+75216327, 5.813854175216327, 5.813854175216327, 5.813854175216327, 5.813854
+175216327, 5.813854175216327, 5.813854175216327, 5.813854175216327&#93;, p &#61; &#91;0
+.0668750939513335, 0.0668750939513335, 0.0668750939513335, 0.06687509395133
+35, 0.0668750939513335, 0.0668750939513335, 0.0668750939513335, 0.066875093
+9513335, 0.0668750939513335, 0.0668750939513335  …  0.14675981820057837, 0.
+14675981820057837, 0.14675981820057837, 0.14675981820057837, 0.146759818200
+57837, 0.14675981820057837, 0.14675981820057837, 0.14675981820057837, 0.146
+75981820057837, 0.14675981820057837&#93;&#41;, :Success&#41;
+ Pumas.SimulatedObservations&#123;Pumas.Subject&#123;NamedTuple&#123;&#40;:dv,&#41;,Tuple&#123;Array&#123;Un
+ion&#123;Missing, Float64&#125;,1&#125;&#125;&#125;,Pumas.ConstantInterpolationStructArray&#123;Array&#123;Flo
+at64,1&#125;,StructArrays.StructArray&#123;NamedTuple&#123;&#40;:dose,&#41;,Tuple&#123;Float64&#125;&#125;,1,Name
+dTuple&#123;&#40;:dose,&#41;,Tuple&#123;Array&#123;Float64,1&#125;&#125;&#125;,Int64&#125;,Symbol&#125;,Array&#123;Pumas.Event&#123;F
+loat64,Float64,Float64,Float64,Float64,Float64,Nothing,Int64&#125;,1&#125;,Array&#123;Floa
+t64,1&#125;&#125;,Array&#123;Float64,1&#125;,NamedTuple&#123;&#40;:dv, :m, :p&#41;,Tuple&#123;Array&#123;Int64,1&#125;,Arra
+y&#123;Float64,1&#125;,Array&#123;Float64,1&#125;&#125;&#125;&#125;&#40;Subject
+  ID: 8
+  Events: 0
+  Observables: dv: &#40;n&#61;90&#41;
+  Covariates: dose
+, &#91;0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0  …  80.0, 81.0, 82.0, 8
+3.0, 84.0, 85.0, 86.0, 87.0, 88.0, 89.0&#93;, &#40;dv &#61; &#91;13, 2, 8, 6, 8, 0, 1, 1, 1
+, 7  …  1, 8, 0, 1, 0, 0, 3, 1, 0, 10&#93;, m &#61; &#91;3.465546075676437, 3.465546075
+676437, 3.465546075676437, 3.465546075676437, 3.465546075676437, 3.46554607
+5676437, 3.465546075676437, 3.465546075676437, 3.465546075676437, 3.4655460
+75676437  …  1.4439775315318486, 1.4439775315318486, 1.4439775315318486, 1.
+4439775315318486, 1.4439775315318486, 1.4439775315318486, 1.443977531531848
+6, 1.4439775315318486, 1.4439775315318486, 1.4439775315318486&#93;, p &#61; &#91;0.2239
+3677795576677, 0.22393677795576677, 0.22393677795576677, 0.2239367779557667
+7, 0.22393677795576677, 0.22393677795576677, 0.22393677795576677, 0.2239367
+7795576677, 0.22393677795576677, 0.22393677795576677  …  0.4091690644034746
+7, 0.40916906440347467, 0.40916906440347467, 0.40916906440347467, 0.4091690
+6440347467, 0.40916906440347467, 0.40916906440347467, 0.40916906440347467, 
+0.40916906440347467, 0.40916906440347467&#93;&#41;, :Success&#41;
+ Pumas.SimulatedObservations&#123;Pumas.Subject&#123;NamedTuple&#123;&#40;:dv,&#41;,Tuple&#123;Array&#123;Un
+ion&#123;Missing, Float64&#125;,1&#125;&#125;&#125;,Pumas.ConstantInterpolationStructArray&#123;Array&#123;Flo
+at64,1&#125;,StructArrays.StructArray&#123;NamedTuple&#123;&#40;:dose,&#41;,Tuple&#123;Float64&#125;&#125;,1,Name
+dTuple&#123;&#40;:dose,&#41;,Tuple&#123;Array&#123;Float64,1&#125;&#125;&#125;,Int64&#125;,Symbol&#125;,Array&#123;Pumas.Event&#123;F
+loat64,Float64,Float64,Float64,Float64,Float64,Nothing,Int64&#125;,1&#125;,Array&#123;Floa
+t64,1&#125;&#125;,Array&#123;Float64,1&#125;,NamedTuple&#123;&#40;:dv, :m, :p&#41;,Tuple&#123;Array&#123;Int64,1&#125;,Arra
+y&#123;Float64,1&#125;,Array&#123;Float64,1&#125;&#125;&#125;&#125;&#40;Subject
+  ID: 9
+  Events: 0
+  Observables: dv: &#40;n&#61;90&#41;
+  Covariates: dose
+, &#91;0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0  …  80.0, 81.0, 82.0, 8
+3.0, 84.0, 85.0, 86.0, 87.0, 88.0, 89.0&#93;, &#40;dv &#61; &#91;0, 1, 1, 0, 15, 19, 1, 14,
+ 2, 4  …  1, 0, 1, 9, 1, 0, 4, 3, 0, 1&#93;, m &#61; &#91;3.5510330429635006, 3.5510330
+429635006, 3.5510330429635006, 3.5510330429635006, 3.5510330429635006, 3.55
+10330429635006, 3.5510330429635006, 3.5510330429635006, 3.5510330429635006,
+ 3.5510330429635006  …  1.4795971012347917, 1.4795971012347917, 1.479597101
+2347917, 1.4795971012347917, 1.4795971012347917, 1.4795971012347917, 1.4795
+971012347917, 1.4795971012347917, 1.4795971012347917, 1.4795971012347917&#93;, 
+p &#61; &#91;0.21973033167626246, 0.21973033167626246, 0.21973033167626246, 0.21973
+033167626246, 0.21973033167626246, 0.21973033167626246, 0.21973033167626246
+, 0.21973033167626246, 0.21973033167626246, 0.21973033167626246  …  0.40329
+1324829352, 0.403291324829352, 0.403291324829352, 0.403291324829352, 0.4032
+91324829352, 0.403291324829352, 0.403291324829352, 0.403291324829352, 0.403
+291324829352, 0.403291324829352&#93;&#41;, :Success&#41;
+ Pumas.SimulatedObservations&#123;Pumas.Subject&#123;NamedTuple&#123;&#40;:dv,&#41;,Tuple&#123;Array&#123;Un
+ion&#123;Missing, Float64&#125;,1&#125;&#125;&#125;,Pumas.ConstantInterpolationStructArray&#123;Array&#123;Flo
+at64,1&#125;,StructArrays.StructArray&#123;NamedTuple&#123;&#40;:dose,&#41;,Tuple&#123;Float64&#125;&#125;,1,Name
+dTuple&#123;&#40;:dose,&#41;,Tuple&#123;Array&#123;Float64,1&#125;&#125;&#125;,Int64&#125;,Symbol&#125;,Array&#123;Pumas.Event&#123;F
+loat64,Float64,Float64,Float64,Float64,Float64,Nothing,Int64&#125;,1&#125;,Array&#123;Floa
+t64,1&#125;&#125;,Array&#123;Float64,1&#125;,NamedTuple&#123;&#40;:dv, :m, :p&#41;,Tuple&#123;Array&#123;Int64,1&#125;,Arra
+y&#123;Float64,1&#125;,Array&#123;Float64,1&#125;&#125;&#125;&#125;&#40;Subject
+  ID: 10
+  Events: 0
+  Observables: dv: &#40;n&#61;90&#41;
+  Covariates: dose
+, &#91;0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0  …  80.0, 81.0, 82.0, 8
+3.0, 84.0, 85.0, 86.0, 87.0, 88.0, 89.0&#93;, &#40;dv &#61; &#91;8, 14, 10, 15, 0, 0, 0, 1,
+ 3, 0  …  1, 0, 0, 2, 1, 1, 0, 0, 1, 0&#93;, m &#61; &#91;2.9248940385247453, 2.9248940
+385247453, 2.9248940385247453, 2.9248940385247453, 2.9248940385247453, 2.92
+48940385247453, 2.9248940385247453, 2.9248940385247453, 2.9248940385247453,
+ 2.9248940385247453  …  1.2187058493853105, 1.2187058493853105, 1.218705849
+3853105, 1.2187058493853105, 1.2187058493853105, 1.2187058493853105, 1.2187
+058493853105, 1.2187058493853105, 1.2187058493853105, 1.2187058493853105&#93;, 
+p &#61; &#91;0.2547839483523665, 0.2547839483523665, 0.2547839483523665, 0.25478394
+83523665, 0.2547839483523665, 0.2547839483523665, 0.2547839483523665, 0.254
+7839483523665, 0.2547839483523665, 0.2547839483523665  …  0.450713194034733
+64, 0.45071319403473364, 0.45071319403473364, 0.45071319403473364, 0.450713
+19403473364, 0.45071319403473364, 0.45071319403473364, 0.45071319403473364,
+ 0.45071319403473364, 0.45071319403473364&#93;&#41;, :Success&#41;
+ Pumas.SimulatedObservations&#123;Pumas.Subject&#123;NamedTuple&#123;&#40;:dv,&#41;,Tuple&#123;Array&#123;Un
+ion&#123;Missing, Float64&#125;,1&#125;&#125;&#125;,Pumas.ConstantInterpolationStructArray&#123;Array&#123;Flo
+at64,1&#125;,StructArrays.StructArray&#123;NamedTuple&#123;&#40;:dose,&#41;,Tuple&#123;Float64&#125;&#125;,1,Name
+dTuple&#123;&#40;:dose,&#41;,Tuple&#123;Array&#123;Float64,1&#125;&#125;&#125;,Int64&#125;,Symbol&#125;,Array&#123;Pumas.Event&#123;F
+loat64,Float64,Float64,Float64,Float64,Float64,Nothing,Int64&#125;,1&#125;,Array&#123;Floa
+t64,1&#125;&#125;,Array&#123;Float64,1&#125;,NamedTuple&#123;&#40;:dv, :m, :p&#41;,Tuple&#123;Array&#123;Int64,1&#125;,Arra
+y&#123;Float64,1&#125;,Array&#123;Float64,1&#125;&#125;&#125;&#125;&#40;Subject
+  ID: 11
+  Events: 0
+  Observables: dv: &#40;n&#61;90&#41;
+  Covariates: dose
+, &#91;0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0  …  80.0, 81.0, 82.0, 8
+3.0, 84.0, 85.0, 86.0, 87.0, 88.0, 89.0&#93;, &#40;dv &#61; &#91;5, 0, 1, 4, 0, 0, 10, 0, 1
+, 9  …  0, 2, 0, 0, 1, 2, 0, 1, 0, 0&#93;, m &#61; &#91;2.6224877637453146, 2.622487763
+7453146, 2.6224877637453146, 2.6224877637453146, 2.6224877637453146, 2.6224
+877637453146, 2.6224877637453146, 2.6224877637453146, 2.6224877637453146, 2
+.6224877637453146  …  1.092703234893881, 1.092703234893881, 1.0927032348938
+81, 1.092703234893881, 1.092703234893881, 1.092703234893881, 1.092703234893
+881, 1.092703234893881, 1.092703234893881, 1.092703234893881&#93;, p &#61; &#91;0.27605
+33824318825, 0.2760533824318825, 0.2760533824318825, 0.2760533824318825, 0.
+2760533824318825, 0.2760533824318825, 0.2760533824318825, 0.276053382431882
+5, 0.2760533824318825, 0.2760533824318825  …  0.47785084063804634, 0.477850
+84063804634, 0.47785084063804634, 0.47785084063804634, 0.47785084063804634,
+ 0.47785084063804634, 0.47785084063804634, 0.47785084063804634, 0.477850840
+63804634, 0.47785084063804634&#93;&#41;, :Success&#41;
+ Pumas.SimulatedObservations&#123;Pumas.Subject&#123;NamedTuple&#123;&#40;:dv,&#41;,Tuple&#123;Array&#123;Un
+ion&#123;Missing, Float64&#125;,1&#125;&#125;&#125;,Pumas.ConstantInterpolationStructArray&#123;Array&#123;Flo
+at64,1&#125;,StructArrays.StructArray&#123;NamedTuple&#123;&#40;:dose,&#41;,Tuple&#123;Float64&#125;&#125;,1,Name
+dTuple&#123;&#40;:dose,&#41;,Tuple&#123;Array&#123;Float64,1&#125;&#125;&#125;,Int64&#125;,Symbol&#125;,Array&#123;Pumas.Event&#123;F
+loat64,Float64,Float64,Float64,Float64,Float64,Nothing,Int64&#125;,1&#125;,Array&#123;Floa
+t64,1&#125;&#125;,Array&#123;Float64,1&#125;,NamedTuple&#123;&#40;:dv, :m, :p&#41;,Tuple&#123;Array&#123;Int64,1&#125;,Arra
+y&#123;Float64,1&#125;,Array&#123;Float64,1&#125;&#125;&#125;&#125;&#40;Subject
+  ID: 12
+  Events: 0
+  Observables: dv: &#40;n&#61;90&#41;
+  Covariates: dose
+, &#91;0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0  …  80.0, 81.0, 82.0, 8
+3.0, 84.0, 85.0, 86.0, 87.0, 88.0, 89.0&#93;, &#40;dv &#61; &#91;3, 0, 0, 5, 1, 1, 3, 0, 1,
+ 2  …  0, 0, 0, 0, 0, 0, 1, 0, 0, 0&#93;, m &#61; &#91;1.6742413262438771, 1.6742413262
+438771, 1.6742413262438771, 1.6742413262438771, 1.6742413262438771, 1.67424
+13262438771, 1.6742413262438771, 1.6742413262438771, 1.6742413262438771, 1.
+6742413262438771  …  0.6976005526016154, 0.6976005526016154, 0.697600552601
+6154, 0.6976005526016154, 0.6976005526016154, 0.6976005526016154, 0.6976005
+526016154, 0.6976005526016154, 0.6976005526016154, 0.6976005526016154&#93;, p &#61;
+ &#91;0.37393783058635044, 0.37393783058635044, 0.37393783058635044, 0.37393783
+058635044, 0.37393783058635044, 0.37393783058635044, 0.37393783058635044, 0
+.37393783058635044, 0.37393783058635044, 0.37393783058635044  …  0.58906672
+62492787, 0.5890667262492787, 0.5890667262492787, 0.5890667262492787, 0.589
+0667262492787, 0.5890667262492787, 0.5890667262492787, 0.5890667262492787, 
+0.5890667262492787, 0.5890667262492787&#93;&#41;, :Success&#41;
+ Pumas.SimulatedObservations&#123;Pumas.Subject&#123;NamedTuple&#123;&#40;:dv,&#41;,Tuple&#123;Array&#123;Un
+ion&#123;Missing, Float64&#125;,1&#125;&#125;&#125;,Pumas.ConstantInterpolationStructArray&#123;Array&#123;Flo
+at64,1&#125;,StructArrays.StructArray&#123;NamedTuple&#123;&#40;:dose,&#41;,Tuple&#123;Float64&#125;&#125;,1,Name
+dTuple&#123;&#40;:dose,&#41;,Tuple&#123;Array&#123;Float64,1&#125;&#125;&#125;,Int64&#125;,Symbol&#125;,Array&#123;Pumas.Event&#123;F
+loat64,Float64,Float64,Float64,Float64,Float64,Nothing,Int64&#125;,1&#125;,Array&#123;Floa
+t64,1&#125;&#125;,Array&#123;Float64,1&#125;,NamedTuple&#123;&#40;:dv, :m, :p&#41;,Tuple&#123;Array&#123;Int64,1&#125;,Arra
+y&#123;Float64,1&#125;,Array&#123;Float64,1&#125;&#125;&#125;&#125;&#40;Subject
+  ID: 13
+  Events: 0
+  Observables: dv: &#40;n&#61;90&#41;
+  Covariates: dose
+, &#91;0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0  …  80.0, 81.0, 82.0, 8
+3.0, 84.0, 85.0, 86.0, 87.0, 88.0, 89.0&#93;, &#40;dv &#61; &#91;12, 0, 2, 2, 5, 3, 14, 3, 
+6, 2  …  1, 0, 7, 5, 4, 2, 6, 1, 1, 1&#93;, m &#61; &#91;5.858793929349986, 5.858793929
+349986, 5.858793929349986, 5.858793929349986, 5.858793929349986, 5.85879392
+9349986, 5.858793929349986, 5.858793929349986, 5.858793929349986, 5.8587939
+29349986  …  2.4411641372291606, 2.4411641372291606, 2.4411641372291606, 2.
+4411641372291606, 2.4411641372291606, 2.4411641372291606, 2.441164137229160
+6, 2.4411641372291606, 2.4411641372291606, 2.4411641372291606&#93;, p &#61; &#91;0.1457
+9822783723304, 0.14579822783723304, 0.14579822783723304, 0.1457982278372330
+4, 0.14579822783723304, 0.14579822783723304, 0.14579822783723304, 0.1457982
+2783723304, 0.14579822783723304, 0.14579822783723304  …  0.2905993321217174
+, 0.2905993321217174, 0.2905993321217174, 0.2905993321217174, 0.29059933212
+17174, 0.2905993321217174, 0.2905993321217174, 0.2905993321217174, 0.290599
+3321217174, 0.2905993321217174&#93;&#41;, :Success&#41;
+ Pumas.SimulatedObservations&#123;Pumas.Subject&#123;NamedTuple&#123;&#40;:dv,&#41;,Tuple&#123;Array&#123;Un
+ion&#123;Missing, Float64&#125;,1&#125;&#125;&#125;,Pumas.ConstantInterpolationStructArray&#123;Array&#123;Flo
+at64,1&#125;,StructArrays.StructArray&#123;NamedTuple&#123;&#40;:dose,&#41;,Tuple&#123;Float64&#125;&#125;,1,Name
+dTuple&#123;&#40;:dose,&#41;,Tuple&#123;Array&#123;Float64,1&#125;&#125;&#125;,Int64&#125;,Symbol&#125;,Array&#123;Pumas.Event&#123;F
+loat64,Float64,Float64,Float64,Float64,Float64,Nothing,Int64&#125;,1&#125;,Array&#123;Floa
+t64,1&#125;&#125;,Array&#123;Float64,1&#125;,NamedTuple&#123;&#40;:dv, :m, :p&#41;,Tuple&#123;Array&#123;Int64,1&#125;,Arra
+y&#123;Float64,1&#125;,Array&#123;Float64,1&#125;&#125;&#125;&#125;&#40;Subject
+  ID: 14
+  Events: 0
+  Observables: dv: &#40;n&#61;90&#41;
+  Covariates: dose
+, &#91;0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0  …  80.0, 81.0, 82.0, 8
+3.0, 84.0, 85.0, 86.0, 87.0, 88.0, 89.0&#93;, &#40;dv &#61; &#91;2, 0, 3, 0, 1, 0, 1, 1, 0,
+ 3  …  0, 0, 0, 0, 0, 0, 1, 1, 2, 0&#93;, m &#61; &#91;1.262738566319693, 1.26273856631
+9693, 1.262738566319693, 1.262738566319693, 1.262738566319693, 1.2627385663
+19693, 1.262738566319693, 1.262738566319693, 1.262738566319693, 1.262738566
+319693  …  0.526141069299872, 0.526141069299872, 0.526141069299872, 0.52614
+1069299872, 0.526141069299872, 0.526141069299872, 0.526141069299872, 0.5261
+41069299872, 0.526141069299872, 0.526141069299872&#93;, p &#61; &#91;0.4419423502497169
+, 0.4419423502497169, 0.4419423502497169, 0.4419423502497169, 0.44194235024
+97169, 0.4419423502497169, 0.4419423502497169, 0.4419423502497169, 0.441942
+3502497169, 0.4419423502497169  …  0.6552474211697592, 0.6552474211697592, 
+0.6552474211697592, 0.6552474211697592, 0.6552474211697592, 0.6552474211697
+592, 0.6552474211697592, 0.6552474211697592, 0.6552474211697592, 0.65524742
+11697592&#93;&#41;, :Success&#41;
+ Pumas.SimulatedObservations&#123;Pumas.Subject&#123;NamedTuple&#123;&#40;:dv,&#41;,Tuple&#123;Array&#123;Un
+ion&#123;Missing, Float64&#125;,1&#125;&#125;&#125;,Pumas.ConstantInterpolationStructArray&#123;Array&#123;Flo
+at64,1&#125;,StructArrays.StructArray&#123;NamedTuple&#123;&#40;:dose,&#41;,Tuple&#123;Float64&#125;&#125;,1,Name
+dTuple&#123;&#40;:dose,&#41;,Tuple&#123;Array&#123;Float64,1&#125;&#125;&#125;,Int64&#125;,Symbol&#125;,Array&#123;Pumas.Event&#123;F
+loat64,Float64,Float64,Float64,Float64,Float64,Nothing,Int64&#125;,1&#125;,Array&#123;Floa
+t64,1&#125;&#125;,Array&#123;Float64,1&#125;,NamedTuple&#123;&#40;:dv, :m, :p&#41;,Tuple&#123;Array&#123;Int64,1&#125;,Arra
+y&#123;Float64,1&#125;,Array&#123;Float64,1&#125;&#125;&#125;&#125;&#40;Subject
+  ID: 15
+  Events: 0
+  Observables: dv: &#40;n&#61;90&#41;
+  Covariates: dose
+, &#91;0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0  …  80.0, 81.0, 82.0, 8
+3.0, 84.0, 85.0, 86.0, 87.0, 88.0, 89.0&#93;, &#40;dv &#61; &#91;1, 2, 3, 1, 0, 0, 0, 0, 0,
+ 0  …  1, 0, 0, 2, 0, 0, 1, 0, 0, 0&#93;, m &#61; &#91;1.524854424182481, 1.52485442418
+2481, 1.524854424182481, 1.524854424182481, 1.524854424182481, 1.5248544241
+82481, 1.524854424182481, 1.524854424182481, 1.524854424182481, 1.524854424
+182481  …  0.6353560100760337, 0.6353560100760337, 0.6353560100760337, 0.63
+53560100760337, 0.6353560100760337, 0.6353560100760337, 0.6353560100760337,
+ 0.6353560100760337, 0.6353560100760337, 0.6353560100760337&#93;, p &#61; &#91;0.396062
+4384607, 0.3960624384607, 0.3960624384607, 0.3960624384607, 0.3960624384607
+, 0.3960624384607, 0.3960624384607, 0.3960624384607, 0.3960624384607, 0.396
+0624384607  …  0.6114876478507615, 0.6114876478507615, 0.6114876478507615, 
+0.6114876478507615, 0.6114876478507615, 0.6114876478507615, 0.6114876478507
+615, 0.6114876478507615, 0.6114876478507615, 0.6114876478507615&#93;&#41;, :Success
+&#41;
+ Pumas.SimulatedObservations&#123;Pumas.Subject&#123;NamedTuple&#123;&#40;:dv,&#41;,Tuple&#123;Array&#123;Un
+ion&#123;Missing, Float64&#125;,1&#125;&#125;&#125;,Pumas.ConstantInterpolationStructArray&#123;Array&#123;Flo
+at64,1&#125;,StructArrays.StructArray&#123;NamedTuple&#123;&#40;:dose,&#41;,Tuple&#123;Float64&#125;&#125;,1,Name
+dTuple&#123;&#40;:dose,&#41;,Tuple&#123;Array&#123;Float64,1&#125;&#125;&#125;,Int64&#125;,Symbol&#125;,Array&#123;Pumas.Event&#123;F
+loat64,Float64,Float64,Float64,Float64,Float64,Nothing,Int64&#125;,1&#125;,Array&#123;Floa
+t64,1&#125;&#125;,Array&#123;Float64,1&#125;,NamedTuple&#123;&#40;:dv, :m, :p&#41;,Tuple&#123;Array&#123;Int64,1&#125;,Arra
+y&#123;Float64,1&#125;,Array&#123;Float64,1&#125;&#125;&#125;&#125;&#40;Subject
+  ID: 16
+  Events: 0
+  Observables: dv: &#40;n&#61;90&#41;
+  Covariates: dose
+, &#91;0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0  …  80.0, 81.0, 82.0, 8
+3.0, 84.0, 85.0, 86.0, 87.0, 88.0, 89.0&#93;, &#40;dv &#61; &#91;4, 4, 0, 1, 7, 0, 1, 2, 4,
+ 3  …  0, 1, 0, 0, 0, 0, 1, 0, 0, 0&#93;, m &#61; &#91;1.7650301045711294, 1.7650301045
+711294, 1.7650301045711294, 1.7650301045711294, 1.7650301045711294, 1.76503
+01045711294, 1.7650301045711294, 1.7650301045711294, 1.7650301045711294, 1.
+7650301045711294  …  0.7354292102379705, 0.7354292102379705, 0.735429210237
+9705, 0.7354292102379705, 0.7354292102379705, 0.7354292102379705, 0.7354292
+102379705, 0.7354292102379705, 0.7354292102379705, 0.7354292102379705&#93;, p &#61;
+ &#91;0.3616597151498664, 0.3616597151498664, 0.3616597151498664, 0.36165971514
+98664, 0.3616597151498664, 0.3616597151498664, 0.3616597151498664, 0.361659
+7151498664, 0.3616597151498664, 0.3616597151498664  …  0.5762263272397468, 
+0.5762263272397468, 0.5762263272397468, 0.5762263272397468, 0.5762263272397
+468, 0.5762263272397468, 0.5762263272397468, 0.5762263272397468, 0.57622632
+72397468, 0.5762263272397468&#93;&#41;, :Success&#41;
+ Pumas.SimulatedObservations&#123;Pumas.Subject&#123;NamedTuple&#123;&#40;:dv,&#41;,Tuple&#123;Array&#123;Un
+ion&#123;Missing, Float64&#125;,1&#125;&#125;&#125;,Pumas.ConstantInterpolationStructArray&#123;Array&#123;Flo
+at64,1&#125;,StructArrays.StructArray&#123;NamedTuple&#123;&#40;:dose,&#41;,Tuple&#123;Float64&#125;&#125;,1,Name
+dTuple&#123;&#40;:dose,&#41;,Tuple&#123;Array&#123;Float64,1&#125;&#125;&#125;,Int64&#125;,Symbol&#125;,Array&#123;Pumas.Event&#123;F
+loat64,Float64,Float64,Float64,Float64,Float64,Nothing,Int64&#125;,1&#125;,Array&#123;Floa
+t64,1&#125;&#125;,Array&#123;Float64,1&#125;,NamedTuple&#123;&#40;:dv, :m, :p&#41;,Tuple&#123;Array&#123;Int64,1&#125;,Arra
+y&#123;Float64,1&#125;,Array&#123;Float64,1&#125;&#125;&#125;&#125;&#40;Subject
+  ID: 17
+  Events: 0
+  Observables: dv: &#40;n&#61;90&#41;
+  Covariates: dose
+, &#91;0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0  …  80.0, 81.0, 82.0, 8
+3.0, 84.0, 85.0, 86.0, 87.0, 88.0, 89.0&#93;, &#40;dv &#61; &#91;7, 15, 9, 38, 3, 0, 9, 6, 
+2, 8  …  3, 1, 0, 8, 0, 1, 0, 3, 0, 0&#93;, m &#61; &#91;7.084502652010831, 7.084502652
+010831, 7.084502652010831, 7.084502652010831, 7.084502652010831, 7.08450265
+2010831, 7.084502652010831, 7.084502652010831, 7.084502652010831, 7.0845026
+52010831  …  2.9518761050045126, 2.9518761050045126, 2.9518761050045126, 2.
+9518761050045126, 2.9518761050045126, 2.9518761050045126, 2.951876105004512
+6, 2.9518761050045126, 2.9518761050045126, 2.9518761050045126&#93;, p &#61; &#91;0.1236
+9344696191961, 0.12369344696191961, 0.12369344696191961, 0.1236934469619196
+1, 0.12369344696191961, 0.12369344696191961, 0.12369344696191961, 0.1236934
+4696191961, 0.12369344696191961, 0.12369344696191961  …  0.2530443701748737
+5, 0.25304437017487375, 0.25304437017487375, 0.25304437017487375, 0.2530443
+7017487375, 0.25304437017487375, 0.25304437017487375, 0.25304437017487375, 
+0.25304437017487375, 0.25304437017487375&#93;&#41;, :Success&#41;
+ Pumas.SimulatedObservations&#123;Pumas.Subject&#123;NamedTuple&#123;&#40;:dv,&#41;,Tuple&#123;Array&#123;Un
+ion&#123;Missing, Float64&#125;,1&#125;&#125;&#125;,Pumas.ConstantInterpolationStructArray&#123;Array&#123;Flo
+at64,1&#125;,StructArrays.StructArray&#123;NamedTuple&#123;&#40;:dose,&#41;,Tuple&#123;Float64&#125;&#125;,1,Name
+dTuple&#123;&#40;:dose,&#41;,Tuple&#123;Array&#123;Float64,1&#125;&#125;&#125;,Int64&#125;,Symbol&#125;,Array&#123;Pumas.Event&#123;F
+loat64,Float64,Float64,Float64,Float64,Float64,Nothing,Int64&#125;,1&#125;,Array&#123;Floa
+t64,1&#125;&#125;,Array&#123;Float64,1&#125;,NamedTuple&#123;&#40;:dv, :m, :p&#41;,Tuple&#123;Array&#123;Int64,1&#125;,Arra
+y&#123;Float64,1&#125;,Array&#123;Float64,1&#125;&#125;&#125;&#125;&#40;Subject
+  ID: 18
+  Events: 0
+  Observables: dv: &#40;n&#61;90&#41;
+  Covariates: dose
+, &#91;0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0  …  80.0, 81.0, 82.0, 8
+3.0, 84.0, 85.0, 86.0, 87.0, 88.0, 89.0&#93;, &#40;dv &#61; &#91;8, 3, 8, 1, 2, 2, 1, 0, 9,
+ 2  …  1, 3, 0, 0, 4, 0, 0, 3, 0, 1&#93;, m &#61; &#91;1.9549057101292306, 1.9549057101
+292306, 1.9549057101292306, 1.9549057101292306, 1.9549057101292306, 1.95490
+57101292306, 1.9549057101292306, 1.9549057101292306, 1.9549057101292306, 1.
+9549057101292306  …  0.8145440458871793, 0.8145440458871793, 0.814544045887
+1793, 0.8145440458871793, 0.8145440458871793, 0.8145440458871793, 0.8145440
+458871793, 0.8145440458871793, 0.8145440458871793, 0.8145440458871793&#93;, p &#61;
+ &#91;0.3384202739776308, 0.3384202739776308, 0.3384202739776308, 0.33842027397
+76308, 0.3384202739776308, 0.3384202739776308, 0.3384202739776308, 0.338420
+2739776308, 0.3384202739776308, 0.3384202739776308  …  0.5511026322378816, 
+0.5511026322378816, 0.5511026322378816, 0.5511026322378816, 0.5511026322378
+816, 0.5511026322378816, 0.5511026322378816, 0.5511026322378816, 0.55110263
+22378816, 0.5511026322378816&#93;&#41;, :Success&#41;
+ Pumas.SimulatedObservations&#123;Pumas.Subject&#123;NamedTuple&#123;&#40;:dv,&#41;,Tuple&#123;Array&#123;Un
+ion&#123;Missing, Float64&#125;,1&#125;&#125;&#125;,Pumas.ConstantInterpolationStructArray&#123;Array&#123;Flo
+at64,1&#125;,StructArrays.StructArray&#123;NamedTuple&#123;&#40;:dose,&#41;,Tuple&#123;Float64&#125;&#125;,1,Name
+dTuple&#123;&#40;:dose,&#41;,Tuple&#123;Array&#123;Float64,1&#125;&#125;&#125;,Int64&#125;,Symbol&#125;,Array&#123;Pumas.Event&#123;F
+loat64,Float64,Float64,Float64,Float64,Float64,Nothing,Int64&#125;,1&#125;,Array&#123;Floa
+t64,1&#125;&#125;,Array&#123;Float64,1&#125;,NamedTuple&#123;&#40;:dv, :m, :p&#41;,Tuple&#123;Array&#123;Int64,1&#125;,Arra
+y&#123;Float64,1&#125;,Array&#123;Float64,1&#125;&#125;&#125;&#125;&#40;Subject
+  ID: 19
+  Events: 0
+  Observables: dv: &#40;n&#61;90&#41;
+  Covariates: dose
+, &#91;0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0  …  80.0, 81.0, 82.0, 8
+3.0, 84.0, 85.0, 86.0, 87.0, 88.0, 89.0&#93;, &#40;dv &#61; &#91;2, 26, 46, 60, 7, 12, 12, 
+9, 24, 12  …  0, 7, 8, 0, 19, 18, 4, 4, 2, 0&#93;, m &#61; &#91;19.880723312862816, 19.
+880723312862816, 19.880723312862816, 19.880723312862816, 19.880723312862816
+, 19.880723312862816, 19.880723312862816, 19.880723312862816, 19.8807233128
+62816, 19.880723312862816  …  8.28363471369284, 8.28363471369284, 8.2836347
+1369284, 8.28363471369284, 8.28363471369284, 8.28363471369284, 8.2836347136
+9284, 8.28363471369284, 8.28363471369284, 8.28363471369284&#93;, p &#61; &#91;0.0478910
+6129211463, 0.04789106129211463, 0.04789106129211463, 0.04789106129211463, 
+0.04789106129211463, 0.04789106129211463, 0.04789106129211463, 0.0478910612
+9211463, 0.04789106129211463, 0.04789106129211463  …  0.10771643120824824, 
+0.10771643120824824, 0.10771643120824824, 0.10771643120824824, 0.1077164312
+0824824, 0.10771643120824824, 0.10771643120824824, 0.10771643120824824, 0.1
+0771643120824824, 0.10771643120824824&#93;&#41;, :Success&#41;
+ Pumas.SimulatedObservations&#123;Pumas.Subject&#123;NamedTuple&#123;&#40;:dv,&#41;,Tuple&#123;Array&#123;Un
+ion&#123;Missing, Float64&#125;,1&#125;&#125;&#125;,Pumas.ConstantInterpolationStructArray&#123;Array&#123;Flo
+at64,1&#125;,StructArrays.StructArray&#123;NamedTuple&#123;&#40;:dose,&#41;,Tuple&#123;Float64&#125;&#125;,1,Name
+dTuple&#123;&#40;:dose,&#41;,Tuple&#123;Array&#123;Float64,1&#125;&#125;&#125;,Int64&#125;,Symbol&#125;,Array&#123;Pumas.Event&#123;F
+loat64,Float64,Float64,Float64,Float64,Float64,Nothing,Int64&#125;,1&#125;,Array&#123;Floa
+t64,1&#125;&#125;,Array&#123;Float64,1&#125;,NamedTuple&#123;&#40;:dv, :m, :p&#41;,Tuple&#123;Array&#123;Int64,1&#125;,Arra
+y&#123;Float64,1&#125;,Array&#123;Float64,1&#125;&#125;&#125;&#125;&#40;Subject
+  ID: 20
+  Events: 0
+  Observables: dv: &#40;n&#61;90&#41;
+  Covariates: dose
+, &#91;0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0  …  80.0, 81.0, 82.0, 8
+3.0, 84.0, 85.0, 86.0, 87.0, 88.0, 89.0&#93;, &#40;dv &#61; &#91;3, 4, 0, 0, 2, 5, 4, 0, 0,
+ 4  …  0, 1, 0, 0, 1, 0, 1, 0, 2, 0&#93;, m &#61; &#91;2.326711202723234, 2.32671120272
+3234, 2.326711202723234, 2.326711202723234, 2.326711202723234, 2.3267112027
+23234, 2.326711202723234, 2.326711202723234, 2.326711202723234, 2.326711202
+723234  …  0.9694630011346809, 0.9694630011346809, 0.9694630011346809, 0.96
+94630011346809, 0.9694630011346809, 0.9694630011346809, 0.9694630011346809,
+ 0.9694630011346809, 0.9694630011346809, 0.9694630011346809&#93;, p &#61; &#91;0.300597
+17813238596, 0.30059717813238596, 0.30059717813238596, 0.30059717813238596,
+ 0.30059717813238596, 0.30059717813238596, 0.30059717813238596, 0.300597178
+13238596, 0.30059717813238596, 0.30059717813238596  …  0.5077526205995557, 
+0.5077526205995557, 0.5077526205995557, 0.5077526205995557, 0.5077526205995
+557, 0.5077526205995557, 0.5077526205995557, 0.5077526205995557, 0.50775262
+05995557, 0.5077526205995557&#93;&#41;, :Success&#41;
+</pre>
+
+
+<p>Here <code>dv</code> is an integer output probabilistically dependent on the dose.</p>
+<p>Let&#39;s read the data back in to re-estimate the model parameters</p>
+
+
+<pre class='hljl'>
+<span class='hljl-n'>pd_negativebinomial</span><span class='hljl-t'>  </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>Subject</span><span class='hljl-oB'>.</span><span class='hljl-p'>(</span><span class='hljl-n'>sim_negativebinomial</span><span class='hljl-p'>)</span>
+</pre>
+
+
+<pre class="output">
+Population
+  Subjects: 20
+  Covariates: dose
+  Observables: dv
+</pre>
+
+
+<p>And fit the data</p>
+
+
+<pre class='hljl'>
+<span class='hljl-n'>ngebin_res</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>fit</span><span class='hljl-p'>(</span><span class='hljl-n'>negativebinomial_model</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>pd_negativebinomial</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>param</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>Pumas</span><span class='hljl-oB'>.</span><span class='hljl-nf'>FOCE</span><span class='hljl-p'>())</span><span class='hljl-t'>
+</span><span class='hljl-nf'>coeftable</span><span class='hljl-p'>(</span><span class='hljl-n'>ngebin_res</span><span class='hljl-p'>)</span>
+</pre>
+
+
+<pre class="output">
+Iter     Function value   Gradient norm 
+     0     3.402313e&#43;03     1.288545e&#43;01
+ * time: 7.581710815429688e-5
+     1     3.402294e&#43;03     1.488486e&#43;01
+ * time: 0.07180500030517578
+     2     3.401969e&#43;03     8.546168e&#43;00
+ * time: 0.12686991691589355
+     3     3.401865e&#43;03     3.784037e&#43;00
+ * time: 0.1716749668121338
+     4     3.401826e&#43;03     1.148101e&#43;00
+ * time: 0.21163582801818848
+     5     3.401813e&#43;03     1.537499e&#43;00
+ * time: 0.2538290023803711
+     6     3.401806e&#43;03     1.057946e-01
+ * time: 0.2890310287475586
+     7     3.401806e&#43;03     8.346833e-03
+ * time: 0.3241159915924072
+     8     3.401806e&#43;03     4.236033e-03
+ * time: 0.36141490936279297
+     9     3.401806e&#43;03     4.236033e-03
+ * time: 0.45877599716186523
+    10     3.401806e&#43;03     4.236033e-03
+ * time: 0.5728969573974609
+    11     3.401806e&#43;03     4.236033e-03
+ * time: 0.6939699649810791
+</pre>
+
+
+<table class="data-frame"><thead><tr><th></th><th>parameter</th><th>estimate</th></tr><tr><th></th><th>String</th><th>Float64</th></tr></thead><tbody><p>4 rows × 2 columns</p><tr><th>1</th><td>θ₁</td><td>2.8551</td></tr><tr><th>2</th><td>θ₂</td><td>0.472419</td></tr><tr><th>3</th><td>ω</td><td>0.945253</td></tr><tr><th>4</th><td>θr</td><td>1.04473</td></tr></tbody></table>
+
+<p>and make an inference</p>
+
+
+<pre class='hljl'>
+<span class='hljl-nf'>infer</span><span class='hljl-p'>(</span><span class='hljl-n'>ngebin_res</span><span class='hljl-p'>)</span><span class='hljl-t'>  </span><span class='hljl-oB'>|&gt;</span><span class='hljl-t'> </span><span class='hljl-n'>coeftable</span>
+</pre>
+
+
+
+<table class="data-frame"><thead><tr><th></th><th>parameter</th><th>estimate</th><th>se</th><th>ci_lower</th><th>ci_upper</th></tr><tr><th></th><th>String</th><th>Float64</th><th>Float64</th><th>Float64</th><th>Float64</th></tr></thead><tbody><p>4 rows × 5 columns</p><tr><th>1</th><td>θ₁</td><td>2.8551</td><td>0.616198</td><td>1.64737</td><td>4.06282</td></tr><tr><th>2</th><td>θ₂</td><td>0.472419</td><td>0.04714</td><td>0.380027</td><td>0.564812</td></tr><tr><th>3</th><td>ω</td><td>0.945253</td><td>0.129357</td><td>0.691718</td><td>1.19879</td></tr><tr><th>4</th><td>θr</td><td>1.04473</td><td>0.0475593</td><td>0.951514</td><td>1.13794</td></tr></tbody></table>
+
+<h2>Ordinal data example</h2>
+<p>Next, we look at a simple example for ordinal data. Again, we will use an internal dataset</p>
+
+
+<pre class='hljl'>
+<span class='hljl-n'>df</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>copy</span><span class='hljl-p'>(</span><span class='hljl-n'>CSV</span><span class='hljl-oB'>.</span><span class='hljl-nf'>read</span><span class='hljl-p'>(</span><span class='hljl-nf'>example_data</span><span class='hljl-p'>(</span><span class='hljl-s'>&quot;pain_remed&quot;</span><span class='hljl-p'>),</span><span class='hljl-t'> </span><span class='hljl-n'>DataFrame</span><span class='hljl-p'>))</span>
+</pre>
+
+
+
+<table class="data-frame"><thead><tr><th></th><th>id</th><th>arm</th><th>dose</th><th>time</th><th>conc</th><th>painord</th><th>dv</th><th>remed</th></tr><tr><th></th><th>Int64</th><th>Int64</th><th>Int64</th><th>Float64</th><th>Float64</th><th>Int64</th><th>Int64</th><th>Int64</th></tr></thead><tbody><p>1,920 rows × 8 columns</p><tr><th>1</th><td>1</td><td>2</td><td>20</td><td>0.0</td><td>0.0</td><td>3</td><td>0</td><td>0</td></tr><tr><th>2</th><td>1</td><td>2</td><td>20</td><td>0.5</td><td>1.15578</td><td>1</td><td>1</td><td>0</td></tr><tr><th>3</th><td>1</td><td>2</td><td>20</td><td>1.0</td><td>1.37211</td><td>0</td><td>1</td><td>0</td></tr><tr><th>4</th><td>1</td><td>2</td><td>20</td><td>1.5</td><td>1.30058</td><td>0</td><td>1</td><td>0</td></tr><tr><th>5</th><td>1</td><td>2</td><td>20</td><td>2.0</td><td>1.19195</td><td>1</td><td>1</td><td>0</td></tr><tr><th>6</th><td>1</td><td>2</td><td>20</td><td>2.5</td><td>1.13602</td><td>1</td><td>1</td><td>0</td></tr><tr><th>7</th><td>1</td><td>2</td><td>20</td><td>3.0</td><td>0.873224</td><td>0</td><td>1</td><td>0</td></tr><tr><th>8</th><td>1</td><td>2</td><td>20</td><td>4.0</td><td>0.739963</td><td>1</td><td>1</td><td>0</td></tr><tr><th>9</th><td>1</td><td>2</td><td>20</td><td>5.0</td><td>0.600143</td><td>2</td><td>0</td><td>0</td></tr><tr><th>10</th><td>1</td><td>2</td><td>20</td><td>6.0</td><td>0.425624</td><td>1</td><td>1</td><td>0</td></tr><tr><th>11</th><td>1</td><td>2</td><td>20</td><td>7.0</td><td>0.363418</td><td>1</td><td>1</td><td>0</td></tr><tr><th>12</th><td>1</td><td>2</td><td>20</td><td>8.0</td><td>0.304177</td><td>1</td><td>1</td><td>0</td></tr><tr><th>13</th><td>2</td><td>3</td><td>80</td><td>0.0</td><td>0.0</td><td>3</td><td>0</td><td>0</td></tr><tr><th>14</th><td>2</td><td>3</td><td>80</td><td>0.5</td><td>4.93492</td><td>1</td><td>1</td><td>0</td></tr><tr><th>15</th><td>2</td><td>3</td><td>80</td><td>1.0</td><td>4.56849</td><td>0</td><td>1</td><td>0</td></tr><tr><th>16</th><td>2</td><td>3</td><td>80</td><td>1.5</td><td>4.23436</td><td>0</td><td>1</td><td>0</td></tr><tr><th>17</th><td>2</td><td>3</td><td>80</td><td>2.0</td><td>3.35444</td><td>0</td><td>1</td><td>0</td></tr><tr><th>18</th><td>2</td><td>3</td><td>80</td><td>2.5</td><td>2.70046</td><td>1</td><td>1</td><td>0</td></tr><tr><th>19</th><td>2</td><td>3</td><td>80</td><td>3.0</td><td>2.38586</td><td>1</td><td>1</td><td>0</td></tr><tr><th>20</th><td>2</td><td>3</td><td>80</td><td>4.0</td><td>1.84095</td><td>1</td><td>1</td><td>0</td></tr><tr><th>21</th><td>2</td><td>3</td><td>80</td><td>5.0</td><td>1.64535</td><td>1</td><td>1</td><td>0</td></tr><tr><th>22</th><td>2</td><td>3</td><td>80</td><td>6.0</td><td>1.36486</td><td>0</td><td>1</td><td>0</td></tr><tr><th>23</th><td>2</td><td>3</td><td>80</td><td>7.0</td><td>1.20802</td><td>1</td><td>1</td><td>0</td></tr><tr><th>24</th><td>2</td><td>3</td><td>80</td><td>8.0</td><td>0.983679</td><td>0</td><td>1</td><td>0</td></tr><tr><th>&vellip;</th><td>&vellip;</td><td>&vellip;</td><td>&vellip;</td><td>&vellip;</td><td>&vellip;</td><td>&vellip;</td><td>&vellip;</td><td>&vellip;</td></tr></tbody></table>
+
+<p>The  dependent variable is coded 0:3 but <code>Categorical</code> distribution in julia starts indexing at 1</p>
+
+
+<pre class='hljl'>
+<span class='hljl-n'>df</span><span class='hljl-oB'>.</span><span class='hljl-n'>painord</span><span class='hljl-t'> </span><span class='hljl-oB'>.+=</span><span class='hljl-t'> </span><span class='hljl-ni'>1</span>
+</pre>
+
+
+<pre class="output">
+1920-element Array&#123;Int64,1&#125;:
+ 4
+ 2
+ 1
+ 1
+ 2
+ 2
+ 1
+ 2
+ 3
+ 2
+ ⋮
+ 4
+ 3
+ 2
+ 3
+ 4
+ 4
+ 4
+ 3
+ 4
+</pre>
+
+
+<p>Now, that we made this change, lets read the data into Pumas</p>
+
+
+<pre class='hljl'>
+<span class='hljl-n'>data</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>read_pumas</span><span class='hljl-p'>(</span><span class='hljl-n'>df</span><span class='hljl-p'>,</span><span class='hljl-t'>
+  </span><span class='hljl-n'>observations</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-p'>[</span><span class='hljl-sc'>:painord</span><span class='hljl-p'>],</span><span class='hljl-t'>
+  </span><span class='hljl-n'>covariates</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-p'>[</span><span class='hljl-sc'>:arm</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:dose</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:conc</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:painord</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-sc'>:remed</span><span class='hljl-p'>],</span><span class='hljl-t'>
+  </span><span class='hljl-n'>event_data</span><span class='hljl-oB'>=</span><span class='hljl-kc'>false</span><span class='hljl-p'>)</span>
+</pre>
+
+
+<pre class="output">
+Population
+  Subjects: 160
+  Covariates: arm, dose, conc, painord, remed
+  Observables: painord
+</pre>
+
+
+<p>the ordinal model is below</p>
+
+
+<pre class='hljl'>
+<span class='hljl-n'>ordinal_model</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nd'>@model</span><span class='hljl-t'> </span><span class='hljl-k'>begin</span><span class='hljl-t'>
+  </span><span class='hljl-nd'>@param</span><span class='hljl-t'> </span><span class='hljl-k'>begin</span><span class='hljl-t'>
+    </span><span class='hljl-n'>b₁</span><span class='hljl-t'>    </span><span class='hljl-oB'>∈</span><span class='hljl-t'> </span><span class='hljl-nf'>RealDomain</span><span class='hljl-p'>(</span><span class='hljl-n'>init</span><span class='hljl-oB'>=</span><span class='hljl-nfB'>2.90692</span><span class='hljl-p'>)</span><span class='hljl-t'>
+    </span><span class='hljl-n'>b₂</span><span class='hljl-t'>    </span><span class='hljl-oB'>∈</span><span class='hljl-t'> </span><span class='hljl-nf'>RealDomain</span><span class='hljl-p'>(</span><span class='hljl-n'>init</span><span class='hljl-oB'>=-</span><span class='hljl-nfB'>2.97771</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>lower</span><span class='hljl-oB'>=-</span><span class='hljl-ni'>1000000</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>upper</span><span class='hljl-oB'>=</span><span class='hljl-ni'>1</span><span class='hljl-p'>)</span><span class='hljl-t'>
+    </span><span class='hljl-n'>b₃</span><span class='hljl-t'>    </span><span class='hljl-oB'>∈</span><span class='hljl-t'> </span><span class='hljl-nf'>RealDomain</span><span class='hljl-p'>(</span><span class='hljl-n'>init</span><span class='hljl-oB'>=-</span><span class='hljl-nfB'>2.7541</span><span class='hljl-t'> </span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>lower</span><span class='hljl-oB'>=-</span><span class='hljl-ni'>1000000</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>upper</span><span class='hljl-oB'>=</span><span class='hljl-ni'>1</span><span class='hljl-p'>)</span><span class='hljl-t'>
+    </span><span class='hljl-n'>slope</span><span class='hljl-t'> </span><span class='hljl-oB'>∈</span><span class='hljl-t'> </span><span class='hljl-nf'>RealDomain</span><span class='hljl-p'>(</span><span class='hljl-n'>init</span><span class='hljl-oB'>=</span><span class='hljl-nfB'>0.01</span><span class='hljl-p'>)</span><span class='hljl-t'>
+    </span><span class='hljl-n'>ω</span><span class='hljl-t'>     </span><span class='hljl-oB'>∈</span><span class='hljl-t'> </span><span class='hljl-nf'>RealDomain</span><span class='hljl-p'>(</span><span class='hljl-n'>init</span><span class='hljl-oB'>=</span><span class='hljl-nf'>sqrt</span><span class='hljl-p'>(</span><span class='hljl-nfB'>3.10532</span><span class='hljl-p'>),</span><span class='hljl-t'> </span><span class='hljl-n'>lower</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nfB'>0.001</span><span class='hljl-p'>)</span><span class='hljl-t'>
+  </span><span class='hljl-k'>end</span><span class='hljl-t'>
+
+  </span><span class='hljl-nd'>@random</span><span class='hljl-t'> </span><span class='hljl-k'>begin</span><span class='hljl-t'>
+    </span><span class='hljl-n'>η</span><span class='hljl-t'> </span><span class='hljl-oB'>~</span><span class='hljl-t'> </span><span class='hljl-nf'>Normal</span><span class='hljl-p'>(</span><span class='hljl-nfB'>0.0</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>ω</span><span class='hljl-p'>)</span><span class='hljl-t'>
+  </span><span class='hljl-k'>end</span><span class='hljl-t'>
+
+  </span><span class='hljl-nd'>@covariates</span><span class='hljl-t'> </span><span class='hljl-n'>conc</span><span class='hljl-t'>
+
+  </span><span class='hljl-nd'>@pre</span><span class='hljl-t'> </span><span class='hljl-k'>begin</span><span class='hljl-t'>
+    </span><span class='hljl-n'>effect</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>slope</span><span class='hljl-t'> </span><span class='hljl-oB'>*</span><span class='hljl-t'> </span><span class='hljl-n'>conc</span><span class='hljl-t'>
+    </span><span class='hljl-cs'>#Logit of cumulative probabilities</span><span class='hljl-t'>
+    </span><span class='hljl-n'>lge₀</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> @</span><span class='hljl-oB'>.</span><span class='hljl-t'> </span><span class='hljl-n'>b₁</span><span class='hljl-t'> </span><span class='hljl-oB'>+</span><span class='hljl-t'> </span><span class='hljl-n'>η</span><span class='hljl-t'> </span><span class='hljl-oB'>+</span><span class='hljl-t'> </span><span class='hljl-n'>effect</span><span class='hljl-t'>
+    </span><span class='hljl-n'>lge₁</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> @</span><span class='hljl-oB'>.</span><span class='hljl-t'> </span><span class='hljl-n'>lge₀</span><span class='hljl-t'> </span><span class='hljl-oB'>+</span><span class='hljl-t'> </span><span class='hljl-n'>b₂</span><span class='hljl-t'>
+    </span><span class='hljl-n'>lge₂</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> @</span><span class='hljl-oB'>.</span><span class='hljl-t'> </span><span class='hljl-n'>lge₁</span><span class='hljl-t'> </span><span class='hljl-oB'>+</span><span class='hljl-t'> </span><span class='hljl-n'>b₃</span><span class='hljl-t'>
+
+    </span><span class='hljl-cs'>#Probabilities of &gt;=0 and &gt;=1 and &gt;=2</span><span class='hljl-t'>
+    </span><span class='hljl-n'>pge₀</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> @</span><span class='hljl-oB'>.</span><span class='hljl-t'> </span><span class='hljl-nf'>exp</span><span class='hljl-p'>(</span><span class='hljl-n'>lge₀</span><span class='hljl-p'>)</span><span class='hljl-t'> </span><span class='hljl-oB'>/</span><span class='hljl-t'> </span><span class='hljl-p'>(</span><span class='hljl-nfB'>1.0</span><span class='hljl-t'> </span><span class='hljl-oB'>+</span><span class='hljl-t'> </span><span class='hljl-nf'>exp</span><span class='hljl-p'>(</span><span class='hljl-n'>lge₀</span><span class='hljl-p'>))</span><span class='hljl-t'>
+    </span><span class='hljl-n'>pge₁</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> @</span><span class='hljl-oB'>.</span><span class='hljl-t'> </span><span class='hljl-nf'>exp</span><span class='hljl-p'>(</span><span class='hljl-n'>lge₁</span><span class='hljl-p'>)</span><span class='hljl-t'> </span><span class='hljl-oB'>/</span><span class='hljl-t'> </span><span class='hljl-p'>(</span><span class='hljl-nfB'>1.0</span><span class='hljl-t'> </span><span class='hljl-oB'>+</span><span class='hljl-t'> </span><span class='hljl-nf'>exp</span><span class='hljl-p'>(</span><span class='hljl-n'>lge₁</span><span class='hljl-p'>))</span><span class='hljl-t'>
+    </span><span class='hljl-n'>pge₂</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> @</span><span class='hljl-oB'>.</span><span class='hljl-t'> </span><span class='hljl-nf'>exp</span><span class='hljl-p'>(</span><span class='hljl-n'>lge₂</span><span class='hljl-p'>)</span><span class='hljl-t'> </span><span class='hljl-oB'>/</span><span class='hljl-t'> </span><span class='hljl-p'>(</span><span class='hljl-nfB'>1.0</span><span class='hljl-t'> </span><span class='hljl-oB'>+</span><span class='hljl-t'> </span><span class='hljl-nf'>exp</span><span class='hljl-p'>(</span><span class='hljl-n'>lge₂</span><span class='hljl-p'>))</span><span class='hljl-t'>
+
+    </span><span class='hljl-cs'>#Probabilities of Y=0,1,2,3</span><span class='hljl-t'>
+    </span><span class='hljl-n'>p₀</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> @</span><span class='hljl-oB'>.</span><span class='hljl-t'> </span><span class='hljl-nfB'>1.0</span><span class='hljl-t'> </span><span class='hljl-oB'>-</span><span class='hljl-t'> </span><span class='hljl-n'>pge₀</span><span class='hljl-t'>
+    </span><span class='hljl-n'>p₁</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> @</span><span class='hljl-oB'>.</span><span class='hljl-t'> </span><span class='hljl-n'>pge₀</span><span class='hljl-t'> </span><span class='hljl-oB'>-</span><span class='hljl-t'> </span><span class='hljl-n'>pge₁</span><span class='hljl-t'>
+    </span><span class='hljl-n'>p₂</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> @</span><span class='hljl-oB'>.</span><span class='hljl-t'> </span><span class='hljl-n'>pge₁</span><span class='hljl-t'> </span><span class='hljl-oB'>-</span><span class='hljl-t'> </span><span class='hljl-n'>pge₂</span><span class='hljl-t'>
+    </span><span class='hljl-n'>p₃</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> @</span><span class='hljl-oB'>.</span><span class='hljl-t'> </span><span class='hljl-n'>pge₂</span><span class='hljl-t'>
+  </span><span class='hljl-k'>end</span><span class='hljl-t'>
+
+  </span><span class='hljl-nd'>@derived</span><span class='hljl-t'> </span><span class='hljl-k'>begin</span><span class='hljl-t'>
+    </span><span class='hljl-n'>painord</span><span class='hljl-t'> </span><span class='hljl-oB'>~</span><span class='hljl-t'> @</span><span class='hljl-oB'>.</span><span class='hljl-t'> </span><span class='hljl-nf'>Categorical</span><span class='hljl-p'>(</span><span class='hljl-n'>p₀</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>p₁</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>p₂</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>p₃</span><span class='hljl-p'>)</span><span class='hljl-t'>
+  </span><span class='hljl-k'>end</span><span class='hljl-t'>
+</span><span class='hljl-k'>end</span>
+</pre>
+
+
+<pre class="output">
+PumasModel
+  Parameters: b₁, b₂, b₃, slope, ω
+  Random effects: η
+  Covariates: conc
+  Dynamical variables: 
+  Derived: painord
+  Observed: painord
+</pre>
+
+
+
+<pre class='hljl'>
+<span class='hljl-n'>ordinal_res</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>fit</span><span class='hljl-p'>(</span><span class='hljl-n'>ordinal_model</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>data</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-nf'>init_param</span><span class='hljl-p'>(</span><span class='hljl-n'>ordinal_model</span><span class='hljl-p'>),</span><span class='hljl-t'> </span><span class='hljl-n'>Pumas</span><span class='hljl-oB'>.</span><span class='hljl-nf'>FOCE</span><span class='hljl-p'>())</span><span class='hljl-t'>
+</span><span class='hljl-nf'>coeftable</span><span class='hljl-p'>(</span><span class='hljl-n'>ordinal_res</span><span class='hljl-p'>)</span>
+</pre>
+
+
+<pre class="output">
+Iter     Function value   Gradient norm 
+     0     2.041783e&#43;03     1.964595e&#43;02
+ * time: 7.295608520507812e-5
+     1     2.003093e&#43;03     3.820730e&#43;01
+ * time: 0.42134809494018555
+     2     2.002227e&#43;03     1.627452e&#43;01
+ * time: 0.7927181720733643
+     3     2.001863e&#43;03     5.842769e&#43;01
+ * time: 1.176826000213623
+     4     2.000221e&#43;03     1.919622e&#43;01
+ * time: 1.5226960182189941
+     5     1.998995e&#43;03     1.015010e&#43;01
+ * time: 1.7766990661621094
+     6     1.998415e&#43;03     7.972649e&#43;00
+ * time: 2.048776149749756
+     7     1.998241e&#43;03     8.369980e-01
+ * time: 2.433204174041748
+     8     1.998240e&#43;03     2.052405e-02
+ * time: 2.6344521045684814
+     9     1.998240e&#43;03     4.308395e-04
+ * time: 2.781684160232544
+</pre>
+
+
+<table class="data-frame"><thead><tr><th></th><th>parameter</th><th>estimate</th></tr><tr><th></th><th>String</th><th>Float64</th></tr></thead><tbody><p>5 rows × 2 columns</p><tr><th>1</th><td>b₁</td><td>3.36015</td></tr><tr><th>2</th><td>b₂</td><td>-3.03195</td></tr><tr><th>3</th><td>b₃</td><td>-2.76651</td></tr><tr><th>4</th><td>slope</td><td>-0.434051</td></tr><tr><th>5</th><td>ω</td><td>1.63814</td></tr></tbody></table>
+
+<p>and get the paremter precision with</p>
+
+
+<pre class='hljl'>
+<span class='hljl-n'>ordinal_res</span><span class='hljl-t'> </span><span class='hljl-oB'>|&gt;</span><span class='hljl-t'> </span><span class='hljl-n'>infer</span><span class='hljl-t'> </span><span class='hljl-oB'>|&gt;</span><span class='hljl-t'> </span><span class='hljl-n'>coeftable</span>
+</pre>
+
+
+
+<table class="data-frame"><thead><tr><th></th><th>parameter</th><th>estimate</th><th>se</th><th>ci_lower</th><th>ci_upper</th></tr><tr><th></th><th>String</th><th>Float64</th><th>Float64</th><th>Float64</th><th>Float64</th></tr></thead><tbody><p>5 rows × 5 columns</p><tr><th>1</th><td>b₁</td><td>3.36015</td><td>0.186569</td><td>2.99448</td><td>3.72582</td></tr><tr><th>2</th><td>b₂</td><td>-3.03195</td><td>0.117161</td><td>-3.26158</td><td>-2.80232</td></tr><tr><th>3</th><td>b₃</td><td>-2.76651</td><td>0.106537</td><td>-2.97532</td><td>-2.5577</td></tr><tr><th>4</th><td>slope</td><td>-0.434051</td><td>0.0537037</td><td>-0.539308</td><td>-0.328794</td></tr><tr><th>5</th><td>ω</td><td>1.63814</td><td>0.105916</td><td>1.43054</td><td>1.84573</td></tr></tbody></table>
+
+
+        <HR/>
+        <div class="footer">
+          <p>
+            Published from <a href="discrete_response_models.jmd">discrete_response_models.jmd</a>
+            using <a href="http://github.com/JunoLab/Weave.jl">Weave.jl</a> v0.10.6 on 2020-11-12.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</BODY>
+
+</HTML>

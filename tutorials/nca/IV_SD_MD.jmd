@@ -1,0 +1,377 @@
+---
+title : Non-Compartmental Analysis - IV administration
+author : Beatriz Guglieri-Lopez, Vijay Ivaturi
+date:  August 17, 2019
+---
+
+```julia
+using Pumas, LinearAlgebra, Plots, Query, PumasTutorials
+```
+
+## Introduction
+
+In this tutorial, we will cover the fundamentals of performing an NCA analysis
+with Pumas after administration of an intravenous (IV) bolus dose. We will cover both single and
+multiple dose scenarios.
+
+For the purpose of this tutorial, data will be simulated using a Pumas model. Readers who are interested in
+just learning about the NCA can skip the next section on "Data Simulation"
+
+## Data Simulation
+
+(_You can safely skip this section if you are only interested in the NCA analysis and not data generation_)
+
+```julia;results = "hidden"
+using Random
+Random.seed!(1)
+```
+
+```julia;results = "hidden"
+iv = @model begin
+  @param   begin
+    tvcl ∈ RealDomain(lower=0)
+    tvv ∈ RealDomain(lower=0)
+    Ω ∈ PDiagDomain(2)
+    σ_prop ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    CL = tvcl * (Wt/70)^0.75 * exp(η[1])
+    V  = tvv * (Wt/70) * exp(η[2])
+  end
+
+  @covariates Wt
+
+  @dynamics ImmediateAbsorptionModel
+
+  @derived begin
+      cp := @. (Central / V)
+      dv ~ @. Normal(cp, sqrt(cp^2*σ_prop))
+    end
+end
+
+param = (
+  tvcl = 11.5,
+  tvv  = 50,
+  Ω = Diagonal([0.04,0.04]),
+  σ_prop = 0.001
+  )
+
+choose_covariates() = (wt = rand(55:80))
+```
+### Single dose simulation
+
+```julia;results = "hidden"
+sd = DosageRegimen(2000, time=0) # setup single dose regimen
+sd_population =  Population(map(i -> Subject(id=i, evs=sd, cvs = (Wt = choose_covariates(),)),1:24)) # generate population
+sd_obstimes = [0, 0.25, 0.5, 0.75, 1, 2, 4, 8, 12, 16, 20, 22, 24] # sampling times
+
+obs = simobs(iv, sd_population, param, obstimes=sd_obstimes)
+iv_sim_sd = DataFrame(obs)|>
+          @filter(!(_.time == 0 && _.evid == 0)) |>
+          @mutate(cmt = 1) |>
+          @mutate(route = "iv") |>
+          DataFrame
+```
+
+### Multiple dose simulation
+
+```julia;results = "hidden"
+md = DosageRegimen(2000, time=0, addl=3, ii=24) # setup multiple dose regimen
+md_population =  Population(map(i -> Subject(id=i, evs=md, cvs = (Wt = choose_covariates(),)),1:24)) # generate population
+md_obstimes = [0, 0.25, 0.5, 0.75, 1, 2, 4, 8, 12, 16, 20, 22, 24,
+              24.25, 24.5 ,24.75, 25.0, 26.0, 28.0, 32.0, 36.0, 40.0, 44.0, 45.0, 48.0,
+              48.25, 48.5 ,48.75, 49.0, 50.0, 52.0, 56.0, 60.0, 64.0, 68.0, 69.0, 72.0,
+              72.25, 72.5 ,72.75, 73.0, 74.0, 76.0, 80.0, 84.0, 88.0, 92.0, 93.0, 96.0] # sampling times
+
+obs = simobs(iv, md_population, param, obstimes=md_obstimes)
+iv_sim_md = DataFrame(obs)|>
+          @filter(!(_.time == 0 && _.evid == 0)) |>
+          @filter(!(_.time == 24 && _.evid == 0)) |>
+          @filter(!(_.time == 48 && _.evid == 0)) |>
+          @filter(!(_.time == 72 && _.evid == 0)) |>
+          @mutate(cmt = 1) |>
+          @mutate(route = "iv") |>
+          @mutate(day = floor.(_.time/24.0) .+ 1.0) |>
+          DataFrame
+```
+
+## The study designs
+
+From the simulation above we created 2 datasets:
+
+#### 1. `iv_sim_sd` - Single dose IV adminstration
+  * dose = 2000 mg
+  * number of subjects = 24
+  * sampling = 0, 0.25, 0.5, 0.75, 1, 2, 4, 8, 12, 16, 20, 22, 24 hours after dose
+  * lower limit of quantification (LLOQ) is 0.04 mg/L
+
+```julia
+first(iv_sim_sd,10)
+```
+
+#### 2. `iv_sim_md` - Multiple dose IV adminstration
+  * dose = 2000 mg every 24 hours for 4 days
+  * number of subjects = 24
+  * sampling = 0, 0.25, 0.5, 0.75, 1, 2, 4, 8, 12, 16, 20, 22, 24 hours after each dose
+  * lower limit of quantification (LLOQ) is 0.04 mg/L
+
+```julia
+first(iv_sim_md,10)
+```
+
+## NCA Analysis for single dose dataset
+
+### Defining the units
+
+One can define units for time, concentration and dose units.
+The results and reports generated as part of the anlaysis will the include the
+units for the pharmacokinetic parameters. As you can see below, the syntax for specifying units
+is the letter `u` followed the actual units in quotes `" "` (no space between `u` and the quotes)
+
+```julia
+timeu = u"hr"
+```
+
+```julia
+concu = u"mg/L"
+```
+
+```julia
+amtu  = u"mg"
+```
+
+### Defining the population object
+
+Using the `read_nca` function, the next step would be to define the population that we are going to use for the NCA.
+The following are the key arguments to this function that maps the column names from the dataset:
+
+  * dataset
+  * the name of the column with the subject identifier (`id=`)
+  * name of the time column (`time=`),
+  * name of the concentration column (`conc=`),
+  * name of the dose column (`amt=`),
+  * the interdose interval (`ii=`) multiplied by the time units, and
+  * name of the column that specifies the route of administration (`route=`). Can only take 3 values, `iv`, `ev` or `inf`
+  * the value of LLOQ (`llq =`) (All concentrations below LLOQ are dropped from analysis by default)
+
+```julia
+iv_nca_sd = read_nca(iv_sim_sd, id=:id, time=:time, conc=:dv, amt=:amt,
+    route=:route,timeu=timeu, concu=concu, amtu=amtu,llq=0.4concu)
+```
+
+### Performing the NCA analysis
+
+We can use different functions to calculate single dose PK parameters. Please refer to the [documentation](https://docs.pumas.ai/dev/basics/nca/#NCA-Function-List-1)
+for the complete list. For example, we can calculate the area under the concentration curve from time 0 to the
+last observation using the linear trapezoidal  rule (default method) by writing the following code.
+
+### `NCA.auc`
+
+```julia
+auc = NCA.auc(iv_nca_sd,auctype=:last,method=:linear)
+first(auc,6)
+```
+This generates a dataframe that includes the units
+
+Note the use of `NCA` to call the `auc` function. Since the NCA package is a submodule of Pumas, we currently require that
+all NCA parameters be explicitly called this way, e.g. `NCA.auc`
+
+In the function above, the type of AUC by default is AUC from 𝟶-∞ and the method by default is linear.
+Use (`method=:linuplogdown`) for log-linear trapezoidal  or (`method=:linlog`) for linear-log methods
+
+```julia
+NCA.auc(iv_nca_sd,auctype=:inf,method=:linuplogdown)
+```
+One could also compute AUC on a certain time interval.
+To compute AUC from time 0 to 12 hours after dose on the first individual :
+
+```julia
+NCA.auc(iv_nca_sd[1], interval=(0,12).*timeu)
+```
+
+Please, note that by specifying `iv_nca_sd[1]` this function returns the value for the 1 <sup>st</sup> subject.
+
+Also note that we need to apply the time unit (`timeu`) to the interval for units compatibility.
+
+Multiple intervals can also be specified as a comma separated array `[interval1, interval2]`:
+
+```julia
+NCA.auc(iv_nca_sd[1], interval=[(0,12).*timeu,(0,6).*timeu])
+```
+
+### `NCA.auc_extrap_percent`
+
+To calculate the percentage of AUC that is being extrapolated, we need to use the following function:
+
+```julia
+NCA.auc_extrap_percent(iv_nca_sd)
+```
+
+### `NCA.lambdaz`
+
+The function to calculate the terminal rate constant (λz) is:
+
+```julia
+λ𝚉 =  NCA.lambdaz(iv_nca_sd)
+first(λ𝚉,6)
+```
+
+By default, λz calculation checks the last 10 or less data points, but this can be changed by using the following code:
+
+```julia
+λ𝚉 = NCA.lambdaz(iv_nca_sd, threshold=3)
+first(λ𝚉,6)
+```
+
+The exact data points to be used for λz calculation can also be specified using their indices:
+
+```julia
+λ𝚉 = NCA.lambdaz(iv_nca_sd, idxs=[8,9,10])
+first(λ𝚉,6)
+```
+
+or using the time point:
+
+```julia
+λ𝚉 = NCA.lambdaz(iv_nca_sd, slopetimes=[16,20,22].*timeu)
+first(λ𝚉,6)
+```
+Other methods can be used such as `:linuplogdown` or `:linlog`.
+
+### `NCA.cmax`
+
+To calculate the maximum concentration for the first subject we would use:
+
+```julia
+cmax = NCA.cmax(iv_nca_sd[1])
+```
+
+### `normalizedose`
+
+The `normalizedose` function can be used on any parameter that can be dose normalized
+If we want dose-normalized Cmax for that same subject:
+
+```julia
+normalizedose(cmax,iv_nca_sd[1])
+```
+
+The same function can be used to compute dose-normalized AUClast:
+
+```julia
+AUClast = NCA.auc(iv_nca_sd[1],auctype=:last)
+normalizedose(AUClast,iv_nca_sd[1])
+```
+
+Other functions to calculate single PK parameters are the following:
+
+
+```julia;eval=false
+NCA.lambdazr2(iv_nca_sd)
+NCA.lambdazadjr2(iv_nca_sd)
+NCA.lambdazintercept(iv_nca_sd)
+NCA.lambdaztimefirst(iv_nca_sd)
+NCA.lambdaznpoints(iv_nca_sd)
+
+NCA.tmax(iv_nca_sd)
+NCA.cmin(iv_nca_sd)
+NCA.tmin(iv_nca_sd)
+
+NCA.tlast(iv_nca_sd)
+NCA.clast(iv_nca_sd)
+
+NCA.aumc(iv_nca_sd)
+NCA.aumclast(iv_nca_sd)
+
+NCA.thalf(iv_nca_sd)
+
+NCA.cl(iv_nca_sd,ithdose=1)
+
+NCA.vss(iv_nca_sd)
+NCA.vz(iv_nca_sd)
+
+NCA.accumulationindex(iv_nca_sd)
+```
+
+If we want to calculate one of these PK parameters just in one subject, we just need to specify the index of the subject.
+In this case `iv_nca_sd[2]` is the index of subject with ID=2 in the dataset.
+
+```julia
+iv_nca_sd[2]
+NCA.cl(iv_nca_sd[2])
+```
+
+# NCA report
+
+### `NCAReport`
+
+If we want a complete report of the NCA analysis we can just use the function `NCAreport` to obtain a data frame that contains
+all the above mentioned pharmacokinetic parameters.
+
+For multiple doses, we need to provide a reference dose. In this example, we are going to let
+the first dose be the reference dose.
+
+```julia
+report = NCAReport(iv_nca_sd,ithdose=1)
+report = NCA.to_dataframe(report)
+```
+
+By default, the AUC and AUMC reported are observed. If predicted PK parameters are needed instead, the following code should be used:
+
+```julia;results="hidden"
+report = NCAReport(iv_nca_sd,ithdose=1,pred=true)
+report = NCA.to_dataframe(report)
+```
+
+Finally, we can save this data frame as a csv file if desired.
+
+```julia;eval=false
+CSV.write("./tutorials/nca/report_SD_crossover_IV_oral.csv", report)
+```
+
+## NCA Analysis for multiple dose dataset
+
+The workflow for multiple dose NCA analysis remains largely the same compared to the single dose discussed above.
+Here we will cover only those features that are different.
+
+### Defining the population object
+
+The standard requirements of `read_nca` as specified in for the single dose apply. In this mulitple dose example, since subjects
+visit in more than once occasion, we need to use an `occasion=` variable to speify the multiple dose nature.
+
+```julia
+iv_nca_md = read_nca(iv_sim_md, id=:id, time=:time, conc=:dv, amt=:amt, ii=24timeu,
+    route=:route, occasion=:day,timeu=timeu, concu=concu, amtu=amtu,llq=0.4concu)
+```
+Key features of the syntax above:
+
+* `occasion=:day` provides a way to specify multiple dosing
+
+To check how occasion works, lets calculate the AUC
+
+```julia
+auc = NCA.auc(iv_nca_md,auctype=:last,method=:linear)
+first(auc, 6)
+```
+
+Note how the results above are grouped by `occasion`
+All other NCA function work on this grouped variable. Let's directly print the NCA report.
+
+```julia
+report = NCAReport(iv_nca_md)
+report = NCA.to_dataframe(report)
+```
+Below is a listing of all the NCA parameters in the report
+
+```julia
+println(names(report))
+```
+
+```julia{echo=false,skip="notebook"}
+using PumasTutorials
+PumasTutorials.tutorial_footer(WEAVE_ARGS[:folder],WEAVE_ARGS[:file])
+```

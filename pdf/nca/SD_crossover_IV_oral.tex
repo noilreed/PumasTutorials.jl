@@ -1,0 +1,1085 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[a4paper,text={16.5cm,25.2cm},centering]{geometry}
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{bm}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{hyperref}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{1.2ex}
+
+\hypersetup
+       {   pdfauthor = { Beatriz Guglieri Lopez, Shamir Kalaria, Vijay Ivaturi },
+           pdftitle={ Pumas NCA Tutorial - Crossover IV/oral to estimate bioavailability },
+           colorlinks=TRUE,
+           linkcolor=black,
+           citecolor=blue,
+           urlcolor=blue
+       }
+
+\title{ Pumas NCA Tutorial - Crossover IV/oral to estimate bioavailability }
+
+\author{ Beatriz Guglieri Lopez, Shamir Kalaria, Vijay Ivaturi }
+
+\date{ July 19, 2019 }
+
+\usepackage[T1]{fontenc}
+\usepackage{textcomp}
+\usepackage{upquote}
+\usepackage{listings}
+\usepackage{xcolor}
+\lstset{
+    basicstyle=\ttfamily\footnotesize,
+    upquote=true,
+    breaklines=true,
+    keepspaces=true,
+    showspaces=false,
+    columns=fullflexible,
+    showtabs=false,
+    showstringspaces=false,
+    escapeinside={(*@}{@*)},
+    extendedchars=true,
+}
+\newcommand{\HLJLt}[1]{#1}
+\newcommand{\HLJLw}[1]{#1}
+\newcommand{\HLJLe}[1]{#1}
+\newcommand{\HLJLeB}[1]{#1}
+\newcommand{\HLJLo}[1]{#1}
+\newcommand{\HLJLk}[1]{\textcolor[RGB]{148,91,176}{\textbf{#1}}}
+\newcommand{\HLJLkc}[1]{\textcolor[RGB]{59,151,46}{\textit{#1}}}
+\newcommand{\HLJLkd}[1]{\textcolor[RGB]{214,102,97}{\textit{#1}}}
+\newcommand{\HLJLkn}[1]{\textcolor[RGB]{148,91,176}{\textbf{#1}}}
+\newcommand{\HLJLkp}[1]{\textcolor[RGB]{148,91,176}{\textbf{#1}}}
+\newcommand{\HLJLkr}[1]{\textcolor[RGB]{148,91,176}{\textbf{#1}}}
+\newcommand{\HLJLkt}[1]{\textcolor[RGB]{148,91,176}{\textbf{#1}}}
+\newcommand{\HLJLn}[1]{#1}
+\newcommand{\HLJLna}[1]{#1}
+\newcommand{\HLJLnb}[1]{#1}
+\newcommand{\HLJLnbp}[1]{#1}
+\newcommand{\HLJLnc}[1]{#1}
+\newcommand{\HLJLncB}[1]{#1}
+\newcommand{\HLJLnd}[1]{\textcolor[RGB]{214,102,97}{#1}}
+\newcommand{\HLJLne}[1]{#1}
+\newcommand{\HLJLneB}[1]{#1}
+\newcommand{\HLJLnf}[1]{\textcolor[RGB]{66,102,213}{#1}}
+\newcommand{\HLJLnfm}[1]{\textcolor[RGB]{66,102,213}{#1}}
+\newcommand{\HLJLnp}[1]{#1}
+\newcommand{\HLJLnl}[1]{#1}
+\newcommand{\HLJLnn}[1]{#1}
+\newcommand{\HLJLno}[1]{#1}
+\newcommand{\HLJLnt}[1]{#1}
+\newcommand{\HLJLnv}[1]{#1}
+\newcommand{\HLJLnvc}[1]{#1}
+\newcommand{\HLJLnvg}[1]{#1}
+\newcommand{\HLJLnvi}[1]{#1}
+\newcommand{\HLJLnvm}[1]{#1}
+\newcommand{\HLJLl}[1]{#1}
+\newcommand{\HLJLld}[1]{\textcolor[RGB]{148,91,176}{\textit{#1}}}
+\newcommand{\HLJLs}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLsa}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLsb}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLsc}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLsd}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLsdB}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLsdC}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLse}[1]{\textcolor[RGB]{59,151,46}{#1}}
+\newcommand{\HLJLsh}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLsi}[1]{#1}
+\newcommand{\HLJLso}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLsr}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLss}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLssB}[1]{\textcolor[RGB]{201,61,57}{#1}}
+\newcommand{\HLJLnB}[1]{\textcolor[RGB]{59,151,46}{#1}}
+\newcommand{\HLJLnbB}[1]{\textcolor[RGB]{59,151,46}{#1}}
+\newcommand{\HLJLnfB}[1]{\textcolor[RGB]{59,151,46}{#1}}
+\newcommand{\HLJLnh}[1]{\textcolor[RGB]{59,151,46}{#1}}
+\newcommand{\HLJLni}[1]{\textcolor[RGB]{59,151,46}{#1}}
+\newcommand{\HLJLnil}[1]{\textcolor[RGB]{59,151,46}{#1}}
+\newcommand{\HLJLnoB}[1]{\textcolor[RGB]{59,151,46}{#1}}
+\newcommand{\HLJLoB}[1]{\textcolor[RGB]{102,102,102}{\textbf{#1}}}
+\newcommand{\HLJLow}[1]{\textcolor[RGB]{102,102,102}{\textbf{#1}}}
+\newcommand{\HLJLp}[1]{#1}
+\newcommand{\HLJLc}[1]{\textcolor[RGB]{153,153,119}{\textit{#1}}}
+\newcommand{\HLJLch}[1]{\textcolor[RGB]{153,153,119}{\textit{#1}}}
+\newcommand{\HLJLcm}[1]{\textcolor[RGB]{153,153,119}{\textit{#1}}}
+\newcommand{\HLJLcp}[1]{\textcolor[RGB]{153,153,119}{\textit{#1}}}
+\newcommand{\HLJLcpB}[1]{\textcolor[RGB]{153,153,119}{\textit{#1}}}
+\newcommand{\HLJLcs}[1]{\textcolor[RGB]{153,153,119}{\textit{#1}}}
+\newcommand{\HLJLcsB}[1]{\textcolor[RGB]{153,153,119}{\textit{#1}}}
+\newcommand{\HLJLg}[1]{#1}
+\newcommand{\HLJLgd}[1]{#1}
+\newcommand{\HLJLge}[1]{#1}
+\newcommand{\HLJLgeB}[1]{#1}
+\newcommand{\HLJLgh}[1]{#1}
+\newcommand{\HLJLgi}[1]{#1}
+\newcommand{\HLJLgo}[1]{#1}
+\newcommand{\HLJLgp}[1]{#1}
+\newcommand{\HLJLgs}[1]{#1}
+\newcommand{\HLJLgsB}[1]{#1}
+\newcommand{\HLJLgt}[1]{#1}
+
+
+\begin{document}
+
+\maketitle
+
+
+\begin{lstlisting}
+(*@\HLJLk{using}@*) (*@\HLJLn{Pumas}@*)(*@\HLJLp{,}@*) (*@\HLJLn{PumasTutorials}@*)(*@\HLJLp{,}@*) (*@\HLJLn{CSV}@*)(*@\HLJLp{,}@*) (*@\HLJLn{Plots}@*)
+\end{lstlisting}
+
+
+\section{Introduction}
+In this tutorial, we will cover the fundamentals of performing an NCA analysis with Pumas using an example dataset in which a crossover IV/oral study was conducted to estimate bioavailability.
+
+\section{The dataset}
+\begin{itemize}
+\item Crossover design
+
+
+\item Single 2000 mg oral dose to 24 subjects
+
+
+\item Washout period
+
+
+\item Single 2000 mg IV dose to the same 24 subjects
+
+
+\item Blood samples for pharmacokinetic analysis were collected every 30 minutes
+
+\end{itemize}
+\subsubsection{\texttt{CSV.read()}}
+Let's start reading the dataset. By using the \texttt{missingstring} option we are specifying how the missing values are labeled in our dataset.
+
+
+\begin{lstlisting}
+(*@\HLJLn{data}@*) (*@\HLJLoB{=}@*) (*@\HLJLn{PumasTutorials}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{tutorial{\_}data}@*)(*@\HLJLp{(}@*)(*@\HLJLs{"data/nca"}@*)(*@\HLJLp{,}@*)(*@\HLJLs{"SD{\_}crossover{\_}IV{\_}oral"}@*)(*@\HLJLp{)}@*)
+(*@\HLJLn{data}@*) (*@\HLJLoB{=}@*) (*@\HLJLn{CSV}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{read}@*)(*@\HLJLp{(}@*)(*@\HLJLn{data}@*)(*@\HLJLp{,}@*)(*@\HLJLn{missingstring}@*)(*@\HLJLoB{=}@*)(*@\HLJLs{"NA"}@*)(*@\HLJLp{)}@*)
+(*@\HLJLnf{first}@*)(*@\HLJLp{(}@*)(*@\HLJLn{data}@*)(*@\HLJLp{,}@*)(*@\HLJLni{10}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+
+\begin{tabular}{r|ccccccc}
+	& ID & time & DV & Formulation & BLQ & OCC & DOSE\\
+	\hline
+	& Int64 & Float64 & Float64 & String & Int64 & Int64 & Int64\\
+	\hline
+	1 & 1 & 0.0 & 0.0 & iv & 0 & 1 & 2000 \\
+	2 & 1 & 0.5 & 37.9249 & iv & 0 & 1 & 0 \\
+	3 & 1 & 1.0 & 34.8935 & iv & 0 & 1 & 0 \\
+	4 & 1 & 1.5 & 29.115 & iv & 0 & 1 & 0 \\
+	5 & 1 & 2.0 & 24.684 & iv & 0 & 1 & 0 \\
+	6 & 1 & 2.5 & 24.4861 & iv & 0 & 1 & 0 \\
+	7 & 1 & 3.0 & 20.6901 & iv & 0 & 1 & 0 \\
+	8 & 1 & 3.5 & 19.1516 & iv & 0 & 1 & 0 \\
+	9 & 1 & 4.0 & 16.9928 & iv & 0 & 1 & 0 \\
+	10 & 1 & 4.5 & 14.9779 & iv & 0 & 1 & 0 \\
+\end{tabular}
+
+
+Please, note that the \texttt{DOSE} column must only contain a value at the time the dose was administered.
+
+\section{Defining the units}
+Next we can define time, concentration and dose units so the report includes the units for the pharmacokinetic parameters. The general syntax for units are \texttt{u} followed by the unit in quotes \texttt{""}.
+
+
+\begin{lstlisting}
+(*@\HLJLn{timeu}@*) (*@\HLJLoB{=}@*) (*@\HLJLso{u"hr"}@*)
+(*@\HLJLn{concu}@*) (*@\HLJLoB{=}@*) (*@\HLJLso{u"mg/L"}@*)
+(*@\HLJLn{amtu}@*)  (*@\HLJLoB{=}@*) (*@\HLJLso{u"mg"}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+mg
+\end{lstlisting}
+
+
+\section{Defining the NCA population object}
+\subsubsection{\texttt{read\_nca}}
+Using the \texttt{read\_nca} function, the next step would be to define the population that we are going to use for the NCA. The following are the key arguments to this function that maps the column names from the dataset:
+
+\begin{itemize}
+\item subject identifier (\texttt{id=}),
+
+
+\item time column (\texttt{time=}),
+
+
+\item concentration column (\texttt{conc=}),
+
+
+\item dose column (\texttt{amt=}),
+
+
+\item interdose interval (\texttt{ii=}) multiplied by the time units,
+
+
+\item route of administration (\texttt{route=}). In this example, since two different formulations were administered, we will specify two different routes of administration.
+
+
+\item occasion column (\texttt{occasion=}) that defines the different dosing events. In this example, occasion 1 is IV administration and occasion 2 is oral administration
+
+
+\item column  (\texttt{occasion=}) needs to be specified (occasion 1 is IV administration and occasion 2 is oral administration).
+
+\end{itemize}
+There are additional arguments that will be discussed later.
+
+
+\begin{lstlisting}
+(*@\HLJLn{pop}@*) (*@\HLJLoB{=}@*) (*@\HLJLnf{read{\_}nca}@*)(*@\HLJLp{(}@*)(*@\HLJLn{data}@*)(*@\HLJLp{,}@*) (*@\HLJLn{id}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{ID}@*)(*@\HLJLp{,}@*) (*@\HLJLn{time}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{time}@*)(*@\HLJLp{,}@*) (*@\HLJLn{conc}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{DV}@*)(*@\HLJLp{,}@*) (*@\HLJLn{amt}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{DOSE}@*)(*@\HLJLp{,}@*) (*@\HLJLn{ii}@*)(*@\HLJLoB{=}@*)(*@\HLJLni{24}@*)(*@\HLJLn{timeu}@*)(*@\HLJLp{,}@*)
+    (*@\HLJLn{route}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{Formulation}@*)(*@\HLJLp{,}@*) (*@\HLJLn{occasion}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{OCC}@*)(*@\HLJLp{,}@*)(*@\HLJLn{timeu}@*)(*@\HLJLoB{=}@*)(*@\HLJLn{timeu}@*)(*@\HLJLp{,}@*) (*@\HLJLn{concu}@*)(*@\HLJLoB{=}@*)(*@\HLJLn{concu}@*)(*@\HLJLp{,}@*) (*@\HLJLn{amtu}@*)(*@\HLJLoB{=}@*)(*@\HLJLn{amtu}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+NCAPopulation (24 subjects):
+  ID: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 2
+0, 21, 22, 23, 24]
+    concentration: mg L^-1
+    time:          hr
+    auc:           mg hr L^-1
+    aumc:          mg hr^2 L^-1
+    (*@\ensuremath{\lambda}@*)z:            hr^-1
+    dose:          mg
+\end{lstlisting}
+
+
+Please, note that column mapped to the \texttt{route=} argument, in this case the \texttt{:Formulation} column can include "iv" or "ev" to represent intravenous or extravacular dosing. This is a required format.
+
+Also note that in the function above by default the lower limit of quantification (LLQ) is 0 and concentrations that are" below LLQ (BLQ) are dropped.
+
+Let's say we want to specify a LLQ value of 0.4 mg/L, then we need to add \texttt{llq=0.4concu} to the function above:
+
+
+\begin{lstlisting}
+(*@\HLJLn{pop}@*) (*@\HLJLoB{=}@*) (*@\HLJLnf{read{\_}nca}@*)(*@\HLJLp{(}@*)(*@\HLJLn{data}@*)(*@\HLJLp{,}@*) (*@\HLJLn{id}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{ID}@*)(*@\HLJLp{,}@*) (*@\HLJLn{time}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{time}@*)(*@\HLJLp{,}@*) (*@\HLJLn{conc}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{DV}@*)(*@\HLJLp{,}@*) (*@\HLJLn{amt}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{DOSE}@*)(*@\HLJLp{,}@*) (*@\HLJLn{ii}@*)(*@\HLJLoB{=}@*)(*@\HLJLni{24}@*)(*@\HLJLn{timeu}@*)(*@\HLJLp{,}@*)
+    (*@\HLJLn{route}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{Formulation}@*)(*@\HLJLp{,}@*) (*@\HLJLn{occasion}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{OCC}@*)(*@\HLJLp{,}@*)(*@\HLJLn{timeu}@*)(*@\HLJLoB{=}@*)(*@\HLJLn{timeu}@*)(*@\HLJLp{,}@*) (*@\HLJLn{concu}@*)(*@\HLJLoB{=}@*)(*@\HLJLn{concu}@*)(*@\HLJLp{,}@*) (*@\HLJLn{amtu}@*)(*@\HLJLoB{=}@*)(*@\HLJLn{amtu}@*)(*@\HLJLp{,}@*) (*@\HLJLn{lloq}@*)(*@\HLJLoB{=}@*)(*@\HLJLnfB{0.4}@*)(*@\HLJLn{concu}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+NCAPopulation (24 subjects):
+  ID: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 2
+0, 21, 22, 23, 24]
+    concentration: mg L^-1
+    time:          hr
+    auc:           mg hr L^-1
+    aumc:          mg hr^2 L^-1
+    (*@\ensuremath{\lambda}@*)z:            hr^-1
+    dose:          mg
+\end{lstlisting}
+
+
+\section{Single dose PK parameter calculation}
+We can use different functions to calculate single dose PK parameters. For example, we can calculate the area under the concentration curve from time 0 to the last observation using the linear trapezoidal rule (default method) by writing the following code.
+
+\subsubsection{\texttt{NCA.auc}}
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{auc}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{,}@*)(*@\HLJLn{auctype}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{last}@*)(*@\HLJLp{,}@*)(*@\HLJLn{method}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{linear}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+
+\begin{tabular}{r|ccc}
+	& id & occasion & auc\\
+	\hline
+	& Int64 & Int64 & Unitful…\\
+	\hline
+	1 & 1 & 1 & 168.732 mg hr L\^-1 \\
+	2 & 1 & 2 & 67.7066 mg hr L\^-1 \\
+	3 & 2 & 1 & 166.212 mg hr L\^-1 \\
+	4 & 2 & 2 & 68.0361 mg hr L\^-1 \\
+	5 & 3 & 1 & 161.161 mg hr L\^-1 \\
+	6 & 3 & 2 & 69.1506 mg hr L\^-1 \\
+	7 & 4 & 1 & 167.056 mg hr L\^-1 \\
+	8 & 4 & 2 & 68.0634 mg hr L\^-1 \\
+	9 & 5 & 1 & 161.954 mg hr L\^-1 \\
+	10 & 5 & 2 & 67.1759 mg hr L\^-1 \\
+	11 & 6 & 1 & 167.442 mg hr L\^-1 \\
+	12 & 6 & 2 & 69.0235 mg hr L\^-1 \\
+	13 & 7 & 1 & 163.307 mg hr L\^-1 \\
+	14 & 7 & 2 & 69.9351 mg hr L\^-1 \\
+	15 & 8 & 1 & 162.685 mg hr L\^-1 \\
+	16 & 8 & 2 & 68.4222 mg hr L\^-1 \\
+	17 & 9 & 1 & 162.797 mg hr L\^-1 \\
+	18 & 9 & 2 & 68.226 mg hr L\^-1 \\
+	19 & 10 & 1 & 162.496 mg hr L\^-1 \\
+	20 & 10 & 2 & 68.1991 mg hr L\^-1 \\
+	21 & 11 & 1 & 162.913 mg hr L\^-1 \\
+	22 & 11 & 2 & 67.0183 mg hr L\^-1 \\
+	23 & 12 & 1 & 164.579 mg hr L\^-1 \\
+	24 & 12 & 2 & 68.0837 mg hr L\^-1 \\
+	25 & 13 & 1 & 160.217 mg hr L\^-1 \\
+	26 & 13 & 2 & 68.4954 mg hr L\^-1 \\
+	27 & 14 & 1 & 163.966 mg hr L\^-1 \\
+	28 & 14 & 2 & 69.6355 mg hr L\^-1 \\
+	29 & 15 & 1 & 163.177 mg hr L\^-1 \\
+	30 & 15 & 2 & 68.1921 mg hr L\^-1 \\
+	31 & 16 & 1 & 163.015 mg hr L\^-1 \\
+	32 & 16 & 2 & 67.6805 mg hr L\^-1 \\
+	33 & 17 & 1 & 161.263 mg hr L\^-1 \\
+	34 & 17 & 2 & 67.4557 mg hr L\^-1 \\
+	35 & 18 & 1 & 164.504 mg hr L\^-1 \\
+	36 & 18 & 2 & 68.3944 mg hr L\^-1 \\
+	37 & 19 & 1 & 161.852 mg hr L\^-1 \\
+	38 & 19 & 2 & 69.2667 mg hr L\^-1 \\
+	39 & 20 & 1 & 163.759 mg hr L\^-1 \\
+	40 & 20 & 2 & 69.1756 mg hr L\^-1 \\
+	41 & 21 & 1 & 159.881 mg hr L\^-1 \\
+	42 & 21 & 2 & 68.3122 mg hr L\^-1 \\
+	43 & 22 & 1 & 164.178 mg hr L\^-1 \\
+	44 & 22 & 2 & 67.579 mg hr L\^-1 \\
+	45 & 23 & 1 & 163.119 mg hr L\^-1 \\
+	46 & 23 & 2 & 69.4551 mg hr L\^-1 \\
+	47 & 24 & 1 & 165.01 mg hr L\^-1 \\
+	48 & 24 & 2 & 65.9071 mg hr L\^-1 \\
+\end{tabular}
+
+
+Note the use of \texttt{NCA} to call the \texttt{auc} function. Since the NCA package is a submodule of Pumas, we currently require that all NCA parameters be explicitly called this way, e.g. \texttt{NCA.auc}
+
+In the function above, the type of AUC by default is AUC from \ensuremath{\ttzero}-\ensuremath{\infty} and the method by default is linear. Use (\texttt{method=:linuplogdown}) for log-linear trapezoidal  or (\texttt{method=:linlog}) for linear-log methods
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{auc}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{,}@*)(*@\HLJLn{auctype}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{inf}@*)(*@\HLJLp{,}@*)(*@\HLJLn{method}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{linuplogdown}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+
+\begin{tabular}{r|ccc}
+	& id & occasion & auc\\
+	\hline
+	& Int64 & Int64 & Unitful…\\
+	\hline
+	1 & 1 & 1 & 168.482 mg hr L\^-1 \\
+	2 & 1 & 2 & 68.4404 mg hr L\^-1 \\
+	3 & 2 & 1 & 165.608 mg hr L\^-1 \\
+	4 & 2 & 2 & 68.6713 mg hr L\^-1 \\
+	5 & 3 & 1 & 162.487 mg hr L\^-1 \\
+	6 & 3 & 2 & 69.2125 mg hr L\^-1 \\
+	7 & 4 & 1 & 167.254 mg hr L\^-1 \\
+	8 & 4 & 2 & 68.6911 mg hr L\^-1 \\
+	9 & 5 & 1 & 161.263 mg hr L\^-1 \\
+	10 & 5 & 2 & 66.3887 mg hr L\^-1 \\
+	11 & 6 & 1 & 167.089 mg hr L\^-1 \\
+	12 & 6 & 2 & 70.0154 mg hr L\^-1 \\
+	13 & 7 & 1 & 165.222 mg hr L\^-1 \\
+	14 & 7 & 2 & 71.5169 mg hr L\^-1 \\
+	15 & 8 & 1 & 161.882 mg hr L\^-1 \\
+	16 & 8 & 2 & 68.6705 mg hr L\^-1 \\
+	17 & 9 & 1 & 162.944 mg hr L\^-1 \\
+	18 & 9 & 2 & 67.7116 mg hr L\^-1 \\
+	19 & 10 & 1 & 162.436 mg hr L\^-1 \\
+	20 & 10 & 2 & 68.9374 mg hr L\^-1 \\
+	21 & 11 & 1 & 162.637 mg hr L\^-1 \\
+	22 & 11 & 2 & 66.4436 mg hr L\^-1 \\
+	23 & 12 & 1 & 164.12 mg hr L\^-1 \\
+	24 & 12 & 2 & 69.0962 mg hr L\^-1 \\
+	25 & 13 & 1 & 160.222 mg hr L\^-1 \\
+	26 & 13 & 2 & 69.4899 mg hr L\^-1 \\
+	27 & 14 & 1 & 163.095 mg hr L\^-1 \\
+	28 & 14 & 2 & 71.9987 mg hr L\^-1 \\
+	29 & 15 & 1 & 163.134 mg hr L\^-1 \\
+	30 & 15 & 2 & 67.0104 mg hr L\^-1 \\
+	31 & 16 & 1 & 162.797 mg hr L\^-1 \\
+	32 & 16 & 2 & 67.6502 mg hr L\^-1 \\
+	33 & 17 & 1 & 161.224 mg hr L\^-1 \\
+	34 & 17 & 2 & 68.0778 mg hr L\^-1 \\
+	35 & 18 & 1 & 164.304 mg hr L\^-1 \\
+	36 & 18 & 2 & 67.21 mg hr L\^-1 \\
+	37 & 19 & 1 & 160.609 mg hr L\^-1 \\
+	38 & 19 & 2 & 69.4289 mg hr L\^-1 \\
+	39 & 20 & 1 & 163.598 mg hr L\^-1 \\
+	40 & 20 & 2 & 69.4865 mg hr L\^-1 \\
+	41 & 21 & 1 & 159.275 mg hr L\^-1 \\
+	42 & 21 & 2 & 68.8195 mg hr L\^-1 \\
+	43 & 22 & 1 & 164.473 mg hr L\^-1 \\
+	44 & 22 & 2 & 67.5237 mg hr L\^-1 \\
+	45 & 23 & 1 & 162.101 mg hr L\^-1 \\
+	46 & 23 & 2 & 69.4784 mg hr L\^-1 \\
+	47 & 24 & 1 & 164.26 mg hr L\^-1 \\
+	48 & 24 & 2 & 65.6421 mg hr L\^-1 \\
+\end{tabular}
+
+
+One could also compute AUC on a certain time interval. To compute AUC from time 0 to 12 hours after dose on the first individual :
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{auc}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{[}@*)(*@\HLJLni{1}@*)(*@\HLJLp{],}@*) (*@\HLJLn{interval}@*)(*@\HLJLoB{=}@*)(*@\HLJLp{(}@*)(*@\HLJLni{0}@*)(*@\HLJLp{,}@*)(*@\HLJLni{12}@*)(*@\HLJLp{)}@*)(*@\HLJLoB{.*}@*)(*@\HLJLn{timeu}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+2-element Array{Unitful.Quantity{Float64,(*@\ensuremath{\bm{\mathrm{M}}}@*)*(*@\ensuremath{\bm{\mathrm{T}}}@*)*(*@\ensuremath{\bm{\mathrm{L}}}@*)^-3,Unitful.FreeUnits{(mg, hr
+, L^-1),(*@\ensuremath{\bm{\mathrm{M}}}@*)*(*@\ensuremath{\bm{\mathrm{T}}}@*)*(*@\ensuremath{\bm{\mathrm{L}}}@*)^-3,nothing}},1}:
+ 158.56526491075005 mg hr L^-1
+     56.46880487425 mg hr L^-1
+\end{lstlisting}
+
+
+Please, note that by specifying \texttt{pop[1]} this function returns two values, one for each occasion (occasion 1 is IV administration and occasion 2 is oral administration).
+
+Also note that we need to apply the time unit (\texttt{timeu}) to the interval for units compatibility.
+
+Multiple intervals can also be specified as a comma separated array \texttt{[interval1, interval2]}:
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{auc}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{[}@*)(*@\HLJLni{1}@*)(*@\HLJLp{],}@*) (*@\HLJLn{interval}@*)(*@\HLJLoB{=}@*)(*@\HLJLp{[(}@*)(*@\HLJLni{0}@*)(*@\HLJLp{,}@*)(*@\HLJLni{12}@*)(*@\HLJLp{)}@*)(*@\HLJLoB{.*}@*)(*@\HLJLn{timeu}@*)(*@\HLJLp{,(}@*)(*@\HLJLni{0}@*)(*@\HLJLp{,}@*)(*@\HLJLni{6}@*)(*@\HLJLp{)}@*)(*@\HLJLoB{.*}@*)(*@\HLJLn{timeu}@*)(*@\HLJLp{])}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+2-element Array{Array{Unitful.Quantity{Float64,(*@\ensuremath{\bm{\mathrm{M}}}@*)*(*@\ensuremath{\bm{\mathrm{T}}}@*)*(*@\ensuremath{\bm{\mathrm{L}}}@*)^-3,Unitful.FreeUnits{(
+mg, hr, L^-1),(*@\ensuremath{\bm{\mathrm{M}}}@*)*(*@\ensuremath{\bm{\mathrm{T}}}@*)*(*@\ensuremath{\bm{\mathrm{L}}}@*)^-3,nothing}},1},1}:
+ [158.565 mg hr L^-1, 56.4688 mg hr L^-1]
+ [125.763 mg hr L^-1, 32.0242 mg hr L^-1]
+\end{lstlisting}
+
+
+\subsubsection{\texttt{NCA.auc\_extrap\_percent}}
+To calculate the percentage of AUC that is being extrapolated, we need to use the following function:
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{auc{\_}extrap{\_}percent}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+
+\begin{tabular}{r|ccc}
+	& id & occasion & auc\_extrap\_percent\\
+	\hline
+	& Int64 & Int64 & Float64\\
+	\hline
+	1 & 1 & 1 & 0.0317002 \\
+	2 & 1 & 2 & 1.17922 \\
+	3 & 2 & 1 & -0.196095 \\
+	4 & 2 & 2 & 1.11573 \\
+	5 & 3 & 1 & 0.973094 \\
+	6 & 3 & 2 & 0.229156 \\
+	7 & 4 & 1 & 0.313549 \\
+	8 & 4 & 2 & 1.04458 \\
+	9 & 5 & 1 & -0.222967 \\
+	10 & 5 & 2 & -1.03112 \\
+	11 & 6 & 1 & -0.0376763 \\
+	12 & 6 & 2 & 1.5171 \\
+	13 & 7 & 1 & 1.31419 \\
+	14 & 7 & 2 & 2.3683 \\
+	15 & 8 & 1 & -0.327214 \\
+	16 & 8 & 2 & 0.550652 \\
+	17 & 9 & 1 & 0.256855 \\
+	18 & 9 & 2 & -0.582795 \\
+	19 & 10 & 1 & 0.11839 \\
+	20 & 10 & 2 & 1.20472 \\
+	21 & 11 & 1 & 0.0414596 \\
+	22 & 11 & 2 & -0.693295 \\
+	23 & 12 & 1 & -0.102517 \\
+	24 & 12 & 2 & 1.59605 \\
+	25 & 13 & 1 & 0.223313 \\
+	26 & 13 & 2 & 1.54666 \\
+	27 & 14 & 1 & -0.359428 \\
+	28 & 14 & 2 & 3.39945 \\
+	29 & 15 & 1 & 0.146153 \\
+	30 & 15 & 2 & -1.67153 \\
+	31 & 16 & 1 & 0.0379693 \\
+	32 & 16 & 2 & 0.114235 \\
+	33 & 17 & 1 & 0.197993 \\
+	34 & 17 & 2 & 1.02935 \\
+	35 & 18 & 1 & 0.121937 \\
+	36 & 18 & 2 & -1.60343 \\
+	37 & 19 & 1 & -0.565768 \\
+	38 & 19 & 2 & 0.368626 \\
+	39 & 20 & 1 & 0.114703 \\
+	40 & 20 & 2 & 0.602679 \\
+	41 & 21 & 1 & -0.23185 \\
+	42 & 21 & 2 & 0.898177 \\
+	43 & 22 & 1 & 0.36286 \\
+	44 & 22 & 2 & 0.0839718 \\
+	45 & 23 & 1 & -0.391727 \\
+	46 & 23 & 2 & 0.118112 \\
+	47 & 24 & 1 & -0.235517 \\
+	48 & 24 & 2 & -0.249947 \\
+\end{tabular}
+
+
+\subsubsection{\texttt{NCA.lambdaz}}
+The function to calculate the terminal rate constant (\ensuremath{\lambda}z) is:
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{lambdaz}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+
+\begin{tabular}{r|ccc}
+	& id & occasion & lambdaz\\
+	\hline
+	& Int64 & Int64 & Unitful…\\
+	\hline
+	1 & 1 & 1 & 1.61545 hr\^-1 \\
+	2 & 1 & 2 & 0.370707 hr\^-1 \\
+	3 & 2 & 1 & -1.39186 hr\^-1 \\
+	4 & 2 & 2 & 0.334561 hr\^-1 \\
+	5 & 3 & 1 & 0.149502 hr\^-1 \\
+	6 & 3 & 2 & 0.991293 hr\^-1 \\
+	7 & 4 & 1 & 0.210934 hr\^-1 \\
+	8 & 4 & 2 & 0.451297 hr\^-1 \\
+	9 & 5 & 1 & -1.05999 hr\^-1 \\
+	10 & 5 & 2 & -0.546462 hr\^-1 \\
+	11 & 6 & 1 & -6.68631 hr\^-1 \\
+	12 & 6 & 2 & 0.276906 hr\^-1 \\
+	13 & 7 & 1 & 0.149488 hr\^-1 \\
+	14 & 7 & 2 & 0.222643 hr\^-1 \\
+	15 & 8 & 1 & -0.398021 hr\^-1 \\
+	16 & 8 & 2 & 0.469235 hr\^-1 \\
+	17 & 9 & 1 & 0.546107 hr\^-1 \\
+	18 & 9 & 2 & -0.427622 hr\^-1 \\
+	19 & 10 & 1 & 0.395587 hr\^-1 \\
+	20 & 10 & 2 & 0.321217 hr\^-1 \\
+	21 & 11 & 1 & 0.453486 hr\^-1 \\
+	22 & 11 & 2 & -1.12245 hr\^-1 \\
+	23 & 12 & 1 & -1.41452 hr\^-1 \\
+	24 & 12 & 2 & 0.324041 hr\^-1 \\
+	25 & 13 & 1 & 0.460286 hr\^-1 \\
+	26 & 13 & 2 & 0.232188 hr\^-1 \\
+	27 & 14 & 1 & -0.846082 hr\^-1 \\
+	28 & 14 & 2 & 0.187034 hr\^-1 \\
+	29 & 15 & 1 & 0.671926 hr\^-1 \\
+	30 & 15 & 2 & -0.310684 hr\^-1 \\
+	31 & 16 & 1 & 0.796512 hr\^-1 \\
+	32 & 16 & 2 & 1.30398 hr\^-1 \\
+	33 & 17 & 1 & 0.420147 hr\^-1 \\
+	34 & 17 & 2 & 0.418549 hr\^-1 \\
+	35 & 18 & 1 & 0.805593 hr\^-1 \\
+	36 & 18 & 2 & -0.39457 hr\^-1 \\
+	37 & 19 & 1 & -0.426415 hr\^-1 \\
+	38 & 19 & 2 & 0.494741 hr\^-1 \\
+	39 & 20 & 1 & 0.634253 hr\^-1 \\
+	40 & 20 & 2 & 0.521067 hr\^-1 \\
+	41 & 21 & 1 & -0.725528 hr\^-1 \\
+	42 & 21 & 2 & 0.240475 hr\^-1 \\
+	43 & 22 & 1 & 0.456947 hr\^-1 \\
+	44 & 22 & 2 & 1.61075 hr\^-1 \\
+	45 & 23 & 1 & -0.556799 hr\^-1 \\
+	46 & 23 & 2 & 1.13886 hr\^-1 \\
+	47 & 24 & 1 & -0.541663 hr\^-1 \\
+	48 & 24 & 2 & -1.89488 hr\^-1 \\
+\end{tabular}
+
+
+By default, \ensuremath{\lambda}z calculation checks the last 10 or less data points, but this can be changed by using the following code:
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{lambdaz}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{,}@*) (*@\HLJLn{threshold}@*)(*@\HLJLoB{=}@*)(*@\HLJLni{3}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+
+\begin{tabular}{r|ccc}
+	& id & occasion & lambdaz\\
+	\hline
+	& Int64 & Int64 & Unitful…\\
+	\hline
+	1 & 1 & 1 & 1.61545 hr\^-1 \\
+	2 & 1 & 2 & 0.370707 hr\^-1 \\
+	3 & 2 & 1 & -0.654182 hr\^-1 \\
+	4 & 2 & 2 & 0.399523 hr\^-1 \\
+	5 & 3 & 1 & 0.361233 hr\^-1 \\
+	6 & 3 & 2 & 0.991293 hr\^-1 \\
+	7 & 4 & 1 & -0.833494 hr\^-1 \\
+	8 & 4 & 2 & 0.451297 hr\^-1 \\
+	9 & 5 & 1 & -1.05999 hr\^-1 \\
+	10 & 5 & 2 & -0.325102 hr\^-1 \\
+	11 & 6 & 1 & -6.68631 hr\^-1 \\
+	12 & 6 & 2 & 0.0101096 hr\^-1 \\
+	13 & 7 & 1 & -0.455566 hr\^-1 \\
+	14 & 7 & 2 & 0.126158 hr\^-1 \\
+	15 & 8 & 1 & -0.398021 hr\^-1 \\
+	16 & 8 & 2 & 0.318197 hr\^-1 \\
+	17 & 9 & 1 & 0.546107 hr\^-1 \\
+	18 & 9 & 2 & 0.131311 hr\^-1 \\
+	19 & 10 & 1 & 0.164513 hr\^-1 \\
+	20 & 10 & 2 & -0.317536 hr\^-1 \\
+	21 & 11 & 1 & 1.53558 hr\^-1 \\
+	22 & 11 & 2 & -1.12245 hr\^-1 \\
+	23 & 12 & 1 & -1.41452 hr\^-1 \\
+	24 & 12 & 2 & -0.456385 hr\^-1 \\
+	25 & 13 & 1 & 1.05129 hr\^-1 \\
+	26 & 13 & 2 & 0.378708 hr\^-1 \\
+	27 & 14 & 1 & -0.909496 hr\^-1 \\
+	28 & 14 & 2 & 0.136153 hr\^-1 \\
+	29 & 15 & 1 & 0.784437 hr\^-1 \\
+	30 & 15 & 2 & -0.0523087 hr\^-1 \\
+	31 & 16 & 1 & 0.0186252 hr\^-1 \\
+	32 & 16 & 2 & 1.30398 hr\^-1 \\
+	33 & 17 & 1 & 0.512816 hr\^-1 \\
+	34 & 17 & 2 & 0.418549 hr\^-1 \\
+	35 & 18 & 1 & 0.805593 hr\^-1 \\
+	36 & 18 & 2 & -0.237489 hr\^-1 \\
+	37 & 19 & 1 & -0.576943 hr\^-1 \\
+	38 & 19 & 2 & -0.303239 hr\^-1 \\
+	39 & 20 & 1 & 1.16616 hr\^-1 \\
+	40 & 20 & 2 & 0.278052 hr\^-1 \\
+	41 & 21 & 1 & -0.725528 hr\^-1 \\
+	42 & 21 & 2 & -0.0699374 hr\^-1 \\
+	43 & 22 & 1 & -0.926123 hr\^-1 \\
+	44 & 22 & 2 & 1.61075 hr\^-1 \\
+	45 & 23 & 1 & -0.375858 hr\^-1 \\
+	46 & 23 & 2 & 1.13886 hr\^-1 \\
+	47 & 24 & 1 & -0.162893 hr\^-1 \\
+	48 & 24 & 2 & -1.89488 hr\^-1 \\
+\end{tabular}
+
+
+The exact data points to be used for \ensuremath{\lambda}z calculation can also be specified using their indices:
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{lambdaz}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{,}@*) (*@\HLJLn{idxs}@*)(*@\HLJLoB{=}@*)(*@\HLJLp{[}@*)(*@\HLJLni{18}@*)(*@\HLJLp{,}@*)(*@\HLJLni{19}@*)(*@\HLJLp{,}@*)(*@\HLJLni{20}@*)(*@\HLJLp{])}@*)
+\end{lstlisting}
+
+
+\begin{tabular}{r|ccc}
+	& id & occasion & lambdaz\\
+	\hline
+	& Int64 & Int64 & Unitful…\\
+	\hline
+	1 & 1 & 1 & 0.253847 hr\^-1 \\
+	2 & 1 & 2 & 0.134412 hr\^-1 \\
+	3 & 2 & 1 & 0.273474 hr\^-1 \\
+	4 & 2 & 2 & 0.247812 hr\^-1 \\
+	5 & 3 & 1 & 0.396345 hr\^-1 \\
+	6 & 3 & 2 & 0.277723 hr\^-1 \\
+	7 & 4 & 1 & 0.219704 hr\^-1 \\
+	8 & 4 & 2 & 0.0484152 hr\^-1 \\
+	9 & 5 & 1 & 0.230098 hr\^-1 \\
+	10 & 5 & 2 & 0.107101 hr\^-1 \\
+	11 & 6 & 1 & 0.244519 hr\^-1 \\
+	12 & 6 & 2 & 0.0747055 hr\^-1 \\
+	13 & 7 & 1 & 0.188938 hr\^-1 \\
+	14 & 7 & 2 & 0.174951 hr\^-1 \\
+	15 & 8 & 1 & 0.173483 hr\^-1 \\
+	16 & 8 & 2 & 0.112078 hr\^-1 \\
+	17 & 9 & 1 & 0.1523 hr\^-1 \\
+	18 & 9 & 2 & 0.123622 hr\^-1 \\
+	19 & 10 & 1 & 0.313321 hr\^-1 \\
+	20 & 10 & 2 & 0.0687137 hr\^-1 \\
+	21 & 11 & 1 & 0.218701 hr\^-1 \\
+	22 & 11 & 2 & 0.120749 hr\^-1 \\
+	23 & 12 & 1 & 0.364311 hr\^-1 \\
+	24 & 12 & 2 & 0.299619 hr\^-1 \\
+	25 & 13 & 1 & 0.169732 hr\^-1 \\
+	26 & 13 & 2 & 0.025224 hr\^-1 \\
+	27 & 14 & 1 & 0.206463 hr\^-1 \\
+	28 & 14 & 2 & 0.156841 hr\^-1 \\
+	29 & 15 & 1 & 0.223162 hr\^-1 \\
+	30 & 15 & 2 & 0.202073 hr\^-1 \\
+	31 & 16 & 1 & 0.150243 hr\^-1 \\
+	32 & 16 & 2 & 0.227149 hr\^-1 \\
+	33 & 17 & 1 & 0.25867 hr\^-1 \\
+	34 & 17 & 2 & 0.130255 hr\^-1 \\
+	35 & 18 & 1 & 0.226315 hr\^-1 \\
+	36 & 18 & 2 & 0.0767797 hr\^-1 \\
+	37 & 19 & 1 & 0.158405 hr\^-1 \\
+	38 & 19 & 2 & 0.288173 hr\^-1 \\
+	39 & 20 & 1 & 0.236793 hr\^-1 \\
+	40 & 20 & 2 & 0.119849 hr\^-1 \\
+	41 & 21 & 1 & 0.28835 hr\^-1 \\
+	42 & 21 & 2 & 0.274124 hr\^-1 \\
+	43 & 22 & 1 & 0.176757 hr\^-1 \\
+	44 & 22 & 2 & -0.0520009 hr\^-1 \\
+	45 & 23 & 1 & 0.166723 hr\^-1 \\
+	46 & 23 & 2 & 0.192227 hr\^-1 \\
+	47 & 24 & 1 & 0.150843 hr\^-1 \\
+	48 & 24 & 2 & 0.217133 hr\^-1 \\
+\end{tabular}
+
+
+or using the time point:
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{lambdaz}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{,}@*) (*@\HLJLn{slopetimes}@*)(*@\HLJLoB{=}@*)(*@\HLJLp{[}@*)(*@\HLJLnfB{18.5}@*)(*@\HLJLp{,}@*)(*@\HLJLni{19}@*)(*@\HLJLp{,}@*)(*@\HLJLnfB{19.5}@*)(*@\HLJLp{]}@*)(*@\HLJLoB{.*}@*)(*@\HLJLn{timeu}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+
+\begin{tabular}{r|ccc}
+	& id & occasion & lambdaz\\
+	\hline
+	& Int64 & Int64 & Unitful…\\
+	\hline
+	1 & 1 & 1 & -0.151799 hr\^-1 \\
+	2 & 1 & 2 & 0.297938 hr\^-1 \\
+	3 & 2 & 1 & -0.150951 hr\^-1 \\
+	4 & 2 & 2 & -0.622057 hr\^-1 \\
+	5 & 3 & 1 & 0.227745 hr\^-1 \\
+	6 & 3 & 2 & 0.0988968 hr\^-1 \\
+	7 & 4 & 1 & 0.329054 hr\^-1 \\
+	8 & 4 & 2 & 0.210349 hr\^-1 \\
+	9 & 5 & 1 & -0.470636 hr\^-1 \\
+	10 & 5 & 2 & 0.324485 hr\^-1 \\
+	11 & 6 & 1 & -0.00169728 hr\^-1 \\
+	12 & 6 & 2 & 0.187487 hr\^-1 \\
+	13 & 7 & 1 & 0.360758 hr\^-1 \\
+	14 & 7 & 2 & -0.332972 hr\^-1 \\
+	15 & 8 & 1 & 0.399947 hr\^-1 \\
+	16 & 8 & 2 & 0.0957772 hr\^-1 \\
+	17 & 9 & 1 & -0.609233 hr\^-1 \\
+	18 & 9 & 2 & 0.288191 hr\^-1 \\
+	19 & 10 & 1 & -0.273755 hr\^-1 \\
+	20 & 10 & 2 & 0.367562 hr\^-1 \\
+	21 & 11 & 1 & -0.0882704 hr\^-1 \\
+	22 & 11 & 2 & 0.256832 hr\^-1 \\
+	23 & 12 & 1 & -0.0230651 hr\^-1 \\
+	24 & 12 & 2 & -0.492861 hr\^-1 \\
+	25 & 13 & 1 & 0.8175 hr\^-1 \\
+	26 & 13 & 2 & -0.293711 hr\^-1 \\
+	27 & 14 & 1 & -0.530188 hr\^-1 \\
+	28 & 14 & 2 & 0.0560302 hr\^-1 \\
+	29 & 15 & 1 & 0.478357 hr\^-1 \\
+	30 & 15 & 2 & 0.30921 hr\^-1 \\
+	31 & 16 & 1 & 0.624869 hr\^-1 \\
+	32 & 16 & 2 & 0.177099 hr\^-1 \\
+	33 & 17 & 1 & -0.0420993 hr\^-1 \\
+	34 & 17 & 2 & 0.315913 hr\^-1 \\
+	35 & 18 & 1 & 0.467566 hr\^-1 \\
+	36 & 18 & 2 & -0.00917706 hr\^-1 \\
+	37 & 19 & 1 & -0.10249 hr\^-1 \\
+	38 & 19 & 2 & 0.319518 hr\^-1 \\
+	39 & 20 & 1 & 0.174993 hr\^-1 \\
+	40 & 20 & 2 & 0.298562 hr\^-1 \\
+	41 & 21 & 1 & -0.242588 hr\^-1 \\
+	42 & 21 & 2 & 0.412301 hr\^-1 \\
+	43 & 22 & 1 & 0.549819 hr\^-1 \\
+	44 & 22 & 2 & -0.254468 hr\^-1 \\
+	45 & 23 & 1 & -0.561555 hr\^-1 \\
+	46 & 23 & 2 & 0.204394 hr\^-1 \\
+	47 & 24 & 1 & 0.729992 hr\^-1 \\
+	48 & 24 & 2 & 1.03802 hr\^-1 \\
+\end{tabular}
+
+
+Other methods can be used such as \texttt{:linuplogdown} or \texttt{:linlog}.
+
+\subsubsection{\texttt{NCA.cmax}}
+To calculate the maximum concentration for the first subject we would use:
+
+
+\begin{lstlisting}
+(*@\HLJLn{cmax}@*) (*@\HLJLoB{=}@*) (*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{cmax}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{[}@*)(*@\HLJLni{1}@*)(*@\HLJLp{])}@*)
+
+(*@\HLJLn{pop}@*)(*@\HLJLp{[}@*)(*@\HLJLni{1}@*)(*@\HLJLp{]}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+NCASubject:
+  ID: 1
+    concentration: mg L^-1
+    time:          hr
+    auc:           mg hr L^-1
+    aumc:          mg hr^2 L^-1
+    (*@\ensuremath{\lambda}@*)z:            hr^-1
+    dose:          mg
+\end{lstlisting}
+
+
+\subsubsection{\texttt{normalizedose}}
+The \texttt{normalizedose} function can be used on any parameter that can be dose normalized If we want dose-normalized Cmax for that same subject:
+
+
+\begin{lstlisting}
+(*@\HLJLnf{normalizedose}@*)(*@\HLJLp{(}@*)(*@\HLJLn{cmax}@*)(*@\HLJLp{,}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{[}@*)(*@\HLJLni{1}@*)(*@\HLJLp{])}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+2-element Array{Unitful.Quantity{Float64,(*@\ensuremath{\bm{\mathrm{L}}}@*)^-3,Unitful.FreeUnits{(L^-1,),(*@\ensuremath{\bm{\mathrm{L}}}@*)^-
+3,nothing}},1}:
+ 0.018962447475 L^-1
+ 0.003429722204 L^-1
+\end{lstlisting}
+
+
+The same function can be used to compute dose-normalized AUClast:
+
+
+\begin{lstlisting}
+(*@\HLJLn{AUClast}@*) (*@\HLJLoB{=}@*) (*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{auc}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{[}@*)(*@\HLJLni{1}@*)(*@\HLJLp{],}@*)(*@\HLJLn{auctype}@*)(*@\HLJLoB{=:}@*)(*@\HLJLn{last}@*)(*@\HLJLp{)}@*)
+(*@\HLJLnf{normalizedose}@*)(*@\HLJLp{(}@*)(*@\HLJLn{AUClast}@*)(*@\HLJLp{,}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{[}@*)(*@\HLJLni{1}@*)(*@\HLJLp{])}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+2-element Array{Unitful.Quantity{Float64,(*@\ensuremath{\bm{\mathrm{T}}}@*)*(*@\ensuremath{\bm{\mathrm{L}}}@*)^-3,Unitful.FreeUnits{(hr, L^-1
+),(*@\ensuremath{\bm{\mathrm{T}}}@*)*(*@\ensuremath{\bm{\mathrm{L}}}@*)^-3,nothing}},1}:
+ 0.08436613557187506 hr L^-1
+ 0.03385330020574998 hr L^-1
+\end{lstlisting}
+
+
+Other functions to calculate single PK parameters are the following:
+
+
+\begin{lstlisting}
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{lambdazr2}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{)}@*)
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{lambdazadjr2}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{)}@*)
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{lambdazintercept}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{)}@*)
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{lambdaztimefirst}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{)}@*)
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{lambdaznpoints}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{)}@*)
+
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{tmax}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{)}@*)
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{cmin}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{)}@*)
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{tmin}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{)}@*)
+
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{tlast}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{)}@*)
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{clast}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{)}@*)
+
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{aumc}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{)}@*)
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{aumclast}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{)}@*)
+
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{thalf}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{)}@*)
+
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{cl}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{,}@*)(*@\HLJLn{ithdose}@*)(*@\HLJLoB{=}@*)(*@\HLJLni{1}@*)(*@\HLJLp{)}@*)
+
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{vss}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{)}@*)
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{vz}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{)}@*)
+
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{accumulationindex}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+
+\begin{tabular}{r|ccc}
+	& id & occasion & accumulationindex\\
+	\hline
+	& Int64 & Int64 & Missing\\
+	\hline
+	1 & 1 & 1 &  \\
+	2 & 1 & 2 &  \\
+	3 & 2 & 1 &  \\
+	4 & 2 & 2 &  \\
+	5 & 3 & 1 &  \\
+	6 & 3 & 2 &  \\
+	7 & 4 & 1 &  \\
+	8 & 4 & 2 &  \\
+	9 & 5 & 1 &  \\
+	10 & 5 & 2 &  \\
+	11 & 6 & 1 &  \\
+	12 & 6 & 2 &  \\
+	13 & 7 & 1 &  \\
+	14 & 7 & 2 &  \\
+	15 & 8 & 1 &  \\
+	16 & 8 & 2 &  \\
+	17 & 9 & 1 &  \\
+	18 & 9 & 2 &  \\
+	19 & 10 & 1 &  \\
+	20 & 10 & 2 &  \\
+	21 & 11 & 1 &  \\
+	22 & 11 & 2 &  \\
+	23 & 12 & 1 &  \\
+	24 & 12 & 2 &  \\
+	25 & 13 & 1 &  \\
+	26 & 13 & 2 &  \\
+	27 & 14 & 1 &  \\
+	28 & 14 & 2 &  \\
+	29 & 15 & 1 &  \\
+	30 & 15 & 2 &  \\
+	31 & 16 & 1 &  \\
+	32 & 16 & 2 &  \\
+	33 & 17 & 1 &  \\
+	34 & 17 & 2 &  \\
+	35 & 18 & 1 &  \\
+	36 & 18 & 2 &  \\
+	37 & 19 & 1 &  \\
+	38 & 19 & 2 &  \\
+	39 & 20 & 1 &  \\
+	40 & 20 & 2 &  \\
+	41 & 21 & 1 &  \\
+	42 & 21 & 2 &  \\
+	43 & 22 & 1 &  \\
+	44 & 22 & 2 &  \\
+	45 & 23 & 1 &  \\
+	46 & 23 & 2 &  \\
+	47 & 24 & 1 &  \\
+	48 & 24 & 2 &  \\
+\end{tabular}
+
+
+If we want to calculate one of these PK parameters just in one subject, we just need to specify the index of the subject. In this case \texttt{pop[2]} is the index of subject with ID=2 in the dataset.
+
+
+\begin{lstlisting}
+(*@\HLJLn{pop}@*)(*@\HLJLp{[}@*)(*@\HLJLni{2}@*)(*@\HLJLp{]}@*)
+(*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{cl}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{[}@*)(*@\HLJLni{2}@*)(*@\HLJLp{])}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+2-element Array{Unitful.Quantity{Float64,(*@\ensuremath{\bm{\mathrm{L}}}@*)^3*(*@\ensuremath{\bm{\mathrm{T}}}@*)^-1,Unitful.FreeUnits{(hr^-1,
+ L),(*@\ensuremath{\bm{\mathrm{L}}}@*)^3*(*@\ensuremath{\bm{\mathrm{T}}}@*)^-1,nothing}},1}:
+ 12.05641473466535 L hr^-1
+ 29.06817608874275 L hr^-1
+\end{lstlisting}
+
+
+\section{NCA report}
+\subsubsection{\texttt{NCAReport}}
+If we want a complete report of the NCA analysis we can just use the function \texttt{NCAreport} to obtain a data frame that contains all the above mentioned pharmacokinetic parameters.
+
+For multiple doses, we need to provide a reference dose. In this example, we are going to let the first dose be the reference dose.
+
+
+\begin{lstlisting}
+(*@\HLJLn{report}@*) (*@\HLJLoB{=}@*) (*@\HLJLnf{NCAReport}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{,}@*)(*@\HLJLn{ithdose}@*)(*@\HLJLoB{=}@*)(*@\HLJLni{1}@*)(*@\HLJLp{)}@*)
+(*@\HLJLn{report}@*) (*@\HLJLoB{=}@*) (*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{to{\_}dataframe}@*)(*@\HLJLp{(}@*)(*@\HLJLn{report}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+
+\begin{tabular}{r|cccccccccccccccccccccccccccccccccccccccccccccccccccccc}
+	& id & occasion & doseamt & lambda\_z & half\_life & tmax & tlag & cmax & c0 & clast & clast\_pred & auclast & tlast & aucinf\_obs & vz\_obs & cl\_obs & vz\_f\_obs & cl\_f\_obs & aucinf\_pred & vz\_pred & cl\_pred & vz\_f\_pred & cl\_f\_pred & vss\_obs & vss\_pred & tmin & cmin & cminss & cmax\_d & auclast\_d & aucinf\_d\_obs & auc\_extrap\_obs & auc\_back\_extrap\_obs & aucinf\_d\_pred & auc\_extrap\_pred & auc\_back\_extrap\_pred & aumclast & aumcinf\_obs & aumc\_extrap\_obs & aumcinf\_pred & aumc\_extrap\_pred & mrtlast & mrtinf\_obs & mrtinf\_pred & n\_samples & rsq & rsq\_adjusted & corr\_xy & no\_points\_lambda\_z & lambda\_z\_intercept & lambda\_z\_lower & lambda\_z\_upper & span & route\\
+	\hline
+	& Int64 & Int64 & Unitful… & Unitful… & Unitful… & Unitful… & Unitful…⍰ & Unitful… & Unitful…⍰ & Unitful… & Unitful… & Unitful… & Unitful… & Unitful… & Unitful…⍰ & Unitful…⍰ & Unitful…⍰ & Unitful…⍰ & Unitful… & Unitful…⍰ & Unitful…⍰ & Unitful…⍰ & Unitful…⍰ & Unitful… & Unitful… & Unitful… & Unitful…⍰ & Unitful…⍰ & Unitful… & Unitful… & Unitful… & Float64 & Float64⍰ & Unitful… & Float64 & Float64⍰ & Unitful… & Unitful… & Float64 & Unitful… & Float64 & Unitful… & Unitful… & Unitful… & Int64 & Float64 & Float64 & Float64 & Int64 & Float64 & Unitful… & Unitful… & Float64 & String\\
+	\hline
+	1 & 1 & 1 & 2000 mg & 1.61545 hr\^-1 & 0.429073 hr & 0.5 hr &  & 37.9249 mg L\^-1 & 0.0 mg L\^-1 & 0.0864354 mg L\^-1 & 0.0900899 mg L\^-1 & 168.732 mg hr L\^-1 & 24.0 hr & 168.786 mg hr L\^-1 & 7.335 L & 11.8493 L hr\^-1 &  &  & 168.788 mg hr L\^-1 & 7.3349 L & 11.8492 L hr\^-1 &  &  & 52.3711 L & 52.3736 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 37.9249 mg L\^-1 & 0.0843661 hr L\^-1 & 0.0843929 hr L\^-1 & 0.0317002 & 0.0 & 0.084394 hr L\^-1 & 0.03304 & 0.0 & 744.673 mg hr\^2 L\^-1 & 745.99 mg hr\^2 L\^-1 & 0.176577 & 746.046 mg hr\^2 L\^-1 & 0.184029 & 4.41334 hr & 4.41975 hr & 4.42002 hr & 49 & 0.992176 & 0.984353 & 0.996081 & 3 & 36.3639 & 23.0 hr & 24.0 hr & 2.33061 & IVBolus \\
+	2 & 1 & 2 & 2000 mg & 0.370707 hr\^-1 & 1.8698 hr & 3.0 hr & 0.0 hr & 6.85944 mg L\^-1 &  & 0.299508 mg L\^-1 & 0.297129 mg L\^-1 & 67.7066 mg hr L\^-1 & 24.0 hr & 68.5145 mg hr L\^-1 &  &  & 78.7439 L & 29.1909 L hr\^-1 & 68.5081 mg hr L\^-1 &  &  & 78.7513 L & 29.1936 L hr\^-1 & 221.317 L & 221.286 L & 0.0 hr &  &  & 6.85944 mg L\^-1 & 0.0338533 hr L\^-1 & 0.0342573 hr L\^-1 & 1.17922 &  & 0.0342541 hr L\^-1 & 1.16997 &  & 497.888 mg hr\^2 L\^-1 & 519.458 mg hr\^2 L\^-1 & 4.1524 & 519.287 mg hr\^2 L\^-1 & 4.12078 & 7.35361 hr & 7.58172 hr & 7.57993 hr & 49 & 0.99448 & 0.988959 & 0.997236 & 3 & 7.68337 & 23.0 hr & 24.0 hr & 0.534817 & EV \\
+	3 & 2 & 1 & 2000 mg & -1.39186 hr\^-1 & -0.498001 hr & 0.5 hr &  & 36.9967 mg L\^-1 & 0.0 mg L\^-1 & 0.452765 mg L\^-1 & 0.46159 mg L\^-1 & 166.212 mg hr L\^-1 & 24.0 hr & 165.887 mg hr L\^-1 & -8.6621 L & 12.0564 L hr\^-1 &  &  & 165.88 mg hr L\^-1 & -8.66243 L & 12.0569 L hr\^-1 &  &  & 53.4839 L & 53.4772 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 36.9967 mg L\^-1 & 0.083106 hr L\^-1 & 0.0829434 hr L\^-1 & -0.196095 & 0.0 & 0.0829402 hr L\^-1 & -0.199925 & 0.0 & 743.469 mg hr\^2 L\^-1 & 735.896 mg hr\^2 L\^-1 & -1.02914 & 735.748 mg hr\^2 L\^-1 & -1.04941 & 4.47302 hr & 4.43613 hr & 4.43541 hr & 49 & 0.760761 & 0.641141 & 0.872216 & 4 & -34.1777 & 22.5 hr & 24.0 hr & -3.01204 & IVBolus \\
+	4 & 2 & 2 & 2000 mg & 0.334561 hr\^-1 & 2.07181 hr & 3.5 hr & 0.0 hr & 6.69229 mg L\^-1 &  & 0.25683 mg L\^-1 & 0.228571 mg L\^-1 & 68.0361 mg hr L\^-1 & 24.0 hr & 68.8038 mg hr L\^-1 &  &  & 86.8845 L & 29.0682 L hr\^-1 & 68.7193 mg hr L\^-1 &  &  & 86.9913 L & 29.1039 L hr\^-1 & 220.931 L & 220.509 L & 0.0 hr &  &  & 6.69229 mg L\^-1 & 0.0340181 hr L\^-1 & 0.0344019 hr L\^-1 & 1.11573 &  & 0.0343597 hr L\^-1 & 0.994186 &  & 502.22 mg hr\^2 L\^-1 & 522.938 mg hr\^2 L\^-1 & 3.96192 & 520.659 mg hr\^2 L\^-1 & 3.54144 & 7.38167 hr & 7.60043 hr & 7.5766 hr & 49 & 0.789386 & 0.736733 & 0.888474 & 6 & 6.55356 & 21.5 hr & 24.0 hr & 1.20667 & EV \\
+	5 & 3 & 1 & 2000 mg & 0.149502 hr\^-1 & 4.63636 hr & 0.5 hr &  & 33.4609 mg L\^-1 & 0.0 mg L\^-1 & 0.236761 mg L\^-1 & 0.13469 mg L\^-1 & 161.161 mg hr L\^-1 & 24.0 hr & 162.745 mg hr L\^-1 & 82.2004 L & 12.2892 L hr\^-1 &  &  & 162.062 mg hr L\^-1 & 82.5467 L & 12.3409 L hr\^-1 &  &  & 58.9326 L & 57.8347 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 33.4609 mg L\^-1 & 0.0805807 hr L\^-1 & 0.0813725 hr L\^-1 & 0.973094 & 0.0 & 0.0810311 hr L\^-1 & 0.555909 & 0.0 & 731.843 mg hr\^2 L\^-1 & 780.444 mg hr\^2 L\^-1 & 6.22733 & 759.491 mg hr\^2 L\^-1 & 3.64035 & 4.54106 hr & 4.7955 hr & 4.68641 hr & 49 & 0.123289 & 0.0136996 & 0.351125 & 10 & 1.58328 & 19.5 hr & 24.0 hr & 0.970589 & IVBolus \\
+	6 & 3 & 2 & 2000 mg & 0.991293 hr\^-1 & 0.699235 hr & 3.0 hr & 0.0 hr & 7.31712 mg L\^-1 &  & 0.157444 mg L\^-1 & 0.189049 mg L\^-1 & 69.1506 mg hr L\^-1 & 24.0 hr & 69.3095 mg hr L\^-1 &  &  & 29.1095 L & 28.8561 L hr\^-1 & 69.3413 mg hr L\^-1 &  &  & 29.0962 L & 28.8428 L hr\^-1 & 213.029 L & 213.165 L & 0.0 hr &  &  & 7.31712 mg L\^-1 & 0.0345753 hr L\^-1 & 0.0346547 hr L\^-1 & 0.229156 &  & 0.0346707 hr L\^-1 & 0.27503 &  & 507.702 mg hr\^2 L\^-1 & 511.674 mg hr\^2 L\^-1 & 0.776288 & 512.472 mg hr\^2 L\^-1 & 0.930668 & 7.34197 hr & 7.38246 hr & 7.39056 hr & 49 & 0.709888 & 0.419776 & 0.842549 & 3 & 22.1253 & 23.0 hr & 24.0 hr & 1.43013 & EV \\
+	7 & 4 & 1 & 2000 mg & 0.210934 hr\^-1 & 3.28608 hr & 0.5 hr &  & 36.9927 mg L\^-1 & 0.0 mg L\^-1 & 0.110836 mg L\^-1 & 0.128452 mg L\^-1 & 167.056 mg hr L\^-1 & 24.0 hr & 167.582 mg hr L\^-1 & 56.5791 L & 11.9345 L hr\^-1 &  &  & 167.665 mg hr L\^-1 & 56.5509 L & 11.9285 L hr\^-1 &  &  & 53.98 L & 54.097 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 36.9927 mg L\^-1 & 0.0835282 hr L\^-1 & 0.0837909 hr L\^-1 & 0.313549 & 0.0 & 0.0838327 hr L\^-1 & 0.363205 & 0.0 & 742.876 mg hr\^2 L\^-1 & 757.978 mg hr\^2 L\^-1 & 1.99239 & 760.378 mg hr\^2 L\^-1 & 2.30178 & 4.44686 hr & 4.52303 hr & 4.53509 hr & 49 & 0.108417 & -0.0189523 & 0.329267 & 9 & 3.01023 & 20.0 hr & 24.0 hr & 1.21726 & IVBolus \\
+	8 & 4 & 2 & 2000 mg & 0.451297 hr\^-1 & 1.5359 hr & 3.5 hr & 0.0 hr & 6.59967 mg L\^-1 &  & 0.324247 mg L\^-1 & 0.338105 mg L\^-1 & 68.0634 mg hr L\^-1 & 24.0 hr & 68.7818 mg hr L\^-1 &  &  & 64.4309 L & 29.0774 L hr\^-1 & 68.8126 mg hr L\^-1 &  &  & 64.4021 L & 29.0645 L hr\^-1 & 222.596 L & 222.737 L & 0.0 hr &  &  & 6.59967 mg L\^-1 & 0.0340317 hr L\^-1 & 0.0343909 hr L\^-1 & 1.04458 &  & 0.0344063 hr L\^-1 & 1.08874 &  & 507.708 mg hr\^2 L\^-1 & 526.544 mg hr\^2 L\^-1 & 3.5772 & 527.349 mg hr\^2 L\^-1 & 3.72439 & 7.45935 hr & 7.65527 hr & 7.66355 hr & 49 & 0.906456 & 0.812913 & 0.95208 & 3 & 9.74672 & 23.0 hr & 24.0 hr & 0.651084 & EV \\
+	9 & 5 & 1 & 2000 mg & -1.05999 hr\^-1 & -0.653919 hr & 0.5 hr &  & 38.1757 mg L\^-1 & 0.0 mg L\^-1 & 0.381914 mg L\^-1 & 0.358677 mg L\^-1 & 161.954 mg hr L\^-1 & 24.0 hr & 161.593 mg hr L\^-1 & -11.6763 L & 12.3768 L hr\^-1 &  &  & 161.615 mg hr L\^-1 & -11.6747 L & 12.3751 L hr\^-1 &  &  & 55.0015 L & 55.0253 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 38.1757 mg L\^-1 & 0.0809768 hr L\^-1 & 0.0807966 hr L\^-1 & -0.222967 & 0.0 & 0.0808076 hr L\^-1 & -0.209372 & 0.0 & 726.417 mg hr\^2 L\^-1 & 718.11 mg hr\^2 L\^-1 & -1.15683 & 718.615 mg hr\^2 L\^-1 & -1.08568 & 4.48534 hr & 4.44394 hr & 4.44646 hr & 49 & 0.959613 & 0.919226 & 0.979598 & 3 & -26.4651 & 23.0 hr & 24.0 hr & -1.52924 & IVBolus \\
+	10 & 5 & 2 & 2000 mg & -0.546462 hr\^-1 & -1.26843 hr & 6.0 hr & 0.0 hr & 6.71494 mg L\^-1 &  & 0.374652 mg L\^-1 & 0.502727 mg L\^-1 & 67.1759 mg hr L\^-1 & 24.0 hr & 66.4903 mg hr L\^-1 &  &  & -55.0442 L & 30.0796 L hr\^-1 & 66.2559 mg hr L\^-1 &  &  & -55.239 L & 30.186 L hr\^-1 & 217.065 L & 216.236 L & 0.0 hr &  &  & 6.71494 mg L\^-1 & 0.0335879 hr L\^-1 & 0.0332451 hr L\^-1 & -1.03112 &  & 0.033128 hr L\^-1 & -1.38851 &  & 495.018 mg hr\^2 L\^-1 & 479.818 mg hr\^2 L\^-1 & -3.1678 & 474.622 mg hr\^2 L\^-1 & -4.29725 & 7.36899 hr & 7.21637 hr & 7.16347 hr & 49 & 0.548889 & 0.398519 & 0.74087 & 5 & -13.8028 & 22.0 hr & 24.0 hr & -1.57676 & EV \\
+	11 & 6 & 1 & 2000 mg & -6.68631 hr\^-1 & -0.103667 hr & 0.5 hr &  & 34.2294 mg L\^-1 & 0.0 mg L\^-1 & 0.421654 mg L\^-1 & 1.10342 mg L\^-1 & 167.442 mg hr L\^-1 & 24.0 hr & 167.379 mg hr L\^-1 & -1.78707 L & 11.9489 L hr\^-1 &  &  & 167.277 mg hr L\^-1 & -1.78816 L & 11.9562 L hr\^-1 &  &  & 54.317 L & 54.2094 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 34.2294 mg L\^-1 & 0.0837212 hr L\^-1 & 0.0836897 hr L\^-1 & -0.0376763 & 0.0 & 0.0836387 hr L\^-1 & -0.0986543 & 0.0 & 762.373 mg hr\^2 L\^-1 & 760.869 mg hr\^2 L\^-1 & -0.197677 & 758.437 mg hr\^2 L\^-1 & -0.518956 & 4.55304 hr & 4.54577 hr & 4.53401 hr & 49 & 0.801029 & 0.602058 & 0.895002 & 3 & -160.373 & 23.0 hr & 24.0 hr & -9.6463 & IVBolus \\
+	12 & 6 & 2 & 2000 mg & 0.276906 hr\^-1 & 2.50318 hr & 4.0 hr & 0.0 hr & 7.31491 mg L\^-1 &  & 0.294431 mg L\^-1 & 0.191709 mg L\^-1 & 69.0235 mg hr L\^-1 & 24.0 hr & 70.0867 mg hr L\^-1 &  &  & 103.053 L & 28.5361 L hr\^-1 & 69.7158 mg hr L\^-1 &  &  & 103.602 L & 28.6879 L hr\^-1 & 220.053 L & 218.186 L & 0.0 hr &  &  & 7.31491 mg L\^-1 & 0.0345117 hr L\^-1 & 0.0350434 hr L\^-1 & 1.5171 &  & 0.0348579 hr L\^-1 & 0.993069 &  & 511.107 mg hr\^2 L\^-1 & 540.466 mg hr\^2 L\^-1 & 5.43213 & 530.223 mg hr\^2 L\^-1 & 3.60528 & 7.40483 hr & 7.71138 hr & 7.6055 hr & 49 & 0.458036 & 0.390291 & 0.676784 & 10 & 4.99398 & 19.5 hr & 24.0 hr & 1.79771 & EV \\
+	13 & 7 & 1 & 2000 mg & 0.149488 hr\^-1 & 4.63679 hr & 0.5 hr &  & 34.3054 mg L\^-1 & 0.0 mg L\^-1 & 0.325099 mg L\^-1 & 0.193339 mg L\^-1 & 163.307 mg hr L\^-1 & 24.0 hr & 165.482 mg hr L\^-1 & 80.8483 L & 12.0859 L hr\^-1 &  &  & 164.601 mg hr L\^-1 & 81.2813 L & 12.1506 L hr\^-1 &  &  & 58.4942 L & 57.1256 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 34.3054 mg L\^-1 & 0.0816537 hr L\^-1 & 0.0827411 hr L\^-1 & 1.31419 & 0.0 & 0.0823004 hr L\^-1 & 0.785741 & 0.0 & 734.171 mg hr\^2 L\^-1 & 800.913 mg hr\^2 L\^-1 & 8.33321 & 773.863 mg hr\^2 L\^-1 & 5.12905 & 4.49564 hr & 4.83988 hr & 4.70145 hr & 49 & 0.270105 & 0.178868 & 0.519716 & 10 & 1.94441 & 19.5 hr & 24.0 hr & 0.970498 & IVBolus \\
+	14 & 7 & 2 & 2000 mg & 0.222643 hr\^-1 & 3.11327 hr & 4.0 hr & 0.0 hr & 7.54423 mg L\^-1 &  & 0.377703 mg L\^-1 & 0.218549 mg L\^-1 & 69.9351 mg hr L\^-1 & 24.0 hr & 71.6315 mg hr L\^-1 &  &  & 125.406 L & 27.9207 L hr\^-1 & 70.9167 mg hr L\^-1 &  &  & 126.67 L & 28.2021 L hr\^-1 & 219.62 L & 215.97 L & 0.0 hr &  &  & 7.54423 mg L\^-1 & 0.0349675 hr L\^-1 & 0.0358158 hr L\^-1 & 2.3683 &  & 0.0354583 hr L\^-1 & 1.38418 &  & 515.108 mg hr\^2 L\^-1 & 563.443 mg hr\^2 L\^-1 & 8.57842 & 543.076 mg hr\^2 L\^-1 & 5.14986 & 7.36552 hr & 7.86585 hr & 7.65794 hr & 49 & 0.351073 & 0.269957 & 0.592514 & 10 & 3.82268 & 19.5 hr & 24.0 hr & 1.44543 & EV \\
+	15 & 8 & 1 & 2000 mg & -0.398021 hr\^-1 & -1.74148 hr & 0.5 hr &  & 34.8087 mg L\^-1 & 0.0 mg L\^-1 & 0.211187 mg L\^-1 & 0.212098 mg L\^-1 & 162.685 mg hr L\^-1 & 24.0 hr & 162.154 mg hr L\^-1 & -30.9882 L & 12.3339 L hr\^-1 &  &  & 162.152 mg hr L\^-1 & -30.9886 L & 12.3341 L hr\^-1 &  &  & 55.0222 L & 55.02 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 34.8087 mg L\^-1 & 0.0813423 hr L\^-1 & 0.081077 hr L\^-1 & -0.327214 & 0.0 & 0.0810759 hr L\^-1 & -0.32863 & 0.0 & 734.776 mg hr\^2 L\^-1 & 723.375 mg hr\^2 L\^-1 & -1.5761 & 723.326 mg hr\^2 L\^-1 & -1.58301 & 4.51657 hr & 4.46103 hr & 4.46079 hr & 49 & 0.998599 & 0.997198 & 0.999299 & 3 & -11.1032 & 23.0 hr & 24.0 hr & -0.574223 & IVBolus \\
+	16 & 8 & 2 & 2000 mg & 0.469235 hr\^-1 & 1.47719 hr & 4.0 hr & 0.0 hr & 6.88362 mg L\^-1 &  & 0.177772 mg L\^-1 & 0.102511 mg L\^-1 & 68.4222 mg hr L\^-1 & 24.0 hr & 68.801 mg hr L\^-1 &  &  & 61.9505 L & 29.0693 L hr\^-1 & 68.6407 mg hr L\^-1 &  &  & 62.0952 L & 29.1372 L hr\^-1 & 217.58 L & 216.819 L & 0.0 hr &  &  & 6.88362 mg L\^-1 & 0.0342111 hr L\^-1 & 0.0344005 hr L\^-1 & 0.550652 &  & 0.0343203 hr L\^-1 & 0.318271 &  & 505.067 mg hr\^2 L\^-1 & 514.967 mg hr\^2 L\^-1 & 1.92243 & 510.776 mg hr\^2 L\^-1 & 1.11765 & 7.38163 hr & 7.48488 hr & 7.44131 hr & 49 & 0.563089 & 0.475707 & 0.750393 & 7 & 8.98385 & 21.0 hr & 24.0 hr & 2.03089 & EV \\
+	17 & 9 & 1 & 2000 mg & 0.546107 hr\^-1 & 1.26925 hr & 0.5 hr &  & 34.3243 mg L\^-1 & 0.0 mg L\^-1 & 0.228944 mg L\^-1 & 0.235805 mg L\^-1 & 162.797 mg hr L\^-1 & 24.0 hr & 163.216 mg hr L\^-1 & 22.4382 L & 12.2537 L hr\^-1 &  &  & 163.229 mg hr L\^-1 & 22.4365 L & 12.2527 L hr\^-1 &  &  & 56.3956 L & 56.4112 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 34.3243 mg L\^-1 & 0.0813986 hr L\^-1 & 0.0816082 hr L\^-1 & 0.256855 & 0.0 & 0.0816145 hr L\^-1 & 0.264532 & 0.0 & 740.348 mg hr\^2 L\^-1 & 751.177 mg hr\^2 L\^-1 & 1.44163 & 751.502 mg hr\^2 L\^-1 & 1.48419 & 4.54767 hr & 4.60234 hr & 4.60397 hr & 49 & 0.966108 & 0.932216 & 0.982908 & 3 & 11.6618 & 23.0 hr & 24.0 hr & 0.787865 & IVBolus \\
+	18 & 9 & 2 & 2000 mg & -0.427622 hr\^-1 & -1.62093 hr & 3.5 hr & 0.0 hr & 7.09659 mg L\^-1 &  & 0.169045 mg L\^-1 & 0.321591 mg L\^-1 & 68.226 mg hr L\^-1 & 24.0 hr & 67.8307 mg hr L\^-1 &  &  & -68.9515 L & 29.4852 L hr\^-1 & 67.474 mg hr L\^-1 &  &  & -69.316 L & 29.6411 L hr\^-1 & 212.862 L & 211.724 L & 0.0 hr &  &  & 7.09659 mg L\^-1 & 0.034113 hr L\^-1 & 0.0339153 hr L\^-1 & -0.582795 &  & 0.033737 hr L\^-1 & -1.11457 &  & 498.253 mg hr\^2 L\^-1 & 489.69 mg hr\^2 L\^-1 & -1.74868 & 481.962 mg hr\^2 L\^-1 & -3.38002 & 7.30297 hr & 7.21929 hr & 7.14294 hr & 49 & 0.441081 & 0.329297 & 0.664139 & 7 & -11.3974 & 21.0 hr & 24.0 hr & -1.85079 & EV \\
+	19 & 10 & 1 & 2000 mg & 0.395587 hr\^-1 & 1.7522 hr & 0.5 hr &  & 35.5865 mg L\^-1 & 0.0 mg L\^-1 & 0.0761928 mg L\^-1 & 0.0913066 mg L\^-1 & 162.496 mg hr L\^-1 & 24.0 hr & 162.689 mg hr L\^-1 & 31.0765 L & 12.2934 L hr\^-1 &  &  & 162.727 mg hr L\^-1 & 31.0692 L & 12.2905 L hr\^-1 &  &  & 55.3115 L & 55.3621 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 35.5865 mg L\^-1 & 0.081248 hr L\^-1 & 0.0813443 hr L\^-1 & 0.11839 & 0.0 & 0.0813634 hr L\^-1 & 0.141841 & 0.0 & 726.871 mg hr\^2 L\^-1 & 731.98 mg hr\^2 L\^-1 & 0.698033 & 732.994 mg hr\^2 L\^-1 & 0.835339 & 4.47316 hr & 4.49927 hr & 4.50445 hr & 49 & 0.743446 & 0.711377 & 0.862233 & 10 & 7.10054 & 19.5 hr & 24.0 hr & 2.5682 & IVBolus \\
+	20 & 10 & 2 & 2000 mg & 0.321217 hr\^-1 & 2.15788 hr & 3.0 hr & 0.0 hr & 6.92304 mg L\^-1 &  & 0.267132 mg L\^-1 & 0.181884 mg L\^-1 & 68.1991 mg hr L\^-1 & 24.0 hr & 69.0308 mg hr L\^-1 &  &  & 90.1964 L & 28.9726 L hr\^-1 & 68.7654 mg hr L\^-1 &  &  & 90.5445 L & 29.0844 L hr\^-1 & 225.03 L & 223.727 L & 0.0 hr &  &  & 6.92304 mg L\^-1 & 0.0340996 hr L\^-1 & 0.0345154 hr L\^-1 & 1.20472 &  & 0.0343827 hr L\^-1 & 0.823428 &  & 513.614 mg hr\^2 L\^-1 & 536.162 mg hr\^2 L\^-1 & 4.20545 & 528.967 mg hr\^2 L\^-1 & 2.90233 & 7.5311 hr & 7.767 hr & 7.69234 hr & 49 & 0.660066 & 0.617574 & 0.812444 & 10 & 6.00481 & 19.5 hr & 24.0 hr & 2.08538 & EV \\
+	21 & 11 & 1 & 2000 mg & 0.453486 hr\^-1 & 1.52849 hr & 0.5 hr &  & 36.7097 mg L\^-1 & 0.0 mg L\^-1 & 0.0306425 mg L\^-1 & 0.0874434 mg L\^-1 & 162.913 mg hr L\^-1 & 24.0 hr & 162.98 mg hr L\^-1 & 27.0602 L & 12.2714 L hr\^-1 &  &  & 163.106 mg hr L\^-1 & 27.0394 L & 12.262 L hr\^-1 &  &  & 55.4248 L & 55.5865 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 36.7097 mg L\^-1 & 0.0814564 hr L\^-1 & 0.0814902 hr L\^-1 & 0.0414596 & 0.0 & 0.0815529 hr L\^-1 & 0.118221 & 0.0 & 734.343 mg hr\^2 L\^-1 & 736.114 mg hr\^2 L\^-1 & 0.240548 & 739.396 mg hr\^2 L\^-1 & 0.683395 & 4.50758 hr & 4.51658 hr & 4.53323 hr & 49 & 0.604084 & 0.554595 & 0.777228 & 10 & 8.4469 & 19.5 hr & 24.0 hr & 2.94409 & IVBolus \\
+	22 & 11 & 2 & 2000 mg & -1.12245 hr\^-1 & -0.617532 hr & 4.0 hr & 0.0 hr & 6.85801 mg L\^-1 &  & 0.517937 mg L\^-1 & 0.552237 mg L\^-1 & 67.0183 mg hr L\^-1 & 24.0 hr & 66.5569 mg hr L\^-1 &  &  & -26.7714 L & 30.0495 L hr\^-1 & 66.5264 mg hr L\^-1 &  &  & -26.7837 L & 30.0633 L hr\^-1 & 221.325 L & 221.21 L & 0.0 hr &  &  & 6.85801 mg L\^-1 & 0.0335092 hr L\^-1 & 0.0332785 hr L\^-1 & -0.693295 &  & 0.0332632 hr L\^-1 & -0.739548 &  & 500.88 mg hr\^2 L\^-1 & 490.216 mg hr\^2 L\^-1 & -2.17524 & 489.51 mg hr\^2 L\^-1 & -2.32264 & 7.47377 hr & 7.36537 hr & 7.35814 hr & 49 & 0.962312 & 0.924623 & 0.980975 & 3 & -27.5325 & 23.0 hr & 24.0 hr & -1.61935 & EV \\
+	23 & 12 & 1 & 2000 mg & -1.41452 hr\^-1 & -0.490024 hr & 0.5 hr &  & 34.72 mg L\^-1 & 0.0 mg L\^-1 & 0.238417 mg L\^-1 & 0.353049 mg L\^-1 & 164.579 mg hr L\^-1 & 24.0 hr & 164.411 mg hr L\^-1 & -8.59985 L & 12.1646 L hr\^-1 &  &  & 164.33 mg hr L\^-1 & -8.60409 L & 12.1706 L hr\^-1 &  &  & 54.1664 L & 54.0801 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 34.72 mg L\^-1 & 0.0822897 hr L\^-1 & 0.0822055 hr L\^-1 & -0.102517 & 0.0 & 0.0821649 hr L\^-1 & -0.151883 & 0.0 & 736.011 mg hr\^2 L\^-1 & 732.085 mg hr\^2 L\^-1 & -0.536281 & 730.198 mg hr\^2 L\^-1 & -0.796183 & 4.47207 hr & 4.45278 hr & 4.44349 hr & 49 & 0.519655 & 0.0393099 & 0.720871 & 3 & -34.9896 & 23.0 hr & 24.0 hr & -2.04072 & IVBolus \\
+	24 & 12 & 2 & 2000 mg & 0.324041 hr\^-1 & 2.13907 hr & 4.0 hr & 0.0 hr & 7.18473 mg L\^-1 &  & 0.357831 mg L\^-1 & 0.177189 mg L\^-1 & 68.0837 mg hr L\^-1 & 24.0 hr & 69.188 mg hr L\^-1 &  &  & 89.2069 L & 28.9067 L hr\^-1 & 68.6306 mg hr L\^-1 &  &  & 89.9316 L & 29.1415 L hr\^-1 & 221.546 L & 218.748 L & 0.0 hr &  &  & 7.18473 mg L\^-1 & 0.0340419 hr L\^-1 & 0.034594 hr L\^-1 & 1.59605 &  & 0.0343153 hr L\^-1 & 0.796743 &  & 500.358 mg hr\^2 L\^-1 & 530.268 mg hr\^2 L\^-1 & 5.64062 & 515.169 mg hr\^2 L\^-1 & 2.87496 & 7.34916 hr & 7.66417 hr & 7.50641 hr & 49 & 0.602603 & 0.552928 & 0.776275 & 10 & 6.04645 & 19.5 hr & 24.0 hr & 2.10372 & EV \\
+	25 & 13 & 1 & 2000 mg & 0.460286 hr\^-1 & 1.5059 hr & 0.5 hr &  & 36.1934 mg L\^-1 & 0.0 mg L\^-1 & 0.165053 mg L\^-1 & 0.0579317 mg L\^-1 & 160.217 mg hr L\^-1 & 24.0 hr & 160.576 mg hr L\^-1 & 27.0596 L & 12.4552 L hr\^-1 &  &  & 160.343 mg hr L\^-1 & 27.0989 L & 12.4732 L hr\^-1 &  &  & 57.13 L & 56.8221 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 36.1934 mg L\^-1 & 0.0801087 hr L\^-1 & 0.080288 hr L\^-1 & 0.223313 & 0.0 & 0.0801716 hr L\^-1 & 0.0784942 & 0.0 & 727.153 mg hr\^2 L\^-1 & 736.538 mg hr\^2 L\^-1 & 1.27423 & 730.447 mg hr\^2 L\^-1 & 0.450968 & 4.53854 hr & 4.58685 hr & 4.55552 hr & 49 & 0.222895 & 0.125757 & 0.472118 & 10 & 8.19838 & 19.5 hr & 24.0 hr & 2.98824 & IVBolus \\
+	26 & 13 & 2 & 2000 mg & 0.232188 hr\^-1 & 2.98529 hr & 4.0 hr & 0.0 hr & 7.40196 mg L\^-1 &  & 0.249842 mg L\^-1 & 0.262856 mg L\^-1 & 68.4954 mg hr L\^-1 & 24.0 hr & 69.5715 mg hr L\^-1 &  &  & 123.811 L & 28.7474 L hr\^-1 & 69.6275 mg hr L\^-1 &  &  & 123.712 L & 28.7243 L hr\^-1 & 223.513 L & 223.807 L & 0.0 hr &  &  & 7.40196 mg L\^-1 & 0.0342477 hr L\^-1 & 0.0347857 hr L\^-1 & 1.54666 &  & 0.0348138 hr L\^-1 & 1.62592 &  & 510.463 mg hr\^2 L\^-1 & 540.922 mg hr\^2 L\^-1 & 5.63098 & 542.508 mg hr\^2 L\^-1 & 5.90697 & 7.45251 hr & 7.77505 hr & 7.79158 hr & 49 & 0.579604 & 0.509539 & 0.761318 & 8 & 4.23635 & 20.5 hr & 24.0 hr & 1.17242 & EV \\
+	27 & 14 & 1 & 2000 mg & -0.846082 hr\^-1 & -0.819244 hr & 0.5 hr &  & 35.098 mg L\^-1 & 0.0 mg L\^-1 & 0.496844 mg L\^-1 & 0.367814 mg L\^-1 & 163.966 mg hr L\^-1 & 24.0 hr & 163.379 mg hr L\^-1 & -14.4684 L & 12.2415 L hr\^-1 &  &  & 163.531 mg hr L\^-1 & -14.455 L & 12.2301 L hr\^-1 &  &  & 54.1277 L & 54.287 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 35.098 mg L\^-1 & 0.0819831 hr L\^-1 & 0.0816894 hr L\^-1 & -0.359428 & 0.0 & 0.0817657 hr L\^-1 & -0.265837 & 0.0 & 735.805 mg hr\^2 L\^-1 & 722.406 mg hr\^2 L\^-1 & -1.85484 & 725.886 mg hr\^2 L\^-1 & -1.36656 & 4.48755 hr & 4.42166 hr & 4.43882 hr & 49 & 0.465966 & 0.287954 & 0.682617 & 5 & -21.3061 & 22.0 hr & 24.0 hr & -2.44128 & IVBolus \\
+	28 & 14 & 2 & 2000 mg & 0.187034 hr\^-1 & 3.70599 hr & 3.0 hr & 0.0 hr & 7.19744 mg L\^-1 &  & 0.458332 mg L\^-1 & 0.293804 mg L\^-1 & 69.6355 mg hr L\^-1 & 24.0 hr & 72.086 mg hr L\^-1 &  &  & 148.34 L & 27.7446 L hr\^-1 & 71.2063 mg hr L\^-1 &  &  & 150.172 L & 28.0874 L hr\^-1 & 228.934 L & 224.442 L & 0.0 hr &  &  & 7.19744 mg L\^-1 & 0.0348177 hr L\^-1 & 0.036043 hr L\^-1 & 3.39945 &  & 0.0356032 hr L\^-1 & 2.20606 &  & 522.9 mg hr\^2 L\^-1 & 594.815 mg hr\^2 L\^-1 & 12.0903 & 569.0 mg hr\^2 L\^-1 & 8.10182 & 7.50911 hr & 8.25146 hr & 7.99086 hr & 49 & 0.359421 & 0.279348 & 0.599517 & 10 & 3.26398 & 19.5 hr & 24.0 hr & 1.21425 & EV \\
+	29 & 15 & 1 & 2000 mg & 0.671926 hr\^-1 & 1.03158 hr & 0.5 hr &  & 35.706 mg L\^-1 & 0.0 mg L\^-1 & 0.160481 mg L\^-1 & 0.138733 mg L\^-1 & 163.177 mg hr L\^-1 & 24.0 hr & 163.416 mg hr L\^-1 & 18.2144 L & 12.2387 L hr\^-1 &  &  & 163.384 mg hr L\^-1 & 18.218 L & 12.2411 L hr\^-1 &  &  & 56.1341 L & 56.0946 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 35.706 mg L\^-1 & 0.0815885 hr L\^-1 & 0.0817079 hr L\^-1 & 0.146153 & 0.0 & 0.0816918 hr L\^-1 & 0.126372 & 0.0 & 743.437 mg hr\^2 L\^-1 & 749.524 mg hr\^2 L\^-1 & 0.81219 & 748.699 mg hr\^2 L\^-1 & 0.702899 & 4.55601 hr & 4.58661 hr & 4.58246 hr & 49 & 0.727153 & 0.590729 & 0.852733 & 4 & 14.151 & 22.5 hr & 24.0 hr & 1.45408 & IVBolus \\
+	30 & 15 & 2 & 2000 mg & -0.310684 hr\^-1 & -2.23103 hr & 4.0 hr & 0.0 hr & 6.82905 mg L\^-1 &  & 0.348312 mg L\^-1 & 0.355721 mg L\^-1 & 68.1921 mg hr L\^-1 & 24.0 hr & 67.071 mg hr L\^-1 &  &  & -95.9789 L & 29.8191 L hr\^-1 & 67.0472 mg hr L\^-1 &  &  & -96.013 L & 29.8297 L hr\^-1 & 212.922 L & 212.853 L & 0.0 hr &  &  & 6.82905 mg L\^-1 & 0.0340961 hr L\^-1 & 0.0335355 hr L\^-1 & -1.67153 &  & 0.0335236 hr L\^-1 & -1.70769 &  & 502.216 mg hr\^2 L\^-1 & 478.918 mg hr\^2 L\^-1 & -4.86476 & 478.422 mg hr\^2 L\^-1 & -4.97337 & 7.36472 hr & 7.14046 hr & 7.13561 hr & 49 & 0.598196 & 0.397294 & 0.773431 & 4 & -8.49003 & 22.5 hr & 24.0 hr & -0.672334 & EV \\
+	31 & 16 & 1 & 2000 mg & 0.796512 hr\^-1 & 0.870229 hr & 0.5 hr &  & 36.6457 mg L\^-1 & 0.0 mg L\^-1 & 0.0493193 mg L\^-1 & 0.0483671 mg L\^-1 & 163.015 mg hr L\^-1 & 24.0 hr & 163.077 mg hr L\^-1 & 15.3973 L & 12.2642 L hr\^-1 &  &  & 163.076 mg hr L\^-1 & 15.3975 L & 12.2643 L hr\^-1 &  &  & 55.0355 L & 55.034 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 36.6457 mg L\^-1 & 0.0815074 hr L\^-1 & 0.0815384 hr L\^-1 & 0.0379693 & 0.0 & 0.0815378 hr L\^-1 & 0.0372365 & 0.0 & 730.243 mg hr\^2 L\^-1 & 731.807 mg hr\^2 L\^-1 & 0.21369 & 731.777 mg hr\^2 L\^-1 & 0.209573 & 4.47961 hr & 4.4875 hr & 4.48735 hr & 49 & 0.878085 & 0.857766 & 0.937062 & 8 & 16.0873 & 20.5 hr & 24.0 hr & 4.02193 & IVBolus \\
+	32 & 16 & 2 & 2000 mg & 1.30398 hr\^-1 & 0.531565 hr & 4.0 hr & 0.0 hr & 6.79649 mg L\^-1 &  & 0.100932 mg L\^-1 & 0.120328 mg L\^-1 & 67.6805 mg hr L\^-1 & 24.0 hr & 67.7579 mg hr L\^-1 &  &  & 22.636 L & 29.5168 L hr\^-1 & 67.7728 mg hr L\^-1 &  &  & 22.6311 L & 29.5104 L hr\^-1 & 216.092 L & 216.158 L & 0.0 hr &  &  & 6.79649 mg L\^-1 & 0.0338403 hr L\^-1 & 0.033879 hr L\^-1 & 0.114235 &  & 0.0338864 hr L\^-1 & 0.136157 &  & 494.137 mg hr\^2 L\^-1 & 496.054 mg hr\^2 L\^-1 & 0.386456 & 496.423 mg hr\^2 L\^-1 & 0.46038 & 7.30102 hr & 7.32098 hr & 7.32481 hr & 49 & 0.82098 & 0.641959 & 0.906079 & 3 & 29.1779 & 23.0 hr & 24.0 hr & 1.88124 & EV \\
+	33 & 17 & 1 & 2000 mg & 0.420147 hr\^-1 & 1.64977 hr & 1.0 hr &  & 32.9743 mg L\^-1 & 0.0 mg L\^-1 & 0.134415 mg L\^-1 & 0.158693 mg L\^-1 & 161.263 mg hr L\^-1 & 24.0 hr & 161.583 mg hr L\^-1 & 29.4601 L & 12.3776 L hr\^-1 &  &  & 161.641 mg hr L\^-1 & 29.4496 L & 12.3731 L hr\^-1 &  &  & 56.8078 L & 56.8839 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 32.9743 mg L\^-1 & 0.0806315 hr L\^-1 & 0.0807914 hr L\^-1 & 0.197993 & 0.0 & 0.0808203 hr L\^-1 & 0.233672 & 0.0 & 733.158 mg hr\^2 L\^-1 & 741.598 mg hr\^2 L\^-1 & 1.13803 & 743.122 mg hr\^2 L\^-1 & 1.34083 & 4.54635 hr & 4.58958 hr & 4.59737 hr & 49 & 0.653968 & 0.480952 & 0.808683 & 4 & 8.24273 & 22.5 hr & 24.0 hr & 0.909215 & IVBolus \\
+	34 & 17 & 2 & 2000 mg & 0.418549 hr\^-1 & 1.65607 hr & 3.5 hr & 0.0 hr & 6.81586 mg L\^-1 &  & 0.293644 mg L\^-1 & 0.268789 mg L\^-1 & 67.4557 mg hr L\^-1 & 24.0 hr & 68.1573 mg hr L\^-1 &  &  & 70.1087 L & 29.3439 L hr\^-1 & 68.0979 mg hr L\^-1 &  &  & 70.1698 L & 29.3695 L hr\^-1 & 221.273 L & 220.983 L & 0.0 hr &  &  & 6.81586 mg L\^-1 & 0.0337279 hr L\^-1 & 0.0340787 hr L\^-1 & 1.02935 &  & 0.034049 hr L\^-1 & 0.943042 &  & 495.438 mg hr\^2 L\^-1 & 513.952 mg hr\^2 L\^-1 & 3.6023 & 512.385 mg hr\^2 L\^-1 & 3.30747 & 7.34463 hr & 7.54067 hr & 7.52423 hr & 49 & 0.651114 & 0.302228 & 0.806916 & 3 & 8.73134 & 23.0 hr & 24.0 hr & 0.603838 & EV \\
+	35 & 18 & 1 & 2000 mg & 0.805593 hr\^-1 & 0.860419 hr & 0.5 hr &  & 37.0911 mg L\^-1 & 0.0 mg L\^-1 & 0.161793 mg L\^-1 & 0.161694 mg L\^-1 & 164.504 mg hr L\^-1 & 24.0 hr & 164.705 mg hr L\^-1 & 15.0733 L & 12.1429 L hr\^-1 &  &  & 164.705 mg hr L\^-1 & 15.0733 L & 12.1429 L hr\^-1 &  &  & 54.765 L & 54.7648 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 37.0911 mg L\^-1 & 0.0822522 hr L\^-1 & 0.0823526 hr L\^-1 & 0.121937 & 0.0 & 0.0823526 hr L\^-1 & 0.121863 & 0.0 & 737.758 mg hr\^2 L\^-1 & 742.827 mg hr\^2 L\^-1 & 0.682445 & 742.824 mg hr\^2 L\^-1 & 0.682033 & 4.48473 hr & 4.51004 hr & 4.51002 hr & 49 & 0.999993 & 0.999986 & 0.999997 & 3 & 17.5122 & 23.0 hr & 24.0 hr & 1.16222 & IVBolus \\
+	36 & 18 & 2 & 2000 mg & -0.39457 hr\^-1 & -1.75671 hr & 3.5 hr & 0.0 hr & 6.82426 mg L\^-1 &  & 0.425879 mg L\^-1 & 0.383019 mg L\^-1 & 68.3944 mg hr L\^-1 & 24.0 hr & 67.3151 mg hr L\^-1 &  &  & -75.2997 L & 29.711 L hr\^-1 & 67.4237 mg hr L\^-1 &  &  & -75.1784 L & 29.6632 L hr\^-1 & 215.722 L & 216.053 L & 0.0 hr &  &  & 6.82426 mg L\^-1 & 0.0341972 hr L\^-1 & 0.0336575 hr L\^-1 & -1.60343 &  & 0.0337119 hr L\^-1 & -1.43974 &  & 511.921 mg hr\^2 L\^-1 & 488.752 mg hr\^2 L\^-1 & -4.74041 & 491.084 mg hr\^2 L\^-1 & -4.2431 & 7.48484 hr & 7.26067 hr & 7.28355 hr & 49 & 0.532043 & 0.298065 & 0.729413 & 4 & -10.4294 & 22.5 hr & 24.0 hr & -0.853867 & EV \\
+	37 & 19 & 1 & 2000 mg & -0.426415 hr\^-1 & -1.62552 hr & 0.5 hr &  & 35.0311 mg L\^-1 & 0.0 mg L\^-1 & 0.388273 mg L\^-1 & 0.324861 mg L\^-1 & 161.852 mg hr L\^-1 & 24.0 hr & 160.941 mg hr L\^-1 & -29.1428 L & 12.4269 L hr\^-1 &  &  & 161.09 mg hr L\^-1 & -29.1159 L & 12.4154 L hr\^-1 &  &  & 55.6302 L & 55.7757 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 35.0311 mg L\^-1 & 0.0809258 hr L\^-1 & 0.0804706 hr L\^-1 & -0.565768 & 0.0 & 0.0805449 hr L\^-1 & -0.472931 & 0.0 & 740.186 mg hr\^2 L\^-1 & 720.468 mg hr\^2 L\^-1 & -2.73682 & 723.688 mg hr\^2 L\^-1 & -2.27966 & 4.57323 hr & 4.47659 hr & 4.49245 hr & 49 & 0.215698 & 0.0588376 & 0.464433 & 7 & -11.3583 & 21.0 hr & 24.0 hr & -1.84556 & IVBolus \\
+	38 & 19 & 2 & 2000 mg & 0.494741 hr\^-1 & 1.40103 hr & 3.0 hr & 0.0 hr & 7.51026 mg L\^-1 &  & 0.126792 mg L\^-1 & 0.0680664 mg L\^-1 & 69.2667 mg hr L\^-1 & 24.0 hr & 69.523 mg hr L\^-1 &  &  & 58.1465 L & 28.7675 L hr\^-1 & 69.4043 mg hr L\^-1 &  &  & 58.246 L & 28.8167 L hr\^-1 & 211.031 L & 210.471 L & 0.0 hr &  &  & 7.51026 mg L\^-1 & 0.0346334 hr L\^-1 & 0.0347615 hr L\^-1 & 0.368626 &  & 0.0347021 hr L\^-1 & 0.198229 &  & 503.335 mg hr\^2 L\^-1 & 510.004 mg hr\^2 L\^-1 & 1.30758 & 506.915 mg hr\^2 L\^-1 & 0.706233 & 7.26662 hr & 7.33575 hr & 7.3038 hr & 49 & 0.463393 & 0.396317 & 0.68073 & 10 & 9.18651 & 19.5 hr & 24.0 hr & 3.21192 & EV \\
+	39 & 20 & 1 & 2000 mg & 0.634253 hr\^-1 & 1.09286 hr & 0.5 hr &  & 33.8563 mg L\^-1 & 0.0 mg L\^-1 & 0.119273 mg L\^-1 & 0.0474916 mg L\^-1 & 163.759 mg hr L\^-1 & 24.0 hr & 163.948 mg hr L\^-1 & 19.2337 L & 12.199 L hr\^-1 &  &  & 163.834 mg hr L\^-1 & 19.247 L & 12.2075 L hr\^-1 &  &  & 55.665 L & 55.5262 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 33.8563 mg L\^-1 & 0.0818797 hr L\^-1 & 0.0819738 hr L\^-1 & 0.114703 & 0.0 & 0.0819172 hr L\^-1 & 0.0457035 & 0.0 & 743.294 mg hr\^2 L\^-1 & 748.104 mg hr\^2 L\^-1 & 0.642929 & 745.209 mg hr\^2 L\^-1 & 0.256992 & 4.53894 hr & 4.56307 hr & 4.54855 hr & 49 & 0.252768 & 0.159364 & 0.502761 & 10 & 12.1749 & 19.5 hr & 24.0 hr & 4.11765 & IVBolus \\
+	40 & 20 & 2 & 2000 mg & 0.521067 hr\^-1 & 1.33025 hr & 3.0 hr & 0.0 hr & 7.04279 mg L\^-1 &  & 0.218554 mg L\^-1 & 0.111326 mg L\^-1 & 69.1756 mg hr L\^-1 & 24.0 hr & 69.595 mg hr L\^-1 &  &  & 55.1516 L & 28.7377 L hr\^-1 & 69.3892 mg hr L\^-1 &  &  & 55.3152 L & 28.8229 L hr\^-1 & 216.323 L & 215.393 L & 0.0 hr &  &  & 7.04279 mg L\^-1 & 0.0345878 hr L\^-1 & 0.0347975 hr L\^-1 & 0.602679 &  & 0.0346946 hr L\^-1 & 0.307902 &  & 513.006 mg hr\^2 L\^-1 & 523.877 mg hr\^2 L\^-1 & 2.07518 & 518.543 mg hr\^2 L\^-1 & 1.06792 & 7.41599 hr & 7.52751 hr & 7.47296 hr & 49 & 0.467296 & 0.391196 & 0.683591 & 9 & 10.3103 & 20.0 hr & 24.0 hr & 3.00696 & EV \\
+	41 & 21 & 1 & 2000 mg & -0.725528 hr\^-1 & -0.955369 hr & 0.5 hr &  & 33.7883 mg L\^-1 & 0.0 mg L\^-1 & 0.268321 mg L\^-1 & 0.278277 mg L\^-1 & 159.881 mg hr L\^-1 & 24.0 hr & 159.512 mg hr L\^-1 & -17.2816 L & 12.5383 L hr\^-1 &  &  & 159.498 mg hr L\^-1 & -17.2831 L & 12.5393 L hr\^-1 &  &  & 57.0357 L & 57.0212 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 33.7883 mg L\^-1 & 0.0799407 hr L\^-1 & 0.0797558 hr L\^-1 & -0.23185 & 0.0 & 0.079749 hr L\^-1 & -0.240474 & 0.0 & 733.974 mg hr\^2 L\^-1 & 725.608 mg hr\^2 L\^-1 & -1.15298 & 725.297 mg hr\^2 L\^-1 & -1.19628 & 4.59074 hr & 4.54893 hr & 4.54738 hr & 49 & 0.970631 & 0.941262 & 0.985206 & 3 & -18.6918 & 23.0 hr & 24.0 hr & -1.04672 & IVBolus \\
+	42 & 21 & 2 & 2000 mg & 0.240475 hr\^-1 & 2.88241 hr & 4.0 hr & 0.0 hr & 6.82091 mg L\^-1 &  & 0.148884 mg L\^-1 & 0.199535 mg L\^-1 & 68.3122 mg hr L\^-1 & 24.0 hr & 68.9313 mg hr L\^-1 &  &  & 120.655 L & 29.0144 L hr\^-1 & 69.1419 mg hr L\^-1 &  &  & 120.287 L & 28.926 L hr\^-1 & 220.479 L & 221.619 L & 0.0 hr &  &  & 6.82091 mg L\^-1 & 0.0341561 hr L\^-1 & 0.0344656 hr L\^-1 & 0.898177 &  & 0.034571 hr L\^-1 & 1.20008 &  & 506.372 mg hr\^2 L\^-1 & 523.806 mg hr\^2 L\^-1 & 3.32826 & 529.737 mg hr\^2 L\^-1 & 4.41061 & 7.41262 hr & 7.59895 hr & 7.66158 hr & 49 & 0.321975 & 0.225115 & 0.567429 & 9 & 4.15963 & 20.0 hr & 24.0 hr & 1.38773 & EV \\
+	43 & 22 & 1 & 2000 mg & 0.456947 hr\^-1 & 1.51691 hr & 0.5 hr &  & 37.3731 mg L\^-1 & 0.0 mg L\^-1 & 0.273211 mg L\^-1 & 0.0708864 mg L\^-1 & 164.178 mg hr L\^-1 & 24.0 hr & 164.776 mg hr L\^-1 & 26.5626 L & 12.1377 L hr\^-1 &  &  & 164.333 mg hr L\^-1 & 26.6342 L & 12.1704 L hr\^-1 &  &  & 55.6357 L & 55.0771 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 37.3731 mg L\^-1 & 0.0820888 hr L\^-1 & 0.0823878 hr L\^-1 & 0.36286 & 0.0 & 0.0821664 hr L\^-1 & 0.0944002 & 0.0 & 739.623 mg hr\^2 L\^-1 & 755.281 mg hr\^2 L\^-1 & 2.07316 & 743.686 mg hr\^2 L\^-1 & 0.546282 & 4.50502 hr & 4.5837 hr & 4.52549 hr & 49 & 0.273521 & 0.182711 & 0.522992 & 10 & 8.32005 & 19.5 hr & 24.0 hr & 2.96656 & IVBolus \\
+	44 & 22 & 2 & 2000 mg & 1.61075 hr\^-1 & 0.430324 hr & 3.5 hr & 0.0 hr & 6.66956 mg L\^-1 &  & 0.0914829 mg L\^-1 & 0.120956 mg L\^-1 & 67.579 mg hr L\^-1 & 24.0 hr & 67.6358 mg hr L\^-1 &  &  & 18.3579 L & 29.5701 L hr\^-1 & 67.6541 mg hr L\^-1 &  &  & 18.353 L & 29.5621 L hr\^-1 & 220.596 L & 220.673 L & 0.0 hr &  &  & 6.66956 mg L\^-1 & 0.0337895 hr L\^-1 & 0.0338179 hr L\^-1 & 0.0839718 &  & 0.0338271 hr L\^-1 & 0.110996 &  & 503.17 mg hr\^2 L\^-1 & 504.569 mg hr\^2 L\^-1 & 0.277136 & 505.019 mg hr\^2 L\^-1 & 0.366096 & 7.44566 hr & 7.46008 hr & 7.46472 hr & 49 & 0.734892 & 0.469784 & 0.857259 & 3 & 36.5458 & 23.0 hr & 24.0 hr & 2.32383 & EV \\
+	45 & 23 & 1 & 2000 mg & -0.556799 hr\^-1 & -1.24488 hr & 0.5 hr &  & 39.1437 mg L\^-1 & 0.0 mg L\^-1 & 0.354396 mg L\^-1 & 0.481947 mg L\^-1 & 163.119 mg hr L\^-1 & 24.0 hr & 162.483 mg hr L\^-1 & -22.1067 L & 12.309 L hr\^-1 &  &  & 162.254 mg hr L\^-1 & -22.1379 L & 12.3264 L hr\^-1 &  &  & 54.3999 L & 54.1672 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 39.1437 mg L\^-1 & 0.0815597 hr L\^-1 & 0.0812415 hr L\^-1 & -0.391727 & 0.0 & 0.081127 hr L\^-1 & -0.533465 & 0.0 & 732.231 mg hr\^2 L\^-1 & 718.098 mg hr\^2 L\^-1 & -1.96806 & 713.011 mg hr\^2 L\^-1 & -2.69548 & 4.48892 hr & 4.41953 hr & 4.39442 hr & 49 & 0.675175 & 0.621037 & 0.82169 & 8 & -14.0931 & 20.5 hr & 24.0 hr & -2.81152 & IVBolus \\
+	46 & 23 & 2 & 2000 mg & 1.13886 hr\^-1 & 0.608632 hr & 4.0 hr & 0.0 hr & 6.90102 mg L\^-1 &  & 0.0935368 mg L\^-1 & 0.0989455 mg L\^-1 & 69.4551 mg hr L\^-1 & 24.0 hr & 69.5372 mg hr L\^-1 &  &  & 25.2547 L & 28.7616 L hr\^-1 & 69.5419 mg hr L\^-1 &  &  & 25.253 L & 28.7596 L hr\^-1 & 210.956 L & 210.976 L & 0.0 hr &  &  & 6.90102 mg L\^-1 & 0.0347275 hr L\^-1 & 0.0347686 hr L\^-1 & 0.118112 &  & 0.034771 hr L\^-1 & 0.124933 &  & 507.986 mg hr\^2 L\^-1 & 510.03 mg hr\^2 L\^-1 & 0.40062 & 510.148 mg hr\^2 L\^-1 & 0.423688 & 7.31389 hr & 7.33463 hr & 7.33583 hr & 49 & 0.971593 & 0.943186 & 0.985694 & 3 & 25.0195 & 23.0 hr & 24.0 hr & 1.64303 & EV \\
+	47 & 24 & 1 & 2000 mg & -0.541663 hr\^-1 & -1.27966 hr & 0.5 hr &  & 36.4669 mg L\^-1 & 0.0 mg L\^-1 & 0.21001 mg L\^-1 & 0.279414 mg L\^-1 & 165.01 mg hr L\^-1 & 24.0 hr & 164.623 mg hr L\^-1 & -22.4291 L & 12.149 L hr\^-1 &  &  & 164.494 mg hr L\^-1 & -22.4465 L & 12.1585 L hr\^-1 &  &  & 53.9208 L & 53.7951 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 36.4669 mg L\^-1 & 0.0825052 hr L\^-1 & 0.0823113 hr L\^-1 & -0.235517 & 0.0 & 0.0822472 hr L\^-1 & -0.313594 & 0.0 & 739.233 mg hr\^2 L\^-1 & 730.643 mg hr\^2 L\^-1 & -1.17559 & 727.805 mg hr\^2 L\^-1 & -1.57019 & 4.47992 hr & 4.43829 hr & 4.42449 hr & 49 & 0.574363 & 0.361544 & 0.757867 & 4 & -14.275 & 22.5 hr & 24.0 hr & -1.17218 & IVBolus \\
+	48 & 24 & 2 & 2000 mg & -1.89488 hr\^-1 & -0.3658 hr & 3.5 hr & 0.0 hr & 6.71951 mg L\^-1 &  & 0.311371 mg L\^-1 & 0.315662 mg L\^-1 & 65.9071 mg hr L\^-1 & 24.0 hr & 65.7428 mg hr L\^-1 &  &  & -16.0546 L & 30.4216 L hr\^-1 & 65.7405 mg hr L\^-1 &  &  & -16.0552 L & 30.4226 L hr\^-1 & 219.123 L & 219.114 L & 0.0 hr &  &  & 6.71951 mg L\^-1 & 0.0329536 hr L\^-1 & 0.0328714 hr L\^-1 & -0.249947 &  & 0.0328703 hr L\^-1 & -0.2534 &  & 477.396 mg hr\^2 L\^-1 & 473.539 mg hr\^2 L\^-1 & -0.81451 & 473.485 mg hr\^2 L\^-1 & -0.825827 & 7.24346 hr & 7.20289 hr & 7.20233 hr & 49 & 0.999374 & 0.998749 & 0.999687 & 3 & -46.6302 & 23.0 hr & 24.0 hr & -2.73373 & EV \\
+\end{tabular}
+
+
+By default, the AUC and AUMC reported are observed. If predicted PK parameters are needed instead, the following code should be used:
+
+
+\begin{lstlisting}
+(*@\HLJLn{report}@*) (*@\HLJLoB{=}@*) (*@\HLJLnf{NCAReport}@*)(*@\HLJLp{(}@*)(*@\HLJLn{pop}@*)(*@\HLJLp{,}@*)(*@\HLJLn{ithdose}@*)(*@\HLJLoB{=}@*)(*@\HLJLni{1}@*)(*@\HLJLp{,}@*)(*@\HLJLn{pred}@*)(*@\HLJLoB{=}@*)(*@\HLJLkc{true}@*)(*@\HLJLp{)}@*)
+(*@\HLJLn{report}@*) (*@\HLJLoB{=}@*) (*@\HLJLn{NCA}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{to{\_}dataframe}@*)(*@\HLJLp{(}@*)(*@\HLJLn{report}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+
+\begin{tabular}{r|cccccccccccccccccccccccccccccccccccccccccccccccccccccc}
+	& id & occasion & doseamt & lambda\_z & half\_life & tmax & tlag & cmax & c0 & clast & clast\_pred & auclast & tlast & aucinf\_obs & vz\_obs & cl\_obs & vz\_f\_obs & cl\_f\_obs & aucinf\_pred & vz\_pred & cl\_pred & vz\_f\_pred & cl\_f\_pred & vss\_obs & vss\_pred & tmin & cmin & cminss & cmax\_d & auclast\_d & aucinf\_d\_obs & auc\_extrap\_obs & auc\_back\_extrap\_obs & aucinf\_d\_pred & auc\_extrap\_pred & auc\_back\_extrap\_pred & aumclast & aumcinf\_obs & aumc\_extrap\_obs & aumcinf\_pred & aumc\_extrap\_pred & mrtlast & mrtinf\_obs & mrtinf\_pred & n\_samples & rsq & rsq\_adjusted & corr\_xy & no\_points\_lambda\_z & lambda\_z\_intercept & lambda\_z\_lower & lambda\_z\_upper & span & route\\
+	\hline
+	& Int64 & Int64 & Unitful… & Unitful… & Unitful… & Unitful… & Unitful…⍰ & Unitful… & Unitful…⍰ & Unitful… & Unitful… & Unitful… & Unitful… & Unitful… & Unitful…⍰ & Unitful…⍰ & Unitful…⍰ & Unitful…⍰ & Unitful… & Unitful…⍰ & Unitful…⍰ & Unitful…⍰ & Unitful…⍰ & Unitful… & Unitful… & Unitful… & Unitful…⍰ & Unitful…⍰ & Unitful… & Unitful… & Unitful… & Float64 & Float64⍰ & Unitful… & Float64 & Float64⍰ & Unitful… & Unitful… & Float64 & Unitful… & Float64 & Unitful… & Unitful… & Unitful… & Int64 & Float64 & Float64 & Float64 & Int64 & Float64 & Unitful… & Unitful… & Float64 & String\\
+	\hline
+	1 & 1 & 1 & 2000 mg & 1.61545 hr\^-1 & 0.429073 hr & 0.5 hr &  & 37.9249 mg L\^-1 & 0.0 mg L\^-1 & 0.0864354 mg L\^-1 & 0.0900899 mg L\^-1 & 168.732 mg hr L\^-1 & 24.0 hr & 168.786 mg hr L\^-1 & 7.335 L & 11.8493 L hr\^-1 &  &  & 168.788 mg hr L\^-1 & 7.3349 L & 11.8492 L hr\^-1 &  &  & 52.3711 L & 52.3736 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 37.9249 mg L\^-1 & 0.0843661 hr L\^-1 & 0.0843929 hr L\^-1 & 0.0317002 & 0.0 & 0.084394 hr L\^-1 & 0.03304 & 0.0 & 744.673 mg hr\^2 L\^-1 & 745.99 mg hr\^2 L\^-1 & 0.176577 & 746.046 mg hr\^2 L\^-1 & 0.184029 & 4.41334 hr & 4.41975 hr & 4.42002 hr & 49 & 0.992176 & 0.984353 & 0.996081 & 3 & 36.3639 & 23.0 hr & 24.0 hr & 2.33061 & IVBolus \\
+	2 & 1 & 2 & 2000 mg & 0.370707 hr\^-1 & 1.8698 hr & 3.0 hr & 0.0 hr & 6.85944 mg L\^-1 &  & 0.299508 mg L\^-1 & 0.297129 mg L\^-1 & 67.7066 mg hr L\^-1 & 24.0 hr & 68.5145 mg hr L\^-1 &  &  & 78.7439 L & 29.1909 L hr\^-1 & 68.5081 mg hr L\^-1 &  &  & 78.7513 L & 29.1936 L hr\^-1 & 221.317 L & 221.286 L & 0.0 hr &  &  & 6.85944 mg L\^-1 & 0.0338533 hr L\^-1 & 0.0342573 hr L\^-1 & 1.17922 &  & 0.0342541 hr L\^-1 & 1.16997 &  & 497.888 mg hr\^2 L\^-1 & 519.458 mg hr\^2 L\^-1 & 4.1524 & 519.287 mg hr\^2 L\^-1 & 4.12078 & 7.35361 hr & 7.58172 hr & 7.57993 hr & 49 & 0.99448 & 0.988959 & 0.997236 & 3 & 7.68337 & 23.0 hr & 24.0 hr & 0.534817 & EV \\
+	3 & 2 & 1 & 2000 mg & -1.39186 hr\^-1 & -0.498001 hr & 0.5 hr &  & 36.9967 mg L\^-1 & 0.0 mg L\^-1 & 0.452765 mg L\^-1 & 0.46159 mg L\^-1 & 166.212 mg hr L\^-1 & 24.0 hr & 165.887 mg hr L\^-1 & -8.6621 L & 12.0564 L hr\^-1 &  &  & 165.88 mg hr L\^-1 & -8.66243 L & 12.0569 L hr\^-1 &  &  & 53.4839 L & 53.4772 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 36.9967 mg L\^-1 & 0.083106 hr L\^-1 & 0.0829434 hr L\^-1 & -0.196095 & 0.0 & 0.0829402 hr L\^-1 & -0.199925 & 0.0 & 743.469 mg hr\^2 L\^-1 & 735.896 mg hr\^2 L\^-1 & -1.02914 & 735.748 mg hr\^2 L\^-1 & -1.04941 & 4.47302 hr & 4.43613 hr & 4.43541 hr & 49 & 0.760761 & 0.641141 & 0.872216 & 4 & -34.1777 & 22.5 hr & 24.0 hr & -3.01204 & IVBolus \\
+	4 & 2 & 2 & 2000 mg & 0.334561 hr\^-1 & 2.07181 hr & 3.5 hr & 0.0 hr & 6.69229 mg L\^-1 &  & 0.25683 mg L\^-1 & 0.228571 mg L\^-1 & 68.0361 mg hr L\^-1 & 24.0 hr & 68.8038 mg hr L\^-1 &  &  & 86.8845 L & 29.0682 L hr\^-1 & 68.7193 mg hr L\^-1 &  &  & 86.9913 L & 29.1039 L hr\^-1 & 220.931 L & 220.509 L & 0.0 hr &  &  & 6.69229 mg L\^-1 & 0.0340181 hr L\^-1 & 0.0344019 hr L\^-1 & 1.11573 &  & 0.0343597 hr L\^-1 & 0.994186 &  & 502.22 mg hr\^2 L\^-1 & 522.938 mg hr\^2 L\^-1 & 3.96192 & 520.659 mg hr\^2 L\^-1 & 3.54144 & 7.38167 hr & 7.60043 hr & 7.5766 hr & 49 & 0.789386 & 0.736733 & 0.888474 & 6 & 6.55356 & 21.5 hr & 24.0 hr & 1.20667 & EV \\
+	5 & 3 & 1 & 2000 mg & 0.149502 hr\^-1 & 4.63636 hr & 0.5 hr &  & 33.4609 mg L\^-1 & 0.0 mg L\^-1 & 0.236761 mg L\^-1 & 0.13469 mg L\^-1 & 161.161 mg hr L\^-1 & 24.0 hr & 162.745 mg hr L\^-1 & 82.2004 L & 12.2892 L hr\^-1 &  &  & 162.062 mg hr L\^-1 & 82.5467 L & 12.3409 L hr\^-1 &  &  & 58.9326 L & 57.8347 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 33.4609 mg L\^-1 & 0.0805807 hr L\^-1 & 0.0813725 hr L\^-1 & 0.973094 & 0.0 & 0.0810311 hr L\^-1 & 0.555909 & 0.0 & 731.843 mg hr\^2 L\^-1 & 780.444 mg hr\^2 L\^-1 & 6.22733 & 759.491 mg hr\^2 L\^-1 & 3.64035 & 4.54106 hr & 4.7955 hr & 4.68641 hr & 49 & 0.123289 & 0.0136996 & 0.351125 & 10 & 1.58328 & 19.5 hr & 24.0 hr & 0.970589 & IVBolus \\
+	6 & 3 & 2 & 2000 mg & 0.991293 hr\^-1 & 0.699235 hr & 3.0 hr & 0.0 hr & 7.31712 mg L\^-1 &  & 0.157444 mg L\^-1 & 0.189049 mg L\^-1 & 69.1506 mg hr L\^-1 & 24.0 hr & 69.3095 mg hr L\^-1 &  &  & 29.1095 L & 28.8561 L hr\^-1 & 69.3413 mg hr L\^-1 &  &  & 29.0962 L & 28.8428 L hr\^-1 & 213.029 L & 213.165 L & 0.0 hr &  &  & 7.31712 mg L\^-1 & 0.0345753 hr L\^-1 & 0.0346547 hr L\^-1 & 0.229156 &  & 0.0346707 hr L\^-1 & 0.27503 &  & 507.702 mg hr\^2 L\^-1 & 511.674 mg hr\^2 L\^-1 & 0.776288 & 512.472 mg hr\^2 L\^-1 & 0.930668 & 7.34197 hr & 7.38246 hr & 7.39056 hr & 49 & 0.709888 & 0.419776 & 0.842549 & 3 & 22.1253 & 23.0 hr & 24.0 hr & 1.43013 & EV \\
+	7 & 4 & 1 & 2000 mg & 0.210934 hr\^-1 & 3.28608 hr & 0.5 hr &  & 36.9927 mg L\^-1 & 0.0 mg L\^-1 & 0.110836 mg L\^-1 & 0.128452 mg L\^-1 & 167.056 mg hr L\^-1 & 24.0 hr & 167.582 mg hr L\^-1 & 56.5791 L & 11.9345 L hr\^-1 &  &  & 167.665 mg hr L\^-1 & 56.5509 L & 11.9285 L hr\^-1 &  &  & 53.98 L & 54.097 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 36.9927 mg L\^-1 & 0.0835282 hr L\^-1 & 0.0837909 hr L\^-1 & 0.313549 & 0.0 & 0.0838327 hr L\^-1 & 0.363205 & 0.0 & 742.876 mg hr\^2 L\^-1 & 757.978 mg hr\^2 L\^-1 & 1.99239 & 760.378 mg hr\^2 L\^-1 & 2.30178 & 4.44686 hr & 4.52303 hr & 4.53509 hr & 49 & 0.108417 & -0.0189523 & 0.329267 & 9 & 3.01023 & 20.0 hr & 24.0 hr & 1.21726 & IVBolus \\
+	8 & 4 & 2 & 2000 mg & 0.451297 hr\^-1 & 1.5359 hr & 3.5 hr & 0.0 hr & 6.59967 mg L\^-1 &  & 0.324247 mg L\^-1 & 0.338105 mg L\^-1 & 68.0634 mg hr L\^-1 & 24.0 hr & 68.7818 mg hr L\^-1 &  &  & 64.4309 L & 29.0774 L hr\^-1 & 68.8126 mg hr L\^-1 &  &  & 64.4021 L & 29.0645 L hr\^-1 & 222.596 L & 222.737 L & 0.0 hr &  &  & 6.59967 mg L\^-1 & 0.0340317 hr L\^-1 & 0.0343909 hr L\^-1 & 1.04458 &  & 0.0344063 hr L\^-1 & 1.08874 &  & 507.708 mg hr\^2 L\^-1 & 526.544 mg hr\^2 L\^-1 & 3.5772 & 527.349 mg hr\^2 L\^-1 & 3.72439 & 7.45935 hr & 7.65527 hr & 7.66355 hr & 49 & 0.906456 & 0.812913 & 0.95208 & 3 & 9.74672 & 23.0 hr & 24.0 hr & 0.651084 & EV \\
+	9 & 5 & 1 & 2000 mg & -1.05999 hr\^-1 & -0.653919 hr & 0.5 hr &  & 38.1757 mg L\^-1 & 0.0 mg L\^-1 & 0.381914 mg L\^-1 & 0.358677 mg L\^-1 & 161.954 mg hr L\^-1 & 24.0 hr & 161.593 mg hr L\^-1 & -11.6763 L & 12.3768 L hr\^-1 &  &  & 161.615 mg hr L\^-1 & -11.6747 L & 12.3751 L hr\^-1 &  &  & 55.0015 L & 55.0253 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 38.1757 mg L\^-1 & 0.0809768 hr L\^-1 & 0.0807966 hr L\^-1 & -0.222967 & 0.0 & 0.0808076 hr L\^-1 & -0.209372 & 0.0 & 726.417 mg hr\^2 L\^-1 & 718.11 mg hr\^2 L\^-1 & -1.15683 & 718.615 mg hr\^2 L\^-1 & -1.08568 & 4.48534 hr & 4.44394 hr & 4.44646 hr & 49 & 0.959613 & 0.919226 & 0.979598 & 3 & -26.4651 & 23.0 hr & 24.0 hr & -1.52924 & IVBolus \\
+	10 & 5 & 2 & 2000 mg & -0.546462 hr\^-1 & -1.26843 hr & 6.0 hr & 0.0 hr & 6.71494 mg L\^-1 &  & 0.374652 mg L\^-1 & 0.502727 mg L\^-1 & 67.1759 mg hr L\^-1 & 24.0 hr & 66.4903 mg hr L\^-1 &  &  & -55.0442 L & 30.0796 L hr\^-1 & 66.2559 mg hr L\^-1 &  &  & -55.239 L & 30.186 L hr\^-1 & 217.065 L & 216.236 L & 0.0 hr &  &  & 6.71494 mg L\^-1 & 0.0335879 hr L\^-1 & 0.0332451 hr L\^-1 & -1.03112 &  & 0.033128 hr L\^-1 & -1.38851 &  & 495.018 mg hr\^2 L\^-1 & 479.818 mg hr\^2 L\^-1 & -3.1678 & 474.622 mg hr\^2 L\^-1 & -4.29725 & 7.36899 hr & 7.21637 hr & 7.16347 hr & 49 & 0.548889 & 0.398519 & 0.74087 & 5 & -13.8028 & 22.0 hr & 24.0 hr & -1.57676 & EV \\
+	11 & 6 & 1 & 2000 mg & -6.68631 hr\^-1 & -0.103667 hr & 0.5 hr &  & 34.2294 mg L\^-1 & 0.0 mg L\^-1 & 0.421654 mg L\^-1 & 1.10342 mg L\^-1 & 167.442 mg hr L\^-1 & 24.0 hr & 167.379 mg hr L\^-1 & -1.78707 L & 11.9489 L hr\^-1 &  &  & 167.277 mg hr L\^-1 & -1.78816 L & 11.9562 L hr\^-1 &  &  & 54.317 L & 54.2094 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 34.2294 mg L\^-1 & 0.0837212 hr L\^-1 & 0.0836897 hr L\^-1 & -0.0376763 & 0.0 & 0.0836387 hr L\^-1 & -0.0986543 & 0.0 & 762.373 mg hr\^2 L\^-1 & 760.869 mg hr\^2 L\^-1 & -0.197677 & 758.437 mg hr\^2 L\^-1 & -0.518956 & 4.55304 hr & 4.54577 hr & 4.53401 hr & 49 & 0.801029 & 0.602058 & 0.895002 & 3 & -160.373 & 23.0 hr & 24.0 hr & -9.6463 & IVBolus \\
+	12 & 6 & 2 & 2000 mg & 0.276906 hr\^-1 & 2.50318 hr & 4.0 hr & 0.0 hr & 7.31491 mg L\^-1 &  & 0.294431 mg L\^-1 & 0.191709 mg L\^-1 & 69.0235 mg hr L\^-1 & 24.0 hr & 70.0867 mg hr L\^-1 &  &  & 103.053 L & 28.5361 L hr\^-1 & 69.7158 mg hr L\^-1 &  &  & 103.602 L & 28.6879 L hr\^-1 & 220.053 L & 218.186 L & 0.0 hr &  &  & 7.31491 mg L\^-1 & 0.0345117 hr L\^-1 & 0.0350434 hr L\^-1 & 1.5171 &  & 0.0348579 hr L\^-1 & 0.993069 &  & 511.107 mg hr\^2 L\^-1 & 540.466 mg hr\^2 L\^-1 & 5.43213 & 530.223 mg hr\^2 L\^-1 & 3.60528 & 7.40483 hr & 7.71138 hr & 7.6055 hr & 49 & 0.458036 & 0.390291 & 0.676784 & 10 & 4.99398 & 19.5 hr & 24.0 hr & 1.79771 & EV \\
+	13 & 7 & 1 & 2000 mg & 0.149488 hr\^-1 & 4.63679 hr & 0.5 hr &  & 34.3054 mg L\^-1 & 0.0 mg L\^-1 & 0.325099 mg L\^-1 & 0.193339 mg L\^-1 & 163.307 mg hr L\^-1 & 24.0 hr & 165.482 mg hr L\^-1 & 80.8483 L & 12.0859 L hr\^-1 &  &  & 164.601 mg hr L\^-1 & 81.2813 L & 12.1506 L hr\^-1 &  &  & 58.4942 L & 57.1256 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 34.3054 mg L\^-1 & 0.0816537 hr L\^-1 & 0.0827411 hr L\^-1 & 1.31419 & 0.0 & 0.0823004 hr L\^-1 & 0.785741 & 0.0 & 734.171 mg hr\^2 L\^-1 & 800.913 mg hr\^2 L\^-1 & 8.33321 & 773.863 mg hr\^2 L\^-1 & 5.12905 & 4.49564 hr & 4.83988 hr & 4.70145 hr & 49 & 0.270105 & 0.178868 & 0.519716 & 10 & 1.94441 & 19.5 hr & 24.0 hr & 0.970498 & IVBolus \\
+	14 & 7 & 2 & 2000 mg & 0.222643 hr\^-1 & 3.11327 hr & 4.0 hr & 0.0 hr & 7.54423 mg L\^-1 &  & 0.377703 mg L\^-1 & 0.218549 mg L\^-1 & 69.9351 mg hr L\^-1 & 24.0 hr & 71.6315 mg hr L\^-1 &  &  & 125.406 L & 27.9207 L hr\^-1 & 70.9167 mg hr L\^-1 &  &  & 126.67 L & 28.2021 L hr\^-1 & 219.62 L & 215.97 L & 0.0 hr &  &  & 7.54423 mg L\^-1 & 0.0349675 hr L\^-1 & 0.0358158 hr L\^-1 & 2.3683 &  & 0.0354583 hr L\^-1 & 1.38418 &  & 515.108 mg hr\^2 L\^-1 & 563.443 mg hr\^2 L\^-1 & 8.57842 & 543.076 mg hr\^2 L\^-1 & 5.14986 & 7.36552 hr & 7.86585 hr & 7.65794 hr & 49 & 0.351073 & 0.269957 & 0.592514 & 10 & 3.82268 & 19.5 hr & 24.0 hr & 1.44543 & EV \\
+	15 & 8 & 1 & 2000 mg & -0.398021 hr\^-1 & -1.74148 hr & 0.5 hr &  & 34.8087 mg L\^-1 & 0.0 mg L\^-1 & 0.211187 mg L\^-1 & 0.212098 mg L\^-1 & 162.685 mg hr L\^-1 & 24.0 hr & 162.154 mg hr L\^-1 & -30.9882 L & 12.3339 L hr\^-1 &  &  & 162.152 mg hr L\^-1 & -30.9886 L & 12.3341 L hr\^-1 &  &  & 55.0222 L & 55.02 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 34.8087 mg L\^-1 & 0.0813423 hr L\^-1 & 0.081077 hr L\^-1 & -0.327214 & 0.0 & 0.0810759 hr L\^-1 & -0.32863 & 0.0 & 734.776 mg hr\^2 L\^-1 & 723.375 mg hr\^2 L\^-1 & -1.5761 & 723.326 mg hr\^2 L\^-1 & -1.58301 & 4.51657 hr & 4.46103 hr & 4.46079 hr & 49 & 0.998599 & 0.997198 & 0.999299 & 3 & -11.1032 & 23.0 hr & 24.0 hr & -0.574223 & IVBolus \\
+	16 & 8 & 2 & 2000 mg & 0.469235 hr\^-1 & 1.47719 hr & 4.0 hr & 0.0 hr & 6.88362 mg L\^-1 &  & 0.177772 mg L\^-1 & 0.102511 mg L\^-1 & 68.4222 mg hr L\^-1 & 24.0 hr & 68.801 mg hr L\^-1 &  &  & 61.9505 L & 29.0693 L hr\^-1 & 68.6407 mg hr L\^-1 &  &  & 62.0952 L & 29.1372 L hr\^-1 & 217.58 L & 216.819 L & 0.0 hr &  &  & 6.88362 mg L\^-1 & 0.0342111 hr L\^-1 & 0.0344005 hr L\^-1 & 0.550652 &  & 0.0343203 hr L\^-1 & 0.318271 &  & 505.067 mg hr\^2 L\^-1 & 514.967 mg hr\^2 L\^-1 & 1.92243 & 510.776 mg hr\^2 L\^-1 & 1.11765 & 7.38163 hr & 7.48488 hr & 7.44131 hr & 49 & 0.563089 & 0.475707 & 0.750393 & 7 & 8.98385 & 21.0 hr & 24.0 hr & 2.03089 & EV \\
+	17 & 9 & 1 & 2000 mg & 0.546107 hr\^-1 & 1.26925 hr & 0.5 hr &  & 34.3243 mg L\^-1 & 0.0 mg L\^-1 & 0.228944 mg L\^-1 & 0.235805 mg L\^-1 & 162.797 mg hr L\^-1 & 24.0 hr & 163.216 mg hr L\^-1 & 22.4382 L & 12.2537 L hr\^-1 &  &  & 163.229 mg hr L\^-1 & 22.4365 L & 12.2527 L hr\^-1 &  &  & 56.3956 L & 56.4112 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 34.3243 mg L\^-1 & 0.0813986 hr L\^-1 & 0.0816082 hr L\^-1 & 0.256855 & 0.0 & 0.0816145 hr L\^-1 & 0.264532 & 0.0 & 740.348 mg hr\^2 L\^-1 & 751.177 mg hr\^2 L\^-1 & 1.44163 & 751.502 mg hr\^2 L\^-1 & 1.48419 & 4.54767 hr & 4.60234 hr & 4.60397 hr & 49 & 0.966108 & 0.932216 & 0.982908 & 3 & 11.6618 & 23.0 hr & 24.0 hr & 0.787865 & IVBolus \\
+	18 & 9 & 2 & 2000 mg & -0.427622 hr\^-1 & -1.62093 hr & 3.5 hr & 0.0 hr & 7.09659 mg L\^-1 &  & 0.169045 mg L\^-1 & 0.321591 mg L\^-1 & 68.226 mg hr L\^-1 & 24.0 hr & 67.8307 mg hr L\^-1 &  &  & -68.9515 L & 29.4852 L hr\^-1 & 67.474 mg hr L\^-1 &  &  & -69.316 L & 29.6411 L hr\^-1 & 212.862 L & 211.724 L & 0.0 hr &  &  & 7.09659 mg L\^-1 & 0.034113 hr L\^-1 & 0.0339153 hr L\^-1 & -0.582795 &  & 0.033737 hr L\^-1 & -1.11457 &  & 498.253 mg hr\^2 L\^-1 & 489.69 mg hr\^2 L\^-1 & -1.74868 & 481.962 mg hr\^2 L\^-1 & -3.38002 & 7.30297 hr & 7.21929 hr & 7.14294 hr & 49 & 0.441081 & 0.329297 & 0.664139 & 7 & -11.3974 & 21.0 hr & 24.0 hr & -1.85079 & EV \\
+	19 & 10 & 1 & 2000 mg & 0.395587 hr\^-1 & 1.7522 hr & 0.5 hr &  & 35.5865 mg L\^-1 & 0.0 mg L\^-1 & 0.0761928 mg L\^-1 & 0.0913066 mg L\^-1 & 162.496 mg hr L\^-1 & 24.0 hr & 162.689 mg hr L\^-1 & 31.0765 L & 12.2934 L hr\^-1 &  &  & 162.727 mg hr L\^-1 & 31.0692 L & 12.2905 L hr\^-1 &  &  & 55.3115 L & 55.3621 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 35.5865 mg L\^-1 & 0.081248 hr L\^-1 & 0.0813443 hr L\^-1 & 0.11839 & 0.0 & 0.0813634 hr L\^-1 & 0.141841 & 0.0 & 726.871 mg hr\^2 L\^-1 & 731.98 mg hr\^2 L\^-1 & 0.698033 & 732.994 mg hr\^2 L\^-1 & 0.835339 & 4.47316 hr & 4.49927 hr & 4.50445 hr & 49 & 0.743446 & 0.711377 & 0.862233 & 10 & 7.10054 & 19.5 hr & 24.0 hr & 2.5682 & IVBolus \\
+	20 & 10 & 2 & 2000 mg & 0.321217 hr\^-1 & 2.15788 hr & 3.0 hr & 0.0 hr & 6.92304 mg L\^-1 &  & 0.267132 mg L\^-1 & 0.181884 mg L\^-1 & 68.1991 mg hr L\^-1 & 24.0 hr & 69.0308 mg hr L\^-1 &  &  & 90.1964 L & 28.9726 L hr\^-1 & 68.7654 mg hr L\^-1 &  &  & 90.5445 L & 29.0844 L hr\^-1 & 225.03 L & 223.727 L & 0.0 hr &  &  & 6.92304 mg L\^-1 & 0.0340996 hr L\^-1 & 0.0345154 hr L\^-1 & 1.20472 &  & 0.0343827 hr L\^-1 & 0.823428 &  & 513.614 mg hr\^2 L\^-1 & 536.162 mg hr\^2 L\^-1 & 4.20545 & 528.967 mg hr\^2 L\^-1 & 2.90233 & 7.5311 hr & 7.767 hr & 7.69234 hr & 49 & 0.660066 & 0.617574 & 0.812444 & 10 & 6.00481 & 19.5 hr & 24.0 hr & 2.08538 & EV \\
+	21 & 11 & 1 & 2000 mg & 0.453486 hr\^-1 & 1.52849 hr & 0.5 hr &  & 36.7097 mg L\^-1 & 0.0 mg L\^-1 & 0.0306425 mg L\^-1 & 0.0874434 mg L\^-1 & 162.913 mg hr L\^-1 & 24.0 hr & 162.98 mg hr L\^-1 & 27.0602 L & 12.2714 L hr\^-1 &  &  & 163.106 mg hr L\^-1 & 27.0394 L & 12.262 L hr\^-1 &  &  & 55.4248 L & 55.5865 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 36.7097 mg L\^-1 & 0.0814564 hr L\^-1 & 0.0814902 hr L\^-1 & 0.0414596 & 0.0 & 0.0815529 hr L\^-1 & 0.118221 & 0.0 & 734.343 mg hr\^2 L\^-1 & 736.114 mg hr\^2 L\^-1 & 0.240548 & 739.396 mg hr\^2 L\^-1 & 0.683395 & 4.50758 hr & 4.51658 hr & 4.53323 hr & 49 & 0.604084 & 0.554595 & 0.777228 & 10 & 8.4469 & 19.5 hr & 24.0 hr & 2.94409 & IVBolus \\
+	22 & 11 & 2 & 2000 mg & -1.12245 hr\^-1 & -0.617532 hr & 4.0 hr & 0.0 hr & 6.85801 mg L\^-1 &  & 0.517937 mg L\^-1 & 0.552237 mg L\^-1 & 67.0183 mg hr L\^-1 & 24.0 hr & 66.5569 mg hr L\^-1 &  &  & -26.7714 L & 30.0495 L hr\^-1 & 66.5264 mg hr L\^-1 &  &  & -26.7837 L & 30.0633 L hr\^-1 & 221.325 L & 221.21 L & 0.0 hr &  &  & 6.85801 mg L\^-1 & 0.0335092 hr L\^-1 & 0.0332785 hr L\^-1 & -0.693295 &  & 0.0332632 hr L\^-1 & -0.739548 &  & 500.88 mg hr\^2 L\^-1 & 490.216 mg hr\^2 L\^-1 & -2.17524 & 489.51 mg hr\^2 L\^-1 & -2.32264 & 7.47377 hr & 7.36537 hr & 7.35814 hr & 49 & 0.962312 & 0.924623 & 0.980975 & 3 & -27.5325 & 23.0 hr & 24.0 hr & -1.61935 & EV \\
+	23 & 12 & 1 & 2000 mg & -1.41452 hr\^-1 & -0.490024 hr & 0.5 hr &  & 34.72 mg L\^-1 & 0.0 mg L\^-1 & 0.238417 mg L\^-1 & 0.353049 mg L\^-1 & 164.579 mg hr L\^-1 & 24.0 hr & 164.411 mg hr L\^-1 & -8.59985 L & 12.1646 L hr\^-1 &  &  & 164.33 mg hr L\^-1 & -8.60409 L & 12.1706 L hr\^-1 &  &  & 54.1664 L & 54.0801 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 34.72 mg L\^-1 & 0.0822897 hr L\^-1 & 0.0822055 hr L\^-1 & -0.102517 & 0.0 & 0.0821649 hr L\^-1 & -0.151883 & 0.0 & 736.011 mg hr\^2 L\^-1 & 732.085 mg hr\^2 L\^-1 & -0.536281 & 730.198 mg hr\^2 L\^-1 & -0.796183 & 4.47207 hr & 4.45278 hr & 4.44349 hr & 49 & 0.519655 & 0.0393099 & 0.720871 & 3 & -34.9896 & 23.0 hr & 24.0 hr & -2.04072 & IVBolus \\
+	24 & 12 & 2 & 2000 mg & 0.324041 hr\^-1 & 2.13907 hr & 4.0 hr & 0.0 hr & 7.18473 mg L\^-1 &  & 0.357831 mg L\^-1 & 0.177189 mg L\^-1 & 68.0837 mg hr L\^-1 & 24.0 hr & 69.188 mg hr L\^-1 &  &  & 89.2069 L & 28.9067 L hr\^-1 & 68.6306 mg hr L\^-1 &  &  & 89.9316 L & 29.1415 L hr\^-1 & 221.546 L & 218.748 L & 0.0 hr &  &  & 7.18473 mg L\^-1 & 0.0340419 hr L\^-1 & 0.034594 hr L\^-1 & 1.59605 &  & 0.0343153 hr L\^-1 & 0.796743 &  & 500.358 mg hr\^2 L\^-1 & 530.268 mg hr\^2 L\^-1 & 5.64062 & 515.169 mg hr\^2 L\^-1 & 2.87496 & 7.34916 hr & 7.66417 hr & 7.50641 hr & 49 & 0.602603 & 0.552928 & 0.776275 & 10 & 6.04645 & 19.5 hr & 24.0 hr & 2.10372 & EV \\
+	25 & 13 & 1 & 2000 mg & 0.460286 hr\^-1 & 1.5059 hr & 0.5 hr &  & 36.1934 mg L\^-1 & 0.0 mg L\^-1 & 0.165053 mg L\^-1 & 0.0579317 mg L\^-1 & 160.217 mg hr L\^-1 & 24.0 hr & 160.576 mg hr L\^-1 & 27.0596 L & 12.4552 L hr\^-1 &  &  & 160.343 mg hr L\^-1 & 27.0989 L & 12.4732 L hr\^-1 &  &  & 57.13 L & 56.8221 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 36.1934 mg L\^-1 & 0.0801087 hr L\^-1 & 0.080288 hr L\^-1 & 0.223313 & 0.0 & 0.0801716 hr L\^-1 & 0.0784942 & 0.0 & 727.153 mg hr\^2 L\^-1 & 736.538 mg hr\^2 L\^-1 & 1.27423 & 730.447 mg hr\^2 L\^-1 & 0.450968 & 4.53854 hr & 4.58685 hr & 4.55552 hr & 49 & 0.222895 & 0.125757 & 0.472118 & 10 & 8.19838 & 19.5 hr & 24.0 hr & 2.98824 & IVBolus \\
+	26 & 13 & 2 & 2000 mg & 0.232188 hr\^-1 & 2.98529 hr & 4.0 hr & 0.0 hr & 7.40196 mg L\^-1 &  & 0.249842 mg L\^-1 & 0.262856 mg L\^-1 & 68.4954 mg hr L\^-1 & 24.0 hr & 69.5715 mg hr L\^-1 &  &  & 123.811 L & 28.7474 L hr\^-1 & 69.6275 mg hr L\^-1 &  &  & 123.712 L & 28.7243 L hr\^-1 & 223.513 L & 223.807 L & 0.0 hr &  &  & 7.40196 mg L\^-1 & 0.0342477 hr L\^-1 & 0.0347857 hr L\^-1 & 1.54666 &  & 0.0348138 hr L\^-1 & 1.62592 &  & 510.463 mg hr\^2 L\^-1 & 540.922 mg hr\^2 L\^-1 & 5.63098 & 542.508 mg hr\^2 L\^-1 & 5.90697 & 7.45251 hr & 7.77505 hr & 7.79158 hr & 49 & 0.579604 & 0.509539 & 0.761318 & 8 & 4.23635 & 20.5 hr & 24.0 hr & 1.17242 & EV \\
+	27 & 14 & 1 & 2000 mg & -0.846082 hr\^-1 & -0.819244 hr & 0.5 hr &  & 35.098 mg L\^-1 & 0.0 mg L\^-1 & 0.496844 mg L\^-1 & 0.367814 mg L\^-1 & 163.966 mg hr L\^-1 & 24.0 hr & 163.379 mg hr L\^-1 & -14.4684 L & 12.2415 L hr\^-1 &  &  & 163.531 mg hr L\^-1 & -14.455 L & 12.2301 L hr\^-1 &  &  & 54.1277 L & 54.287 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 35.098 mg L\^-1 & 0.0819831 hr L\^-1 & 0.0816894 hr L\^-1 & -0.359428 & 0.0 & 0.0817657 hr L\^-1 & -0.265837 & 0.0 & 735.805 mg hr\^2 L\^-1 & 722.406 mg hr\^2 L\^-1 & -1.85484 & 725.886 mg hr\^2 L\^-1 & -1.36656 & 4.48755 hr & 4.42166 hr & 4.43882 hr & 49 & 0.465966 & 0.287954 & 0.682617 & 5 & -21.3061 & 22.0 hr & 24.0 hr & -2.44128 & IVBolus \\
+	28 & 14 & 2 & 2000 mg & 0.187034 hr\^-1 & 3.70599 hr & 3.0 hr & 0.0 hr & 7.19744 mg L\^-1 &  & 0.458332 mg L\^-1 & 0.293804 mg L\^-1 & 69.6355 mg hr L\^-1 & 24.0 hr & 72.086 mg hr L\^-1 &  &  & 148.34 L & 27.7446 L hr\^-1 & 71.2063 mg hr L\^-1 &  &  & 150.172 L & 28.0874 L hr\^-1 & 228.934 L & 224.442 L & 0.0 hr &  &  & 7.19744 mg L\^-1 & 0.0348177 hr L\^-1 & 0.036043 hr L\^-1 & 3.39945 &  & 0.0356032 hr L\^-1 & 2.20606 &  & 522.9 mg hr\^2 L\^-1 & 594.815 mg hr\^2 L\^-1 & 12.0903 & 569.0 mg hr\^2 L\^-1 & 8.10182 & 7.50911 hr & 8.25146 hr & 7.99086 hr & 49 & 0.359421 & 0.279348 & 0.599517 & 10 & 3.26398 & 19.5 hr & 24.0 hr & 1.21425 & EV \\
+	29 & 15 & 1 & 2000 mg & 0.671926 hr\^-1 & 1.03158 hr & 0.5 hr &  & 35.706 mg L\^-1 & 0.0 mg L\^-1 & 0.160481 mg L\^-1 & 0.138733 mg L\^-1 & 163.177 mg hr L\^-1 & 24.0 hr & 163.416 mg hr L\^-1 & 18.2144 L & 12.2387 L hr\^-1 &  &  & 163.384 mg hr L\^-1 & 18.218 L & 12.2411 L hr\^-1 &  &  & 56.1341 L & 56.0946 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 35.706 mg L\^-1 & 0.0815885 hr L\^-1 & 0.0817079 hr L\^-1 & 0.146153 & 0.0 & 0.0816918 hr L\^-1 & 0.126372 & 0.0 & 743.437 mg hr\^2 L\^-1 & 749.524 mg hr\^2 L\^-1 & 0.81219 & 748.699 mg hr\^2 L\^-1 & 0.702899 & 4.55601 hr & 4.58661 hr & 4.58246 hr & 49 & 0.727153 & 0.590729 & 0.852733 & 4 & 14.151 & 22.5 hr & 24.0 hr & 1.45408 & IVBolus \\
+	30 & 15 & 2 & 2000 mg & -0.310684 hr\^-1 & -2.23103 hr & 4.0 hr & 0.0 hr & 6.82905 mg L\^-1 &  & 0.348312 mg L\^-1 & 0.355721 mg L\^-1 & 68.1921 mg hr L\^-1 & 24.0 hr & 67.071 mg hr L\^-1 &  &  & -95.9789 L & 29.8191 L hr\^-1 & 67.0472 mg hr L\^-1 &  &  & -96.013 L & 29.8297 L hr\^-1 & 212.922 L & 212.853 L & 0.0 hr &  &  & 6.82905 mg L\^-1 & 0.0340961 hr L\^-1 & 0.0335355 hr L\^-1 & -1.67153 &  & 0.0335236 hr L\^-1 & -1.70769 &  & 502.216 mg hr\^2 L\^-1 & 478.918 mg hr\^2 L\^-1 & -4.86476 & 478.422 mg hr\^2 L\^-1 & -4.97337 & 7.36472 hr & 7.14046 hr & 7.13561 hr & 49 & 0.598196 & 0.397294 & 0.773431 & 4 & -8.49003 & 22.5 hr & 24.0 hr & -0.672334 & EV \\
+	31 & 16 & 1 & 2000 mg & 0.796512 hr\^-1 & 0.870229 hr & 0.5 hr &  & 36.6457 mg L\^-1 & 0.0 mg L\^-1 & 0.0493193 mg L\^-1 & 0.0483671 mg L\^-1 & 163.015 mg hr L\^-1 & 24.0 hr & 163.077 mg hr L\^-1 & 15.3973 L & 12.2642 L hr\^-1 &  &  & 163.076 mg hr L\^-1 & 15.3975 L & 12.2643 L hr\^-1 &  &  & 55.0355 L & 55.034 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 36.6457 mg L\^-1 & 0.0815074 hr L\^-1 & 0.0815384 hr L\^-1 & 0.0379693 & 0.0 & 0.0815378 hr L\^-1 & 0.0372365 & 0.0 & 730.243 mg hr\^2 L\^-1 & 731.807 mg hr\^2 L\^-1 & 0.21369 & 731.777 mg hr\^2 L\^-1 & 0.209573 & 4.47961 hr & 4.4875 hr & 4.48735 hr & 49 & 0.878085 & 0.857766 & 0.937062 & 8 & 16.0873 & 20.5 hr & 24.0 hr & 4.02193 & IVBolus \\
+	32 & 16 & 2 & 2000 mg & 1.30398 hr\^-1 & 0.531565 hr & 4.0 hr & 0.0 hr & 6.79649 mg L\^-1 &  & 0.100932 mg L\^-1 & 0.120328 mg L\^-1 & 67.6805 mg hr L\^-1 & 24.0 hr & 67.7579 mg hr L\^-1 &  &  & 22.636 L & 29.5168 L hr\^-1 & 67.7728 mg hr L\^-1 &  &  & 22.6311 L & 29.5104 L hr\^-1 & 216.092 L & 216.158 L & 0.0 hr &  &  & 6.79649 mg L\^-1 & 0.0338403 hr L\^-1 & 0.033879 hr L\^-1 & 0.114235 &  & 0.0338864 hr L\^-1 & 0.136157 &  & 494.137 mg hr\^2 L\^-1 & 496.054 mg hr\^2 L\^-1 & 0.386456 & 496.423 mg hr\^2 L\^-1 & 0.46038 & 7.30102 hr & 7.32098 hr & 7.32481 hr & 49 & 0.82098 & 0.641959 & 0.906079 & 3 & 29.1779 & 23.0 hr & 24.0 hr & 1.88124 & EV \\
+	33 & 17 & 1 & 2000 mg & 0.420147 hr\^-1 & 1.64977 hr & 1.0 hr &  & 32.9743 mg L\^-1 & 0.0 mg L\^-1 & 0.134415 mg L\^-1 & 0.158693 mg L\^-1 & 161.263 mg hr L\^-1 & 24.0 hr & 161.583 mg hr L\^-1 & 29.4601 L & 12.3776 L hr\^-1 &  &  & 161.641 mg hr L\^-1 & 29.4496 L & 12.3731 L hr\^-1 &  &  & 56.8078 L & 56.8839 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 32.9743 mg L\^-1 & 0.0806315 hr L\^-1 & 0.0807914 hr L\^-1 & 0.197993 & 0.0 & 0.0808203 hr L\^-1 & 0.233672 & 0.0 & 733.158 mg hr\^2 L\^-1 & 741.598 mg hr\^2 L\^-1 & 1.13803 & 743.122 mg hr\^2 L\^-1 & 1.34083 & 4.54635 hr & 4.58958 hr & 4.59737 hr & 49 & 0.653968 & 0.480952 & 0.808683 & 4 & 8.24273 & 22.5 hr & 24.0 hr & 0.909215 & IVBolus \\
+	34 & 17 & 2 & 2000 mg & 0.418549 hr\^-1 & 1.65607 hr & 3.5 hr & 0.0 hr & 6.81586 mg L\^-1 &  & 0.293644 mg L\^-1 & 0.268789 mg L\^-1 & 67.4557 mg hr L\^-1 & 24.0 hr & 68.1573 mg hr L\^-1 &  &  & 70.1087 L & 29.3439 L hr\^-1 & 68.0979 mg hr L\^-1 &  &  & 70.1698 L & 29.3695 L hr\^-1 & 221.273 L & 220.983 L & 0.0 hr &  &  & 6.81586 mg L\^-1 & 0.0337279 hr L\^-1 & 0.0340787 hr L\^-1 & 1.02935 &  & 0.034049 hr L\^-1 & 0.943042 &  & 495.438 mg hr\^2 L\^-1 & 513.952 mg hr\^2 L\^-1 & 3.6023 & 512.385 mg hr\^2 L\^-1 & 3.30747 & 7.34463 hr & 7.54067 hr & 7.52423 hr & 49 & 0.651114 & 0.302228 & 0.806916 & 3 & 8.73134 & 23.0 hr & 24.0 hr & 0.603838 & EV \\
+	35 & 18 & 1 & 2000 mg & 0.805593 hr\^-1 & 0.860419 hr & 0.5 hr &  & 37.0911 mg L\^-1 & 0.0 mg L\^-1 & 0.161793 mg L\^-1 & 0.161694 mg L\^-1 & 164.504 mg hr L\^-1 & 24.0 hr & 164.705 mg hr L\^-1 & 15.0733 L & 12.1429 L hr\^-1 &  &  & 164.705 mg hr L\^-1 & 15.0733 L & 12.1429 L hr\^-1 &  &  & 54.765 L & 54.7648 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 37.0911 mg L\^-1 & 0.0822522 hr L\^-1 & 0.0823526 hr L\^-1 & 0.121937 & 0.0 & 0.0823526 hr L\^-1 & 0.121863 & 0.0 & 737.758 mg hr\^2 L\^-1 & 742.827 mg hr\^2 L\^-1 & 0.682445 & 742.824 mg hr\^2 L\^-1 & 0.682033 & 4.48473 hr & 4.51004 hr & 4.51002 hr & 49 & 0.999993 & 0.999986 & 0.999997 & 3 & 17.5122 & 23.0 hr & 24.0 hr & 1.16222 & IVBolus \\
+	36 & 18 & 2 & 2000 mg & -0.39457 hr\^-1 & -1.75671 hr & 3.5 hr & 0.0 hr & 6.82426 mg L\^-1 &  & 0.425879 mg L\^-1 & 0.383019 mg L\^-1 & 68.3944 mg hr L\^-1 & 24.0 hr & 67.3151 mg hr L\^-1 &  &  & -75.2997 L & 29.711 L hr\^-1 & 67.4237 mg hr L\^-1 &  &  & -75.1784 L & 29.6632 L hr\^-1 & 215.722 L & 216.053 L & 0.0 hr &  &  & 6.82426 mg L\^-1 & 0.0341972 hr L\^-1 & 0.0336575 hr L\^-1 & -1.60343 &  & 0.0337119 hr L\^-1 & -1.43974 &  & 511.921 mg hr\^2 L\^-1 & 488.752 mg hr\^2 L\^-1 & -4.74041 & 491.084 mg hr\^2 L\^-1 & -4.2431 & 7.48484 hr & 7.26067 hr & 7.28355 hr & 49 & 0.532043 & 0.298065 & 0.729413 & 4 & -10.4294 & 22.5 hr & 24.0 hr & -0.853867 & EV \\
+	37 & 19 & 1 & 2000 mg & -0.426415 hr\^-1 & -1.62552 hr & 0.5 hr &  & 35.0311 mg L\^-1 & 0.0 mg L\^-1 & 0.388273 mg L\^-1 & 0.324861 mg L\^-1 & 161.852 mg hr L\^-1 & 24.0 hr & 160.941 mg hr L\^-1 & -29.1428 L & 12.4269 L hr\^-1 &  &  & 161.09 mg hr L\^-1 & -29.1159 L & 12.4154 L hr\^-1 &  &  & 55.6302 L & 55.7757 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 35.0311 mg L\^-1 & 0.0809258 hr L\^-1 & 0.0804706 hr L\^-1 & -0.565768 & 0.0 & 0.0805449 hr L\^-1 & -0.472931 & 0.0 & 740.186 mg hr\^2 L\^-1 & 720.468 mg hr\^2 L\^-1 & -2.73682 & 723.688 mg hr\^2 L\^-1 & -2.27966 & 4.57323 hr & 4.47659 hr & 4.49245 hr & 49 & 0.215698 & 0.0588376 & 0.464433 & 7 & -11.3583 & 21.0 hr & 24.0 hr & -1.84556 & IVBolus \\
+	38 & 19 & 2 & 2000 mg & 0.494741 hr\^-1 & 1.40103 hr & 3.0 hr & 0.0 hr & 7.51026 mg L\^-1 &  & 0.126792 mg L\^-1 & 0.0680664 mg L\^-1 & 69.2667 mg hr L\^-1 & 24.0 hr & 69.523 mg hr L\^-1 &  &  & 58.1465 L & 28.7675 L hr\^-1 & 69.4043 mg hr L\^-1 &  &  & 58.246 L & 28.8167 L hr\^-1 & 211.031 L & 210.471 L & 0.0 hr &  &  & 7.51026 mg L\^-1 & 0.0346334 hr L\^-1 & 0.0347615 hr L\^-1 & 0.368626 &  & 0.0347021 hr L\^-1 & 0.198229 &  & 503.335 mg hr\^2 L\^-1 & 510.004 mg hr\^2 L\^-1 & 1.30758 & 506.915 mg hr\^2 L\^-1 & 0.706233 & 7.26662 hr & 7.33575 hr & 7.3038 hr & 49 & 0.463393 & 0.396317 & 0.68073 & 10 & 9.18651 & 19.5 hr & 24.0 hr & 3.21192 & EV \\
+	39 & 20 & 1 & 2000 mg & 0.634253 hr\^-1 & 1.09286 hr & 0.5 hr &  & 33.8563 mg L\^-1 & 0.0 mg L\^-1 & 0.119273 mg L\^-1 & 0.0474916 mg L\^-1 & 163.759 mg hr L\^-1 & 24.0 hr & 163.948 mg hr L\^-1 & 19.2337 L & 12.199 L hr\^-1 &  &  & 163.834 mg hr L\^-1 & 19.247 L & 12.2075 L hr\^-1 &  &  & 55.665 L & 55.5262 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 33.8563 mg L\^-1 & 0.0818797 hr L\^-1 & 0.0819738 hr L\^-1 & 0.114703 & 0.0 & 0.0819172 hr L\^-1 & 0.0457035 & 0.0 & 743.294 mg hr\^2 L\^-1 & 748.104 mg hr\^2 L\^-1 & 0.642929 & 745.209 mg hr\^2 L\^-1 & 0.256992 & 4.53894 hr & 4.56307 hr & 4.54855 hr & 49 & 0.252768 & 0.159364 & 0.502761 & 10 & 12.1749 & 19.5 hr & 24.0 hr & 4.11765 & IVBolus \\
+	40 & 20 & 2 & 2000 mg & 0.521067 hr\^-1 & 1.33025 hr & 3.0 hr & 0.0 hr & 7.04279 mg L\^-1 &  & 0.218554 mg L\^-1 & 0.111326 mg L\^-1 & 69.1756 mg hr L\^-1 & 24.0 hr & 69.595 mg hr L\^-1 &  &  & 55.1516 L & 28.7377 L hr\^-1 & 69.3892 mg hr L\^-1 &  &  & 55.3152 L & 28.8229 L hr\^-1 & 216.323 L & 215.393 L & 0.0 hr &  &  & 7.04279 mg L\^-1 & 0.0345878 hr L\^-1 & 0.0347975 hr L\^-1 & 0.602679 &  & 0.0346946 hr L\^-1 & 0.307902 &  & 513.006 mg hr\^2 L\^-1 & 523.877 mg hr\^2 L\^-1 & 2.07518 & 518.543 mg hr\^2 L\^-1 & 1.06792 & 7.41599 hr & 7.52751 hr & 7.47296 hr & 49 & 0.467296 & 0.391196 & 0.683591 & 9 & 10.3103 & 20.0 hr & 24.0 hr & 3.00696 & EV \\
+	41 & 21 & 1 & 2000 mg & -0.725528 hr\^-1 & -0.955369 hr & 0.5 hr &  & 33.7883 mg L\^-1 & 0.0 mg L\^-1 & 0.268321 mg L\^-1 & 0.278277 mg L\^-1 & 159.881 mg hr L\^-1 & 24.0 hr & 159.512 mg hr L\^-1 & -17.2816 L & 12.5383 L hr\^-1 &  &  & 159.498 mg hr L\^-1 & -17.2831 L & 12.5393 L hr\^-1 &  &  & 57.0357 L & 57.0212 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 33.7883 mg L\^-1 & 0.0799407 hr L\^-1 & 0.0797558 hr L\^-1 & -0.23185 & 0.0 & 0.079749 hr L\^-1 & -0.240474 & 0.0 & 733.974 mg hr\^2 L\^-1 & 725.608 mg hr\^2 L\^-1 & -1.15298 & 725.297 mg hr\^2 L\^-1 & -1.19628 & 4.59074 hr & 4.54893 hr & 4.54738 hr & 49 & 0.970631 & 0.941262 & 0.985206 & 3 & -18.6918 & 23.0 hr & 24.0 hr & -1.04672 & IVBolus \\
+	42 & 21 & 2 & 2000 mg & 0.240475 hr\^-1 & 2.88241 hr & 4.0 hr & 0.0 hr & 6.82091 mg L\^-1 &  & 0.148884 mg L\^-1 & 0.199535 mg L\^-1 & 68.3122 mg hr L\^-1 & 24.0 hr & 68.9313 mg hr L\^-1 &  &  & 120.655 L & 29.0144 L hr\^-1 & 69.1419 mg hr L\^-1 &  &  & 120.287 L & 28.926 L hr\^-1 & 220.479 L & 221.619 L & 0.0 hr &  &  & 6.82091 mg L\^-1 & 0.0341561 hr L\^-1 & 0.0344656 hr L\^-1 & 0.898177 &  & 0.034571 hr L\^-1 & 1.20008 &  & 506.372 mg hr\^2 L\^-1 & 523.806 mg hr\^2 L\^-1 & 3.32826 & 529.737 mg hr\^2 L\^-1 & 4.41061 & 7.41262 hr & 7.59895 hr & 7.66158 hr & 49 & 0.321975 & 0.225115 & 0.567429 & 9 & 4.15963 & 20.0 hr & 24.0 hr & 1.38773 & EV \\
+	43 & 22 & 1 & 2000 mg & 0.456947 hr\^-1 & 1.51691 hr & 0.5 hr &  & 37.3731 mg L\^-1 & 0.0 mg L\^-1 & 0.273211 mg L\^-1 & 0.0708864 mg L\^-1 & 164.178 mg hr L\^-1 & 24.0 hr & 164.776 mg hr L\^-1 & 26.5626 L & 12.1377 L hr\^-1 &  &  & 164.333 mg hr L\^-1 & 26.6342 L & 12.1704 L hr\^-1 &  &  & 55.6357 L & 55.0771 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 37.3731 mg L\^-1 & 0.0820888 hr L\^-1 & 0.0823878 hr L\^-1 & 0.36286 & 0.0 & 0.0821664 hr L\^-1 & 0.0944002 & 0.0 & 739.623 mg hr\^2 L\^-1 & 755.281 mg hr\^2 L\^-1 & 2.07316 & 743.686 mg hr\^2 L\^-1 & 0.546282 & 4.50502 hr & 4.5837 hr & 4.52549 hr & 49 & 0.273521 & 0.182711 & 0.522992 & 10 & 8.32005 & 19.5 hr & 24.0 hr & 2.96656 & IVBolus \\
+	44 & 22 & 2 & 2000 mg & 1.61075 hr\^-1 & 0.430324 hr & 3.5 hr & 0.0 hr & 6.66956 mg L\^-1 &  & 0.0914829 mg L\^-1 & 0.120956 mg L\^-1 & 67.579 mg hr L\^-1 & 24.0 hr & 67.6358 mg hr L\^-1 &  &  & 18.3579 L & 29.5701 L hr\^-1 & 67.6541 mg hr L\^-1 &  &  & 18.353 L & 29.5621 L hr\^-1 & 220.596 L & 220.673 L & 0.0 hr &  &  & 6.66956 mg L\^-1 & 0.0337895 hr L\^-1 & 0.0338179 hr L\^-1 & 0.0839718 &  & 0.0338271 hr L\^-1 & 0.110996 &  & 503.17 mg hr\^2 L\^-1 & 504.569 mg hr\^2 L\^-1 & 0.277136 & 505.019 mg hr\^2 L\^-1 & 0.366096 & 7.44566 hr & 7.46008 hr & 7.46472 hr & 49 & 0.734892 & 0.469784 & 0.857259 & 3 & 36.5458 & 23.0 hr & 24.0 hr & 2.32383 & EV \\
+	45 & 23 & 1 & 2000 mg & -0.556799 hr\^-1 & -1.24488 hr & 0.5 hr &  & 39.1437 mg L\^-1 & 0.0 mg L\^-1 & 0.354396 mg L\^-1 & 0.481947 mg L\^-1 & 163.119 mg hr L\^-1 & 24.0 hr & 162.483 mg hr L\^-1 & -22.1067 L & 12.309 L hr\^-1 &  &  & 162.254 mg hr L\^-1 & -22.1379 L & 12.3264 L hr\^-1 &  &  & 54.3999 L & 54.1672 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 39.1437 mg L\^-1 & 0.0815597 hr L\^-1 & 0.0812415 hr L\^-1 & -0.391727 & 0.0 & 0.081127 hr L\^-1 & -0.533465 & 0.0 & 732.231 mg hr\^2 L\^-1 & 718.098 mg hr\^2 L\^-1 & -1.96806 & 713.011 mg hr\^2 L\^-1 & -2.69548 & 4.48892 hr & 4.41953 hr & 4.39442 hr & 49 & 0.675175 & 0.621037 & 0.82169 & 8 & -14.0931 & 20.5 hr & 24.0 hr & -2.81152 & IVBolus \\
+	46 & 23 & 2 & 2000 mg & 1.13886 hr\^-1 & 0.608632 hr & 4.0 hr & 0.0 hr & 6.90102 mg L\^-1 &  & 0.0935368 mg L\^-1 & 0.0989455 mg L\^-1 & 69.4551 mg hr L\^-1 & 24.0 hr & 69.5372 mg hr L\^-1 &  &  & 25.2547 L & 28.7616 L hr\^-1 & 69.5419 mg hr L\^-1 &  &  & 25.253 L & 28.7596 L hr\^-1 & 210.956 L & 210.976 L & 0.0 hr &  &  & 6.90102 mg L\^-1 & 0.0347275 hr L\^-1 & 0.0347686 hr L\^-1 & 0.118112 &  & 0.034771 hr L\^-1 & 0.124933 &  & 507.986 mg hr\^2 L\^-1 & 510.03 mg hr\^2 L\^-1 & 0.40062 & 510.148 mg hr\^2 L\^-1 & 0.423688 & 7.31389 hr & 7.33463 hr & 7.33583 hr & 49 & 0.971593 & 0.943186 & 0.985694 & 3 & 25.0195 & 23.0 hr & 24.0 hr & 1.64303 & EV \\
+	47 & 24 & 1 & 2000 mg & -0.541663 hr\^-1 & -1.27966 hr & 0.5 hr &  & 36.4669 mg L\^-1 & 0.0 mg L\^-1 & 0.21001 mg L\^-1 & 0.279414 mg L\^-1 & 165.01 mg hr L\^-1 & 24.0 hr & 164.623 mg hr L\^-1 & -22.4291 L & 12.149 L hr\^-1 &  &  & 164.494 mg hr L\^-1 & -22.4465 L & 12.1585 L hr\^-1 &  &  & 53.9208 L & 53.7951 L & 0.0 hr & 0.0 mg L\^-1 & 0.0 mg L\^-1 & 36.4669 mg L\^-1 & 0.0825052 hr L\^-1 & 0.0823113 hr L\^-1 & -0.235517 & 0.0 & 0.0822472 hr L\^-1 & -0.313594 & 0.0 & 739.233 mg hr\^2 L\^-1 & 730.643 mg hr\^2 L\^-1 & -1.17559 & 727.805 mg hr\^2 L\^-1 & -1.57019 & 4.47992 hr & 4.43829 hr & 4.42449 hr & 49 & 0.574363 & 0.361544 & 0.757867 & 4 & -14.275 & 22.5 hr & 24.0 hr & -1.17218 & IVBolus \\
+	48 & 24 & 2 & 2000 mg & -1.89488 hr\^-1 & -0.3658 hr & 3.5 hr & 0.0 hr & 6.71951 mg L\^-1 &  & 0.311371 mg L\^-1 & 0.315662 mg L\^-1 & 65.9071 mg hr L\^-1 & 24.0 hr & 65.7428 mg hr L\^-1 &  &  & -16.0546 L & 30.4216 L hr\^-1 & 65.7405 mg hr L\^-1 &  &  & -16.0552 L & 30.4226 L hr\^-1 & 219.123 L & 219.114 L & 0.0 hr &  &  & 6.71951 mg L\^-1 & 0.0329536 hr L\^-1 & 0.0328714 hr L\^-1 & -0.249947 &  & 0.0328703 hr L\^-1 & -0.2534 &  & 477.396 mg hr\^2 L\^-1 & 473.539 mg hr\^2 L\^-1 & -0.81451 & 473.485 mg hr\^2 L\^-1 & -0.825827 & 7.24346 hr & 7.20289 hr & 7.20233 hr & 49 & 0.999374 & 0.998749 & 0.999687 & 3 & -46.6302 & 23.0 hr & 24.0 hr & -2.73373 & EV \\
+\end{tabular}
+
+
+Finally, we can save this data frame as a csv file if desired.
+
+
+
+\begin{lstlisting}
+(*@\HLJLn{CSV}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{write}@*)(*@\HLJLp{(}@*)(*@\HLJLs{"./tutorials/nca/report{\_}SD{\_}crossover{\_}IV{\_}oral.csv"}@*)(*@\HLJLp{,}@*) (*@\HLJLn{report}@*)(*@\HLJLp{)}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+(*@\HLJLk{using}@*) (*@\HLJLn{PuMaSTutorials}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: ArgumentError: Package PuMaSTutorials not found in current path:
+- Run `import Pkg; Pkg.add("PuMaSTutorials")` to install the PuMaSTutorials
+ package.
+\end{lstlisting}
+
+
+\begin{lstlisting}
+(*@\HLJLn{PuMaSTutorials}@*)(*@\HLJLoB{.}@*)(*@\HLJLnf{tutorial{\_}footer}@*)(*@\HLJLp{(}@*)(*@\HLJLn{WEAVE{\_}ARGS}@*)(*@\HLJLp{[}@*)(*@\HLJLsc{:folder}@*)(*@\HLJLp{],}@*)(*@\HLJLn{WEAVE{\_}ARGS}@*)(*@\HLJLp{[}@*)(*@\HLJLsc{:file}@*)(*@\HLJLp{])}@*)
+\end{lstlisting}
+
+\begin{lstlisting}
+Error: UndefVarError: PuMaSTutorials not defined
+\end{lstlisting}
+
+
+
+\end{document}

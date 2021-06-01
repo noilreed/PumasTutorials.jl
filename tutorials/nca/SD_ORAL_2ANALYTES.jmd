@@ -1,0 +1,79 @@
+---
+title : Pumas NCA Tutorial - Single dose ORAL administration 2 analytes
+author : Beatriz Guglieri Lopez, Shamir Kalaria, Vijay Ivaturi
+date:  July 19, 2019
+---
+
+```julia
+using Pumas, PumasTutorials, CSV
+```
+
+# Introduction
+
+In this tutorial, we will cover the fundamentals of performing an NCA analysis
+with Pumas of an example dataset in which a single oral dose was administered and the concentration of
+two analytes (parent and metabolite) was measured.
+
+# The dataset
+
+* Single oral dose of 2000 mg  administered to 24 different subjects.
+* Samples were collected every 30 minutes.
+
+Let's start reading the dataset. By using the `missingstring` option we are specifying how the
+missing values are labeled in our dataset.
+
+```julia
+data = PumasTutorials.tutorial_data("data/nca","SD_oral_2analytes")
+data = CSV.read(data,missingstring="NA")
+first(data,10)
+```
+This will be an abbreviated tutorial as the main difference is in the specification of the `read_nca` function.
+For a complete listing of all NCA options, please check the first tutorial on single oral dose administration
+
+# Defining the units
+
+
+```julia
+timeu = u"hr"
+concu = u"mg/L"
+amtu  = u"mg"
+```
+
+# Defining the population object
+
+The standard requirements of `read_nca` as specified in other tutorials exist. In this example
+since parent and metabolite concentrations were measured, we need to specify the grouping variable so that
+the PK parameters are calculated for both analytes (`group=`).
+
+```julia
+pop = read_nca(data, id=:ID, time=:time, conc=:DV, amt=:DOSE, ii=24timeu, group=:Analyte,
+    route=:Formulation, timeu=timeu, concu=concu, amtu=amtu,lloq=0.4concu)
+```
+Key features of the syntax above:
+
+* `route=` is mapped to the `Formulation` column that should specify `ev`
+* LLOQ was set to 0.4 by `llq=0.4concu`
+* `group=:Analyte` provides a way to peform NCA on two different analytes
+
+To check if the grouping works, lets calculate the AUC
+
+```julia
+NCA.auc(pop,auctype=:last,method=:linear)
+```
+All other NCA function work on this grouped variable. Let's directly print the NCA report.
+
+```julia
+report = NCAReport(pop)
+report = NCA.to_dataframe(report)
+```
+
+Finally, we can save this data frame as a csv file if desired.
+
+```julia;eval=false
+CSV.write("./tutorials/nca/report_SD_oral_2analytes.csv", report)
+```
+
+```julia
+using PumasTutorials
+PumasTutorials.tutorial_footer(WEAVE_ARGS[:folder],WEAVE_ARGS[:file])
+```

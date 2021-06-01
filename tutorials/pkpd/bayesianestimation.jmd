@@ -1,0 +1,306 @@
+---
+title: Bayesian Estimation with Pumas
+author: PumasAI
+date: `j import Dates; Dates.format(Dates.today(), "U, YYYY")`
+weave_options:
+  line_width: 110
+---
+
+## Fitting a PK model
+In this tutorial we will go through the steps for bayesian parameter estimation
+of the Theophylline model in Pumas.jl. During the tutorial we use the following packages.
+
+```julia
+using Pumas, MCMCChains, StatsPlots
+```
+
+The core modeling and estimation functionality is provided by the `Pumas` package.
+Postprocessing of the posterior data is handled by the `MCMCChains` package while
+the plots are made with the `Plots` package.
+
+### The PK model of drug concentration and elimination
+First, we have to set up the pharmacometric model to estimate its parameters. For
+this tutorial, we will retrict the focus to a simple pharmacokinetics (PK) model.
+The Bayesian estimation procedure also works for more complicated models but such
+models might take longer to estimate with an MCMC-based procedure.
+
+The prior distribution of a parameter of the model can be any distribution from the
+[Distributions.jl](https://juliastats.org/Distributions.jl/stable/) package and
+is specified with the tilde (`~`) symbol.
+
+```julia
+theopmodel_bayes = @model begin
+  @param begin
+    # Mode at [2.0, 0.2, 0.8, 2.0]
+    θ ~ Constrained(
+      MvNormal(
+        [2.0, 0.2, 0.8, 2.0],
+        Diagonal(ones(4))
+      ),
+      lower = zeros(4),
+      upper = fill(10.0, 4),
+      init  = [2.0, 0.2, 0.8, 2.0])
+
+    # Mode at diagm(fill(0.2, 3))
+    Ω ~ InverseWishart(6, diagm(fill(0.2, 3)) .* (6 + 3 + 1))
+
+    # Mean at 0.5 and positive density at 0.0
+    σ ~ Gamma(1.0, 0.5)
+  end
+
+  @random begin
+    η ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Ka = (SEX == 1 ? θ[1] : θ[4])*exp(η[1])
+    CL = θ[2]*(WT/70)            *exp(η[2])
+    Vc = θ[3]                    *exp(η[3])
+  end
+
+  @covariates SEX WT
+
+  @dynamics Depots1Central1
+
+  @derived begin
+    # The conditional mean
+    μ := @. Central / Vc
+    # Additive error model
+    dv ~ @. Normal(μ, σ)
+  end
+end
+```
+
+The joint prior distribution of `θ` is specified as the normal distribution but
+constrained to avoid negative and extreme draws. In the Bayesian framework,
+the prior distribution represents our initial *belief* about the value of the
+parameter *prior* to observing any data. The covariance matrix of the random
+effects vector `η` is given a prior distribution of `InverseWishart` which is
+parameterized with degrees of freedom parameter `ν` and scale matrix `Ψ`. It is
+sometimes more intuitive to use the mode to specify priors which is our choice.
+Since the mode of `InverseWishart` is `Ψ/(ν + p + 1)`, the mode of our prior is
+`diagm(fill(0.2, 3))` which corresponds to an inter-subject variability peaking at
+20%. Finally, the prior additive error component `σ` is modeled as a `Gamma(1.0, 0.5)`.
+Notice that `Gamma` is parameterized with a shape and a *scale* parameter and *not*
+a rate. Setting the shape parameter equal to one has the advantage that the density
+has support at zero, meaning the value zero has a non-zero probablility, so the
+posterior distribution won't be forced away from zero. The scale parameter is then
+also equal to the mean which makes the interpretation easy. In the Bayesian framework,
+the posterior distribution represents our *belief* about the value of the parameter
+*after* observing some data.
+
+### Fitting models
+To fit the model, we use the `fit` function. It requires a model, a population,
+a named tuple of parameters and an estimation method. Since we want to use
+Bayesian estimation with Markov Chain Monte Carlo (MCMC), we pass `BayesMCMC`
+as the estimation method argument. This will return a sample from the joint
+posterior distribution of the model's parameters. A sample in the MCMC context
+is also known as a chain.
+
+First, we load the theophylline dataset and specify `SEX` and `WT` as covariates.
+```julia
+data = read_pumas(example_data("event_data/THEOPP"), covariates = [:SEX,:WT])
+```
+
+Next, we extract the initial parameters from `theopmodel_bayes`. Alternatively,
+the initial values could be specified directly as a `NamedTuple` with keys
+matching the parameter names used in `theopmodel_bayes`.
+
+```julia
+param = init_param(theopmodel_bayes)
+```
+
+We can now infer the model's parameters given the data using the [No U-Turn Sampler
+(NUTS)](https://www.jmlr.org/papers/volume15/hoffman14a/hoffman14a.pdf). The
+number of samples and the number of steps used for adaptation are set with the
+`nsamples` and `nadapts` arguments respectively. The adaptation uses the
+prodecure introduced by
+[Stan](https://mc-stan.org/docs/2_24/reference-manual/hmc-algorithm-parameters.html)
+and it is currently not possible to adjust the adaption parameters.
+
+```julia
+result = fit(theopmodel_bayes, data, param, Pumas.BayesMCMC();
+  nsamples=2000, nadapts=1000)
+```
+
+The show method for the result will print various summary statistics useful for
+evaluating the sample/chain. The summary output is based on some postprocessing by
+the [MCMCChains.jl](https://github.com/TuringLang/MCMCChains.jl) package. Hence,
+a similar output will be presented if the fitted model is converted to a `Chains`
+object from `MCMCChains`.
+
+```julia; results="hidden"
+chains = Pumas.Chains(result)
+```
+
+However, the `MCMCChains` package provides many other out of the box diagnostics
+and plotting functionality for MCMC chains. E.g. a default plotting method to
+that generates time series and kernel density plots for each of the parmeters.
+
+```julia
+plot(chains)
+```
+
+The plots are based on the complete chain, including the very unstable initial
+phase of the sampling. This can distort both the scale of the of the times
+series plot  and the shape of the kernel density. Hence, it is often useful to
+exlcude the  initial burn-in phase. This is easily done simply by slicing the
+`Chains` structure, i.e.
+
+```julia
+plot(chains[200:end])
+```
+
+Another useful plotting diagnostic tool is the autocorrelation plot for each
+parameter in the chain. Such plots are generated with the `autocorplot`
+function. It's possible to pass a vector of parameter names as the second
+argument to specify which parameters to include in the plots.
+
+```julia
+autocorplot(chains, [:θ₁, :θ₂, :θ₃, :θ₄])
+```
+
+Corner plots can be used for analyzing possible correlation between the
+posteriors
+
+```julia
+corner(chains, [:θ₁, :θ₂, :θ₃, :θ₄])
+```
+
+For the complete list of useful diagnostics see
+[MCMCChains.jl](https://github.com/TuringLang/MCMCChains.jl)
+
+#### A model with diagonal `Ω`
+
+Often the structure of the `Ω` is restricted to a diagonal matrix to reduce the
+number of model parameters. When using an `InverseWishart` prior for `Ω`, the variance
+matrix wont be restricted to diagonal. One way to impose a diagonal structure on `Ω`
+is to define each of the random effects components as a scalar distribution. This
+approach also gives us more control over the individual prior distributions. For
+example, one can specify priors with a non-zero probability at zero which allows
+the posterior for the inter-subject variability parameters to go to zero if needed.
+The model below implements this modification to the specification of the random
+effects.
+
+```julia
+theopmodel_bayes_v2 = @model begin
+  @param begin
+    # Mode at [2.0, 0.2, 0.8, 2.0]
+    θ ~ Constrained(
+      MvNormal(
+        [2.0, 0.2, 0.8, 2.0],
+        Diagonal(ones(4))
+      ),
+      lower = zeros(4),
+      upper = fill(10.0, 4),
+      init  = [2.0, 0.2, 0.8, 2.0])
+
+    # Mean at 0.2 and positive density at 0.0
+    ωKa ~ Gamma(1.0, 0.2)
+    ωCL ~ Gamma(1.0, 0.2)
+    ωVc ~ Gamma(1.0, 0.2)
+
+    # Mean at 0.5 and positive density at 0.0
+    σ ~ Gamma(1.0, 0.5)
+  end
+
+  @random begin
+    ηKa ~ Normal(0.0, ωKa)
+    ηCL ~ Normal(0.0, ωCL)
+    ηVc ~ Normal(0.0, ωVc)
+  end
+
+  @pre begin
+    Ka = (SEX == 1 ? θ[1] : θ[4])*exp(ηKa)
+    CL = θ[2]*(WT/70)            *exp(ηCL)
+    Vc = θ[3]                    *exp(ηVc)
+  end
+
+  @covariates SEX WT
+
+  @dynamics Depots1Central1
+
+  @derived begin
+    # The conditional mean
+    μ := @. Central / Vc
+    # Additive error model
+    dv ~ @. Normal(μ, σ)
+  end
+end
+
+param_v2 = init_param(theopmodel_bayes_v2)
+
+result_v2 = fit(theopmodel_bayes_v2, data, param_v2, Pumas.BayesMCMC(),
+  nsamples = 2000, nadapts = 1000)
+```
+
+Again, we can look at the time series plots and the kernel densities of the
+posterior. It looks like all of the random effects have standard deviation
+posteriors without mass at zero.
+
+```julia
+chains_v2 = Chains(result_v2)
+plot(chains_v2[200:end])
+```
+
+#### A model with numerically integrated ODE
+
+As a last example, a version of the original model is presented where the
+dynamical system has been specified as equations which result in the ODE to be
+integrated numerically. Everything, works as before except that the numerical
+ODE integrator occasionally struggles with extreme parameter draws and,
+generally, the estimation is much slower due to the extra cost associated with
+numerical integration of ODEs. For that reason, the number of samples in the
+chains is heavily reduced for this examples
+
+```julia
+theopmodel_bayes_diffeq = @model begin
+  @param begin
+    # Mode at [2.0, 1.0, 0.8, 2.0]
+    θ ~ Constrained(
+      MvNormal(
+        [2.0, 1.0, 0.8, 2.0],
+        Diagonal(ones(4))
+      ),
+      lower = zeros(4),
+      upper = fill(10.0, 4),
+      init  = [2.0, 1.0, 0.8, 2.0])
+
+    # Mode at diagm(fill(0.2, 3))
+    Ω ~ InverseWishart(6, diagm(fill(0.2, 3)) .* (6 + 3 + 1))
+
+    # Mean at 0.5 and positive density at 0.0
+    σ ~ Gamma(1.0, 0.5)
+  end
+
+  @random begin
+    η ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Ka = (SEX == 1 ? θ[1] : θ[4])*exp(η[1])
+    CL = θ[2]*(WT/70)            *exp(η[2])
+    Vc = θ[3]                    *exp(η[3])
+  end
+
+  @covariates SEX WT
+
+  @dynamics begin
+    Depot'   = -Ka*Depot
+    Central' =  Ka*Depot - CL/Vc*Central
+  end
+
+  @derived begin
+    # The conditional mean
+    μ := @. Central / Vc
+    # Additive error model
+    dv ~ @. Normal(μ, σ)
+  end
+end
+```
+
+```julia
+fit(theopmodel_bayes_diffeq, data, param, Pumas.BayesMCMC(),
+  nsamples = 100,
+  nadapts = 50)
+```
