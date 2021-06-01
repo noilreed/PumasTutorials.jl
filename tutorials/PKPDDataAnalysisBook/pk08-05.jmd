@@ -83,9 +83,12 @@ pk_08_05        = @model begin
   end
 
   @derived begin
+    """
+    PK08 Concentration (ug/L)
+    """
     cp          = @. Central/Vc
     """
-    Observed Concentration (ug/L)
+    PK08 Concentration (ug/L)
     """
     dv          ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
   end
@@ -93,12 +96,12 @@ end
 ```
 
 ### Parameters
-  * CL - Clearance(L/hr),
-  * Vc - Volume of Central Compartment(L),
-  * Vp - Volume of Peripheral Compartment(L),
-  * Q  - Inter-departmental clearance(L/hr),
-  * Ω  - Between Subject Variability,
-  * σ  - Residual error
+  * ``C``L - Clearance(L/hr),
+  * ``V``c - Volume of Central Compartment(L),
+  * ``V``p - Volume of Peripheral Compartment(L),
+  * ``Q``  - Inter-departmental clearance(L/hr),
+  * ``Ω``  - Between Subject Variability,
+  * ``σ``  - Residual error
 
 ```julia
 param  = (tvcl    = 6.6,
@@ -119,7 +122,7 @@ sub1  = Subject(id=1,events=ev1)
 ```
 
 ### Simulation
-To simultate the plasma concentration with given observation time-points for single subject.
+To simulate the plasma concentration with given observation time-points for single subject.
 
 ```julia; results="hidden"
 Random.seed!(123)
@@ -127,21 +130,11 @@ sim_s1 = simobs(pk_08_05,sub1,param,
                 obstimes=[0.08,0.25,0.5,0.75,1,1.33,1.67,2,2.5,3.07,3.5,4.03,5,7,11,23,29,35,47.25]);
 ```
 
-### Dataframe and Plot
+### Visualize results
 
-Generate a dataframe from the simulation and use it for plotting.
 
 ```julia
-df1 = DataFrame(sim_s1)
-
-# Plot the Plasma Concentration vs Time
-
-@df df1 plot(:time,:cp, yaxis=:log,
-              label="Pred Conc - cp", xlabel= "Time (hr)", ylabel="Concentration (ug/L)", title="Plot of Concentration Vs Time",
-              xticks=[0,5,10,15,20,25,30,35,40,45,50],xlims=(0,50), ylims=(0.03,3),
-              color=[:blue], linestyle=[:solid], linewidth=3)
-@df df1 scatter!(:time,:dv,
-                  label="Obs Conc - dv", color=[:red], markershape=[:circle])
+sim_plot(pk_08_05, sim_s1, observations=:cp)[1]
 ```
 
 ```julia; echo=false, eval=false

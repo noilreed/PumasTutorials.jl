@@ -34,6 +34,7 @@ call the "necessary" libraries to get started.
 using Pumas
 using PumasUtilities
 using Random
+using CSV
 interactive!(false)
 ```
 
@@ -78,13 +79,24 @@ pk_05         = @model begin
   end
 
   @derived begin
-    cp_plasma = @. Central/Vc
     """
-    Observed Concentration (mg/L)"
+    PK05 Plasma Concentration (mg/L)"
+    """
+    cp_plasma = @. Central/Vc
+   
+    """
+    PK05 Plasma Concentration (mg/L)"
     """
     dp_plasma ~ @. Normal(cp_plasma, sqrt(cp_plasma^2*σ²_prop))
+    
+    """
+    PK05 Urine Amount (mg)
+    """
     cp_urine  = @. Urine
-    "Observed Amount (mg)"
+   
+    """
+    PK05 Urine Amount (mg)
+    """
     dp_urine  ~ @. Normal(cp_urine,σ_add)
   end
 end
@@ -92,18 +104,18 @@ end
 
 ### Parameters
 
-  * Clnr - Non renal Clearance(L/hr)
-  * Clr  - Renal Clearnace(L/hr)
-  * Vc   - Volume of the Central Compartment(L)
-  * Ω    - Between subject variability
-  * σ    - Residual Error
+  * ``Clnr`` - Non renal Clearance(L/hr)
+  * ``Clr``  - Renal Clearance(L/hr)
+  * ``Vc``   - Volume of the Central Compartment(L)
+  * ``Ω``    - Between subject variability
+  * ``σ``    - Residual Error
 
 ```julia
 param = (tvVc    = 10.7965,
          tvClr   = 0.430905,
          tvClnr  = 0.779591,
          Ω       = Diagonal([0.0,0.0,0.0]),
-         σ²_prop = 0.015,
+         σ²_prop = 0.01,
          σ_add   = 3)
 ```
 
@@ -113,7 +125,7 @@ A single dose of 250mg given as an Intravenous bolus to single subject.
 
 ```julia
 ev1  = DosageRegimen(250, time=0, cmt=1)
-sub1 = Subject(id=1, events=ev1)
+sub = Subject(id=1, events=ev1)
 ```
 
 ### Simulation
@@ -122,8 +134,7 @@ Lets simulate the plasma concentration and unchanged amount excreted in urine.
 
 ```julia; results="hidden"
 Random.seed!(123)
-sim_sub1 = simobs(pk_05,sub1,param,obstimes=0:0.1:26)
-df1      = DataFrame(sim_sub1)
+sim_sub1 = simobs(pk_05, sub, param, obstimes = 0:0.1:26)
 ```
 
 ### Dataframe and Plot

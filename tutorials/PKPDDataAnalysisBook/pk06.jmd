@@ -29,6 +29,7 @@ call the "necessary" libraries to get started
 using Pumas
 using PumasUtilities
 using Random
+using CSV
 interactive!(false)
 ```
 ### Model
@@ -71,6 +72,9 @@ pk_06        = @model begin
     Vc       = tvvc * exp(η[2])
     Ka       = tvka * exp(η[3])
     fe       = tvfe * exp(η[4])
+  end
+
+  @dosecontrol begin
     lags     = (Depot = tvlag * exp(η[5]),)
     bioav    = (Depot = tvF * exp(η[6]),)
   end
@@ -82,14 +86,20 @@ pk_06        = @model begin
   end
 
   @derived begin
+    """
+    PK06 Plasma Concentration (ug/L)
+    """
     cp       = @. (Central/Vc)
     """
-    Observed Plasma Concentration (ug/L)
+    PK06 Plasma Concentration (ug/L)
     """
     dv       ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
+    """
+    PK06 Urine Amount (ug)
+    """
     ae       = @. Urine
     """
-    Observed Amount (ug)
+    PK06 Urine Amount (ug)
     """
     dv_ae    ~ @. Normal(ae, σ_add)
   end
@@ -101,14 +111,14 @@ end
 
 Parameters provided for simulation. `tv` represents the typical value for parameters.
 
-  * Cl - Clearance (L/hr)
-  * Vc - Volume of Central Compartment (L)
-  * Fe - Fraction of drug excreted in Urine
-  * lag - lag time (hr)
-  * Ka - Absorption rate constant (hr⁻¹)
-  * F - Bioavailability
-  * Ω - Between Subject Variability
-  * σ - Residual error
+  * ``Cl`` - Clearance (L/hr)
+  * ``Vc`` - Volume of Central Compartment (L)
+  * ``Fe`` - Fraction of drug excreted in Urine
+  * ``lag`` - lag time (hr)
+  * ``Ka`` - Absorption rate constant (hr⁻¹)
+  * ``F`` - Bioavailability
+  * ``Ω`` - Between Subject Variability
+  * ``σ`` - Residual error
 
 ```julia
 param = ( tvcl    = 6.02527,
@@ -131,7 +141,7 @@ A single subject receives an IV-bolus dose of **12.5 mg or 12500μg**
 
 ```julia
 ev1  = DosageRegimen(12500, time=0, cmt=2)
-sub1 = Subject(id=1, events=ev1)
+sub = Subject(id="1 - IV", events=ev1)
 ```
 
 ##### For Oral
@@ -140,13 +150,23 @@ A single subject receives an oral dose of **25 mg or 25000μg**
 
 ```julia
 ev2  = DosageRegimen(25000, time=0, cmt=1)
-sub2 = Subject(id=2,events=ev2)
+sub2 = Subject(id="2 - PO",events=ev2)
+```
+
+```julia
+pop = [sub1, sub2]
 ```
 
 ### Simulation
 
-Here, we will learn how to simulataneously simulate plasma conc and urine
- amount after IV and Oral administration.
+Here, we will learn how to simultaneously simulate plasma conc and urine
+amount after IV and Oral administration.
+
+
+```julia; 
+Random.seed!(123)
+sim = simobs(pk_06, pop, param, obstimes=0.1:0.1:168)
+```
 
 ##### For IV
 
@@ -154,8 +174,7 @@ Lets simulate for plasma concentration and amount excreted unchanged in urine.
 
 ```julia; results="hidden"
 Random.seed!(123)
-sim_sub1_iv = simobs(pk_06, sub1, param, obstimes=0.1:0.1:168)
-df_sim_iv   = DataFrame(sim_sub1_iv)
+sim_sub1_iv = simobs(pk_06, sub, param, obstimes=0.1:0.1:168)
 ```
 
 ##### For Oral
