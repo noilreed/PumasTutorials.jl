@@ -8,12 +8,8 @@ using Dates
 ```
 
 ```julia
-using Pumas, Plots, StatsPlots, CategoricalArrays
-```
-
-```julia
-using Random
-Random.seed!(1)
+using Pumas, Random, PumasUtilities
+interactive!(false)
 ```
 
 This tutorial will demonstrate sotalol accelerated dosing strategies to decrease length of hospital stay after sotalol initiation. The original article is
@@ -32,73 +28,79 @@ The following information is already available from the [FDA clnical pharmacolog
 2. Relation between sotalol pharmacokinetics and QTc prolongation (PKPD)
 
 The PKPD model for sotalol was then translated to Pumas
-
 ```julia
 sotalol_PKPD_model = @model begin
-
     @param   begin
-        θ ∈ VectorDomain(9)
-        Ω ∈ PDiagDomain(5)
-        σ_prop_PK ∈ RealDomain(init= 0.02)
-        σ_prop_PD ∈ RealDomain(init = 0.02)
+        tvka         ∈ RealDomain(lower=0)
+        tvcl         ∈ RealDomain(lower=0)
+        tvvc         ∈ RealDomain(lower=0)
+        tvq          ∈ RealDomain(lower=0)
+        tvvp         ∈ RealDomain(lower=0)
+        tvlag       ∈ RealDomain(lower=0)
+        tvbio        ∈ RealDomain(lower=0)
+        tve0         ∈ RealDomain(lower=0)
+        tvslp        ∈ RealDomain(lower=0)
+        Ω            ∈ PDiagDomain(5)
+        σ_prop_PK    ∈ RealDomain(lower=0)
+        σ_prop_PD    ∈ RealDomain(lower=0)
     end
 
     @random begin
       η ~ MvNormal(Ω)
     end
 
+    @covariates begin
+        "Body Weight (kg)"
+        wt 
+        "Chronic Kidney Indication"
+        isCKI
+    end
+
     @pre begin
-        bioav = (Central = θ[1],)
-        Ka = θ[2]*exp(η[1])
-        lags = (Depot = θ[3],)
-        CL = θ[4]*(BW/70)^0.75*(0.5)^CKI*exp(η[2])
-        Vc  = θ[5]*(BW/70)*exp(η[3])
-        Q  = θ[6]*(BW/70)^0.75
-        Vp  = θ[7]*(BW/70)
-
-        e0 = θ[8]*exp(η[4])
-        Slope = θ[9]*exp(η[5])
+        CL    = tvcl  * (0.5)^isCKI * (wt/70)^0.75 * exp(η[1])
+        Vc    = tvvc  * (wt/70)      * exp(η[2])
+        Q     = tvq   * (wt/70)^0.75 
+        Vp    = tvvp  * (wt/70)
+        Ka    = tvka  * exp(η[3])
+        e0    = tve0  * exp(η[4])
+        Slope = tvslp * exp(η[5])
     end
 
-    @covariates BW CKI
-
-    @dynamics begin
-        Depot'   = -Ka*Depot
-        Central' =  Ka*Depot - (CL/Vc)*Central - (Q/Vc)*Central + (Q/Vp)*Peripheral
-        Peripheral' = (Q/Vc)*Central - (Q/Vp)*Peripheral
+    @dosecontrol begin
+        lags = (Depot = tvlag,)
+        bioav = (Central = tvbio,)
     end
+     
+    @dynamics Depots1Central1Periph1
 
-    @derived begin
-        cp = @. (Central / (Vc/1000))
-        dv = @. Normal(cp, sqrt(cp^2*σ_prop_PK))
+    @observed begin
+        cp  = @. (Central/(Vc/1000))
         qtc = @. e0 + (Slope*cp)
-        qt = @. Normal(qtc, sqrt(σ_prop_PD))
     end
-
 end
 ```
 
 The parameters of the model are defined below
 
 ```julia
-parameters_PKPD = ( θ =     [1.0667, #bioav
-                            0.605, #Ka
-                            0.231, #alag1
-                            12, #CL
-                            77.1, #Vc
-                            9.22, #Q
-                            52.3, #Vp
-                            405, #E0
-                            0.0158 #Slope
-                            ],
-                    Ω = Diagonal([0.4692, 0.0198, 0.0713, 0.0025, 0.034]),
-                    σ_prop_PK = 0.06, # made it smaller because it was ridiculously high 0.2285 (%CV of 47.8),
-                    σ_prop_PD = 19.1
+parameters_PKPD = (
+                   tvbio = 1.0667,
+                   tvka  = 0.605, 
+                   tvlag = 0.231,
+                   tvcl  = 12, 
+                   tvvc  = 77.1, 
+                   tvq   = 9.22,
+                   tvvp  = 52.3, 
+                   tve0  = 405, 
+                   tvslp = 0.0158,
+                   Ω = Diagonal([0.4692, 0.0198, 0.0713, 0.0025, 0.034]),
+                   σ_prop_PK = 0.06, # made it smaller because it was ridiculously high 0.2285 (%CV of 47.8),
+                   σ_prop_PD = 19.1
                     )
 ```
 
 ```julia
-randeffs = (η = zeros(5),)
+randeffs = zero_randeffs(sotalol_PKPD_model, parameters_PKPD)
 ```
 
 ## Traditional dosing strategy and time to stable QTc
@@ -110,24 +112,26 @@ is used to initiate patients on sotalol -  80 mg BID
 
 ```julia
 reg_PO_80 = DosageRegimen(80, cmt=1, time=0, ii=12, addl=5, rate=0)
-reg_PO_80_CKI = DosageRegimen(80, cmt=1, time=0, ii=24, addl=5, rate=0)
+reg_PO_80_isCKI = DosageRegimen(80, cmt=1, time=0, ii=24, addl=5, rate=0)
 ```
 
 **create a single subject**
 
 ```julia
-s1 = Subject(id=1, events=reg_PO_80, covariates = (BW = 70, CKI=0))
+s1 = Subject(id=1, events=reg_PO_80, covariates = (wt = 70, isCKI=0))
+bidpo=simobs(sotalol_PKPD_model, s1, parameters_PKPD,randeffs)
 ```
 
 ```julia
-bidpo=simobs(sotalol_PKPD_model, s1, parameters_PKPD,randeffs)
-plot(bidpo, obsnames = [:cp,:qtc], size = (800, 600),
-    color=[2 3],lw=4,
-    xticks = 0:12:96, title = "Subject 1 - 80 mg PO")
+sim_plot(sotalol_PKPD_model, bidpo, observations = [:cp], title = "80 mg PO")
+```
+It takes about 5-6 doses or 3 days to reach steady-state concentrations of sotalol in plasma.
+
+```julia
+sim_plot(sotalol_PKPD_model, bidpo, observations = [:qtc])
 ```
 
-The top panel shows that it takes about 5-6 doses or 3 days to reach steady-state concentrations of sotalol in plasma.
-Similarly, it takes abuot 3 days for the QTc to stabilize to its new steady-state value.
+Similarly, it takes about 3 days for the QTc to stabilize to its new steady-state value.
 
 
 The approved bioequivalent intravenous dose of sotalol (75 mg) on the
@@ -135,14 +139,9 @@ other hand is given as a 5-hour infusion that is tedious.
 
 ```julia
 reg_IV_75 = DosageRegimen(75,cmt=2,time=0,rate=75/5, ii=12, addl=5)
-s2 = Subject(id=1, events=reg_IV_75, covariates = (BW = 70, CKI=0))
-```
-
-```julia
+s2 = Subject(id="75 mg IV", events=reg_IV_75, covariates = (wt = 70, isCKI=0))
 bidiv=simobs(sotalol_PKPD_model, s2, parameters_PKPD, randeffs)
-plot(bidiv, obsnames = [:cp,:qtc],size = (800, 600),
-    color=[2 3],lw=4,
-    xticks = 0:12:96, title = "Subject 2 - 75 mg IV")
+sim_plot(sotalol_PKPD_model, bidiv, observations = [:cp])[1]
 ```
 
 Using either of IV or PO formulations requires three days of hospital stay.
@@ -169,7 +168,7 @@ kidney function.
 |                |                  | 20 mg / 0.5h    |                     |
 
 
-### Setting up doses and subjects for paitents with normal renal function
+### Setting up doses and subjects for patients with normal renal function
 
 Based on the table above, the first three dosing regimens can be generated as follows:
 
@@ -180,78 +179,51 @@ reg_IVPO_80 = DosageRegimen([40,80,80], cmt=[2,1,1],
                             time=[0,1,12], ii=[0,0,12],
                             addl=[0,0,4], rate=[40/1,0,0])
 reg_PO_80 = DosageRegimen(80, cmt=1, time=0, ii=12, addl=5, rate=0)
-s3_po = Subject(id=3, events=reg_PO_80, covariates = (BW = 70, CKI=0))
-s3 = Subject(id=3, events=reg_IVPO_80,
-            covariates=(BW = [70, 70, 70], CKI=[0, 0, 0],
-            dose=["iv1","po","po"], reg=["IV_PO_80mg","IV_PO_80mg","IV_PO_80mg"]),
-            covariates_time = [0, 1, 12],covariates_direction = :left)
+s3_po = Subject(id="PO80", events=reg_PO_80, covariates = (wt = 70, isCKI=0))
+s3 = Subject(id="IV401h-PO80", events=reg_IVPO_80,
+            covariates=(wt = 70, isCKI=0))
+reg1 = [s3, s3_po]            
+randeffs = zero_randeffs(sotalol_PKPD_model, parameters_PKPD, reg1)
+reg1sim=simobs(sotalol_PKPD_model, reg1, parameters_PKPD, randeffs, obstimes=0:0.01:96)
+sim_plot(sotalol_PKPD_model, reg1sim, observations = [:cp])[1]
 ```
 
-```julia
-reg1_po=simobs(sotalol_PKPD_model, s3_po, parameters_PKPD, randeffs)
-reg1=simobs(sotalol_PKPD_model, s3, parameters_PKPD,randeffs,obstimes=0:0.01:96)
-
-reg1df = DataFrame(reg1)
-dropmissing!(reg1df,:cp)
-@df reg1df plot(:time, :cp, group=:dose, linecolor=[:brown :blue], linewidth=4)
-plot(reg1, obsnames = [:cp,:qtc], size = (800, 600),
-    color=[2 3],lw=4,
-    xticks = 0:12:96, title = "Subject 3 - Regimen 1")
-plot!(reg1_po, obsnames = [:cp,:qtc],size = (800, 600),
-    color=[4],lw=4, linestyle = [:dot],
-    xticks = 0:12:96, title = "Subject 3 - Regimen 1")
-```
-
-
-**40 mg IV loading dose over 1 hour followed by 20 mg IV for 30 minutes followed by 80 mg BID maintenance dose**
+**40 mg IV loading dose over 1 hour followed by 20 mg IV for 30 minutes followed by 120 mg BID maintenance dose**
 
 ```julia
 reg_IVPO_120 = DosageRegimen([40,20,120,120], cmt=[2,2,1,1],
                             time=[0,1,1.5,12],ii=[0,0,0,12],
                             addl=[0,0,0,4], rate=[40/1,20/0.5,0,0])
 reg_PO_120 = DosageRegimen(120, cmt=1, time=0, ii=12, addl=5, rate=0)
-s4_po = Subject(id=4, events=reg_PO_120, covariates = (BW = 70, CKI=0))
-s4 = Subject(id=4, events= reg_IVPO_120,
-            covariates=(BW = [70, 70, 70, 70], CKI=[0,0,0,0],
-            dose=["iv1","iv2","po","po"]),covariates_time = [0,1,1.5,12])
-```
-
-```julia
-reg2_po=simobs(sotalol_PKPD_model, s4_po, parameters_PKPD, randeffs)
-reg2=simobs(sotalol_PKPD_model, s4, parameters_PKPD,randeffs)
-plot(reg2, obsnames = [:cp,:qtc],size = (800, 600),
-    color=[2 3],lw=4,
-    xticks = 0:12:96, title = "Subject 4 - Regimen 2")
-plot!(reg2_po, obsnames = [:cp,:qtc],size = (800, 600),
-    color=[4],lw=4, linestyle = [:dot],
-    xticks = 0:12:96, title = "Subject 4 - Regimen 2")
+s4_po = Subject(id="PO120", events=reg_PO_120, covariates = (wt = 70, isCKI=0))
+s4 = Subject(id="IV40_1h-IV20_30min-PO120", events= reg_IVPO_120,
+            covariates=(wt = 70, isCKI=0))
+reg2 = [s4, s4_po]  
+randeffs = zero_randeffs(sotalol_PKPD_model, parameters_PKPD, reg2)
+reg2sim = simobs(sotalol_PKPD_model, reg2, parameters_PKPD, randeffs, obstimes=0:0.01:96)
+sim_plot(sotalol_PKPD_model, reg2sim, observations = [:cp])[1]          
 ```
 
 **40 mg IV loading dose over 1 hour followed by two 20 mg IV for 30 minutes each followed by 80 mg BID maintenance dose**
 
 ```julia
-reg_IVPO_160 = DosageRegimen([40,20,20,160,160], cmt=[2,2,2,1,1],
-                            time=[0,1,1.5,2,12],ii=[0,0,0,0,12],
-                            addl=[0,0,0,0,4], rate=[40/1,20/0.5,20/0.5,0,0])
+reg_IVPO_160 = DosageRegimen([40,20,20,160,160], 
+                            cmt=[2,2,2,1,1],
+                            time=[0,1,1.5,2,12],
+                            ii=[0,0,0,0,12],
+                            addl=[0,0,0,0,4], 
+                            rate=[40/1,20/0.5,20/0.5,0,0])
 reg_PO_160 = DosageRegimen(160, cmt=1, time=0, ii=12, addl=5, rate=0)
-s5_po = Subject(id=5, events=reg_PO_160, covariates = (BW = 70, CKI=0))
-s5 = Subject(id=5, events=reg_IVPO_160,
-            covariates=(BW = fill(70, 5), CKI=fill(0, 5), dose=["iv1","iv2","iv3","po","po"]),
-            covariates_time = [0,1,1.5,2,12])
+s5_po = Subject(id="PO160", events=reg_PO_160, covariates = (wt = 70, isCKI=0))
+s5 = Subject(id="IV40_1h-IV20_30min_x2-PO160", events=reg_IVPO_160,
+            covariates=(wt = 70, isCKI=0))
+reg3 = [s5, s5_po]  
+randeffs = zero_randeffs(sotalol_PKPD_model, parameters_PKPD, reg3)
+reg3sim = simobs(sotalol_PKPD_model, reg3, parameters_PKPD, randeffs, obstimes=0:0.01:96)
+sim_plot(sotalol_PKPD_model, reg3sim, observations = [:cp])[1]               
 ```
 
-```julia
-reg3_po=simobs(sotalol_PKPD_model, s5_po, parameters_PKPD, randeffs)
-reg3=simobs(sotalol_PKPD_model, s5, parameters_PKPD,randeffs)
-plot(reg3, obsnames = [:cp,:qtc],
-    color=[2 3],lw=2,
-    xticks = 0:12:96, title = "Subject 5 - Regimen 3")
-plot!(reg3_po, obsnames = [:cp,:qtc],
-    color=[4],lw=2, linestyle = [:dot],
-    xticks = 0:12:96, title = "Subject 5 - Regimen 3")
-```
-
-You can see from all three plots above that the dotted lines that represent the regular oral dosing take
+You can see from all three plots above that the yellow lines that represent the regular oral dosing take
 three days to reach steady-state at their target dose. But the combination of IV and oral doses together gets
 the patient to steady-state in less than 6 hours usually. This will enable the patients to be monitored only during
 day 1 wit the potential to be discharged. The cost savings associated with this early discharge are discussed in
@@ -260,7 +232,7 @@ the manuscript.
 This tutorial dose not cover the simulations for the chronic kidney disease patients. The only difference here
 is that the doses are given once daily instead of two times a day.
 
-## Impact of population variablity on QTc prolongation.
+## Impact of population variability on QTc prolongation.
 
 We can now simulate a population of 1000 subjects and evaluate the extremes of the QTc prolongation. Since we are
 interested in the worst case scenario with respect to the maximum QTc prolongation, we can simulated the highest dose
@@ -268,21 +240,24 @@ regimen.
 
 
 ```julia
-pop5 = Population(map(i -> Subject(id=i, events=reg_IVPO_160,
-      covariates=(BW = fill(round.(rand(Normal(70, 10))),5),
-      CKI=fill(0,5), dose=["iv1","iv2","iv3","po","po"]), covariates_time = [0,1,1.5,2,12]), 1:1000))
-sim_pop=simobs(sotalol_PKPD_model, pop5, parameters_PKPD)
-plot(sim_pop, obsnames = [:cp,:qtc], size = (800,600),
-    lw=0.25,
-    xticks = 0:12:96, title = "Population Simulation - Regimen 3")
+pop5 = map(i -> 
+            Subject(id         = i, 
+                    events     = reg_IVPO_160,
+                    covariates = (wt    = round.(rand(Normal(70, 10))),
+                                  isCKI = 0
+                                  )
+                    ),               
+            1:1000)
+sim_pop=simobs(sotalol_PKPD_model, pop5, parameters_PKPD, obstimes=0:0.01:96)
+sim_plot(sotalol_PKPD_model, sim_pop, observations = [:cp])[1]   
 ```
 
 However, our interest is to evaluate if the change from baseline
 QTc is greater than 30 msec
 
 ```julia
-simdf = DataFrame(sim_pop, include_events=false, include_covariates=false)
-foo = by(simdf, :id, :cp => maximum)
+simdf = DataFrame(sim_pop)
+maxcp = combine(x -> maximum(x.cp), groupby(simdf, :id))
 bar = join(simdf, foo, on = :id)
 bar.bins = string.(cut(bar.cp_maximum,5))
 ```
