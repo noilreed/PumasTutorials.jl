@@ -14,483 +14,636 @@ using Pumas
 using PlottingUtilities
 using PumasPlots
 using CairoMakie
+
+interactive!(false)  # Don't use interactive plots
+
+Random.seed!(1234)  # Set random seed for reproducibility
 ```
 
-# Introduction
 
-In this tutorial, we will cover the following absorption models
+## Introduction
 
-* first order
-* zero-order
-* two parallel first-order
-* first-order + zero-order simultaneously
-* Weibull absorption
-* Erlang absorption
-* Transit absorption (WIP)
+Absorption modeling is an integral part of pharmacokinetic modeling for drugs
+delivered by any [route of
+administration](https://www.knowledgedose.com/routes-of-drug-administration/)
+other than intravenous (IV) (e.g. oral, subcutaneous, intramuscular, transdermal,
+nasal, etc.). In the simplest case, drugs administered orally may undergo
+first-order absorption, whereby the absorption from the depot compartment (i.e.
+gut) to the central compartment (i.e. plasma) is a first-order process.
+However, many more complex situations arise in practice, some of which will be
+covered in this tutorial.
+
+In this tutorial, we will cover the following absorption models:
+
+* [First-order](#First-Order-Absorption)
+* [Zero-order](#Zero-Order-Absorption)
+* [Sequential zero-order followed by first-order](#Sequential-Zero-Order-Followed-by-First-Order-Absorption)
+* [Parallel zero-order and first-order](#Parallel-Zero-Order-and-First-Order-Absorption)
+* [Two parallel first-order processes](#Absorption-by-Two-Parallel-First-Order-Processes)
+* [Weibull-type absorption](#Weibull-Type-Absorption)
+* [Absorption through a sequence of transit compartments (Erlang absorption)](#Erlang-Absorption)
 
 
-## Generating the population
+## Generating the Population
+
+We begin by simulating a population of 10 subjects to use for illustration purposes in this tutorial.
+For simplicity, we will use a 1-compartment distribution system with additional absorption compartment(s) as required.
+Note that in these examples we are simulating without residual error (it could be added, but isn't necessary here).
 
 ```julia;
-sd = DosageRegimen(100, time = 0)
-Random.seed!(1234)
-choose_covariates() = (Wt = rand(55:80), dose = 100)
-sd_with_covariates = map(i -> Subject(id = i, 
-                                      events = sd, 
-                                      covariates = choose_covariates(),
-                                      observations = (conc = nothing,)), 
-                                      1:10)
+dose = DosageRegimen(amt = 100, time = 0)
+
+choose_covariates() = (wt = rand(55:80), dose = 100)
+
+subj_with_covariates = map(1:10) do i
+    Subject(id = i,
+            events = dose,
+            covariates = choose_covariates(),
+            observations = (conc = nothing,))
+end
 ```
-For a more indepth tutorial, please see the tutorial on [generating and simulation populations](https://tutorials.pumas.ai/html/introduction/simulating_populations.html)
 
-For simplicity, we will use a 1-compartment distribution system with additional absorption compartment(s) as required.
-Note that we are not simulating with residual error in these examples, but that can be easily added
+For a more in-depth discussion of simulating data with Pumas, please see the tutorial [generating and simulation populations](https://tutorials.pumas.ai/html/introduction/simulating_populations.html).
 
 
-## first-order absorption
+## First-Order Absorption
+
+Here is the Pumas code for a 1-compartment model with first-order absorption,
+diagonal random-effects structure, and allometric scaling on clearance and
+volume [do we need allometric scaling for this example?]:
 
 ```julia
 foabs = @model begin
 
   @param begin
     tvcl ∈ RealDomain(lower=0)
-    tvv ∈ RealDomain(lower=0)
+    tvvc ∈ RealDomain(lower=0)
     tvka ∈ RealDomain(lower=0)
-    Ω ∈ PDiagDomain(3)
+    Ω    ∈ PDiagDomain(3)
   end
 
   @random begin
     η ~ MvNormal(Ω)
   end
 
-  @covariates Wt
+  @covariates wt
 
   @pre begin
-    CL = tvcl*(Wt/70)^0.75*exp(η[1])
-    V  = tvv*(Wt/70)*exp(η[2])
+    CL = tvcl*(wt/70)^0.75*exp(η[1])
+    Vc = tvvc*(wt/70)*exp(η[2])
     Ka = tvka*exp(η[3])
   end
 
   @dynamics begin
     Depot'   = -Ka*Depot
-    Central' =  Ka*Depot - Central*CL/V
+    Central' =  Ka*Depot - (CL/Vc)*Central
   end
 
   @observed begin
-    conc = @. Central/V
+    conc = @. Central/Vc
   end
 end
-
 ```
-and below are the set of parameters for this model
+
+Note that we have written the model using differential equations, but we could
+equally have specified an "analytical" (closed-form) solution using this
+`@dynamics` block instead (see
+https://docs.pumas.ai/dev/model_components/dynamical_types/):
+
+```julia; eval=false
+@dynamics Depots1Central1
+```
+
+Below are a set of parameter values for this model:
 
 ```julia
 param = (
-  tvcl = 5, tvv = 20, tvka = 1,
-  Ω = Diagonal([0.04, 0.04, 0.04]),
-  )
+  tvcl = 5, tvvc = 20, tvka = 1,
+  Ω = Diagonal([0.04, 0.04, 0.04]))
 ```
 
-We can now use the data and model with parameters to simulate a first-order absorption profile
+We can now use the data and model with parameters to simulate a first-order absorption profile:
 
 ```julia; results="hidden"
-Random.seed!(1234)
-obs = simobs(foabs, sd_with_covariates, param, obstimes = 0:1:48)
+obs = simobs(foabs, subj_with_covariates, param, obstimes = 0:.1:24)
 ```
+
+And now, we plot the results:
 
 ```julia
-interactive!(false)
-p = sim_plot(foabs, 
-          obs, observations = :conc)[1]
-Label(p[0, :], "First-order Absorption", textsize = 30) 
-p        
+p = sim_plot(foabs, obs, observations = :conc)[1]
+Label(p[0, :], "First-Order Absorption", textsize = 30)
+p
 ```
 
-## zero-order absorption
+
+## Zero-Order Absorption
+
+Zero-order absorption is less common than first-order absorption. It is
+essentially like an IV infusion, but where the duration of the infusion is an
+estimated parameter rather than a known quantity.  Here is the Pumas code for
+the same 1-compartment model but with zero-order absorption:
 
 ```julia
 zoabs = @model begin
   @param begin
-    tvcl ∈ RealDomain(lower=0)
-    tvv ∈ RealDomain(lower=0)
-    tvduration ∈ RealDomain(lower=0)
-    Ω ∈ PDiagDomain(3)
+    tvcl  ∈ RealDomain(lower=0)
+    tvvc  ∈ RealDomain(lower=0)
+    tvdur ∈ RealDomain(lower=0)
+    Ω     ∈ PDiagDomain(3)
   end
 
   @random begin
     η ~ MvNormal(Ω)
   end
 
-  @covariates Wt
+  @covariates wt
 
   @pre begin
-    CL = tvcl*(Wt/11)^0.75*exp(η[1])
-    V  = tvv*(Wt/11)*exp(η[2])
+    CL = tvcl*(wt/70)^0.75*exp(η[1])
+    Vc = tvvc*(wt/70)*exp(η[2])
   end
 
   @dosecontrol begin
-    duration =  (Central = tvduration*exp(η[3]),)
+    duration = (Central = tvdur*exp(η[3]),)
   end
 
   @dynamics begin
-    Central' =  - Central*CL/V
+    Central' =  - (CL/Vc)*Central
   end
 
   @observed begin
-    conc = Central/V
+    conc = @. Central/Vc
   end
 
 end
 ```
 
-and below are the set of parameters for this model
+Notice that there is no depot compartment, and that instead the absorption
+takes place in the `@dosecontrol` block by specifying a `duration` for the
+zero-order process.  In order for this to work, we need to set the `rate` data
+item in `DosageRegimen` to the value `-2`; this is a clue to the Pumas engine
+that the `rate` should be derived from the `duration` and `amt`.
+
+Below are a set of parameter values for this model:
 
 ```julia
 param = (
-  tvcl = 0.792, tvv = 13.7, tvduration = 5,
-  Ω = Diagonal([0.04, 0.04, 0.04]),
-  )
+  tvcl = 0.792, tvvc = 13.7, tvdur = 5.0,
+  Ω = Diagonal([0.04, 0.04, 0.04]))
 ```
-Notes:
 
-1. Notice in the model above that there is no additional "absorption" compartment. We are
-directly dosing into the central compartment as an infusion.This is a common trick used to model
-zero-order absorption profiles
-2. Since we are deling with infusion, we have to set the `rate` data item in `DosageRegimen` to be `< 0`
-We can now use the data and model with parameters to simulate a zero-order absorption profile
-
-```julia
-sd = DosageRegimen(100, time = 0, rate = -2)
-choose_covariates() = (Wt = rand(55:80), dose=100)
-sd_with_covariates = map(i -> Subject(id = i, 
-                                      events = sd, 
-                                      covariates = choose_covariates(),
-                                      observations = (conc = nothing,)), 1:10)
-```
+We can now use the data and model with parameters to simulate a zero-order absorption profile:
 
 ```julia; results="hidden"
-Random.seed!(1234)
-obs = simobs(zoabs, sd_with_covariates, param, obstimes = 0:0.1:48)
+dose = DosageRegimen(amt = 100, time = 0, rate = -2)  # Note: rate must be -2 for duration modeling
+
+subj_with_covariates = map(1:10) do i
+    Subject(id = i,
+            events = dose,
+            covariates = choose_covariates(),
+            observations = (conc = nothing,))
+end
+
+obs = simobs(zoabs, subj_with_covariates, param, obstimes = 0:0.1:48)
 ```
 
+And now, we plot the results:
+
 ```julia
-interactive!(false)
-p = sim_plot(foabs, 
-          obs, observations = :conc)[1]
-Label(p[0, :], "Zero-order Absorption", textsize = 30) 
-p        
+p = sim_plot(zoabs, obs, observations = :conc)[1]
+Label(p[0, :], "Zero-Order Absorption", textsize = 30)
+p
 ```
 
-## mixed zero+first order absorption models
+
+## Sequential Zero-Order Followed by First-Order Absorption
+
+Sequential zero-order followed by first-order absorption can be implemented by
+infusing into the depot compartment rather than the central compartment. It is
+thus a simple extension of the two previous models.  Note that we say that this
+is *sequential* because the drug enters the depot compartment by zero-order
+absorption before the first-order absorption process takes place, but the two
+are really operating simultaneously (it is different from a model where the
+first-order process begins only when the zero-order process ends).
+
+Here is the Pumas code:
 
 ```julia
-
-fozoabs = @model begin
+zofo_seq_abs = @model begin
 
   @param begin
-    tvcl ∈ RealDomain(lower=0)
-    tvv ∈ RealDomain(lower=0)
-    tvka ∈ RealDomain(lower=0)
-    tvduration ∈ RealDomain(lower=0)
-    tvbio ∈ RealDomain(lower=0)
-    tvlag ∈ RealDomain(lower=0)
-    Ω ∈ PDiagDomain(2)
+    tvcl  ∈ RealDomain(lower=0)
+    tvvc  ∈ RealDomain(lower=0)
+    tvka  ∈ RealDomain(lower=0)
+    tvdur ∈ RealDomain(lower=0)
+    Ω     ∈ PDiagDomain(4)
   end
 
   @random begin
     η ~ MvNormal(Ω)
   end
 
-  @covariates Wt
+  @covariates wt
 
   @pre begin
-    CL = tvcl*(Wt/70)^0.75*exp(η[1])
-    V  = tvv*(Wt/70)*exp(η[2])
-    Ka = tvka
+    CL = tvcl*(wt/70)^0.75*exp(η[1])
+    Vc = tvvc*(wt/70)*exp(η[2])
+    Ka = tvka*exp(η[3])
   end
 
   @dosecontrol begin
-    duration = (Central = tvduration,)
-    bioav = (Depot = tvbio, Central = 1-tvbio)
-    lags = (Depot = tvlag,)
+    duration = (Depot = tvdur*exp(η[4]),)
   end
 
   @dynamics begin
     Depot'   = -Ka*Depot
-    Central' =  Ka*Depot - Central*CL/V
+    Central' =  Ka*Depot - (CL/Vc)*Central
   end
 
   @observed begin
-    conc = Central/V
+    conc = @. Central/Vc
+  end
+end
+```
+
+Below are a set of parameter values for this model:
+
+```julia
+param = (
+  tvcl = 0.792, tvvc = 13.7, tvka = 1, tvdur = 1.0,
+  Ω = Diagonal([0.04, 0.04, 0.04, 0.04]))
+```
+
+We can now use the data and model with parameters to simulate a sequential zero-order followed by first-order  absorption profile:
+
+```julia; results="hidden"
+dose = DosageRegimen(amt = 100, time = 0, rate = -2)  # Note: rate must be -2 for duration modeling
+
+subj_with_covariates = map(1:10) do i
+    Subject(id = i,
+            events = dose,
+            covariates = choose_covariates(),
+            observations = (conc = nothing,))
+end
+
+obs = simobs(zofo_seq_abs, subj_with_covariates, param, obstimes = 0:0.1:48)
+```
+
+And now, we plot the results:
+
+```julia
+p = sim_plot(zofo_seq_abs, obs, observations = :conc)[1]
+Label(p[0, :], "Sequential Zero-Order Followed by First-Order Absorption", textsize = 30)
+p
+```
+
+
+## Parallel Zero-Order and First-Order Absorption
+
+This is a more complex absorption model, with both a zero-order process and a
+first-order process operating simultaneously. Essentially, the total dose is
+split into two parts, one of which undergoes first-order absorption and the
+other zero-order absorption (how this splitting is typically accomplished from
+a technical perspective is to treat each actual dose as two virtual doses with
+different bioavailable fractions, as in the example below).  Furthermore, we
+will assume that the first-order process is subject to a lag (i.e., the
+absorption begins after a certain time delay, which is a model parameter).
+
+```julia
+zofo_paral_abs = @model begin
+
+  @param begin
+    tvcl  ∈ RealDomain(lower=0)
+    tvvc  ∈ RealDomain(lower=0)
+    tvka  ∈ RealDomain(lower=0)
+    tvdur ∈ RealDomain(lower=0)
+    tvbio ∈ RealDomain(lower=0)
+    tvlag ∈ RealDomain(lower=0)
+    Ω     ∈ PDiagDomain(2)
+  end
+
+  @random begin
+    η ~ MvNormal(Ω)
+  end
+
+  @covariates wt
+
+  @pre begin
+    CL = tvcl*(wt/70)^0.75*exp(η[1])
+    Vc = tvvc*(wt/70)*exp(η[2])
+    Ka = tvka
+  end
+
+  @dosecontrol begin
+    duration = (Central = tvdur,)
+    bioav    = (Depot = tvbio, Central = 1 - tvbio)
+    lags     = (Depot = tvlag,)
+  end
+
+  @dynamics begin
+    Depot'   = -Ka*Depot
+    Central' =  Ka*Depot - (CL/Vc)*Central
+  end
+
+  @observed begin
+    conc = @. Central/Vc
   end
 
 end
 ```
 
-and below are the set of parameters for this model
+Below are a set of parameter values for this model:
 
 ```julia
 param = (
-  tvcl = 5, tvv = 50, tvka = 1.2, tvduration = 2, tvbio = 0.5, tvlag = 2,
-  Ω = Diagonal([0.04, 0.04]),
-  )
+  tvcl = 5, tvvc = 50, tvka = 1.2, tvdur = 2, tvbio = 0.5, tvlag = 1,
+  Ω = Diagonal([0.04, 0.04]))
 ```
-Notes:
 
-1. In the mixed order case, each subject will have two rows for dosing, the first-order one into the depot compartment
-and the zero-order one into the central compartment.
-2. Hence we see two specifications of dosing in using `DosageRegimen` below.
-3. `DosageRegimen` can also combine multiple `DosageRegimen`'s together, in this case, first and zero order
-4. In this example, zero-order dosing occurs first over a 2 hour duration and the first hour process starts
-after a lag of 2 hours.
+With these parameter values, the first-order process starts 1 hour after
+administration, while the zero-order process lasts 2 hours. Hence, there is one
+hour where they overlap.
 
-We can now use the data and model with parameters to simulate a simultaneous first- and zero-order absorption profile
-
-```julia
-sd_fo = DosageRegimen(100, time = 0, cmt = 1, rate = 0, evid = 1)
-sd_zo = DosageRegimen(100, time = 0, cmt = 2, rate = -2, evid = 1)
-sd_fo_zo = DosageRegimen(sd_fo,sd_zo)
-
-choose_covariates() = (Wt = rand(55:80), dose = 100)
-sd_with_covariates = map(i -> Subject(id = i, 
-                                      events = sd_fo_zo, 
-                                      covariates = choose_covariates(),
-                                      observations = (conc = nothing,)), 1:10)
-```
+We can now use the data and model with parameters to simulate a parallel first- and zero-order absorption profile:
 
 ```julia; results="hidden"
-obs = simobs(fozoabs, sd_with_covariates, param, obstimes = 0:0.1:24)
+dose_zo = DosageRegimen(amt = 100, time = 0, cmt = 2, rate = -2, evid = 1)  # Note: rate must be -2 for duration modeling
+dose_fo = DosageRegimen(amt = 100, time = 0, cmt = 1, rate = 0, evid = 1)
+dose    = DosageRegimen(dose_fo, dose_zo)  # Actual dose is made up of 2 virtual doses
+
+subj_with_covariates = map(1:10) do i
+    Subject(id = i,
+            events = dose,
+            covariates = choose_covariates(),
+            observations = (conc = nothing,))
+end
+
+obs = simobs(zofo_paral_abs, subj_with_covariates, param, obstimes = 0:0.1:24)
 ```
+
+And now, we plot the results:
 
 ```julia
-interactive!(false)
-p = sim_plot(fozoabs, 
-          obs, observations = :conc)[1]
-Label(p[0, :], "Mixed zero+first order absorption", textsize = 30) 
-p        
+p = sim_plot(zofo_paral_abs, obs, observations = :conc)[1]
+Label(p[0, :], "Parallel Zero- And First-Order Absorption", textsize = 30)
+p
 ```
 
-## Two parallel first-order absorptions
 
+## Absorption by Two Parallel First-Order Processes
+
+This is similar to the example above, except that both parallel processes are
+first-order rather than one being zero-order.  We will refer to the two
+processes as "immediate release" (IR) and "slow release" (SR); only the SR
+process is subject to a lag. The Pumas code is as follows:
 
 ```julia
 two_parallel_foabs = @model begin
 
   @param begin
-    tvcl ∈ RealDomain(lower=0)
-    tvv ∈ RealDomain(lower=0)
+    tvcl  ∈ RealDomain(lower=0)
+    tvvc  ∈ RealDomain(lower=0)
     tvka1 ∈ RealDomain(lower=0)
     tvka2 ∈ RealDomain(lower=0)
     tvlag ∈ RealDomain(lower=0)
     tvbio ∈ RealDomain(lower=0)
-    Ω ∈ PDiagDomain(6)
+    Ω     ∈ PDiagDomain(6)
   end
 
   @random begin
     η ~ MvNormal(Ω)
   end
 
-  @covariates Wt
+  @covariates wt
 
   @pre begin
-    CL = tvcl*(Wt/70)^0.75*exp(η[1])
-    V  = tvv*(Wt/70)*exp(η[2])
+    CL  = tvcl*(wt/70)^0.75*exp(η[1])
+    Vc  = tvvc*(wt/70)*exp(η[2])
     Ka1 = tvka1*exp(η[3])
     Ka2 = tvka2*exp(η[4])
   end
 
   @dosecontrol begin
-    lags = (SR = tvlag*exp(η[5]),)
-    bioav = (IR = tvbio*exp(η[6]), SR = 1-tvbio*exp(η[6]))
+    lags  = (SR = tvlag*exp(η[5]),)
+    bioav = (IR = tvbio*exp(η[6]), SR = (1 - tvbio)*exp(η[6]))
   end
 
   @dynamics begin
     IR'      = -Ka1*IR
     SR'      = -Ka2*SR
-    Central' =  Ka1*IR + Ka2*SR - Central*CL/V
+    Central' =  Ka1*IR + Ka2*SR - Central*CL/Vc
   end
 
   @observed begin
-    conc = Central/V
+    conc = @. Central/Vc
   end
 
 end
-
 ```
-and below are the set of parameters for this model
+
+Below are a set of parameter values for this model:
 
 ```julia
 param = (
-  tvcl = 5, tvv = 50, tvka1 = 0.8, tvka2 = 0.6, tvlag = 5, tvbio = 0.5,
-  Ω = Diagonal([0.04,0.04,0.36,0.36,0.04,0.04]),
-  )
+  tvcl = 5, tvvc = 50, tvka1 = 0.8, tvka2 = 0.6, tvlag = 5, tvbio = 0.5,
+  Ω = Diagonal([0.04, 0.04, 0.36, 0.36, 0.04, 0.04]))
 ```
 
-We can now use the data and model with parameters to simulate a first-order absorption profile
+We can now use the data and model with parameters to simulate a profile with this type of absorption:
 
 ```julia; results="hidden"
-fo_1 = DosageRegimen(100, cmt = 1, time = 0)
-fo_2 = DosageRegimen(100, cmt = 2, time = 0)
-parallel_fo = DosageRegimen(fo_1,fo_2)
-parallel_fo_with_covariates = map(i -> Subject(id = i,
-                                               events = parallel_fo, 
-                                               covariates = choose_covariates(),
-                                               observations= (conc = nothing,)), 1:10)
-obs = simobs(two_parallel_foabs, parallel_fo_with_covariates, param, obstimes = 0:1:48)
+dose_fo1 = DosageRegimen(amt = 100, cmt = 1, time = 0)
+dose_fo2 = DosageRegimen(amt = 100, cmt = 2, time = 0)
+dose     = DosageRegimen(dose_fo1, dose_fo2)  # Actual dose is made up of 2 virtual doses
+
+subj_with_covariates = map(1:10) do i
+    Subject(id = i,
+            events = dose,
+            covariates = choose_covariates(),
+            observations = (conc = nothing,))
+end
+
+obs = simobs(two_parallel_foabs, subj_with_covariates, param, obstimes = 0:.1:48)
 ```
 
+And now, we plot the results:
+
 ```julia
-interactive!(false)
-p = sim_plot(two_parallel_foabs, 
-          obs, observations = :conc)[1]
-Label(p[0, :], "Two Parallel First-order absorption", textsize = 30) 
-p        
+p = sim_plot(two_parallel_foabs, obs, observations = :conc)[1]
+Label(p[0, :], "Absorption by Two Parallel First-Order Processes", textsize = 30)
+p
 ```
+
 
 ## Weibull-Type Absorption
 
+Yet other situations call for an absorption process that varies over time. One
+such model is this Weibull-type model, whereby the absorption is by a
+first-order process, but with a rate constant that is continuously changing
+over time according to a *Weibull function* (i.e., the CDF of a [Weibull
+distribution](https://en.wikipedia.org/wiki/Weibull_distribution)). Here is the
+Pumas code for this model:
+
 ```julia
-wb_abs = @model begin
+weibullabs = @model begin
 
   @param begin
     tvcl ∈ RealDomain(lower=0)
-    tvv ∈ RealDomain(lower=0)
-    tvka1 ∈ RealDomain(lower=0)
-    tvγ₁ ∈ RealDomain(lower=0)
-    Ω ∈ PDiagDomain(4)
+    tvvc ∈ RealDomain(lower=0)
+    tvka ∈ RealDomain(lower=0)
+    tvγ  ∈ RealDomain(lower=0)
+    Ω    ∈ PDiagDomain(4)
   end
 
   @random begin
     η ~ MvNormal(Ω)
   end
 
-  @covariates Wt
+  @covariates wt
 
   @pre begin
-    CL = tvcl*(Wt/70)^0.75*exp(η[1])
-    V  = tvv*(Wt/70)*exp(η[2])
-    Ka1 = tvka1*exp(η[3])
-    γ₁ = tvγ₁*exp(η[4])
-    # Weibull function
-    wb = 1-exp((-(Ka1*t)^γ₁))
+    CL  = tvcl*(wt/70)^0.75*exp(η[1])
+    Vc  = tvvc*(wt/70)*exp(η[2])
+    Ka∞ = tvka*exp(η[3])           # Maximum Ka as t → ∞
+    γ   = tvγ*exp(η[4])            # Controls the steepness of the Ka curve
+    Kaᵗ = 1 - exp(-(Ka∞*t)^γ)      # Weibull function
   end
 
   @dynamics begin
-    Depot'   = -wb*Depot
-    Central' =  wb*Depot - Central*CL/V
+    Depot'   = -Kaᵗ*Depot
+    Central' =  Kaᵗ*Depot - (CL/Vc)*Central
   end
 
   @derived begin
-    conc = Central/V
-  end
-
-end
-
-```
-and below are the set of parameters for this model
-
-```julia
-param = (
-  tvcl = 5, tvv = 50,tvka1 = 0.4, tvγ₁ = 4,
-  Ω = Diagonal([0.04, 0.04, 0.36, 0.04]),
-  )
-```
-
-We can now use the data and model with parameters to simulate a weibull absorption profile
-
-```julia; results="hidden"
-wb_reg = DosageRegimen(100, cmt = 1, time = 0)
-wb_reg_with_covariates = map(i -> Subject(id = i, 
-                                          events = wb_reg, 
-                                          covariates = choose_covariates(),
-                                          observations = (conc = nothing,)), 1:10)
-obs = simobs(wb_abs, wb_reg_with_covariates, param, obstimes = 0:1:48)
-```
-
-
-```julia
-interactive!(false)
-p = sim_plot(wb_abs, 
-          obs, observations = :conc)[1]
-Label(p[0, :], "Weibull absorption", textsize = 30) 
-p        
-```
-
-## Erlang absorption
-
-```julia
-erlangabs = @model begin
-  @param begin
-    tvcl ∈ RealDomain(lower=0)
-    tvv ∈ RealDomain(lower=0)
-    tvktr ∈ RealDomain(lower=0)
-    tvq ∈ RealDomain(lower=0)
-    tvvp ∈ RealDomain(lower=0)
-    Ω ∈ PSDDomain(4)
-  end
-
-  @random begin
-    η ~ MvNormal(Ω)
-  end
-
-  @covariates Wt
-
-  @pre begin
-    CL = tvcl*(Wt/70)^0.75*exp(η[1])
-    Vc  = tvv*(Wt/70)*exp(η[2])
-    Ktr = tvktr*exp(η[3])
-    Q  = tvq*(Wt/70)^0.75*exp(η[4])
-    Vp  = tvvp*(Wt/70)
-    K  = CL/Vc
-    K21 = Q/Vp
-    K12 = Q/Vc
-    N = 5 # number of compartments
-  end
-
-  @dynamics begin
-    Depot' = -Ktr*Depot
-    DELA1' = Ktr*Depot-Ktr*DELA1
-    DELA2' = Ktr*DELA1-Ktr*DELA2
-    DELA3' = Ktr*DELA2-Ktr*DELA3
-    DELA4' = Ktr*DELA3-Ktr*DELA4
-    DELA5' = Ktr*DELA4-Ktr*DELA5
-    Central' = Ktr*DELA5 - Central*K + K21*Periph -K12*Central
-    Periph' = - K21*Periph + K12*Central
-  end
-
-  @observed begin
     conc = Central/Vc
   end
 
 end
-
 ```
 
-and below are the set of parameters for this model
+Below are a set of parameter values for this model:
 
 ```julia
 param = (
-  tvcl = 27, tvv = 77.4, tvktr = 7.74, tvq = 23.7, tvvp = 55.6,
-  Ω = diagm(0 => [0.09, 0.22, 0.10, 0.52])
-  )
+  tvcl = 5, tvvc = 50, tvka = 0.4, tvγ = 4,
+  Ω = Diagonal([0.04, 0.04, 0.36, 0.04]))
 ```
 
-We can now use the data and model with parameters to simulate a erlang absorption profile
+We can now use the data and model with parameters to simulate a Weibull-type absorption profile:
 
 ```julia; results="hidden"
-erlang_reg = DosageRegimen(100, cmt = 1, time = 0)
-erlang_reg_with_covariates = map(i -> Subject(id = i, 
-                                              events = erlang_reg, 
-                                              covariates = choose_covariates(),
-                                              observations = (conc = nothing,)), 1:10)
-obs = simobs(erlangabs, erlang_reg_with_covariates, param, obstimes = 0:1:24)
+dose = DosageRegimen(amt = 100, cmt = 1, time = 0)
+
+subj_with_covariates = map(1:10) do i
+    Subject(id = i,
+            events = dose,
+            covariates = choose_covariates(),
+            observations = (conc = nothing,))
+end
+
+obs = simobs(weibullabs, subj_with_covariates, param, obstimes = 0:.1:24)
 ```
 
+And now, we plot the results:
 
 ```julia
-interactive!(false)
-p = sim_plot(erlangabs, 
-          obs, observations = :conc)[1]
-Label(p[0, :], "Erlang absorption", textsize = 30) 
-p        
+p = sim_plot(weibullabs, obs, observations = :conc)[1]
+Label(p[0, :], "Weibull Absorption", textsize = 30)
+p
 ```
+
+
+## Erlang Absorption
+
+The Erlang absorption model is based on the concept of transit compartments.
+The [Erlang distribution](https://en.wikipedia.org/wiki/Erlang_distribution) is
+a special case of the Gamma distribution that arises as the sum of $k$
+independent exponential distributions. This is exactly the distribution of the
+transit time taken by a particle passing through a sequence of $k$ compartments
+where the transition from one compartment to the next is governed by
+first-order processes with a common rate constant $K_{tr}$. In Pumas, this
+model can be written with the following code (we assume $N = 5$ transit
+compartments):
+
+```julia
+erlangabs = @model begin
+
+  @param begin
+    tvcl  ∈ RealDomain(lower=0)
+    tvvc  ∈ RealDomain(lower=0)
+    tvktr ∈ RealDomain(lower=0)
+    Ω     ∈ PSDDomain(3)
+  end
+
+  @random begin
+    η ~ MvNormal(Ω)
+  end
+
+  @covariates wt
+
+  @pre begin
+    CL  = tvcl*(wt/70)^0.75*exp(η[1])
+    Vc  = tvvc*(wt/70)*exp(η[2])
+    Ktr = tvktr*exp(η[3])
+  end
+
+  @dynamics begin
+    Depot'    = -Ktr*Depot
+    Transit1' = Ktr*Depot    - Ktr*Transit1
+    Transit2' = Ktr*Transit1 - Ktr*Transit2
+    Transit3' = Ktr*Transit2 - Ktr*Transit3
+    Transit4' = Ktr*Transit3 - Ktr*Transit4
+    Transit5' = Ktr*Transit4 - Ktr*Transit5
+    Central'  = Ktr*Transit5 - (CL/Vc)*Central
+  end
+
+  @observed begin
+    conc = @. Central/Vc
+  end
+
+end
+```
+
+Below are a set of parameter values for this model:
+
+```julia
+param = (
+  tvcl = 7, tvvc = 32, tvktr = 2.6,
+  Ω = Diagonal([0.09, 0.22, 0.10, 0.52]))
+```
+
+We can now use the data and model with parameters to simulate an Erlang absorption profile:
+
+```julia; results="hidden"
+dose = DosageRegimen(amt = 100, cmt = 1, time = 0)
+
+subj_with_covariates = map(1:10) do i
+    Subject(id = i,
+            events = dose,
+            covariates = choose_covariates(),
+            observations = (conc = nothing,))
+end
+
+obs = simobs(erlangabs, subj_with_covariates, param, obstimes = 0:1:24)
+```
+
+And now, we plot the results:
+
+```julia
+p = sim_plot(erlangabs, obs, observations = :conc)[1]
+Label(p[0, :], "Erlang absorption", textsize = 30)
+p
+```
+
+## Conclusion
+
+We have seen in this tutorial some examples of how to implement various
+absorption models that are commonly employed in pharmacokinetic modeling using
+Pumas. The powerful Pumas modeling language framework makes it relatively
+straightforward to implement these and other complex PK and PKPD models for
+modeling and simulation purposes.
+
+This concludes our tutorial on basic absorption models with Pumas. Thanks for
+reading, and please be sure to check out our other tutorials as well.
+
