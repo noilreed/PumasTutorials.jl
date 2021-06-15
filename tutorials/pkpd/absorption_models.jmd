@@ -51,7 +51,7 @@ For simplicity, we will use a 1-compartment distribution system with additional 
 Note that in these examples we are simulating without residual error (it could be added, but isn't necessary here).
 
 ```julia;
-dose = DosageRegimen(amt = 100, time = 0)
+dose = DosageRegimen(100, time = 0)
 
 choose_covariates() = (wt = rand(55:80), dose = 100)
 
@@ -65,12 +65,11 @@ end
 
 For a more in-depth discussion of simulating data with Pumas, please see the tutorial [generating and simulation populations](https://tutorials.pumas.ai/html/introduction/simulating_populations.html).
 
-
 ## First-Order Absorption
 
 Here is the Pumas code for a 1-compartment model with first-order absorption,
 diagonal random-effects structure, and allometric scaling on clearance and
-volume [do we need allometric scaling for this example?]:
+volume:
 
 ```julia
 foabs = @model begin
@@ -107,8 +106,8 @@ end
 
 Note that we have written the model using differential equations, but we could
 equally have specified an "analytical" (closed-form) solution using this
-`@dynamics` block instead (see
-https://docs.pumas.ai/dev/model_components/dynamical_types/):
+`@dynamics` block instead (see documentation on [analytical solutions](
+https://docs.pumas.ai/dev/model_components/dynamical_types/)):
 
 ```julia; eval=false
 @dynamics Depots1Central1
@@ -196,7 +195,7 @@ param = (
 We can now use the data and model with parameters to simulate a zero-order absorption profile:
 
 ```julia; results="hidden"
-dose = DosageRegimen(amt = 100, time = 0, rate = -2)  # Note: rate must be -2 for duration modeling
+dose = DosageRegimen(100, time = 0, rate = -2)  # Note: rate must be -2 for duration modeling
 
 subj_with_covariates = map(1:10) do i
     Subject(id = i,
@@ -278,7 +277,7 @@ param = (
 We can now use the data and model with parameters to simulate a sequential zero-order followed by first-order  absorption profile:
 
 ```julia; results="hidden"
-dose = DosageRegimen(amt = 100, time = 0, rate = -2)  # Note: rate must be -2 for duration modeling
+dose = DosageRegimen(100, time = 0, rate = -2)  # Note: rate must be -2 for duration modeling
 
 subj_with_covariates = map(1:10) do i
     Subject(id = i,
@@ -368,8 +367,8 @@ hour where they overlap.
 We can now use the data and model with parameters to simulate a parallel first- and zero-order absorption profile:
 
 ```julia; results="hidden"
-dose_zo = DosageRegimen(amt = 100, time = 0, cmt = 2, rate = -2, evid = 1)  # Note: rate must be -2 for duration modeling
-dose_fo = DosageRegimen(amt = 100, time = 0, cmt = 1, rate = 0, evid = 1)
+dose_zo = DosageRegimen(100, time = 0, cmt = 2, rate = -2, evid = 1)  # Note: rate must be -2 for duration modeling
+dose_fo = DosageRegimen(100, time = 0, cmt = 1, rate = 0, evid = 1)
 dose    = DosageRegimen(dose_fo, dose_zo)  # Actual dose is made up of 2 virtual doses
 
 subj_with_covariates = map(1:10) do i
@@ -453,8 +452,8 @@ param = (
 We can now use the data and model with parameters to simulate a profile with this type of absorption:
 
 ```julia; results="hidden"
-dose_fo1 = DosageRegimen(amt = 100, cmt = 1, time = 0)
-dose_fo2 = DosageRegimen(amt = 100, cmt = 2, time = 0)
+dose_fo1 = DosageRegimen(100, cmt = 1, time = 0)
+dose_fo2 = DosageRegimen(100, cmt = 2, time = 0)
 dose     = DosageRegimen(dose_fo1, dose_fo2)  # Actual dose is made up of 2 virtual doses
 
 subj_with_covariates = map(1:10) do i
@@ -533,7 +532,7 @@ param = (
 We can now use the data and model with parameters to simulate a Weibull-type absorption profile:
 
 ```julia; results="hidden"
-dose = DosageRegimen(amt = 100, cmt = 1, time = 0)
+dose = DosageRegimen(100, cmt = 1, time = 0)
 
 subj_with_covariates = map(1:10) do i
     Subject(id = i,
@@ -616,7 +615,7 @@ param = (
 We can now use the data and model with parameters to simulate an Erlang absorption profile:
 
 ```julia; results="hidden"
-dose = DosageRegimen(amt = 100, cmt = 1, time = 0)
+dose = DosageRegimen(100, cmt = 1, time = 0)
 
 subj_with_covariates = map(1:10) do i
     Subject(id = i,
