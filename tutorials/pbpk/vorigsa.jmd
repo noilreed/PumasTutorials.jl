@@ -1,10 +1,13 @@
 ---
 title: Global Sensitivity Analysis on Voriconazole model
-date: August 2020
+date: `j Date(now())`
 ---
 
+```julia; echo = false
+using Dates
+```
 ```julia
-using Pumas, Plots
+using Pumas, CairoMakie, PumasPlots, GlobalSensitivity
 ```
 
 ## Introduction
@@ -197,7 +200,7 @@ Let's take a look at the simulation of the model to ensure everything is working
 
 ```julia
 simdata = simobs(model, [sub_s], p)
-plot(simdata, obsnames=[:Cvenn])
+sim_plot(model, simdata, observations=[:Cvenn])
 ```
 
 We can run parameter estimation on the PBPK model with the `fit` function, we'll use the simulated data to run the estimation here
@@ -400,7 +403,9 @@ Now, we are ready to run GSA on our model.
 We will run the Sobol method for 1000 iterations, please note that this takes a couple of hours to finish because of the complexity of the model.
 
 ```julia
-sobol_ = Pumas.gsa(model, sub_s, p, Pumas.Sobol(), [:cmax,:auc], p_range_low,p_range_high, N=1000, obstimes=0:1:300)
+regimen_s = DosageRegimen(200, time=0, addl=13, ii=12, cmt=1, ss=1, route = Pumas.NCA.IVInfusion)
+sub_s = Subject(id=1, events=regimen_s)
+sobol_ = Pumas.gsa(model, sub_s, p, GlobalSensitivity.Sobol(), [:cmax,:auc], p_range_low,p_range_high, N=1000, obstimes=0.0:1.0:30.0)
 ```
 
 We can use scatter plot the result to visualize the result.
@@ -410,14 +415,16 @@ keys_ = keys(p_range_low)
 cmax_s1 = [sobol_.first_order[1,:][key] for key in keys_]
 cmax_st = [sobol_.total_order[1,:][key] for key in keys_]
 
-plot_cmax = scatter([string.(keys_)...], cmax_s1, ylims = (0,1), label = "First Order",title="Cmax")
-scatter!(plot_cmax,[string.(keys_)...], cmax_st, ylims = (0,1), label = "Total Order", marker=:utriangle)
+fig = Figure(resolution = (1200, 800))
+plot_cmax_s1 = scatter(fig[1,1], 1:4, cmax_s1, axis = (yticks = 0:1, xticks = (1:4, [string.(keys_)...]), label = "First Order", title="Cmax"))
+plot_cmax_st = scatter(fig[1,2], 1:4, cmax_st, axis = (yticks = 0:1, xticks = (1:4, [string.(keys_)...]), label = "Total Order"), marker=:utriangle)
 
 auc_s1 = [sobol_.first_order[2,:][key] for key in keys_]
 auc_st = [sobol_.total_order[2,:][key] for key in keys_]
-plot_auc = scatter([string.(keys_)...], auc_s1, ylims = (0,1), label = "First Order", title="AUC")
-scatter!(plot_auc, [string.(keys_)...], auc_st, ylims = (0,1), label = "Total Order", marker=:utriangle)
-plot(plot_cmax, plot_auc, size = (1200,400))
+
+plot_auc_s1 = scatter(fig[2,1], 1:4, auc_s1, axis = (yticks = 0:1, xticks = (1:4, [string.(keys_)...]), label = "First Order", title="AUC"))
+plot_auc_st = scatter(fig[2,2], 1:4, auc_st, axis = (yticks = 0:1, xticks = (1:4, [string.(keys_)...]), label = "Total Order"), marker=:utriangle)
+display(fig)
 ```
 
 ### The eFAST method
@@ -425,7 +432,7 @@ plot(plot_cmax, plot_auc, size = (1200,400))
 eFAST method allows the estimation of first order and total Sobol indices in a more computationaly efficient way.
 
 ```julia
-eFAST_ = Pumas.gsa(model, sub_s, p, Pumas.eFAST(), [:cmax,:auc], p_range_low, p_range_high, n=1000, obstimes=0:1:300)
+eFAST_ = Pumas.gsa(model, sub_s, p, GlobalSensitivity.eFAST(), [:cmax,:auc], p_range_low, p_range_high, n=1000, obstimes=0.0:1.0:30.0)
 ```
 
 We can use scatter plot the result to visualize the result.
@@ -435,14 +442,16 @@ keys_ = keys(p_range_low)
 cmax_s1 = [eFAST_.first_order[1,:][key] for key in keys_]
 cmax_st = [eFAST_.total_order[1,:][key] for key in keys_]
 
-plot_cmax = scatter([string.(keys_)...], cmax_s1, ylims = (0,1), label = "First Order",title="Cmax")
-scatter!(plot_cmax,[string.(keys_)...], cmax_st, ylims = (0,1), label = "Total Order", marker=:utriangle)
+fig = Figure(resolution = (1200,800))
+plot_cmax_s1 = scatter(fig[1,1], 1:4, cmax_s1, axis = (yticks = 0:1, xticks = (1:4, [string.(keys_)...]), label = "First Order", title="Cmax"))
+plot_cmax_st = scatter(fig[1,2], 1:4, cmax_st, axis = (yticks = 0:1, xticks = (1:4, [string.(keys_)...]), label = "Total Order"), marker=:utriangle)
 
 auc_s1 = [eFAST_.first_order[2,:][key] for key in keys_]
 auc_st = [eFAST_.total_order[2,:][key] for key in keys_]
-plot_auc = scatter([string.(keys_)...], auc_s1, ylims = (0,1), label = "First Order", title="AUC")
-scatter!(plot_auc,[string.(keys_)...], auc_st, ylims = (0,1), label = "Total Order", marker=:utriangle)
-plot(plot_cmax, plot_auc, size = (1200,400))
+
+plot_auc_s1 = scatter(fig[2,1], 1:4, auc_s1, axis = (yticks = 0:1, xticks = (1:4, [string.(keys_)...]), label = "First Order", title="AUC"))
+plot_auc_st = scatter(fig[2,2], 1:4, auc_st, axis = (yticks = 0:1, xticks = (1:4, [string.(keys_)...]), label = "Total Order"), marker=:utriangle)
+display(fig)
 ```
 
 ## Conclusion
