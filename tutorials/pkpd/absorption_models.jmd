@@ -35,20 +35,20 @@ covered in this tutorial.
 
 In this tutorial, we will cover the following absorption models:
 
-* [First-order](#First-Order-Absorption)
-* [Zero-order](#Zero-Order-Absorption)
-* [Sequential zero-order followed by first-order](#Sequential-Zero-Order-Followed-by-First-Order-Absorption)
-* [Parallel zero-order and first-order](#Parallel-Zero-Order-and-First-Order-Absorption)
-* [Two parallel first-order processes](#Absorption-by-Two-Parallel-First-Order-Processes)
-* [Weibull-type absorption](#Weibull-Type-Absorption)
-* [Absorption through a sequence of transit compartments (Erlang absorption)](#Erlang-Absorption)
+* First-order
+* Zero-order
+* Parallel zero-order and first-order
+* Two parallel first-order processes
+* Weibull-type absorption
+* Absorption through a sequence of transit compartments (Erlang absorption)
 
 
 ## Generating the Population
 
 We begin by simulating a population of 10 subjects to use for illustration purposes in this tutorial.
 For simplicity, we will use a 1-compartment distribution system with additional absorption compartment(s) as required.
-Note that in these examples we are simulating without residual error (it could be added, but isn't necessary here).
+Note that in these examples we are simulating without residual error (it could be added, but isn't necessary here). Hence, we use
+the `@observed` block that is designed to capture post dynamics outputs.
 
 ```julia;
 dose = DosageRegimen(100, time = 0)
@@ -214,89 +214,6 @@ p = sim_plot(zoabs, obs, observations = :conc)[1]
 Label(p[0, :], "Zero-Order Absorption", textsize = 30)
 p
 ```
-
-
-## Sequential Zero-Order Followed by First-Order Absorption
-
-Sequential zero-order followed by first-order absorption can be implemented by
-infusing into the depot compartment rather than the central compartment. It is
-thus a simple extension of the two previous models.  Note that we say that this
-is *sequential* because the drug enters the depot compartment by zero-order
-absorption before the first-order absorption process takes place, but the two
-are really operating simultaneously (it is different from a model where the
-first-order process begins only when the zero-order process ends).
-
-Here is the Pumas code:
-
-```julia
-zofo_seq_abs = @model begin
-
-  @param begin
-    tvcl  ∈ RealDomain(lower=0)
-    tvvc  ∈ RealDomain(lower=0)
-    tvka  ∈ RealDomain(lower=0)
-    tvdur ∈ RealDomain(lower=0)
-    Ω     ∈ PDiagDomain(4)
-  end
-
-  @random begin
-    η ~ MvNormal(Ω)
-  end
-
-  @covariates wt
-
-  @pre begin
-    CL = tvcl*(wt/70)^0.75*exp(η[1])
-    Vc = tvvc*(wt/70)*exp(η[2])
-    Ka = tvka*exp(η[3])
-  end
-
-  @dosecontrol begin
-    duration = (Depot = tvdur*exp(η[4]),)
-  end
-
-  @dynamics begin
-    Depot'   = -Ka*Depot
-    Central' =  Ka*Depot - (CL/Vc)*Central
-  end
-
-  @observed begin
-    conc = @. Central/Vc
-  end
-end
-```
-
-Below are a set of parameter values for this model:
-
-```julia
-param = (
-  tvcl = 0.792, tvvc = 13.7, tvka = 1, tvdur = 1.0,
-  Ω = Diagonal([0.04, 0.04, 0.04, 0.04]))
-```
-
-We can now use the data and model with parameters to simulate a sequential zero-order followed by first-order  absorption profile:
-
-```julia; results="hidden"
-dose = DosageRegimen(100, time = 0, rate = -2)  # Note: rate must be -2 for duration modeling
-
-subj_with_covariates = map(1:10) do i
-    Subject(id = i,
-            events = dose,
-            covariates = choose_covariates(),
-            observations = (conc = nothing,))
-end
-
-obs = simobs(zofo_seq_abs, subj_with_covariates, param, obstimes = 0:0.1:48)
-```
-
-And now, we plot the results:
-
-```julia
-p = sim_plot(zofo_seq_abs, obs, observations = :conc)[1]
-Label(p[0, :], "Sequential Zero-Order Followed by First-Order Absorption", textsize = 30)
-p
-```
-
 
 ## Parallel Zero-Order and First-Order Absorption
 
