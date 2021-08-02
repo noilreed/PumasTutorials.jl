@@ -41,13 +41,14 @@ using Random
 using CSV
 using HTTP
 using Chain
-using Latexify
+using Pumas.Latexify
 using CairoMakie 
 using StatsBase
 using DataFrames
-using ColorSchemes
 using Survival
-interactive!(false)
+using AlgebraOfGraphics
+using DataFrameMacros
+
 ```
 
 ### Exploratory Analysis
@@ -66,33 +67,22 @@ transform!(groupby(pkpain_df, :Subject), :Conc => maximum => :cmax)
 ```
 
 ```julia
-color_indices = groupindices(groupby(pkpain_df, [:Dose]))
-palette = ColorSchemes.tab10.colors
-f = Figure(resolution = (1000, 800))
-ax = f[1,1] = Axis(f, 
-                    xlabel="Time (hr)", 
-                    ylabel="Proportion of Pain Relief", 
-                    title = "Pain Score Trends for CTMNopain")
+set_aog_theme!()
+
 @chain pkpain_df begin
-    combine(groupby(_, [:Time, :dosenum]), :PainRelief => mean, ungroup=true)
-    for (i, gdf) in enumerate(groupby(_, [:dosenum], sort=true))
-        barplot!(ax,
-                gdf.Time, 
-                gdf.PainRelief_mean, 
-                dodge = unique(gdf.dosenum),
-                color = (palette[i], 0.5)
-            )
-            ax.yticks = 0:0.1:1
-    end
+    data(_) *
+        mapping(:PainRelief  => nonnumeric,
+            col =:Dose => nonnumeric,
+            color =:Time => nonnumeric,
+            dodge =:Time => nonnumeric) *
+        frequency()
+    draw
 end
-f
 ```
 
+
+
 ```julia
-#ggdf = groupby(pkpain_df, [:dosenum])
-#for (i, (k,v)) in enumerate(pairs(ggdf))
-#    println(v.Time)
-#end
 props = combine(groupby(pkpain_df, [:Time, :dosenum]), :PainRelief => mean, ungroup=true)
 function example_plot(df)
     f = Figure()
