@@ -78,13 +78,6 @@ using Pkg
 Pkg.add("Weave")
 ```
 
-For the purpose of this tutorial, we set all plots to be non-interactive. While working in a interactive environment using `.jl` files, it is perhaps efficient to 
-use leave the option to the default value of `true`. More about these options can be found about in our documentation.
-
-```julia; results = "hidden"
-interactive!(false)
-```
-
 ### Data Wrangling
 
 We start by reading in the dataset and making some quick summaries.
@@ -137,24 +130,37 @@ pkpain_nca = read_nca(pkpain_noplb_df,
                       route = :route)
 ```
 
-Now that we mapped the data in, let's visualize the concentration vs time plots for a few individuals. Note how, for each individual
-both the linear and log scale profiles are plotted. Below we plot the first 4 individuals indexed as `NCAPopulation[1:4]`
+Now that we mapped the data in, let's visualize the concentration vs time plots for a few individuals.
+When `paginate` is set to `true`, a vector of plots are returned and below we display the first element with 9 individuals.
 
 ```julia
-f = observations_vs_time(pkpain_nca[1:4], separate=true, 
-                    columns = 4, rows = 4, 
-                    xlabel = "Time (hr)",
-                    ylabel = "CTMNoPain Concentration (ng/mL)")[1]
-f                  
+f = observations_vs_time(pkpain_nca, 
+                    paginate = true, 
+                    
+                    axis = (xlabel = "Time (hr)",
+                            ylabel = "CTMNoPain Concentration (ng/mL)"),
+                    facet = (combinelabels =true,)
+                    )
+f[1]                  
 ```
 or you can view the summary curves by dose group as passed in to the `group` argument in `read_nca`
 
 ```julia
-f = summary_observations_vs_time(pkpain_nca, 
-                                  columns=2, rows=3,
-                                  fontsize = 10,
-                                  xlabel = "Time (hr)",
-                                  ylabel = "CTMNoPain Concentration (ng/mL)")
+f = summary_observations_vs_time(
+    pkpain_nca,
+    figure = (
+        fontsize = 22,
+        resolution = (800,1000),
+    ),
+    color = "black", linewidth = 3,
+    axis = (
+        xlabel = "Time (hr)",
+        ylabel = "CTMX Concentration (μg/mL)",
+    ),
+    facet = (combinelabels = true,
+             linkaxes =true),
+
+)
 f[1]
 ```
 
@@ -170,11 +176,13 @@ We can look at the NCA fits for some subjects.
 
 ```julia; results = "hidden"
 f = subject_fits(pk_nca,
-                 separate = true, 
-                 columns = 4, rows = 3, fontsize = 12, 
-                 xlabel = "Time (hr)",
-                 ylabel = "CTMNoPain Concentration (ng/mL)"
+                 paginate = true, 
+                 axis  = (xlabel = "Time (hr)",
+                        ylabel = "CTMX Concentration (μg/mL)"),
+                 facet = (combinelabels = true,
+                         linkaxes =true),
                  )
+f[1]                 
 ```
 
 ```julia
@@ -196,7 +204,10 @@ We can look at a few parameter distribution plots.
 
 ```julia
 f = parameters_vs_group(pk_nca, 
-                        :cmax)[1]
+                        parameter = :cmax, 
+                        axis = (xlabel = "Dose (mg)",
+                                ylabel = "Cₘₐₓ (ng/mL)"),
+                        figure = (fontsize = 18, ))
 ```
 
 Dose normalized PK parameters, `cmax` and `aucinf` were essentially dose proportional between for 5 mg, 20 mg
@@ -223,7 +234,7 @@ as obtained by `j latexify("0.693/(tmax/4)").s` is `j round(0.693/(mean(pk_nca.r
 
 #### Data preparation for modeling
 
-[PumasNDF]() requires the presence of `evid` and `cmt` columns in the dataset.
+[PumasNDF](https://docs.pumas.ai/stable/basics/doses_subjects_populations/#PumasNDF) requires the presence of `evid` and `cmt` columns in the dataset.
 
 ```julia; results = "hidden"
 pkpain_noplb_df[!, :evid] .= ifelse.(pkpain_noplb_df.Time .== 0, 1, 0)
@@ -237,7 +248,7 @@ Further, observations at time of dosing, i.e., when `evid = 1` have to be `missi
 pkpain_noplb_df[!, :Conc] .= ifelse.(pkpain_noplb_df.evid .== 1, missing, pkpain_noplb_df.Conc)
 ```
 
-The dataframe will now be converted to a [`Population`]() using [`read_pumas`](). Note that
+The dataframe will now be converted to a `Population` using [`read_pumas`](https://docs.pumas.ai/stable/basics/doses_subjects_populations/#Reading-Subjects-from-tabular-data). Note that
 both `observations` and `covariates` are required to be an array even if it is one element.
 
 ```julia; results = "hidden"
