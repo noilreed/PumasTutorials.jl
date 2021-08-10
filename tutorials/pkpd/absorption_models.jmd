@@ -15,8 +15,6 @@ using PlottingUtilities
 using PumasPlots
 using CairoMakie
 
-interactive!(false)  # Don't use interactive plots
-
 Random.seed!(1234)  # Set random seed for reproducibility
 ```
 
@@ -124,15 +122,18 @@ param = (
 We can now use the data and model with parameters to simulate a first-order absorption profile:
 
 ```julia; results="hidden"
-obs = simobs(foabs, subj_with_covariates, param, obstimes = 0:.1:24)
+sims = simobs(foabs, subj_with_covariates, param, obstimes = 0:.1:24)
 ```
 
 And now, we plot the results:
 
 ```julia
-p = sim_plot(foabs, obs, observations = :conc)[1]
-Label(p[0, :], "First-Order Absorption", textsize = 30)
-p
+sim_plot(foabs,
+            sims, observations =[:conc], 
+            figure = (fontsize = 18, ), 
+            axis = (xlabel = "Time (hr)", 
+                    ylabel = "Predicted Concentration (ng/mL)", 
+                    title = "First-order absorption"))
 ```
 
 
@@ -204,15 +205,18 @@ subj_with_covariates = map(1:10) do i
             observations = (conc = nothing,))
 end
 
-obs = simobs(zoabs, subj_with_covariates, param, obstimes = 0:0.1:48)
+sims = simobs(zoabs, subj_with_covariates, param, obstimes = 0:0.1:48)
 ```
 
 And now, we plot the results:
 
 ```julia
-p = sim_plot(zoabs, obs, observations = :conc)[1]
-Label(p[0, :], "Zero-Order Absorption", textsize = 30)
-p
+sim_plot(zoabs,
+            sims, observations =[:conc], 
+            figure = (fontsize = 18, ), 
+            axis = (xlabel = "Time (hr)", 
+                    ylabel = "Predicted Concentration (ng/mL)", 
+                    title = "Zero-order absorption"))
 ```
 
 ## Parallel Zero-Order and First-Order Absorption
@@ -295,15 +299,18 @@ subj_with_covariates = map(1:10) do i
             observations = (conc = nothing,))
 end
 
-obs = simobs(zofo_paral_abs, subj_with_covariates, param, obstimes = 0:0.1:24)
+sims = simobs(zofo_paral_abs, subj_with_covariates, param, obstimes = 0:0.1:24)
 ```
 
 And now, we plot the results:
 
 ```julia
-p = sim_plot(zofo_paral_abs, obs, observations = :conc)[1]
-Label(p[0, :], "Parallel Zero- And First-Order Absorption", textsize = 30)
-p
+sim_plot(zofo_paral_abs,
+            sims, observations =[:conc], 
+            figure = (fontsize = 18, ), 
+            axis = (xlabel = "Time (hr)", 
+                    ylabel = "Predicted Concentration (ng/mL)", 
+                    title = "Zero- and first-order parallel absorption"))
 ```
 
 
@@ -380,15 +387,18 @@ subj_with_covariates = map(1:10) do i
             observations = (conc = nothing,))
 end
 
-obs = simobs(two_parallel_foabs, subj_with_covariates, param, obstimes = 0:.1:48)
+sims = simobs(two_parallel_foabs, subj_with_covariates, param, obstimes = 0:.1:48)
 ```
 
 And now, we plot the results:
 
 ```julia
-p = sim_plot(two_parallel_foabs, obs, observations = :conc)[1]
-Label(p[0, :], "Absorption by Two Parallel First-Order Processes", textsize = 30)
-p
+sim_plot(two_parallel_foabs,
+            sims, observations =[:conc], 
+            figure = (fontsize = 18, ), 
+            axis = (xlabel = "Time (hr)", 
+                    ylabel = "Predicted Concentration (ng/mL)", 
+                    title = "Two Parallel first-order absorption"))
 ```
 
 
@@ -458,15 +468,18 @@ subj_with_covariates = map(1:10) do i
             observations = (conc = nothing,))
 end
 
-obs = simobs(weibullabs, subj_with_covariates, param, obstimes = 0:.1:24)
+sims = simobs(weibullabs, subj_with_covariates, param, obstimes = 0:.1:24)
 ```
 
 And now, we plot the results:
 
 ```julia
-p = sim_plot(weibullabs, obs, observations = :conc)[1]
-Label(p[0, :], "Weibull Absorption", textsize = 30)
-p
+sim_plot(two_parallel_foabs,
+            sims, observations =[:conc], 
+            figure = (fontsize = 18, ), 
+            axis = (xlabel = "Time (hr)", 
+                    ylabel = "Predicted Concentration (ng/mL)", 
+                    title = "Weibull absorption"))
 ```
 
 
@@ -541,15 +554,18 @@ subj_with_covariates = map(1:10) do i
             observations = (conc = nothing,))
 end
 
-obs = simobs(erlangabs, subj_with_covariates, param, obstimes = 0:1:24)
+sims = simobs(erlangabs, subj_with_covariates, param, obstimes = 0:1:24)
 ```
 
 And now, we plot the results:
 
 ```julia
-p = sim_plot(erlangabs, obs, observations = :conc)[1]
-Label(p[0, :], "Erlang absorption", textsize = 30)
-p
+sim_plot(erlangabs,
+            sims, observations =[:conc], 
+            figure = (fontsize = 18, ), 
+            axis = (xlabel = "Time (hr)", 
+                    ylabel = "Predicted Concentration (ng/mL)", 
+                    title = "Erlang absorption"))
 ```
 
 ## Conclusion
