@@ -11,7 +11,6 @@ using Dates
 using Random
 using Pumas
 using PumasUtilities
-interactive!(false)
 ```
 
 # Introduction
@@ -129,7 +128,7 @@ profile using the model above:
 
 ```julia; results = "hidden"
 Random.seed!(1234)
-obs = simobs(model,
+sims = simobs(model,
             s1,
             fixeffs,
             obstimes = 0:0.1:120)
@@ -138,8 +137,11 @@ obs = simobs(model,
 and plot the result
 
 ```julia
-sim_plot(model, 
-         obs, observations = :conc)[1]
+sim_plot(model,
+            [sims], observations = [:conc], 
+            figure = (fontsize = 18, ), 
+            axis = (xlabel = "Time (hr)", 
+                    ylabel = "Predicted Concentration (ng/mL)"))
 ```
 
 ### Building Populations
@@ -173,7 +175,7 @@ Now, we can simulate this `Population` of 2 subjects as below
 
 ```julia; results = "hidden"
 Random.seed!(1234)
-obs = simobs(model,
+sims = simobs(model,
             twosubjs,
             fixeffs,
             obstimes = 0:0.1:120)
@@ -182,8 +184,12 @@ obs = simobs(model,
 and plot the result
 
 ```julia
-sim_plot(model, 
-         obs, observations = :conc)[1]
+sim_plot(model,
+            sims, observations = [:conc], 
+            figure = (fontsize = 18, ), 
+            axis = (xlabel = "Time (hr)", 
+                    ylabel = "Predicted Concentration (ng/mL)"))
+
 ```
 
 Similarly, we can build a population of any number of subjects. But before we
@@ -224,7 +230,7 @@ Simulate into the population
 
 ```julia; results = "hidden"
 Random.seed!(1234)
-obs = simobs(model,
+sims = simobs(model,
             pop_with_covariates,
             fixeffs,
             obstimes = 0:0.1:120)
@@ -233,9 +239,12 @@ obs = simobs(model,
 and visualize the output
 
 ```julia
-p = sim_plot(model, 
-         obs, observations = :conc)
-p[1]         
+sim_plot(model,
+            sims, observations = [:conc], 
+            figure = (fontsize = 18, ), 
+            axis = (xlabel = "Time (hr)", 
+                    ylabel = "Predicted Concentration (ng/mL)"))
+       
 ```
 
 ## Multiple dose example
@@ -262,15 +271,18 @@ and see the results:
 
 ```julia; results = "hidden"
 Random.seed!(1234)
-obs = simobs(model, 
+sims = simobs(model, 
             s3, fixeffs,
             obstimes = 0:0.1:240)
 ```
 
 ```julia
-p = sim_plot(model, 
-         obs, observations = :conc)
-p[1]
+sim_plot(model,
+            [sims], observations = [:conc], 
+            figure = (fontsize = 18, ), 
+            axis = (xlabel = "Time (hr)", 
+                    ylabel = "Predicted Concentration (ng/mL)"))
+
 ```
 
 ## Combining dosage regimens
@@ -296,15 +308,19 @@ s4 = Subject(id = 4,
              covariates = (Wt = 70,), 
              observations = (dv = nothing,))
 Random.seed!(1234)
-obs = simobs(model, 
+sims = simobs(model, 
              s4, 
              fixeffs,
              obstimes = 0:0.1:120)
 ```
 
 ```julia
-sim_plot(model, 
-         obs, observations = :conc)[1]
+sim_plot(model,
+            [sims], observations = [:conc], 
+            figure = (fontsize = 18, ), 
+            axis = (xlabel = "Time (hr)", 
+                    ylabel = "Predicted Concentration (ng/mL)"))
+
 ```
 
 
@@ -320,15 +336,19 @@ s5 = Subject(id = 5,
              covariates = (Wt = 70,), 
              observations = (dv = nothing,))
 Random.seed!(1234)
-obs = simobs(model, 
+sims = simobs(model, 
             s5, 
             fixeffs,
             obstimes = 0:0.1:120)
 ```
 
 ```julia
-sim_plot(model, 
-         obs, observations = :conc)[1]
+sim_plot(model,
+            [sims], observations = [:conc], 
+            figure = (fontsize = 18, ), 
+            axis = (xlabel = "Time (hr)", 
+                    ylabel = "Predicted Concentration (ng/mL)"))
+
 ```
 
 is the same regimen as before.
@@ -355,16 +375,19 @@ pop  = vcat(pop1, pop2, pop3)
 
 ```julia; results = "hidden"
 Random.seed!(1234)
-obs = simobs(model,
+sims = simobs(model,
             pop,
             fixeffs,
             obstimes = 0:0.1:120)
 ```
 
 ```julia
-p = sim_plot(model, 
-         obs, observations = :conc)
-p[1]         
+sim_plot(model,
+            sims, observations = [:conc], 
+            figure = (fontsize = 18, ), 
+            axis = (xlabel = "Time (hr)", 
+                    ylabel = "Predicted Concentration (ng/mL)"))
+     
 ```
 
 ## Defining Infusions
@@ -386,15 +409,19 @@ s6 = Subject(id = 5,
              covariates = (Wt = 70,),
              observations = (dv = nothing,))
 Random.seed!(1234)
-obs = simobs(model, 
+sims = simobs(model, 
             s6, 
             fixeffs, 
             obstimes = 0:0.1:120)
 ```
 
 ```julia
-sim_plot(model, 
-         obs, observations = :conc)[1]       
+sim_plot(model,
+            [sims], observations = [:conc], 
+            figure = (fontsize = 18, ), 
+            axis = (xlabel = "Time (hr)", 
+                    ylabel = "Predicted Concentration (ng/mL)"))
+     
 ```
 
 ## Final Note on Julia Programming
