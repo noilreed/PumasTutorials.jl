@@ -15,6 +15,7 @@ using DataFrames
 using CSV
 using NCA
 using NCAUtilities
+using NCA.Unitful
 ```
 
 ## Introduction
@@ -97,30 +98,32 @@ There are two main plots that can be used:
 1. `observations_vs_time`
 2. `summary_observations_vs_time`
 
-If you are working in VSCode, you could enjoy the interactive experience. Let's look at the observations vs time plots for 
-one subject ( you can toggle through the subject index). Assuming you are running this code in VSCode, a plot opens up as 
-below and you should be able to toggle between linear and log plots and hovering over the plot will tell you the exact value on the 
-x- and y-axis.
+If you are working in VSCode, you could enjoy the interactive experience by calling [`interactive`](https://docs.pumas.ai/analysis/plots/#Publication-Quality-and-Interactivity). 
+Let's look at the observations vs time plots for one subject (you can toggle through the subject index).
 
 ```julia
 obsvstimes = observations_vs_time(pop[1])
-interactive(obsvstimes)
+```
+you can switch the axis to log scale by passing `axis = (yscale = log,)` as a keyword argument.
+
+```julia
+obsvstimes = observations_vs_time(pop[1], axis = (yscale = log,))
 ```
 
 On the other hand, if you would like to view all subjects in an interactive fashion, you can
 
-```julia;results = "hidden"
+```julia;eval = false
 ctplots_interactive = observations_vs_time(pop, paginate=true)
-interactive(ctplots_interactive)
+interactive.(ctplots_interactive)
 ```
 
 and then toggle through each plot
 
-However, that can become cumbersome for many subjects. To view many subjects at once, let's use the non-interactive mode.
+However, that can become cumbersome for many subjects. Here we show how to view many subjects at once in the non-interactive mode.
 Let's plot the concentration vs time for a few subject picked randomly.
 
 ```julia;results = "hidden"
-Random.seed!(1234)
+Random.seed!(123)
 rand_subjs = rand(1:length(pop), 9)
 ctplots = observations_vs_time(pop[rand_subjs], 
                                 xlabel = "Time hr", 
@@ -163,7 +166,8 @@ You can view the individual subject fits in an interactive way, but for the tuto
 individual_fits = subject_fits(report_sd,
              xlabel = "Time hr", 
              ylabel = "DrugX Concentration mg/L",
-             separate = true, 
+             separate = true,
+             limit = 16, 
              columns = 4, 
              rows = 4,
              paginate = true)
