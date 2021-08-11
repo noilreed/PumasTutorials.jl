@@ -1,10 +1,14 @@
 ---
 title: Global Sensitivity Analysis on HCV model
-date: August 2020
+date: `j Date(now())`
 ---
 
+```julia; echo = false
+using Dates
+```
+
 ```julia
-using Pumas, DiffEqSensitivity, Plots
+using Pumas, GlobalSensitivity, CairoMakie, PumasPlots
 ```
 
 ## Introduction
@@ -130,7 +134,7 @@ simulation and also utlize this parallelism down the line in GSA as well.
 
 ```julia
 simdata = simobs(peg_inf_model, _pop, param_PKPD, ensemblealg=EnsembleThreads())
-plot(simdata, obsnames=[:yPD,:yPK])
+sim_plot(peg_inf_model ,simdata, observations=[:yPD,:yPK], all = true)
 ```
 
 To run the GSA we'll define the parameter ranges for our parameters of interest. Let's set the range between half and twice of the initial values.
@@ -163,7 +167,7 @@ Now, we are ready to run GSA on our model.
 morris_ = Pumas.gsa(
   peg_inf_model,
   _pop,param_PKPD,
-  DiffEqSensitivity.Morris(),
+  GlobalSensitivity.Morris(),
   [:cmax_pk,:cmax_pd],
   p_range_low,
   p_range_high,
@@ -176,9 +180,10 @@ keys_ = [keys(p_range_low)...]
 cmax_pk_meansstar = [morris_.means_star[1,:][key] for key in keys_]
 cmax_pd_meansstar = [morris_.means_star[2,:][key] for key in keys_]
 
-plot_pk = bar(string.(keys_), cmax_pk_meansstar, xaxis ="Parameters", title="Cmax PK Morris means", leg=false)
-plot_pd = bar(string.(keys_), cmax_pd_meansstar, xaxis ="Parameters", title="Cmax PD Morris means", leg=false)
-plot(plot_pk, plot_pd, size = (1200,400))
+fig = Figure(resolution = (1200, 400))
+plot_pk = barplot(fig[1,1], string.(keys_), cmax_pk_meansstar, axis = (xlabel ="Parameters", title="Cmax PK Morris means"))
+plot_pd = barplot(fig[1,2], string.(keys_), cmax_pd_meansstar, axis = (xlabel ="Parameters", title="Cmax PD Morris means"))
+display(fig)
 ```
 
 We observe that PK Cmax is most sensitive to `logVd`, `logKa` and `logKe` parameters where as PD Cmax is most sensitive to `logc`, `logd` and `logKe`.
@@ -190,7 +195,7 @@ sobol_ = Pumas.gsa(
   peg_inf_model,
   _pop,
   param_PKPD,
-  DiffEqSensitivity.Sobol(),
+  GlobalSensitivity.Sobol(),
   [:cmax_pk,:cmax_pd],
   p_range_low,
   p_range_high,
@@ -203,13 +208,16 @@ We use heatmaps to visualize the Sobol output
 cmax_pk_s1 = [sobol_.first_order[1,:][key] for key in keys_]
 cmax_pd_s1 = [sobol_.first_order[2,:][key] for key in keys_]
 cmax_s1 = hcat(cmax_pk_s1, cmax_pd_s1)
-plot_s1 = heatmap(["Cmax_PK","Cmax_PD"], string.(keys_), cmax_s1, title="First Order Indices",fillcolor=:balance)
+
+fig = Figure(resolution = (1200, 400))
+plot_s1 = heatmap(fig[1,1], 1:2, 1:7, cmax_s1, axis = (xticks = (1:2, ["Cmax_PK","Cmax_PD"]), yticks = (1:7, string.(keys_)), title="First Order Indices"), colormap = "darkrainbow")
 
 cmax_pk_st = [sobol_.total_order[1,:][key] for key in keys_]
 cmax_pd_st = [sobol_.total_order[2,:][key] for key in keys_]
 cmax_st = hcat(cmax_pk_st, cmax_pd_st)
-plot_st = heatmap(["Cmax_PK","Cmax_PD"], string.(keys_), cmax_st, title = "Total Order Indices",fillcolor=:balance)
-plot(plot_s1, plot_st)
+
+plot_st = heatmap(fig[1,2], 1:2, 1:7, cmax_st,  axis = (xticks = (1:2, ["Cmax_PK","Cmax_PD"]), yticks = (1:7, string.(keys_)), title="First Order Indices"), colormap = "darkrainbow")
+display(fig)
 ```
 
 ## Conclusion
