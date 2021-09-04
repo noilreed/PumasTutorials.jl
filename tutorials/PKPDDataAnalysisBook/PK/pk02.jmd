@@ -37,7 +37,7 @@ call the "necessary" libraries to get start.
 using Random
 using Pumas
 using PumasUtilities
-using CSV
+using CairoMakie
 
 ```
 
@@ -155,11 +155,14 @@ end
 From the plot below, we can clearly identify the subject with and without lag time.
 
 ```julia
-sim_plot(pk_02, sim, 
+f, a, p = sim_plot(pk_02, sim, 
         observations = :cp, 
-        separate = true, 
-        facet = (combinelabels = true, ), 
-        axis = (xlabel = "Time (minutes)", ylabel = "PK02 Concentrations (ug/L)"))
+        color = :redsblues, linewidth = 4,
+        axis = (xlabel = "Time (minutes)", 
+        ylabel = "PK02 Concentrations (ug/L)",
+        xticks = 0:50:400,))
+axislegend(a)
+f        
 ```
 
 

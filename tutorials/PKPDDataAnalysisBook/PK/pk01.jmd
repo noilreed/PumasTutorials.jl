@@ -31,10 +31,10 @@ In this tutorial, you will learn how to build one compartment model and to simul
 call the "necessary" libraries to get started.
 
 ```julia
-using Random
 using Pumas
 using PumasUtilities
-using CSV
+using Random
+using CairoMakie
 ```
 
 ### Model
@@ -144,11 +144,15 @@ end
 ### Visualize results
 
 ```julia
-sim_plot(pk_01, sim, 
+f, a, p = sim_plot(pk_01, sim, 
         observations = :cp, 
-        separate = true, 
-        facet = (combinelabels = true, ), 
-        axis = (xlabel = "Time (minute)", ylabel = "PK01 Concentrations (ug/L)"))
+        color = :redsblues,
+        linewidth = 4,
+        axis = (xlabel = "Time (minute)", 
+                ylabel = "PK01 Concentrations (ug/L)",
+                xticks = 0:20:160))
+axislegend(a) 
+f       
 ```
 
 

@@ -31,10 +31,10 @@ In this tutorial, you will learn to build a one compartment model with
 call the "necessary" libraries to get started.
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-using CSV
+using CairoMakie
 
 ```
 
@@ -58,7 +58,7 @@ pk_05         = @model begin
     tvClnr    ∈ RealDomain(lower=0)
     Ω         ∈ PDiagDomain(3)
     "Proportional RUV - Plasma"
-    σ²_prop   ∈ RealDomain(lower=0)
+    σ_prop   ∈ RealDomain(lower=0)
     "Additive RUV - Urine"
     σ_add     ∈ RealDomain(lower=0)
   end
@@ -68,9 +68,9 @@ pk_05         = @model begin
   end
 
   @pre begin
-    Clr       = tvClr * exp(η[1])
+    Clr       = tvClr  * exp(η[1])
     Clnr      = tvClnr * exp(η[2])
-    Vc        = tvVc * exp(η[3])
+    Vc        = tvVc   * exp(η[3])
   end
 
   @dynamics begin
@@ -84,20 +84,20 @@ pk_05         = @model begin
     """
     cp_plasma = @. Central/Vc
    
-    """
-    PK05 Plasma Concentration (mg/L)"
-    """
-    dp_plasma ~ @. Normal(cp_plasma, sqrt(cp_plasma^2*σ²_prop))
+    #"""
+    #PK05 Plasma Concentration (mg/L)"
+    #"""
+    #dp_plasma ~ @. Normal(cp_plasma, abs(cp_plasma)*σ_prop)
     
     """
     PK05 Urine Amount (mg)
     """
     cp_urine  = @. Urine
    
-    """
-    PK05 Urine Amount (mg)
-    """
-    dp_urine  ~ @. Normal(cp_urine,σ_add)
+    #"""
+    #PK05 Urine Amount (mg)
+    #"""
+    #dp_urine  ~ @. Normal(cp_urine,abs(σ_add))
   end
 end
 ```
@@ -115,8 +115,8 @@ param = (tvVc    = 10.7965,
          tvClr   = 0.430905,
          tvClnr  = 0.779591,
          Ω       = Diagonal([0.0,0.0,0.0]),
-         σ²_prop = 0.01,
-         σ_add   = 3)
+         σ_prop = 0.1,
+         σ_add   = 1)
 ```
 
 ### Dosage Regimen
@@ -124,8 +124,8 @@ param = (tvVc    = 10.7965,
 A single dose of 250mg given as an Intravenous bolus to single subject.
 
 ```julia
-ev1  = DosageRegimen(250, time=0, cmt=1)
-sub = Subject(id=1, events=ev1)
+ev1  = DosageRegimen(250, time = 0, cmt = 1)
+sub = Subject(id = 1, events = ev1, observations = (cp_plasma = nothing, cp_urine = nothing))
 ```
 
 ### Simulation
@@ -137,21 +137,26 @@ Random.seed!(123)
 sim_sub1 = simobs(pk_05, sub, param, obstimes = 0:0.1:26)
 ```
 
-### Dataframe and Plot
+### Visualization
 
 ```julia
-df_plot = filter(x -> x.time in [0.5,1,1.5,2,4,6,8,12,18,24], df1)
-@df df1 plot(:time, :cp_plasma, yaxis=:log,
-             label="PRED Plasma Conc", xlabel="Time (hr)", ylabel="Concentration (mg/L) & Amount (mg)",
-             title = "Concentration/Amount vs Time",
-             color=[:orange], linestyle=[:solid], linewidth=3,
-             ylims=(1,100), xlims=(-0.25,30), xticks=[0,6,12,18,24,30], yticks=[1,10,100])
-@df df1 plot!(:time, :cp_urine, yaxis=:log,
-              label="PRED Urine Amount",color=[:blue], linestyle=[:solid], linewidth=3)
-@df df_plot scatter!(:time, :dp_plasma, yaxis=:log,
-                     label="OBS Plasma Conc")
-@df df_plot scatter!(:time, :dp_urine, yaxis=:log,
-                     label="OBS Urine Amount")
+fig = Figure()
+p1 = sim_plot(fig[1,1], pk_05, [sim_sub1], 
+        observations=:cp_plasma, axis = (title = "PK05 Plasma", ))
+p2 = sim_plot(fig[2,1], pk_05, [sim_sub1], 
+        observations=[:cp_urine], axis = (title = "PK05 Urine", ))
+fig
+
+f, a, p = sim_plot(pk_05, sim_sub1, 
+        observations=[:cp_plasma, :cp_urine],
+        separate = true,
+        linewidth = 4), 
+        color = :redsblues,
+        axis = (xlabel = "Time (hours)", 
+                ylabel = "PK05 Concentrations (mg/L) and Amount (mg)",
+                xticks = 0:6:30,))
+axislegend(a)
+f  
 ```
 
 ```julia; echo=false, eval=false

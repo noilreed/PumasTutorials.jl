@@ -14,7 +14,7 @@ using Dates
   * Dosage Regimen          - 352.3 μg
   * Number of Subjects      - 1
 
-![pko4 Graphic Model](https://user-images.githubusercontent.com/62241298/78966448-90184880-7b1d-11ea-9b64-58dbeb7f910f.png)
+![pk04 Graphic Model](https://user-images.githubusercontent.com/62241298/78966448-90184880-7b1d-11ea-9b64-58dbeb7f910f.png)
 
 ### Learning Outcome
 
@@ -39,7 +39,7 @@ call the "necessary" libraries to get start.
 using Pumas
 using PumasUtilities
 using Random
- 
+using CairoMakie
 ```
 
 ### Model 1 & 2
@@ -134,8 +134,8 @@ param = [
 Subject received 352.3 μg of oral dose once a day for 10 days.
 
 ```julia; results="hidden"
-ev1  = DosageRegimen(352.3, time=0, ii=24, addl=9, cmt=1)
-sub = Subject(id=1, events=ev1)
+ev1  = DosageRegimen(352.3, time = 0, ii = 24, addl = 9, cmt = 1)
+pop  = map(i -> Subject(id = i, events = ev1, observations = (cp = nothing,)), ["1: No Lag", "1: With Lag"])
 ```
 
 ### Simulation
@@ -144,13 +144,23 @@ Simulation the plasma concentration of the drug after multiple oral dosing
 
 ```julia; results="hidden"
 Random.seed!(123)
-sim = simobs(pk_04_1_2, sub, param, obstimes = 0:0.1:240)
+sim = map(zip(pop, param)) do (subj, p)
+  return simobs(pk_04_1_2, subj, p, obstimes = 0:0.1:240)
+end
 ```
 
 ### Visualize results
 
 ```julia
-sim_plot(pk_04_1_2, sim, observations=:cp
+f, a, p = sim_plot(pk_04_1_2, sim, 
+        observations=:cp,
+        linewidth = 4, 
+        color = :redsblues,
+        axis = (xlabel = "Time (hours)", 
+                ylabel = "PK04 Concentrations (ug/L)",
+                xticks = 0:24:240,))
+axislegend(a)
+f        
 ```
 
 ```julia; echo=false, eval=false
