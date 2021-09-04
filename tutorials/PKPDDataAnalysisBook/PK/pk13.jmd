@@ -19,24 +19,23 @@ using Dates
 ### Learning Outcome
 
   * Write the differential equation for a _two-compartment model_ in terms of Clearance and Volume
-  * Simulate data for both a bolus dose follwed by a constatnt rate infusion regimen
+  * Simulate data for both a bolus dose followed by a constant rate infusion regimen
   * Administration of _loading dose_  helps to achieve _therapeutic concentrations_ faster
 
 ### Objective
 
-The objective of this exercise is to fit data from a bolus follwed by a constant rate
- infusion using different model to provide a best fit to the data.
+The objective of this exercise is to simulate data from a bolus followed by a constant rate
+ infusion using differential equation model.
 
 ### Libraries
 
-call the "necessary" libraries to get started
+Call the "necessary" libraries to get started
 
 ```julia
-using Pumas
-using Plots
-using CSV
-using StatsPlots
 using Random
+using Pumas
+using PumasUtilities
+using CairoMakie
 ```
 ### Model
 
@@ -59,8 +58,6 @@ pk_13           = @model begin
     "Volume of Peripheral Compartment (L/kg)"
     tvvp        ∈ RealDomain(lower=0)
     Ω           ∈ PDiagDomain(4)
-    "Scaling factor"
-    tvCMixRatio ∈ RealDomain(lower=0)
     "Proportional RUV"
     σ²_prop     ∈ RealDomain(lower=0)
     "Additive RUV"
@@ -88,20 +85,19 @@ pk_13           = @model begin
     """
     Observed Concentrations (ug/L)
     """
-    dv          ~ @. Normal(cp, sqrt((cp*tvCMixRatio*σ²_prop)^2 + σ²_add^2))
+    dv          ~ @. Normal(cp, sqrt((cp*σ²_prop)^2 + σ²_add^2))
   end
 end
 ```
 
 ### Parameters
 
-  * Cl - Clearance of central compartment (L/min/kg)
-  * Vc - Volume of central compartment (L/kg)
-  * Q  - Inter-compartmental clearance (L/min/kg)
-  * Vp - Volume of peripheral compartment (L/kg)
-  * Ω  - Between Subject Variability
-  * CMixRatio - Scaling factor
-  * σ - Residual Unexplained Variability
+  * ``Cl`` - Clearance of central compartment (L/min/kg)
+  * ``Vc`` - Volume of central compartment (L/kg)
+  * ``Q``  - Inter-compartmental clearance (L/min/kg)
+  * ``Vp`` - Volume of peripheral compartment (L/kg)
+  * ``Ω``  - Between Subject Variability
+  * ``σ`` - Residual Unexplained Variability
 
 ```julia
 param = ( tvcl        = 0.344708,
@@ -109,7 +105,6 @@ param = ( tvcl        = 0.344708,
           tvq         = 0.178392,
           tvvp        = 2.18368,
           Ω           = Diagonal([0.0, 0.0, 0.0, 0.0]),
-          tvCMixRatio = 1.00693,
           σ²_prop     = 0.0571079,
           σ²_add      = 0.1)
 ```
@@ -120,10 +115,10 @@ param = ( tvcl        = 0.344708,
   * Single dose of 800 μg/kg given as an IV-Infusion for _26 mins_ at `time=0`
 
 ```julia
-ev1  = DosageRegimen(400, time=0, cmt=1)
-ev2  = DosageRegimen(800, time=0, cmt=1, rate=30.769)
-ev3  = DosageRegimen(ev1,ev2)
-sub1 = Subject(id=1, events=ev3)
+ev1  = DosageRegimen(400, time = 0, cmt = 1)
+ev2  = DosageRegimen(800, time = 0, cmt = 1, rate = 30.769)
+ev3  = DosageRegimen(ev1, ev2)
+sub1 = Subject(id = 1, events = ev3)
 ```
 
 ### Simulation
@@ -132,20 +127,20 @@ We will simulate the plasma concentration at the pre specified time points.
 
 ```julia; results="hidden"
 Random.seed!(123)
-sim_sub1 = simobs(pk_13, sub1, param, obstimes=[2,5,10,15,20,25,30,33,35,37,40,45,50,60,70,90,110,120,150])
+sim_sub1 = simobs(pk_13, sub1, param, 
+                  obstimes=[2,5,10,15,20,25,30,33,35,37,40,45,50,60,70,90,110,120,150])
 ```
 
-### DataFrame and Plot
-
-Convert the simulation to a datframe and use the dataframe to make your necessary plots
+### Visualization
 
 ```julia
-df1 = DataFrame(sim_sub1)
-@df df1 plot(:time, :cp, yaxis=:log,
-              title="Plasma Concentration vs Time", xlabel="Time (min)", ylabel="Concentration (ug/L)",
-              label= "PRED Conc", color=[:blue],linewidth=3,
-              xlims=(0,160), xticks=[0,20,40,60,80,100,120,140,160], ylims=(0.1,200))
-@df df1 scatter!(:time, :dv, label="OBS Conc", color=[:red])
+sim_plot(pk_13, [sim_sub1],
+                   observations = :cp, 
+                   linewidth = 4,
+                   color = :maroon,
+                   axis = (xlabel = "Time (min)",
+                           ylabel="Concentration (ug/L)", 
+                           yscale = log10, xticks = 0:20:160))
 ```
 
 
