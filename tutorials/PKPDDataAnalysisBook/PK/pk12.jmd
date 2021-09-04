@@ -1,0 +1,194 @@
+---
+title: Exercise PK12 - Intravenous and oral dosing
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+### Background
+
+To determine (oral) bioavailability, the drug is administered by both oral and
+ intravenous route. The adminstration generaly is done in crossover manner at
+ diffrent times separated by a washout period. But if the drug follows a
+ time-dependant clearance (and if the washout period is long), then it may affect
+ the results. To avoid this situation, the doses can be administered semi-simultaneously
+ separated by a small time upto 1 hour.
+
+
+In the current study, the test drug was administered oraly followed a constant rate infusion (reference) for 15 mins at 60 mins .
+
+  *  Structural model        - Two compartment model with first order absorption and elimination
+  *  Route of administration - Oral and IV given simulataneously
+  *  Dosage Regimen          - 2.5 mg Oral and 0.5mg IV infusion of 15 mins
+  *  Number of Subjects      - 1
+
+
+![PK12_Schematic illustration of two compartment](https://user-images.githubusercontent.com/62241298/78966821-6f9cbe00-7b1e-11ea-8d8c-465861119986.png)
+
+
+### Learning Outcomes
+
+This exercise will help to determine bioavailability of a compound administered
+ semi-simultaneously by oral and intravenous route
+
+### Objectives
+
+  *  To bulid a two compartment model for semi-simultaneous oral and intravenous administeration
+  *  To use final parameter estimates
+  *  To design semi-simultaneous dosage regimen
+  *  To simulate and plot a single subject with predefined time points.
+
+### Libraries
+
+call the "necessary" libraries to get started.
+
+```julia
+using Pumas
+using PumasUtilities
+using Random
+
+```
+
+### Model
+
+A two compartment model with oral absorption is build for a semi-simultaneous
+ administration of oral dose followed by intravenous infusion.
+
+```julia
+pk_12           = @model begin
+  @metadata begin
+    desc        = "Two Compartment Model"
+    timeu       = u"minute"
+  end
+
+  @param   begin
+    "Absorption Rate Constant (min⁻¹)"
+    tvka        ∈ RealDomain(lower=0)
+    "Clearance (L/min/kg)"
+    tvcl        ∈ RealDomain(lower=0)
+    "Inter-compartmental distribution (L/kg)"
+    tvq         ∈ RealDomain(lower=0)
+    "Volume of Central Compartment (L/kg)"
+    tvvc        ∈ RealDomain(lower=0)
+    "Volume of Peripheral Compartment (L/kg)"
+    tvvp        ∈ RealDomain(lower=0)
+    "Lag time (min)"
+    tvlag       ∈ RealDomain(lower=0)
+    "Bioavailability"
+    tvF         ∈ RealDomain(lower=0)
+    Ω           ∈ PDiagDomain(7)
+    "Proportional RUV"
+    σ²_prop     ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η           ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Cl          = tvcl * exp(η[1])
+    Q           = tvq * exp(η[2])
+    Vc          = tvvc * exp(η[3])
+    Vp          = tvvp * exp(η[4])
+    Ka          = tvka * exp(η[5])
+    lags        = (Depot = tvlag * exp(η[6]),)
+    bioav       = (Depot = tvF * exp(η[7]),)
+  end
+
+  @dynamics begin
+    Depot'      = -Ka*Depot
+    Central'    =  Ka*Depot - (Cl/Vc)*Central - (Q/Vc)*Central + (Q/Vp)*Peripheral
+    Peripheral' =  (Q/Vc)*Central - (Q/Vp)*Peripheral
+  end
+
+  @derived begin
+    cp          = @. 1000*(Central/Vc)
+    """
+    Observed Concentrations (ug/L)
+    """
+    dv          ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
+  end
+end
+```
+
+### Parameters
+
+  * Ka  - Absorption Rate Constant (min⁻¹)
+  * Cl  - Clearance (L/min/kg)
+  * Q   - Inter-compartmental distribution (L/kg)
+  * Vc  - Volume of Central Compartment (L/kg)
+  * Vp  - Volume of Peripheral Compartment (L/kg)
+  * lag - Lag time (min)
+  * F   - Bioavailability
+  * σ   - Residual Error
+
+```julia
+param  = (tvka    = 0.103,
+          tvcl    = 0.015,
+          tvq     = 0.021,
+          tvvc    = 0.121,
+          tvvp    = 0.276,
+          tvlag   = 4.68,
+          tvF     = 0.046,
+          Ω       = Diagonal([0.0,0.0,0.0,0.0,0.0,0.0,0.0]),
+          σ²_prop = 0.04)
+```
+
+
+### Dosage Regimen
+
+Dosage Regimen = 2.5 mg/kg oraly followed by 15 min intravenous infusion of 0.5 mg/kg starting from 60 mins after oral dosing administered to a single subject (sub1)
+
+```julia
+ev_oral = DosageRegimen(2.5, time=0, cmt=1)
+ev_inf  = DosageRegimen(0.5, time=60, cmt=2, duration=15)
+ev1     = DosageRegimen(ev_oral,ev_inf)
+sub1    = Subject(id=1, events=ev1)
+```
+
+### Simulation
+
+To simulate plasma concentration with the specific observation time points for a given dosage regimen 'DR'
+
+```julia; results="hidden"
+Random.seed!(123)
+sim_s1  = simobs(pk_12, sub1, param, obstimes = [6,10,15,20,30,45,60,63,66,75,80,90,107,119,134,150])
+```
+
+### Dataframe & Plot
+
+```julia
+df1 = DataFrame(sim_s1)
+dropmissing!(df1, :cp)
+@df df1 plot(:time, :cp, yaxis=:log,
+             label= "Pred - cp", xlabel="Time (min)", ylabel="Concentration (ug/L)",
+             title= "Time Vs Plasma concentration", color=[:blue], linewidth=4,
+             xticks=[0,20,40,60,80,100,120,140,160], xlims=(0,160), ylims=(10,2000))
+@df df1 scatter!(:time, :dv, yaxis=:log,
+                 label="Obs - dv", color=[:red], markershape=[:circle])
+```
+
+
+```julia; echo=false, eval=false
+par    = (tvka    = 0.103,
+          tvcl    = 0.015,
+          tvq     = 0.021,
+          tvvc    = 0.121,
+          tvvp    = 0.276,
+          tvlag   = 4.68,
+          tvF     = 0.046,
+          Ω       = Diagonal([0.0625,0.0016,0.0169,0.0064,0.0121,0.0144,0.0144]),
+          σ²_prop = 0.04)
+
+ev1     = DosageRegimen([2.5,0.5], time=[0,60], cmt=[1,2], duration=[0,15])
+sub1    = map(i -> Subject(id=i, events=ev1),1:40)
+
+Random.seed!(1234)
+pop     = simobs(pk_12, sub1, par, obstimes=0:1:150)
+
+df_sim  = DataFrame(pop)
+
+CSV.write("./data/pharma_data/pk_12.csv", df_sim)
+```

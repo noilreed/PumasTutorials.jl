@@ -42,7 +42,7 @@ The time to remedication and the remedication status is available for subjects.
 
 The pharmacokinetic dataset can be viewed [here](https://github.com/PumasAI/PumasTutorials.jl/blob/master/data/intro/pk_painrelief.csv), 
 and later in the tutorial, we show you how to download for use. The remedication dataset with binary, ordinal and 
-censored data will be used in [part-2]() of the tutorial.
+censored data will be used in part-2 of the tutorial (to be released shortly).
  
 ## Setup
 
@@ -76,13 +76,6 @@ please add them as follows e.g.
 ```julia; eval = false
 using Pkg
 Pkg.add("Weave")
-```
-
-For the purpose of this tutorial, we set all plots to be non-interactive. While working in a interactive environment using `.jl` files, it is perhaps efficient to 
-use leave the option to the default value of `true`. More about these options can be found about in our documentation.
-
-```julia; results = "hidden"
-interactive!(false)
 ```
 
 ### Data Wrangling
@@ -137,25 +130,37 @@ pkpain_nca = read_nca(pkpain_noplb_df,
                       route = :route)
 ```
 
-Now that we mapped the data in, let's visualize the concentration vs time plots for a few individuals. Note how, for each individual
-both the linear and log scale profiles are plotted. Below we plot the first 4 individuals indexed as `NCAPopulation[1:4]`
+Now that we mapped the data in, let's visualize the concentration vs time plots for a few individuals.
+When `paginate` is set to `true`, a vector of plots are returned and below we display the first element with 9 individuals.
 
 ```julia
-f = observations_vs_time(pkpain_nca[1:4], separate=true, 
-                    columns = 4, rows = 4, 
-                    xlabel = "Time (hr)",
-                    ylabel = "CTMNoPain Concentration (ng/mL)")[1]
-f                  
+f = observations_vs_time(pkpain_nca, 
+                    paginate = true, 
+                    
+                    axis = (xlabel = "Time (hr)",
+                            ylabel = "CTMNoPain Concentration (ng/mL)"),
+                    facet = (combinelabels =true,)
+                    )
+f[1]                  
 ```
 or you can view the summary curves by dose group as passed in to the `group` argument in `read_nca`
 
 ```julia
-f = summary_observations_vs_time(pkpain_nca, 
-                                  columns=2, rows=3,
-                                  fontsize = 10,
-                                  xlabel = "Time (hr)",
-                                  ylabel = "CTMNoPain Concentration (ng/mL)")
-f[1]
+f = summary_observations_vs_time(
+    pkpain_nca,
+    figure = (
+        fontsize = 22,
+        resolution = (800,1000),
+    ),
+    color = "black", linewidth = 3,
+    axis = (
+        xlabel = "Time (hr)",
+        ylabel = "CTMX Concentration (μg/mL)",
+    ),
+    facet = (combinelabels = true,
+             linkaxes =true),
+
+)
 ```
 
 A full NCA Report is now obtained for completeness purposes using the `run_nca` function, but later we will only extract a couple of key metrics
@@ -170,15 +175,12 @@ We can look at the NCA fits for some subjects.
 
 ```julia; results = "hidden"
 f = subject_fits(pk_nca,
-                 separate = true, 
-                 columns = 4, rows = 3, fontsize = 12, 
-                 xlabel = "Time (hr)",
-                 ylabel = "CTMNoPain Concentration (ng/mL)"
-                 )
-```
-
-```julia
-f[12]
+                 paginate = true, 
+                 axis  = (xlabel = "Time (hr)",
+                        ylabel = "CTMX Concentration (μg/mL)"),
+                 facet = (combinelabels = true,
+                         linkaxes =true),
+                 )                
 ```
 
 As CTMNopain's effect maybe mainly related to maximum concentration (`cmax`) or area under the curve (`auc`),
@@ -196,7 +198,10 @@ We can look at a few parameter distribution plots.
 
 ```julia
 f = parameters_vs_group(pk_nca, 
-                        :cmax)[1]
+                        parameter = :cmax, 
+                        axis = (xlabel = "Dose (mg)",
+                                ylabel = "Cₘₐₓ (ng/mL)"),
+                        figure = (fontsize = 18, ))
 ```
 
 Dose normalized PK parameters, `cmax` and `aucinf` were essentially dose proportional between for 5 mg, 20 mg
@@ -223,7 +228,7 @@ as obtained by `j latexify("0.693/(tmax/4)").s` is `j round(0.693/(mean(pk_nca.r
 
 #### Data preparation for modeling
 
-[PumasNDF]() requires the presence of `evid` and `cmt` columns in the dataset.
+[PumasNDF](https://docs.pumas.ai/stable/basics/doses_subjects_populations/#PumasNDF) requires the presence of `evid` and `cmt` columns in the dataset.
 
 ```julia; results = "hidden"
 pkpain_noplb_df[!, :evid] .= ifelse.(pkpain_noplb_df.Time .== 0, 1, 0)
@@ -237,7 +242,7 @@ Further, observations at time of dosing, i.e., when `evid = 1` have to be `missi
 pkpain_noplb_df[!, :Conc] .= ifelse.(pkpain_noplb_df.evid .== 1, missing, pkpain_noplb_df.Conc)
 ```
 
-The dataframe will now be converted to a [`Population`]() using [`read_pumas`](). Note that
+The dataframe will now be converted to a `Population` using [`read_pumas`](https://docs.pumas.ai/stable/basics/doses_subjects_populations/#Reading-Subjects-from-tabular-data). Note that
 both `observations` and `covariates` are required to be an array even if it is one element.
 
 ```julia; results = "hidden"
@@ -318,8 +323,10 @@ simpk = simobs(pk_1cmp,
               pkpain_noplb, 
               init_params(pk_1cmp), etas)
 f = sim_plot(pk_1cmp,
-            simpk)[1]
-f                          
+            simpk, observations =[:Conc], 
+            figure = (fontsize = 18, ), 
+            axis = (xlabel = "Time (hr)", 
+                    ylabel = "Observed/Predicted \n CTMx Concentration (ng/mL)", ))
 ```
 
 Our NCA based initial guess on the parameters seem to work well.
@@ -335,14 +342,16 @@ simpk = simobs(pk_1cmp,
                pkpain_noplb,
                pkparam, etas)
 f = sim_plot(pk_1cmp,
-            simpk)[1]
-f                  
+            simpk, observations =[:Conc], 
+            figure = (fontsize = 18, ), 
+            axis = (xlabel = "Time (hr)", 
+                    ylabel = "Observed/Predicted \n CTMx Concentration (ng/mL)", ))                 
 ```
 
 Changing the `tvka` and decreasing the `tvv`  seemed to make an impact and observations go
 through the simulated lines. In the interactive REPL session, you can use the `explore_estimates` function to 
-generate an interactive app on the fly that provides you controls and live updating plots. Please check the documentation for 
-more details. 
+generate an interactive app on the fly that provides you controls and live updating plots. 
+Please check the documentation on creating [interactive apps](https://docs.pumas.ai/dev/analysis/apps/) for more details. 
 
 To get a quick ballpark estimate of your PK parameters, we can do a NaivePooled analysis.
 Below we test the `NaivePooled` approach
@@ -369,6 +378,7 @@ One way to be cautious before going into a complete `fit`ting routine is to eval
 the likelihood of the individual subjects given the initial parameter values
 and see if any subject(s) pops out as unreasonable.
 There are a few ways of doing this:
+
 * check the `loglikelihood` subject wise
 * check if there any _influential_ subjects
 
@@ -383,6 +393,7 @@ for subj in pkpain_noplb
                    pkparam,
                    Pumas.FOCE()))
 end
+# the plot below is using native CairoMakie
 hist(lls; bins = 10, normalization = :none, color = (:black, 0.5), x_gap = 0)
 ```
 
@@ -508,13 +519,13 @@ res_inspect_2cmp = inspect(pkfit_2cmp)
 ```
 
 ```julia
-gof_1cmp = goodness_of_fit(res_inspect_1cmp, fontsize = 12)[1]
-gof_1cmp
+gof_1cmp = goodness_of_fit(res_inspect_1cmp, 
+                          figure = (fontsize = 12,))
 ```
 
 ```julia
-gof_2cmp = goodness_of_fit(res_inspect_2cmp, fontsize = 12)[1]
-gof_2cmp
+gof_2cmp = goodness_of_fit(res_inspect_2cmp, 
+                          figure = (fontsize = 12,))
 ```
 
 These plots clearly indicate that the 2 compartment model is a better fit
@@ -527,13 +538,19 @@ We can look at selected sample of individual plots.
 
 ```julia;results = "hidden"
 f = subject_fits(res_inspect_2cmp,
-             separate = true, columns = 3, rows = 3)
+             separate = true, 
+             paginate = true, 
+             facet = (combinelabels = true, ), 
+             figure = (fontsize = 18, ), 
+             axis = (xlabel = "Time (hr)", 
+                    ylabel = "CTMx Concentration (ng/mL)", ), 
+             legend = (merge = true, unique = true))           
 ```
 
-We look at random set of 9 individuals here by indexing into generated plot
+We look at random set of 4 individuals here by indexing into generated plot
 
 ```julia
-f[6]
+f[1]
 ```
 
 There a lot of important plotting functions you can use for your standard model diagnostics. Please make sure
@@ -541,11 +558,13 @@ to read the [documentation]() for plotting and the [tutorial]() associated with 
 distribution of the _empirical Bayes estimates_.
 
 ```julia
-f = empirical_bayes_dist(res_inspect_2cmp)[1]
+f = empirical_bayes_dist(res_inspect_2cmp, zeroline_color = :red)
 ```
 
 ```julia
-f = empirical_bayes_vs_covariates(res_inspect_2cmp, categorical = [:Dose], resolution = (600, 800))[1]
+f = empirical_bayes_vs_covariates(res_inspect_2cmp, 
+                                  categorical = [:Dose], 
+                                  figure = (resolution = (600, 800),))
 ```
 
 Clearly,our guess at `tvka` seems off-target. Let's try and estimate `tvka` instead of fixing it to `2`
@@ -555,7 +574,7 @@ Clearly,our guess at `tvka` seems off-target. Let's try and estimate `tvka` inst
 pkfit_2cmp_unfix_ka = fit(pk_2cmp,
                  pkpain_noplb,
                  init_params(pk_2cmp),
-                 Pumas.FOCEI())
+                 Pumas.FOCE())
 ```
 
 ```julia
@@ -568,20 +587,29 @@ Not much change in the general `gof` plots
 
 ```julia
 res_inspect_2cmp_unfix_ka = inspect(pkfit_2cmp_unfix_ka)
-goodness_of_fit(res_inspect_2cmp_unfix_ka)[1]
+goodness_of_fit(res_inspect_2cmp_unfix_ka, 
+                          figure = (fontsize = 12,))
 ```
 
 But you can see a huge improvement in the `ηka`, (`η₃`) distribution which is now centered around zero
 
 ```julia
-f = empirical_bayes_vs_covariates(res_inspect_2cmp_unfix_ka, categorical = [:Dose], resolution = (600, 800))[1]
+f = empirical_bayes_vs_covariates(res_inspect_2cmp_unfix_ka, 
+                                  categorical = [:Dose], ebes = [:η₃],
+                                  figure = (resolution = (600, 800),))
 ```
 
 Finally looking at some individual plots for the same subjects as earlier
 
 ```julia;results = "hidden"
 f = subject_fits(res_inspect_2cmp_unfix_ka,
-             separate = true, columns = 3, rows = 3)
+             separate = true, 
+             paginate = true, 
+             facet = (combinelabels = true, linkyaxes = false), 
+             figure = (fontsize = 18, ), 
+             axis = (xlabel = "Time (hr)", 
+                    ylabel = "CTMx Concentration (ng/mL)"), 
+             legend = (merge = true, unique = true))       
 ```
 
 ```julia
@@ -602,19 +630,14 @@ pk_vpc = vpc(pkfit_2cmp_unfix_ka, 200; observations = [:Conc],
 
 ```julia
 f = vpc_plot(pk_2cmp,
-        pk_vpc, rows=1, columns=1)
-```
-
-```julia
-f[1]
-```
-
-```julia
-f[2]
-```
-
-```julia
-f[3]
+             pk_vpc, 
+             paginate = true, 
+             separate = true, 
+             figure = (resolution = (1400,1000), fontsize = 22),
+             axis = (xlabel = "Time (hr)", 
+                     ylabel = "Observed/Predicted\n CTMx Concentration (ng/mL)"), 
+             facet = (combinelabels = true,))
+f[1]             
 ```
 
 The visual predictive check suggests that the model captures the data well across
