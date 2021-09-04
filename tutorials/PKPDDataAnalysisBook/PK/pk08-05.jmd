@@ -1,5 +1,5 @@
 ---
-title : Exercise PK08 - Two-Compartment Distribution Models (Part 5 - Using Diffferential Equations)
+title : Exercise PK08 - Two-Compartment Distribution Models (Part 5 - Using Differential Equations)
 date: `j Date(now())`
 ---
 
@@ -18,32 +18,25 @@ using Dates
 
 ### Learning Outcome
 
-This exercise explains about the two compartment modelling with analyzing the
- parameters to be taken and simulate it for single subject given single IV bolus dose.
+This exercise explains simulating single IV bolus dose kinetics from a two compartment model.
 
 ### Objectives
 
-To build two compartment model and to simulate the model for a single subject
- given a single IV bolus dose.
+To build a two compartment model and to simulate the model for a single subject
+given a single IV bolus dose.
 
 ### Libraries
 
 call the "necessary" libraries to get started.
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
 ```
 
 ### Model
-
-To build the two compartment model for a single subject given IV dose of
- 100micrograms and concentration-time graph was plotted for 50 hours specified
- in terms of differentiall equations considering plasma clearance(CL), the
- volume of central compartment(Vc),inter-compartmental distribution(Q) and
- volume of peripheral compartment(Vp) as initial parameters for simulation of plot.
 
 ```julia
 pk_08_05        = @model begin
@@ -117,8 +110,8 @@ param  = (tvcl    = 6.6,
 Dosage Regimen - 100 μg or 0.1mg of IV bolus was given to the single subject.
 
 ```julia
-ev1   = DosageRegimen(100,time=0,cmt=1,evid=1,addl=0,ii=0)
-sub1  = Subject(id=1,events=ev1)
+ev1   = DosageRegimen(100, time = 0, cmt = 1, evid = 1, addl = 0, ii = 0)
+sub1  = Subject(id = 1, events = ev1)
 ```
 
 ### Simulation
@@ -134,7 +127,14 @@ sim_s1 = simobs(pk_08_05,sub1,param,
 
 
 ```julia
-sim_plot(pk_08_05, sim_s1, observations=:cp
+f, a, p = sim_plot(pk_08_05, [sim_s1], 
+        observations = :cp, 
+        color = :redsblues, linewidth = 4,
+        axis = (xlabel = "Time (hours)", 
+        ylabel = "PK08 Concentrations (ug/L)",
+        xticks = 0:5:50, yscale = log10))
+axislegend(a)
+f   
 ```
 
 ```julia; echo=false, eval=false

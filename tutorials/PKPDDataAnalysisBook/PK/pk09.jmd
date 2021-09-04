@@ -10,7 +10,7 @@ using Dates
 ### Background
 
   * Structural model - Two compartment model with non-linear elimination from hepatic compartment
-  * Route of administration - Oral and IV on seperate ocassion
+  * Route of administration - Oral and IV on separate occasion
   * Dosage Regimen - 2 μmol/kg : IV and 6 μmol/kg : Oral
   * Number of Subjects - 1
 
@@ -19,29 +19,29 @@ using Dates
 ### Learning Outcomes
 
 Semi-physiologic model with elimination from hepatic compartment and dose administered by IV bolus.
- The drug follows atwo compartment model. This data was modeled taking into account the heaptic
- elimination component and hepatic blood flow. Hepatic distribution and elimination from liver
- is modeled as an additional compartment with physiological values of blood flow reported from
- literature. Oral dose administered into a Depot. This Depot compartment was connected to the
- liver compartment.This study was conducted in parameters with Oral suspension of 6 μmol/kg and
- IV bolus of 2 μmol/kg.
+The drug follows a two compartment model. This data was modeled taking into account the hepatic
+elimination component and hepatic blood flow. Hepatic distribution and elimination from liver
+is modeled as an additional compartment with physiological values of blood flow reported from
+literature. Oral dose administered into a Depot. This Depot compartment was connected to the
+liver compartment.This study was conducted with an Oral suspension of 6 μmol/kg and
+IV bolus of 2 μmol/kg.
 
 ### Objective
 
 The exercise aims to simulate data using a two compartment model and an additional
- hepatic compartment. The elimination is non-linear metabolic clearance from the liver.
- In case of oral administration the administered dose reaches hepatic compartment
- with a lag-time.
+hepatic compartment. The elimination is non-linear metabolic clearance from the liver.
+In case of oral administration the administered dose reaches hepatic compartment
+with a lag-time.
 
 ### Libraries
 
-call the "necessary" libraries to get started
+Call the "necessary" libraries to get started
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
 ```
 
 ### Model
@@ -49,7 +49,7 @@ using Random
 This model is written for both Oral and IV dosing regimen
 
 ```julia
-pk_09           = @model begin
+pk_09    = @model begin
   @metadata begin
     desc = "Semi-Physiologic Model"
     timeu = u"hr"
@@ -88,10 +88,13 @@ pk_09           = @model begin
     Vmax        = tvvmax * exp(η[4])
     Km          = tvkm * exp(η[5])
     Ka          = tvka * exp(η[6])
-    lags        = (Depot = tvtlag * exp(η[7]),)
-    bioav       = (Depot = tvfa * exp(η[8]),)
     Qh          = 3.3
     Vh          = 0.02
+  end
+
+  @dosecontrol begin
+    lags        = (Depot = tvtlag * exp(η[7]),)
+    bioav       = (Depot = tvfa * exp(η[8]),)
   end
 
   @vars begin
@@ -119,14 +122,14 @@ end
 
 Parameters provided for simulation. tv represents the typical value for parameters.
 
- * Vc - Volume of Central Compartment (L/kg)
- * Q - Intercompartmental Clearance (L/kg)
- * Vp - Volume of Peripheral Compartment (L/kg)
- * Vmax - Maximum Metabolic Rate (μmol/hr/kg)
- * Km - Michaelis Menton Constant (μmol/L)
- * Ka - Absorption Rate Constant (hr⁻¹)
- * fa - Fraction of drug absorbed
- * tlag - lag time (hr)
+ * ``Vc`` - Volume of Central Compartment (L/kg)
+ * ``Q`` - Intercompartmental Clearance (L/kg)
+ * ``Vp`` - Volume of Peripheral Compartment (L/kg)
+ * ``Vmax`` - Maximum Metabolic Rate (μmol/hr/kg)
+ * ``Km`` - Michaelis Menton Constant (μmol/L)
+ * ``Ka`` - Absorption Rate Constant (hr⁻¹)
+ * ``fa`` - Fraction of drug absorbed
+ * ``tlag`` - lag time (hr)
 
 ```julia
 param = (tvvc    = 0.34,
@@ -148,8 +151,8 @@ param = (tvvc    = 0.34,
 Dose of **6 μmol/kg** is administered orally at `time=0`
 
 ```julia
-ev1  = DosageRegimen(6, time=0, cmt=:Depot)
-sub1 = Subject(id=1,events=ev1)
+ev1  = DosageRegimen(6, time = 0, cmt = :Depot)
+sub1 = Subject(id = "1: PO", events = ev1)
 ```
 
 ##### IV
@@ -157,8 +160,8 @@ sub1 = Subject(id=1,events=ev1)
 Dose of **2 μmol/kg** is administered as IV-bolus at `time=0`
 
 ```julia
-ev2  = DosageRegimen(2, time=0, cmt=:Central)
-sub2 = Subject(id=2, events=ev2)
+ev2  = DosageRegimen(2, time = 0, cmt = :Central)
+sub2 = Subject(id = "2: IV", events = ev2)
 ```
 
 ### Simulation
@@ -167,32 +170,31 @@ sub2 = Subject(id=2, events=ev2)
 
 ```julia; results="hidden"
 Random.seed!(123)
-sim_sub1_oral = simobs(pk_09,sub1,param,obstimes=[0.08333,0.25,0.5,1,2,4,6,8,23])
-df1_sub1_oral = DataFrame(sim_sub1_oral)
+sim_sub1_oral = simobs(pk_09, sub1, param, 
+                      obstimes = [0.08333,0.25,0.5,1,2,4,6,8,23]) 
 ```
 
 ##### IV
 
 ```julia; results="hidden"
 Random.seed!(123)
-sim_sub2_iv = simobs(pk_09,sub2,param,obstimes=[0.0056,0.03333,0.13333,0.25,0.75,1,2,3,4,6,8,10,12,15,20,23])
-df2_sub2_iv = DataFrame(sim_sub2_iv)
+sim_sub2_iv = simobs(pk_09, sub2, param, 
+                    obstimes = [0.0056,0.03333,0.13333,0.25,0.75,1,2,3,4,6,8,10,12,15,20,23])
 ```
 
-### Plots
-
-Combined plot of Oral and IV data
+### Visualization
 
 ```julia
-@df df1_sub1_oral plot(:time, :cp, yaxis=:log,
-                        xticks=[0,5,10,15,20,25], xlims=(-0.2,25), yticks=[0.01,0.1,1,10], ylims=(0.01,10),
-                        title = "Plasma Concentration vs Time", label = "Pred - Conc Oral",
-                        xlabel = "Time (hr)", ylabel = "Concentration (ug/L)", linewidth=3)
-@df df1_sub1_oral scatter!(:time, :dv, label = "Obs - Conc Oral")
-@df df2_sub2_iv plot!(:time, :cp, yaxis=:log, label = "Pred - Conc IV", linewidth=3)
-@df df2_sub2_iv scatter!(:time, :dv, label = "Obs - Conc IV")
+f, a, p = sim_plot(pk_09, [sim_sub1_oral, sim_sub2_iv], 
+        observations=:cp,
+        color = :redsblues, linewidth = 4,
+        axis = (yscale = log10,
+                xlabel = "Time (hr)", 
+                ylabel = "Concentrations (ug/L)",
+                xticks = 0:5:25))
+axislegend(a)
+f   
 ```
-
 
 ```julia; echo=false, eval=false
 par = (tvvc    = 0.34,
