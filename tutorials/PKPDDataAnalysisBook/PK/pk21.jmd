@@ -10,7 +10,7 @@ using Dates
 ### Background
 
   * Structural model        - One compartment Oral administration consists of time
-                              dependent change in the elimanation rate constant.
+                              dependent change in the elimination rate constant.
   * Route of administration - Oral
   * Dosage Regimen          - Nortriptyline (NT) 10 mg (or 10000 μg) Oral, three times daily for 29 days (i.e. 696 hours),
                               after 216 hours treatment with an enzyme inducer i.e. Pentobarbital (PB) for a
@@ -21,41 +21,37 @@ using Dates
 
 ### Learning Outcome
 
-By the application of the present model, we will learn how to simulate model for
- heteroinduction having first order input/ output model to repeated oral dose data
- on treatment with an enzyme inducer for a limited duration and how to develop
- a better fit for the available data.
+We will learn how to simulate from a heteroinduction model after repeated oral dose data
+on treatment with an enzyme inducer for a limited duration.
 
 ### Objectives
 
-In this exercise you will learn how to
- * Simulate an Oral One Compartment with an enzyme induction consists of time dependent
-    change in the elimination rate constant.
+In this exercise you will learn how to simulate from an Oral One Compartment model 
+with enzyme induction where clearance is time dependent.
 
 Certain assumptions to be considered:
 
-  * The fractional turnover rate i.e. Kout of the enzyme has a longer half-life than the drug or the inducer
-  * The duration from one level of enzyme activity to other will be influenced by Kout of the enzyme
-  * The Kout is not regulated by the PB.
-    The interpretation V includes bioavailability (i.e., it is really V/F).
-  * Write a differential equation for a _one-compartment model_ with _oral absorption_ including time dependent
-    change in elimination rate constant.
+  * The fractional turnover rate i.e. ``Kout`` of the enzyme has a longer half-life than the drug or the inducer
+  * The duration from one level of enzyme activity to other will be influenced by ``Kout`` of the enzyme
+  * The ``Kout`` is not regulated by the Pentobarbital.
+    The interpretation ``V`` includes bioavailability (i.e., it is really ``V/F``).
 
 ### Libraries
 
-call the "necessary" libraries to get start.
+Call the "necessary" libraries to get start.
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
 ```
+
 ### Model
 
 In this one compartment model, we administer dose in Depot compartment at _'time= 0'_
- that is given every _'8 hours'_ for _'87 additional doses'_. A second drug which is an enzyme
- inducer (Pentobarbital) is added at 216 hrs for 300 hrs up to 516 hours of treatment with NT.
+that is given every _'8 hours'_ for _'87 additional doses'_. A second drug which is an enzyme
+inducer (Pentobarbital) is added at 216 hrs for 300 hrs up to 516 hours of treatment with Nortriptyline.
 
 **Note:-** We do not have concentrations of Pentobarbital and hence it is not included in the model.
 
@@ -94,7 +90,6 @@ pk_21        = @model begin
     Ka       = tvka * exp(η[1])
     Clpre    = tvclpre * exp(η[3]) 
     Clss     = tvclss * exp(η[2])   
-    lags     = (Depot=tvlag,)
     Vc       = tvv
     Kout     = tvkout
     Kpre     = Clpre/Vc
@@ -103,6 +98,10 @@ pk_21        = @model begin
     A        = Kss - (Kss-Kpre)*exp(-Kout*(TBP2-TBP))
     Kpost    = Kpre - (Kpre-A)*exp(-Kout*(t-TBP2))
     K10      = (t<TBP) * Kpre + (t>=TBP && t<TBP2) * Kperi + (t>=TBP2) * Kpost
+  end
+
+  @dosecontrol begin
+    lags     = (Depot=tvlag,)
   end
 
   @dynamics begin
@@ -151,8 +150,9 @@ In this section the Dosage regimen is mentioned for:
 * Oral dosing of **10 mg or 10000 μg** at `time=0` that is given every `8 hours` for `87 additional doses` for a single subject.
 
 ```julia
-ev1  = DosageRegimen(10000, cmt=1, time=0, ii=8, addl=87)
-sub1 = Subject(id=1, events=ev1, covariates=(TBP=216,TBP2=516))
+ev1  = DosageRegimen(10000, cmt = 1, time = 0, ii = 8, addl = 87)
+sub1 = Subject(id = 1, events = ev1, covariates =(TBP = 216, TBP2 = 516),
+              observations = (cp = nothing,))
 ```
 
 ### Simulation
@@ -162,11 +162,22 @@ Let's simulate for plasma concentration with the specific observation time point
 
 ```julia; results="hidden"
 Random.seed!(123)
-sim_sub1 = simobs(pk_21, sub1, param, obstimes=0:1:800)
-df1      = DataFrame(sim_sub1)
+sim_sub1 = simobs(pk_21, sub1, param, obstimes = 0:1:800)
 ```
 
-### Dataframe & Plot
+### Visualization
+
+```julia
+f, a, p = sim_plot(pk_21, [sim_sub1], 
+        observations = :cp, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (xlabel = "Time (hr)", 
+                ylabel = "PK21 Concentrations (nM)",
+                xticks = 0:100:800))
+axislegend(a) 
+f 
+```
 
 Use the dataframe for plotting
 
