@@ -1,5 +1,5 @@
 ---
-title: Exercise PK20 - Capacity IV - Noninear Kinetics
+title: Exercise PK20 - Capacity IV - Nonlinear Kinetics
 date: `j Date(now())`
 ---
 
@@ -20,7 +20,7 @@ using Dates
 
 This is a one compartment model for IV bolus dose with capacity limited elimination.
  Concentration time profile was obtained for two subjects with different dosage regimen
- and different Vmax and Km values.
+ and different ``Vmax`` and ``Km`` values.
 
 ### Objectives
 
@@ -29,13 +29,13 @@ In this tutorial, you will learn how to build one compartment model for IV bolus
 
 ### Libraries
 
-call the "necessary" libraries to get start.
+Call the "necessary" libraries to get start.
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
 ```
 
 ### Model
@@ -56,7 +56,7 @@ pk_20        = @model begin
     tvvmax   ∈ RealDomain(lower=0)
     Ω        ∈ PDiagDomain(3)
     "Proportional RUV"
-    σ²_prop  ∈ RealDomain(lower=0)
+    σ_prop  ∈ RealDomain(lower=0)
   end
 
   @random begin
@@ -78,7 +78,7 @@ pk_20        = @model begin
     """
     Observed Concentration (ug/L)
     """
-    dv       ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
+    dv       ~ @. Normal(cp, cp*σ_prop)
   end
 end
 ```
@@ -87,11 +87,11 @@ end
 
 The parameters are as given below. `tv` represents the typical value for parameters.
 
-  * Km - Michaelis menten Constant (μg/L)
-  * Vc - Volume of Central Compartment (L),
-  * Vmax - Maximum rate of metabolism (μg/hr),
-  * Ω - Between Subject Variability,
-  * σ - Residual error
+  * ``Km`` - Michaelis menten Constant (μg/L)
+  * ``Vc`` - Volume of Central Compartment (L),
+  * ``Vmax`` - Maximum rate of metabolism (μg/hr),
+  * ``Ω`` - Between Subject Variability,
+  * ``σ`` - Residual error
 
 **Note:-**
   * `param1` are the parameter values for Subject 1
@@ -102,15 +102,11 @@ param1 = (tvkm    = 261.736,
           tvvmax  = 36175.1,
           tvvc    = 48.9892,
           Ω       = Diagonal([0.0,0.0,0.0]),
-          σ²_prop = 0.01)
+          σ_prop = 0.1)
 ```
 
 ```julia
-param2 = (tvkm    = 751.33,
-          tvvmax  = 36175.1,
-          tvvc    = 48.9892,
-          Ω       = Diagonal([0.0,0.0,0.0]),
-          σ²_prop = 0.01)
+param2 = (param1..., tvkm    = 751.33)
 ```
 
 We will merge both the parameters
@@ -122,13 +118,13 @@ param = vcat(param1, param2)
 ### Dosage Regimen
 
  * Subject1 - receives an IV dose of **25 mg or 25000 μg**
- * Subject2 - recieves an IV dose of **100 mg or 100000 μg**
+ * Subject2 - receives an IV dose of **100 mg or 100000 μg**
 
-```julia, results="hidden"
-ev1  = DosageRegimen(25000, time=0, cmt=1)
-sub1 = Subject(id=1, events=ev1, time=0.01:0.01:2)
-ev2  = DosageRegimen(100000, time=0, cmt=1)
-sub2 = Subject(id=2, events=ev2, time=0.01:0.01:8)
+```julia; results="hidden"
+ev1  = DosageRegimen(25000, time = 0, cmt = 1)
+sub1 = Subject(id = 1, events = ev1, time = 0.01:0.01:2, observations = (cp = nothing,))
+ev2  = DosageRegimen(100000, time = 0, cmt = 1)
+sub2 = Subject(id = 2, events = ev2, time = 0.01:0.01:8, observations = (cp = nothing,))
 pop  = [sub1, sub2]
 ```
 
@@ -139,21 +135,20 @@ Simulate the plasma drug concentration for both the subjects
 ```julia; results="hidden"
 Random.seed!(123)
 sim    = map(((subject, paramᵢ),) -> simobs(pk_20, subject, paramᵢ), zip(pop, param))
-df_sim = DataFrame(sim)
 ```
 
-## Plot
-```julia
-df1_dv = filter(x -> x.time in [0.08,0.25,0.5,0.75,1,1.5,2] && x.id =="1", df_sim)
-df2_dv = filter(x -> x.time in [0.08,0.25,0.5,0.75,1,1.5,2,4,6,8] && x.id =="2", df_sim)
+## Visualization
 
-@df df_sim plot(:time, :cp, yaxis=:log,
-              title= "Plasma Concentration vs Time", label = "Pred - Conc Sub1 (25mg)",
-              xlabel= "Time (hr)", ylabel = "Concentration (ug/L)", linewidth=3,
-              xticks=[0,1,2,3,4,5,6,7,8], xlims=(-0.05,8.2), yticks=[10,100,1000,10000], ylims=(10,10000))
-@df df2 plot!(:time, :cp, label = "Pred - Conc Sub2 (100mg)", linewidth=3)
-@df df1_dv scatter!(:time, :dv, label = "Obs - Conc Sub1 (25mg)")
-@df df2_dv scatter!(:time, :dv, label = "Obs - Conc Sub2 (100 mg)")
+```julia
+f, a, p = sim_plot(pk_20, sim, 
+        observations = :cp, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (xlabel = "Time (hour)", 
+                ylabel = "PK01 Concentrations (ug/L)",
+                xticks = 0:20:160, yscale = log10))
+axislegend(a) 
+f 
 ```
 
 ```julia; echo=false, eval=false
