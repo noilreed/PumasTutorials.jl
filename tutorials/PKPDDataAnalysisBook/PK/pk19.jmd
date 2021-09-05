@@ -157,7 +157,7 @@ We will simulate the parent plasma concentration and metabolite plasma concentra
 
 ```julia; results="hidden"
 Random.seed!(123)
-sim_pop3_sub = simobs(pk_19, pop, param, obstimes = 0:1:300)
+sim_pop3_sub = simobs(pk_19, pop, param, obstimes = 0.1:1:300)
 ```
 
 ### Visualization
@@ -170,12 +170,24 @@ ax, p1 = sim_plot(fig[1,1], pk_19,
         color = :redsblues,
         linewidth = 4,
         axis = (xlabel = "Time (minute)", 
-                ylabel = "PK19 Concentrations (μmol/L)",
+                ylabel = "PK19 Parent Concentrations (μmol/L)",
                 xticks = 0:50:300, yscale = log10))
-sim_plot!(ax, pk_19, 
-              sim_pop3_sub,
-              observations=:met, 
-              color = :redsblues, linewidth = 4)                
+            
+axislegend(ax) 
+fig
+```
+
+```julia
+fig = Figure()
+ax, p1 = sim_plot(fig[1,1], pk_19, 
+        sim_pop3_sub, 
+        observations = :met, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (xlabel = "Time (minute)", 
+                ylabel = "PK19 Metabolite Concentrations (μmol/L)",
+                xticks = 0:50:300, yscale = log10))
+            
 axislegend(ax) 
 fig
 ```
