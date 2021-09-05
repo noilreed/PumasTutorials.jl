@@ -14,27 +14,27 @@ using Dates
   * Dosage regimens         - 23,158 μg single dose
   * Subject                 - 1
 
-![Two comartment oral dosing](https://user-images.githubusercontent.com/62241298/78966873-86dbab80-7b1e-11ea-84dd-05e7ad936ff1.png)
+![Two compartment oral dosing](https://user-images.githubusercontent.com/62241298/78966873-86dbab80-7b1e-11ea-84dd-05e7ad936ff1.png)
 
 ### Learning Outcome
 
-In this model, fitting of po data will help you to understand the disposition of
- drug following lag time in absorption
+In this model, we will simulate an oral dose to understand the disposition of
+drug following lag time in absorption
 
 ### Objectives
 
 In this tutorial, you will learn how to build two compartment model with lagtime
- in oral absorption and to simulate the model for a single subject.
+in oral absorption and to simulate the model for a single subject.
 
 ### Libraries
 
-call the "necessary" libraries to get start.
+Call the "necessary" libraries to get start.
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
 ```
 
 ### Model
@@ -74,16 +74,15 @@ pk_14           = @model begin
     Ka          = tvka * exp(η[1])
     Vc          = tvvc * exp(η[2])
     Vp          = tvvp * exp(η[3])
-    Cl          = tvcl * exp(η[4])
+    CL          = tvcl * exp(η[4])
     Q           = tvq
+  end
+
+  @dosecontrol begin
     lags        = (Depot = tvlag,)
   end
 
-  @dynamics begin
-    Depot'      = -Ka*Depot
-    Central'    =  Ka*Depot - (Cl/Vc)*Central + (Q/Vp)*Peripheral - (Q/Vc)*Central
-    Peripheral' =  (Q/Vc)*Central - (Q/Vp)*Peripheral
-  end
+  @dynamics Depots1Central1Periph1
 
   @derived begin
     cp          = @. Central/Vc
@@ -99,12 +98,12 @@ end
 
 Parameters provided for simulation. tv represents the typical value for parameters.
 
- * Ka - Absorption rate constant (hr⁻¹)
- * Vc - Volume of central compartment (L)
- * Vp - Volume of pepheral Compartmental (L)
- * Cl - Clearance (L/hr)
- * Q - Intercompartmental clearance (L/hr)
- * lag - Absorption lagtime (hr)
+ * ``Ka`` - Absorption rate constant (hr⁻¹)
+ * ``Vc`` - Volume of central compartment (L)
+ * ``Vp`` - Volume of peripheral Compartmental (L)
+ * ``CL`` - Clearance (L/hr)
+ * ``Q`` - Intercompartmental clearance (L/hr)
+ * ``lag`` - Absorption lagtime (hr)
 
 ```julia
 param = ( tvka    = 10,
@@ -122,8 +121,8 @@ param = ( tvka    = 10,
 Single Subject receives an `oral` dose of **23158 μg** at `time=0`
 
 ```julia
-ev1  = DosageRegimen(23158, time=0, cmt=1)
-sub1 = Subject(id=1, events=ev1)
+ev1  = DosageRegimen(23158, time = 0, cmt = 1)
+sub1 = Subject(id = 1, events = ev1)
 ```
 
 ### Simulation
@@ -132,24 +131,20 @@ Lets simulate plasma concentration after oral dosing.
 
 ```julia; results="hidden"
 Random.seed!(123)
-sim_sub1 = simobs(pk_14,sub1,param,obstimes=0.08:0.01:25)
+sim_sub1 = simobs(pk_14, sub1, param, obstimes=0.08:0.01:25)
 ```
 
-### Dataframe & Plot
-
-Convert to a DataFrame for plotting.
+### Visualization
 
 ```julia
-df1    = DataFrame(sim_sub1)
-df1_dv = filter(x -> x.time in [0.08,0.16,0.25,0.5,1,1.5,2,3,4,6,8,12,24,25], df1)
-
-@df df1 plot(:time, :cp, yaxis = :log,
-              label="Pred - Conc", xlabel="Time (hr)", ylabel="Concentration (ug/L)",
-              title="Plasma Concentration vs Time", linewidth=3,
-              xticks=[0,5,10,15,20,25], yticks=[0.1,1,10,100,1000], ylims=(0.1,1000), xlims=(-0.2,30))
-@df df1_dv scatter!(:time, :dv, label="Obs - Conc")
+sim_plot(pk_14, [sim_sub1],
+                   observations = :cp, 
+                   linewidth = 4,
+                   color = :maroon,
+                   axis = (xlabel = "Time (hr)",
+                           ylabel="Concentration (ug/L)", 
+                           yscale = log10, xticks = 0:5:25))
 ```
-
 
 ```julia; echo=false, eval=false
 par   = ( tvka    = 10,
