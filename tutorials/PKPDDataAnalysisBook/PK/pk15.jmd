@@ -17,27 +17,31 @@ using Dates
 
 ### Learning Outcome
 
-Application of  Non Compartmental data analysis
+Application of Non-Compartmental data analysis
 
 ### Objectives
 
- * To analyze the kinetics by means of means of Non-compartmental Analysis (NCA)
- * To analyze the exposure to test comounds by means of Cmax and AUC.
+ * To analyze the kinetics by means of Non-compartmental Analysis (NCA)
+ * To analyze the exposure to test compounds by means of Cmax and AUC.
 
 ### Libraries
 
-call the "necessary" libraries to get start
+Call the "necessary" libraries to get start
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
+using AlgebraOfGraphics
+using HTTP
+using CSV
+using DataFramesMeta
 ```
 
 ### Import the Dataset
 
-Import the dataset and perform data-wrangling to make the datset ready for **`read_nca`**
+Import the dataset and perform data-wrangling to make the dataset ready for **`read_nca`**
 
  * Time = hrs
  * Conc = μmol/kg
@@ -45,157 +49,131 @@ Import the dataset and perform data-wrangling to make the datset ready for **`re
  * Period = weeks
 
 ```julia; results="hidden"
-data = DataFrame(CSV.File(joinpath(dirname(pathof(PumasTutorials)), "..", "data", "PKPDDataAnalysisBook", "pk15data.csv")))
 
-##delete the first row which contains units
-delete!(data, [1])
+f = CSV.File(HTTP.get("https://bit.ly/pkpdbook_nca15").body, 
+             missingstrings = ["", "NA", ".", "Missing"], datarow = 3)
+
+df = DataFrame(f)
 
 ##sort by Subject ID, Period and Time
-sort!(data, [:Subject_ID,:Period,:Time])
+sort!(df, [:Subject_ID,:Period,:Time])
 
 ##remove rows containing other Periods and Dose_grp
-filter!(x -> x.Period in ["11","26", "52"], data)
-filter!(x -> x.Dose_grp in ["10","56","320"], data)
-
-## Convert the colums to necesaary types for input
-data[!,:Conc] = parse.(Float64,data[!,:Conc])
-data[!,:Time] = parse.(Float64,data[!,:Time])
-data[!,:Period] = parse.(Int64,data[!,:Period])
-data[!,:Dose_grp] = parse.(Int64,data[!,:Dose_grp])
-
-##sort by Subject ID, Period and Time
-sort!(data, [:Subject_ID,:Period,:Time])
+filter!(x -> x.Period .∈ Ref([11, 26, 52]), df)
+filter!(x -> x.Dose_grp .∈ Ref([10, 56, 320]), df)
 
 ## Add new column for Route of administration - extravascular
-data[!,:route] .= "ev"
+df[!, :route] .= "ev"
 ```
 
-### Plots
-
-##### Period - Week 11, Males
 ```julia
-male_11 = filter(x -> x.Period == 11, data)
-filter!(x -> x.Gender == "male", male_11)
-male_11_gr1 = filter(x -> x.Dose_grp == 10, male_11)
-male_11_gr2 = filter(x -> x.Dose_grp == 56, male_11)
-male_11_gr3 = filter(x -> x.Dose_grp == 320, male_11)
-
-
-@df male_11_gr1 plot(:Time, :Conc, yaxis=:log,
-                      title = "Period (Week) = 11, male", xlabel = "Time (hr)", ylabel = "Concentration (uM)",
-                      xticks = [0,5,10,15,20,25], xlims = (0,25), yticks = [0.01,0.1,1,10,100], ylims = (0.01,100),
-                      group=:Subject_ID, colour=[:red], label=false)
-@df male_11_gr2 plot!(:Time, :Conc, yaxis=:log, group=:Subject_ID, colour=[:blue], label=false)
-@df male_11_gr3 plot!(:Time, :Conc, yaxis=:log, group=:Subject_ID, colour=[:grey], label=false)
-```
-
-##### Period - Week 26, Males
-```julia
-male_26 = filter(x -> x.Period == 26, data)
-filter!(x -> x.Gender == "male", male_26)
-male_26_gr1 = filter(x -> x.Dose_grp == 10, male_26)
-male_26_gr2 = filter(x -> x.Dose_grp == 56, male_26)
-male_26_gr3 = filter(x -> x.Dose_grp == 320, male_26)
-
-
-@df male_26_gr1 plot(:Time, :Conc, yaxis=:log,
-                      title = "Period (Week) = 26, male", xlabel = "Time (hr)", ylabel = "Concentration (uM)",
-                      xticks = [0,5,10,15,20,25], xlims = (0,25), yticks = [0.01,0.1,1,10,100], ylims = (0.01,100),
-                      group=:Subject_ID, colour=[:red], label=false)
-@df male_26_gr2 plot!(:Time, :Conc, yaxis=:log, group=:Subject_ID, colour=[:blue], label=false)
-@df male_26_gr3 plot!(:Time, :Conc, yaxis=:log, group=:Subject_ID, colour=[:grey], label=false)
-```
-
-##### Period - Week 52, Males
-```julia
-male_52 = filter(x -> x.Period == 52, data)
-filter!(x -> x.Gender == "male", male_52)
-male_52_gr1 = filter(x -> x.Dose_grp == 10, male_52)
-male_52_gr2 = filter(x -> x.Dose_grp == 56, male_52)
-male_52_gr3 = filter(x -> x.Dose_grp == 320, male_52)
-
-
-@df male_52_gr1 plot(:Time, :Conc, yaxis=:log,
-                      title = "Period (Week) = 52, male", xlabel = "Time (hr)", ylabel = "Concentration (uM)",
-                      xticks = [0,5,10,15,20,25], xlims = (0,25), yticks = [0.01,0.1,1,10,100], ylims = (0.01,100),
-                      group=:Subject_ID, colour=[:red], label=false)
-@df male_52_gr2 plot!(:Time, :Conc, yaxis=:log, group=:Subject_ID, colour=[:blue], label=false)
-@df male_52_gr3 plot!(:Time, :Conc, yaxis=:log, group=:Subject_ID, colour=[:grey], label=false)
-```
-
-##### Period - Week 11, Females
-```julia
-female_11 = filter(x -> x.Period == 11, data)
-filter!(x -> x.Gender == "female", female_11)
-female_11_gr1 = filter(x -> x.Dose_grp == 10, female_11)
-female_11_gr2 = filter(x -> x.Dose_grp == 56, female_11)
-female_11_gr3 = filter(x -> x.Dose_grp == 320, female_11)
-
-
-@df female_11_gr1 plot(:Time, :Conc, yaxis=:log,
-                      title = "Period (Week) = 11, female", xlabel = "Time (hr)", ylabel = "Concentration (uM)",
-                      xticks = [0,5,10,15,20,25], xlims = (0,25), yticks = [0.01,0.1,1,10,100], ylims = (0.01,100),
-                      group=:Subject_ID, colour=[:red], label=false)
-@df female_11_gr2 plot!(:Time, :Conc, yaxis=:log, group=:Subject_ID, colour=[:blue], label=false)
-@df female_11_gr3 plot!(:Time, :Conc, yaxis=:log, group=:Subject_ID, colour=[:grey], label=false)
-```
-
-##### Period - Week 26, Females
-```julia
-female_26 = filter(x -> x.Period == 26, data)
-filter!(x -> x.Gender == "female", female_26)
-female_26_gr1 = filter(x -> x.Dose_grp == 10, female_26)
-female_26_gr2 = filter(x -> x.Dose_grp == 56, female_26)
-female_26_gr3 = filter(x -> x.Dose_grp == 320, female_26)
-
-
-@df female_26_gr1 plot(:Time, :Conc, yaxis=:log,
-                      title = "Period (Week) = 26, female", xlabel = "Time (hr)", ylabel = "Concentration (uM)",
-                      xticks = [0,5,10,15,20,25], xlims = (0,25), yticks = [0.01,0.1,1,10,100], ylims = (0.01,100),
-                      group=:Subject_ID, colour=[:red], label=false)
-@df female_26_gr2 plot!(:Time, :Conc, yaxis=:log, group=:Subject_ID, colour=[:blue], label=false)
-@df female_26_gr3 plot!(:Time, :Conc, yaxis=:log, group=:Subject_ID, colour=[:grey], label=false)
-```
-
-##### Period - Week 52, Females
-```julia
-female_52 = filter(x -> x.Period == 52, data)
-filter!(x -> x.Gender == "female", female_52)
-female_52_gr1 = filter(x -> x.Dose_grp == 10, female_52)
-female_52_gr2 = filter(x -> x.Dose_grp == 56, female_52)
-female_52_gr3 = filter(x -> x.Dose_grp == 320, female_52)
-
-
-@df female_52_gr1 plot(:Time, :Conc, yaxis=:log,
-                      title = "Period (Week) = 52, female", xlabel = "Time (hr)", ylabel = "Concentration (uM)",
-                      xticks = [0,5,10,15,20,25], xlims = (0,25), yticks = [0.01,0.1,1,10,100], ylims = (0.01,100),
-                      group=:Subject_ID, colour=[:red], label=false)
-@df female_52_gr2 plot!(:Time, :Conc, yaxis=:log, group=:Subject_ID, colour=[:blue], label=false)
-@df female_52_gr3 plot!(:Time, :Conc, yaxis=:log, group=:Subject_ID, colour=[:grey], label=false)
+@chain df begin
+    groupby(:Subject_ID)
+    @transform :occ = [fill(1, 9)..., fill(2, 9)...]
+end
 ```
 
 ### NCA Analysis
 
-Perform the NCA Analysis
+Setup the dataset for NCA analysis
 
 ```julia
 timeu = u"hr"
 concu = u"μmol/kg"
 amtu  = u"μmol/kg"
 
-nca_analysis = read_nca(data,
+nca_df = read_nca(df,
                         id    = :Subject_ID,
                         time  = :Time,
-                        conc  = :Conc,
+                        observations  = :Conc,
                         route = :route,
                         amt   = :Dose,
                         group = [:Period,:Gender],
                         timeu = timeu,
                         concu = concu,
                         amtu  = amtu)
-
-report_nca  = NCAReport(nca_analysis, sigdig=3)
 ```
+
+### Visualization
+
+```julia
+fig = data(df) * 
+    mapping(:Time => "Time (hr)", :Conc => "Concentration (μM)",
+            color = :Dose_grp => nonnumeric,
+            row = :Gender, col = :Period => nonnumeric) * visual(Lines)
+draw(fig)            
+```
+
+```julia
+figures =
+    observations_vs_time(
+        nca_df;
+        axis = (
+            xlabel = "Time (hours)",
+            ylabel = "Concentration (μM)",
+        ),
+        paginate = true,
+        facet = (combinelabels = true,),
+    )
+```
+
+```julia
+figures[1]
+```
+
+```julia
+figures[10]
+```
+
+```julia
+summary_observations_vs_time(
+    nca_df,
+    figure = (
+        fontsize = 10,
+    ),
+    axis = (
+        xlabel = "Time (hr)",
+        ylabel = "Concentration (μM)",
+    ),
+    facet = (combinelabels = true,),
+)
+```
+
+
+```julia
+report_nca  = run_nca(nca_df, sigdig=3)
+```
+
+```julia
+first(report_nca.reportdf, 20)
+```
+
+```julia
+figs = 
+    subject_fits(
+        report_nca;
+        paginate = true,
+        separate = true,
+        figure = (
+            fontsize = 12,
+        ),
+        axis = (
+            xlabel = "Time (hr)",
+            ylabel = "Concentration (μM)"
+        ),
+        facet = (combinelabels = true,),
+    )
+```
+
+```julia
+figs[1]
+```
+
+
+```julia
+figs[10]
+```
+
 
 ```julia; echo=false, eval=false
 CSV.write("./data/generated/pk_15_report.csv", report_nca)
