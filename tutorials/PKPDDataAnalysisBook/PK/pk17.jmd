@@ -23,7 +23,6 @@ Following info
 In this model, you will learn -
   * To build plasma concentration data following multiple intravenous infusions.
   * To apply differential equation for one compartment model taking into consideration non linear elimination parameters.
-  * To simulate the dataset using final parameter estimates.
 
 ### Objectives
 
@@ -35,10 +34,10 @@ In this tutorial, you will learn how to build one compartment model for capacity
 Call the "necessary" libraries to get started.
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
 ```
 
 ### Model
@@ -91,10 +90,10 @@ end
 
 The Parameters are as given below. `tv`represents the typical value for parameters.
 
-  * Cl   - Clearance (ml/min)
-  * Vc   - Volume of Distribution of Central Compartment (ml)
-  * Ω    - Between Subject Variability
-  * σ    - Residual Error
+  * ``Cl``   - Clearance (ml/min)
+  * ``Vc``   - Volume of Distribution of Central Compartment (ml)
+  * ``Ω``    - Between Subject Variability
+  * ``σ``    - Residual Error
 
 ```julia
 param_lm = (tvcl   = 43.3,
@@ -146,7 +145,7 @@ pk_17_mm     = @model begin
     """
     Observed Concentration (ug/ml)"
     """
-    dv       ~ @. Normal(cp,sqrt(cp^2*σ))
+    dv       ~ @. Normal(cp, cp*σ)
   end
 end
 ```
@@ -155,18 +154,18 @@ end
 
 The Parameters are as given below. `tv`represents the typical value for parameters.
 
-  * Vmax - Maximum Metabolic Capacity (ug/min)
-  * Km   - Michaelis-Menten Constant (ug/ml)
-  * Vc   - Volume of Distribution of Central Compartment (ml)
-  * Ω    - Between Subject Variability
-  * σ    - Residual Error
+  * ``Vmax`` - Maximum Metabolic Capacity (ug/min)
+  * ``Km``   - Michaelis-Menten Constant (ug/ml)
+  * ``Vc``   - Volume of Distribution of Central Compartment (ml)
+  * ``Ω``    - Between Subject Variability
+  * ``σ``    - Residual Error
 
 ```julia
 param_mm = (tvvmax = 124.451,
             tvkm   = 0.981806,
             tvvc   = 1350.61 ,
             Ω      = Diagonal([0.0, 0.0, 0.0]),
-            σ      =  0.005)
+            σ      =  0.007)
 ```
 
 ### Dosage Regimen
@@ -174,39 +173,39 @@ param_mm = (tvvmax = 124.451,
 A single subject received Rapid infusion of 1800 μg over 0.5 min followed by 5484.8 μg over 39.63 min.
 
 ```julia
-DR= DosageRegimen([1800,5484.8], time=[0,0.5], cmt=[1,1], duration=[0.5,39.63])
-s1= Subject(id=1, events=DR)
+DR = DosageRegimen([1800,5484.8], time = [0,0.5], cmt = [1,1], duration = [0.5,39.63])
+s1 = Subject(id = "ID:1 Linear Kinetics", events = DR, observations = (cp = nothing,))
+s2 = Subject(id = "ID:2 Michaelis-Menten Kinetics", events = DR, observations = (cp = nothing,))
 ```
 
 ### Simulation
 
-Lets simulate for plasma concentration for single subject for specific observation time points after mutiple IV infusion dosage.
+Lets simulate for plasma concentration for single subject for specific observation time points after multiple IV infusion dosage.
 
 ```julia; results="hidden"
 Random.seed!(1234)
 sim_lm = simobs(pk_17_lm, s1, param_lm, obstimes = 0.0:0.01:80.35)
 Random.seed!(1234)
-sim_mm = simobs(pk_17_mm, s1, param_mm, obstimes = 0.0:0.01:80.35)
+sim_mm = simobs(pk_17_mm, s2, param_mm, obstimes = 0.0:0.01:80.35)
 ```
 
-### DataFrame & Plot
+### Visualization
 
 ```julia
-df_lm    = DataFrame(sim_lm)
-dropmissing!(df_lm, :cp)
-df_mm    = DataFrame(sim_mm)
-dropmissing!(df_mm, :cp)
-df_dv_mm = filter(x -> x.time in [0.1, 5.38, 10.33, 15.3, 20.35, 23.13, 28.15, 33.18, 38.23, 40.62, 45.25, 50.08, 60.42, 80.35],df_mm)
-
-@df df_lm plot(:time, :cp, linewidth=3, legend=:bottomright,
-               label= "Linear Model - Pred", ylabel="Concentration(ug/ml)",
-               xlabel="Time(min)", title= ("Time Vs Plasma concentration plot"),
-               xticks=[0,10,20,30,40,50,60,70,80,90], xlims=(-2,90),
-               yticks=[0,0.5,1.0,1.5,2.0,2.5,3.0], ylims=(0,3.0))
-@df df_mm plot!(:time, :cp, label="Michaelis Menten Model - Pred", linewidth=3)
-@df df_dv_mm scatter!(:time, :dv, label= "Obs-Cp")
+all_sims = [sim_lm, sim_mm]
 ```
 
+```julia
+f, a, p = sim_plot(pk_17_mm, all_sims, 
+        observations = :cp, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (xlabel = "Time (minute)", 
+                ylabel = "PK17 Concentrations (ug/mL)",
+                xticks = 0:10:90))
+axislegend(a) 
+f 
+```
 
 ```julia; echo = false, eval=false
 param = (tvvmax = 124.451,

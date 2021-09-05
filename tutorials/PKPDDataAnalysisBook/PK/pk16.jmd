@@ -32,10 +32,10 @@ In this exercise, you will learn how to build a two compartment model and to
 call the "necessary" libraries to get started.
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
 ```
 
 ### Model
@@ -45,7 +45,7 @@ Two-compartment model with one Central and one Peripheral compartment will help
  accounts for the fraction (amount) of drug excreted in Urine.
 
 ```julia
-pk_16             = @model begin
+pk_16   = @model begin
     @metadata begin
       desc = "Two Compartment Model with Urine Compartment"
       timeu = u"hr"
@@ -64,9 +64,9 @@ pk_16             = @model begin
       tvq         ∈ RealDomain(lower=0)
       Ω           ∈ PDiagDomain(5)
       "Proportional RUV - Plasma"
-      σ²₁_prop    ∈ RealDomain(lower=0)
+      σ₁_prop    ∈ RealDomain(lower=0)
       "Proportional RUV - Urine"
-      σ²₂_prop    ∈ RealDomain(lower=0)
+      σ₂_prop    ∈ RealDomain(lower=0)
     end
 
     @random begin
@@ -91,36 +91,36 @@ pk_16             = @model begin
     end
 
     @derived begin
-      cp_plasma   = @. Central/Vc
+      cp_plasma   = @. Central/(Vc + eps())
       """
       Observed Plasma Concentration (uM)
       """
-      dv_plasma   ~ @. Normal(cp_plasma, sqrt(cp_plasma^2*σ²₁_prop))
+      dv_plasma   ~ @. Normal(cp_plasma, abs(cp_plasma)*σ₁_prop)
       cp_urine    = @. Urine
       """
       Observed Urine Amount (umol)"
       """
-      dv_urine    ~ @. Normal(cp_urine, sqrt(cp_urine^2*σ²₂_prop))
+      dv_urine    ~ @. Normal(cp_urine, abs(cp_urine)*σ₂_prop)
     end
 end
 ```
 
 ### Parameters
 
-  * CLr - Renal Clearance (L/hr/kg)
-  * CLm - Non-renal Clearance (L/hr/kg)
-  * Vc  - Volume of Central Compartment (L/kg)
-  * Vp  - Volume of Peripheral Compartment (L/kg)
-  * Q   - Inter-compartmental Clearance (L/hr/kg)
-  * Ω   - Between Subject Variability
-  * σ²₁ - Residual error 1 (for plasma conc)
-  * σ²₂ - Residual error 2 (for amount excreted in urine)
+  * ``CLr`` - Renal Clearance (L/hr/kg)
+  * ``CLm`` - Non-renal Clearance (L/hr/kg)
+  * ``Vc``  - Volume of Central Compartment (L/kg)
+  * ``Vp``  - Volume of Peripheral Compartment (L/kg)
+  * ``Q``   - Inter-compartmental Clearance (L/hr/kg)
+  * ``Ω``   - Between Subject Variability
+  * ``σ²₁`` - Residual error 1 (for plasma conc)
+  * ``σ²₂`` - Residual error 2 (for amount excreted in urine)
 
 **Derived Parameters:**
 
-  * CL   - Total Clearance (L/hr/kg)
-  * Vss  - Volume of distribution at steady state (L/kg)
-  * t1/2 - Half life (hr)
+  * ``CL``   - Total Clearance (L/hr/kg)
+  * ``Vss``  - Volume of distribution at steady state (L/kg)
+  * ``t1/2`` - Half life (hr)
 
  Typical value (tv) estimates for individual parameters
 
@@ -131,8 +131,8 @@ param = ( tvclm    = 0.05,
           tvvp     = 0.16,
           tvq      = 0.03,
           Ω        = Diagonal([0.0,0.0,0.0,0.0,0.0]),
-          σ²₁_prop = 0.01,
-          σ²₂_prop = 0.01)
+          σ₁_prop = 0.1,
+          σ₂_prop = 0.1)
 ```
 
 ### DosageRegimen
@@ -143,7 +143,7 @@ param = ( tvclm    = 0.05,
 
 ```julia
 ev1  = DosageRegimen([538,3390], time = [0,0.983], cmt = [1,1], rate = [547.304,147.603])
-sub1 = Subject(id=1, events=ev1)
+sub1 = Subject(id = 1, events = ev1, observations = (cp = nothing,))
 ```
 
 ### Simulation
@@ -155,7 +155,8 @@ To simulate the following for the above subject with specific observation time p
 
 ```julia; results="hidden"
 Random.seed!(123)
-sim_sub1 = simobs(pk_16,sub1,param,obstimes = [0.5,1,2,4,6.1,7.6,8.02,12.05,12.15,15.95,22.13,23.89,24.05,24.46,24.94,25.94,26.96,27.95,29.97,31.94,35.96,36.2,48,48.2,54,60,60.2,72,72.2])
+sim_sub1 = simobs(pk_16, sub1, param,
+          obstimes = [0.5,1,2,4,6.1,7.6,8.02,12.05,12.15,15.95,22.13,23.89,24.05,24.46,24.94,25.94,26.96,27.95,29.97,31.94,35.96,36.2,48,48.2,54,60,60.2,72,72.2])
 ```
 
 ### DataFrame & Plot

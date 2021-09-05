@@ -29,13 +29,13 @@ In this tutorial, you will learn how to build two compartment model, a drug unde
 
 ### Libraries
 
-call the "necessary" libraries to get start.
+Call the "necessary" libraries to get start.
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
 ```
 
 ### Model
@@ -67,9 +67,9 @@ pk_19           = @model begin
     tvvme       ∈ RealDomain(lower=0)
     Ω           ∈ PDiagDomain(7)
     "Proportional RUV - Plasma"
-    σ²_prop_cp  ∈ RealDomain(lower=0)
+    σ_prop_cp  ∈ RealDomain(lower=0)
     "Proportional RUV - Metabolite"
-    σ²_prop_met ∈ RealDomain(lower=0)
+    σ_prop_met ∈ RealDomain(lower=0)
   end
 
   @random begin
@@ -101,12 +101,12 @@ pk_19           = @model begin
     """
     Observed Plasma Concentration (μmol/L)
     """
-    dv_cp       ~ @. Normal(cp, sqrt(cp^2*σ²_prop_cp))
+    dv_cp       ~ @. Normal(cp, cp*σ_prop_cp)
     met         = @. Metabolite/Vme
     """
     Observed Metabolite Concentration (μmol/L)
     """
-    dv_met      ~ @. Normal(met, sqrt(met^2*σ²_prop_met))
+    dv_met      ~ @. Normal(met, met*σ_prop_met)
   end
 end
 ```
@@ -115,15 +115,15 @@ end
 
 The parameters are as given below. tv represents the typical value for parameters.
 
-  * Vc - Volume of Central Compartment (L/kg)
-  * Vp - Volume of Peripheral Compartment (L/kg)
-  * Q - Inter-Compartmental Clearance (L/min)
-  * Vmax - Maximum Velocity of Reaction (μmol/min/kg)
-  * Km - Michaelis-Menten constant (μmol/L)
-  * Kme - Rate of Elimination of Metabolite (min⁻¹)
-  * Vme - Volume of Metabolite Compartment (L/kg)
-  * Ω - Between Subject Variability
-  * σ - Residual error
+  * ``Vc`` - Volume of Central Compartment (L/kg)
+  * ``Vp`` - Volume of Peripheral Compartment (L/kg)
+  * ``Q`` - Inter-Compartmental Clearance (L/min)
+  * ``Vmax`` - Maximum Velocity of Reaction (μmol/min/kg)
+  * ``Km`` - Michaelis-Menten constant (μmol/L)
+  * ``Kme`` - Rate of Elimination of Metabolite (min⁻¹)
+  * ``Vme`` - Volume of Metabolite Compartment (L/kg)
+  * ``Ω`` - Between Subject Variability
+  * ``σ`` - Residual error
 
 ```julia
 param = ( tvvc        = 1.06405,
@@ -134,8 +134,8 @@ param = ( tvvc        = 1.06405,
           tvkme       = 0.145159,
           tvvme       = 0.290811,
           Ω           = Diagonal([0.0,0.0,0.0,0.0,0.0,0.0,0.0]),
-          σ²_prop_cp  = 0.015,
-          σ²_prop_met = 0.015)
+          σ_prop_cp  = 0.12,
+          σ_prop_met = 0.12)
 ```
 
 ### Dosage Regimen
@@ -143,9 +143,13 @@ param = ( tvvc        = 1.06405,
 Three Subjects were adminitered with three different doses of **10μmol/kg, 50μmol/kg and 300μmol/kg**.
 
 ```julia
-dose  = [10,50,300]
-ev(x) = DosageRegimen(dose[x], cmt=1, time=0)
-pop   = map(i -> Subject(id=i, events=ev(i)), 1:3)
+dose  = [10, 50, 300]
+ids   = ["ID:1 Dose 10", "ID:2 Dose 50", "ID:3 Dose 300"]
+ev(x) = DosageRegimen(dose[x], cmt = 1, time = 0)
+
+pop = map(zip(1:3, ids)) do (i, id)
+  return Subject(id = id, events = ev(i), observations = (cp = nothing, met = nothing))
+end
 ```
 ### Simulation
 
@@ -153,27 +157,28 @@ We will simulate the parent plasma concentration and metabolite plasma concentra
 
 ```julia; results="hidden"
 Random.seed!(123)
-sim_pop3_sub = simobs(pk_19, pop, param, obstimes=0:1:300)
-df1          = DataFrame(sim_pop3_sub)
+sim_pop3_sub = simobs(pk_19, pop, param, obstimes = 0:1:300)
 ```
 
-### Dataframe & Plot
-
-Use the datafreme for plotting
+### Visualization
 
 ```julia
-df1_dv = filter(x -> x.time in [0,5,10,20,30,60,90,120,180,300], df1)
-
-@df df1 plot(:time,:cp, yaxis=:log,
-              xlabel="Time (min)", ylabel="Concentration (umol/L)" , label="Pred - Parent",
-              title = "Plasma concentration vs Time", linewidth=3,
-              ylims=(0.1,1000), yticks=[0.1,1,10,100,1000], xticks=[0,50,100,150,200,250,300])
-@df df1 plot!(:time,:met, yaxis=:log,
-               label="Pred - Metabolite", linestyle=[:dot],linewidth=3)
-@df df1_dv scatter!(:time, :dv_cp, yaxis=:log, label="Obs - Parent")
-@df df1_dv scatter!(:time, :dv_met, yaxis=:log, label="Obs - Metabolite")
+fig = Figure()
+ax, p1 = sim_plot(fig[1,1], pk_19, 
+        sim_pop3_sub, 
+        observations = :cp, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (xlabel = "Time (minute)", 
+                ylabel = "PK19 Concentrations (μmol/L)",
+                xticks = 0:50:300, yscale = log10))
+sim_plot!(ax, pk_19, 
+              sim_pop3_sub,
+              observations=:met, 
+              color = :redsblues, linewidth = 4)                
+axislegend(ax) 
+fig
 ```
-
 
 ```julia; echo=false, eval=false
 par = ( tvvc        = 1.06405,

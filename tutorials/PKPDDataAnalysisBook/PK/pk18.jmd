@@ -19,27 +19,26 @@ using Dates
 ### Learning Outcome
 
 In this model, you will learn -
-* To build Two compartment disposition model, the drug is given as `Intravenous Infusion`
-  which follows Michaelis Menten Kinetics.
-* To estimate the fundamental parameters involved in building the model.
+* To build a two compartment disposition model, the drug is given as an `Intravenous Infusion`
+  which follows Michaelis-Menten Kinetics.
 * To apply _differential equation_ in the model as per the compartment model.
 * To design the dosage regimen for the subjects and simulate the plot.
 
 ### Objectives
 
-In this tutorial, you will learn how to build Two Compartment disposition model with
+In this tutorial, you will learn how to build a two Compartment disposition model with
  Non-linear elimination following _Intravenous infusion_ and simulate the model for
  _single subject_ and _single dosage regimen_.
 
 ### Libraries
 
-call the "necessary" libraries to get started
+Call the "necessary" libraries to get started
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
 ```
 
 ### Model
@@ -66,7 +65,7 @@ pk_18           = @model  begin
     tvvp        ∈ RealDomain(lower=0)
     Ω           ∈ PDiagDomain(5)
     "Proportional RUV"
-    σ²_prop     ∈ RealDomain(lower=0)
+    σ_prop     ∈ RealDomain(lower=0)
   end
 
   @random begin
@@ -91,7 +90,7 @@ pk_18           = @model  begin
     """
     Observed Concentration (g/L)
     """
-    dv         ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
+    dv         ~ @. Normal(cp, cp^2*σ_prop)
   end
 end
 ```
@@ -100,13 +99,13 @@ end
 
 The parameters are as given below. `tv` represents the typical value for parameters.
 
-  * Vmax - Maximum rate of elimination (mg/hr)
-  * Km - Michaelis-Menten rate constant (mg/L)
-  * Q  - Intercompartmental Clearance (L/hr)
-  * Vc - Volume of Central Compartment (L)
-  * Vp - Volume of Peripheral Compartment (L)
-  * Ω  - Between Subject Variability
-  * σ  - Residual error
+  * ``Vmax`` - Maximum rate of elimination (mg/hr)
+  * ``Km`` - Michaelis-Menten rate constant (mg/L)
+  * ``Q``  - Intercompartmental Clearance (L/hr)
+  * ``Vc`` - Volume of Central Compartment (L)
+  * ``Vp`` - Volume of Peripheral Compartment (L)
+  * ``Ω``  - Between Subject Variability
+  * ``σ``  - Residual error
 
 ```julia
 param  = (tvvmax     = 0.0812189,
@@ -115,7 +114,7 @@ param  = (tvvmax     = 0.0812189,
           tvvc       = 8.93016,
           tvvp       = 31.1174,
           Ω          = Diagonal([0.0,0.0,0.0,0.0,0.0]),
-          σ²_prop    = 0.005)
+          σ_prop    = 0.005)
 ```
 
 ### Dosage Regimen
@@ -124,8 +123,8 @@ param  = (tvvmax     = 0.0812189,
  `time span of 30 minutes`, given to a single subject.
 
 ```julia
-ev1   = DosageRegimen(28,time=0, cmt=1, duration=30)
-sub1  = Subject(id=1,events=ev1)
+ev1   = DosageRegimen(28, time = 0, cmt = 1, duration = 30)
+sub1  = Subject(id = 1, events = ev1, observations = (cp = nothing,))
 ```
 
 ### Simulation
@@ -135,33 +134,22 @@ Lets simulate for plasma concentration with the specific observation
 
 ```julia; results="hidden"
 Random.seed!(1234)
-sim_sub = simobs(pk_18,sub1,param,obstimes=0:1:360)
-df1     = DataFrame(sim_sub)
-dropmissing!(df1, :cp)
-delete!(df1, [1])
+sim_sub = simobs(pk_18,sub1, param, obstimes = 0.1:1:360)
 ```
 
-### DataFrame & Plot
-
-Use the DataFrame for Plotting where
-
-  * cp - Predicted concentration
-  * dv - Observed concentration
+### Visualization
 
 ```julia
-df1_dv = filter(x -> x.time in [5,10,15,20,25,30,35,40,45,50,55,60,70,75,80,85,90,95,105,110,
-  115,120,125,130,135,140,145,150,155,160,165,170,175,180,190,195,200,205,210,215,220,225,230,
-  235,240,255,270,285,300,315,330,345,360], df1)
-
-
-@df df1 plot(:time, :cp, yaxis=:log,
-              label= "Pred - Conc", xlabel="Time (mins)", ylabel="Concentration (g/L)",
-              linewidth=3, color=[:blue], title="Plasma Concentration vs Time",
-              xlims=(-2,400), xticks=[0,50,100,150,200,250,300,350,400],
-              yticks=[0.01,0.1,1,10], ylims=(0.01,10))
-@df df1_dv scatter!(:time, :dv, label="Obs - Conc", color=[:red])
+f, a, p = sim_plot(pk_18, [sim_sub], 
+        observations = :cp, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (xlabel = "Time (minute)", 
+                ylabel = "PK18 Concentrations (g/L)",
+                xticks = 0:50:400, yscale = log10))
+axislegend(a) 
+f 
 ```
-
 
 ```julia; echo=false, eval=false
 par  = (tvvmax     = 0.0812189,
