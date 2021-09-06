@@ -7,10 +7,6 @@ date: `j Date(now())`
 using Dates
 ```
 
-### Background
-
- * This exercise aims to fit rate equation to _Invitro_ data
-
 ### Learning Outcome
 
 In this exercise, you will learn to assess the relationship between `rate`
@@ -21,13 +17,15 @@ In this exercise, you will learn to assess the relationship between `rate`
 
 ### Libraries
 
-call the "necessary" libraries to get start.
+Call the "necessary" libraries to get start.
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
+using AlgebraOfGraphics
+using DataFramesMeta
 ```
 
 ### Model
@@ -80,10 +78,10 @@ end
 
 The parameters are as given below. `tv` represents the typical value for parameters.
 
- * tvvmax1 - Maximum Rate of System 1 (μmol/min/g)
- * tvkm1 -  Michaelis-Menten constant for system 1 (μmol/L)
- * tvvmax2 - Maximum Rate of System 2 (μmol/min/g)
- * tvkm2 -  Michaelis-Menten constant for system 2 (μmol/L)
+ * ``tvvmax1`` - Maximum Rate of System 1 (μmol/min/g)
+ * ``tvkm1`` -  Michaelis-Menten constant for system 1 (μmol/L)
+ * ``tvvmax2`` - Maximum Rate of System 2 (μmol/min/g)
+ * ``tvkm2`` -  Michaelis-Menten constant for system 2 (μmol/L)
 
 ```julia
 param = ( tvvmax1 = 2.43386,
@@ -101,42 +99,43 @@ Since there is no dosage regimen we will create a dataframe with no events
   and read the file using `read_pumas` which will be used for simulation.
 
 ```julia
-df_sub1 = DataFrame(id=1, time=0:1:40000 , Conc=0.00:0.05:2000, dv_rate=missing)
+df_sub1 = DataFrame(id = 1, time = 0:1:40000 , Conc = 0.00:0.05:2000, dv_rate = missing)
 sub1    = read_pumas(df_sub1, observations=[:dv_rate], covariates=[:Conc], event_data=false)
 ```
 
 ### Simulations
 
-We willnow simulate the rate using the `simobs` function
+We will now simulate the rate using the `simobs` function
 
 ```julia; results="hidden"
 Random.seed!(123)
 sim_sub1 = simobs(pk_37, sub1, param)
-df1      = DataFrame(sim_sub1)
+df37      = DataFrame(sim_sub1)
 ```
 
-### Dataframe and Plotting
+### Visualization
 
 Use the dataframe for plotting
 
 ```julia
-df1_dv = filter(x -> x.Conc in [0.02,0.05,0.1,0.2,0.5,1,10,20,50,100,180,200,250,500,1000,2000], df1)
-
-@df df1 plot(:Conc, :rate,
-              title="Metabolic Rate vs Substrate Concentration", xlabel= "Concentration (uM)", ylabel="Rate (umol/g/min)",
-              label="Pred", linewidth=3, color=[:blue], legend=:bottomright,
-              xticks=[0,200,400,600,800,1000,1200,1400,1600,1800,2000], xlims=(-1,2050),
-              yticks=[0,0.5,1.0,1.5,2.0,2.5], ylims=(0,2.5))
-@df df1_dv scatter!(:Conc, :dv_rate, label="Obs", color=[:red])
+@chain df37 begin
+  @rsubset :Conc ∈ [0.02,0.05,0.1,0.2,0.5,1,10,20,50,100,180,200,250,500,1000,2000]
+  data(_) *
+  mapping(:Conc => "Concentration (uM)", :rate => "Rate (umol/g/min)") *
+  visual(ScatterLines, linewidth = 4, markersize = 12, markercolor = :blue) 
+  draw(axis = (; title = "Metabolic Rate vs Substrate Concentration", xticks = 0:200:2000, yticks = 0:0.5:2.5))
+end
 ```
 
 ```julia
-@df df1 plot(:Conc, :rate, xaxis=:log,
-              title="Metabolic Rate vs Substrate Concentration", xlabel= "Concentration (uM)", ylabel="Rate (umol/g/min)",
-              label="Pred", linewidth=3, color=[:blue], legend=:bottomright,
-              xticks=[0.01,0.1,1,10,100,1000,10000], xlims=(0.1,10000),
-              yticks=[0,0.5,1.0,1.5,2.0,2.5], ylims=(0,2.5))
-@df df1_dv scatter!(:Conc, :dv_rate, label="Obs", color=[:red])
+@chain df37 begin
+  @rsubset :Conc ∈ [0.02,0.05,0.1,0.2,0.5,1,10,20,50,100,180,200,250,500,1000,2000]
+  data(_) *
+  mapping(:Conc => "Concentration (uM)", :rate => "Rate (umol/g/min)") *
+  visual(ScatterLines, linewidth = 4, markersize = 12, markercolor = :blue) 
+  draw(axis = (; title = "Metabolic Rate vs Substrate Concentration", 
+               yticks = 0:0.5:2.5, xscale = log10))
+end
 ```
 
 ```julia; echo=false, eval=false

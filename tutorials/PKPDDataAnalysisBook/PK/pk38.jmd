@@ -10,30 +10,27 @@ using Dates
 ### Background
 
  * Structural Model - Two Enzyme Model
- * Route of admnistration - _in vitro_ experiment
+ * Route of adminstration - _in vitro_ experiment
  * Dosage regimen - 50,30,10,3,1 μmol
 
 ![PK38](https://user-images.githubusercontent.com/62258227/81507672-96683300-931c-11ea-9229-c9c6b71508ff.png)
 
 ### Learning Outcome
 
-To analysze the data based on the metabolic rate of compound using diffenrential
- equation instead of rather than transforming data into rate versus concentration
- plot.
-
-### Objectives
-
- * To fit a two enzyme model to a concentration-time data
+To analyze data based on the metabolic rate of compound using differential equations 
+instead transforming data into rate versus concentration plot.
 
 ### Libraries
 
-call the "necessary" libraries to get started.
+Call the "necessary" libraries to get started.
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
+using AlgebraOfGraphics
+using DataFramesMeta
 ```
 
 ### Model
@@ -93,10 +90,10 @@ end
 
 Parameters provided for simulation are as below. `tv` represents the typical value for parameters.
 
- * Vmax1 - Maximum Metabolic Capacity of System 1 (nmol/min)
- * Km1 - Michelis Menten Constant of System 1 (μmol/l)
- * Vmax2 - Maximum Metabolic Capacity of System 2 (nmol/min)
- * Km2 - Michelis Menten Constant of System 2 (μmol/l)
+ * ``Vmax1`` - Maximum Metabolic Capacity of System 1 (nmol/min)
+ * ``Km1`` - Michelis Menten Constant of System 1 (μmol/l)
+ * ``Vmax2`` - Maximum Metabolic Capacity of System 2 (nmol/min)
+ * ``Km2`` - Michelis Menten Constant of System 2 (μmol/l)
 
 ```julia
 param = ( tvvmax1 = 0.960225,
@@ -112,16 +109,16 @@ param = ( tvvmax1 = 0.960225,
 Each group is given a different conc of **50, 30, 10,3 & 5 μmol/L**
 
 ```julia
-ev1      = DosageRegimen(50, time=0, cmt=1)
-sub1     = Subject(id=1, events=ev1, time=[0.1,0.5,1,1.5,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,23,27,28,29,30,31])
-ev2      = DosageRegimen(30, time=0, cmt=1)
-sub2     = Subject(id=2, events=ev2, time=[0.1,0.5,1,1.5,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20])
-ev3      = DosageRegimen(10, time=0, cmt=1)
-sub3     = Subject(id=3, events=ev3, time=[0.1,0.5,1,1.5,2,3,4,5,6,7,8])
-ev4      = DosageRegimen(3, time=0, cmt=1)
-sub4     = Subject(id=4, events=ev4, time=[0.1,0.5,1,1.5,2,3])
-ev5      = DosageRegimen(1, time=0, cmt=1)
-sub5     = Subject(id=5, events=ev5, time=[0.1,0.5,1,1.5])
+ev1      = DosageRegimen(50, time = 0, cmt = 1)
+sub1     = Subject(id = "50 μmol/L", events = ev1, time = [0.1,0.5,1,1.5,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,23,27,28,29,30,31])
+ev2      = DosageRegimen(30, time = 0, cmt = 1)
+sub2     = Subject(id = "30 μmol/L", events = ev2, time = [0.1,0.5,1,1.5,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20])
+ev3      = DosageRegimen(10, time = 0, cmt = 1)
+sub3     = Subject(id = "10 μmol/L", events = ev3, time = [0.1,0.5,1,1.5,2,3,4,5,6,7,8])
+ev4      = DosageRegimen(3, time = 0, cmt = 1)
+sub4     = Subject(id = "3 μmol/L", events = ev4, time = [0.1,0.5,1,1.5,2,3])
+ev5      = DosageRegimen(5, time = 0, cmt = 1)
+sub5     = Subject(id = "5 μmol/L", events = ev5, time = [0.1,0.5,1,1.5])
 pop5_sub = [sub1,sub2,sub3,sub4,sub5]
 ```
 
@@ -132,30 +129,19 @@ We will simulate the concentration for the pre-specified time point for each gro
 ```julia; results="hidden"
 Random.seed!(123)
 sim_pop5_sub = simobs(pk_38, pop5_sub, param)
-df1          = DataFrame(sim_pop5_sub)
+df38          = DataFrame(sim_pop5_sub)
 ```
 
-### Dataframe and Plots
-
-Use the dataframe for plotting
+### Visualization
 
 ```julia
-df_id1_dv = filter(x -> x.id == "1", df1)
-df_id2_dv = filter(x -> x.id == "2", df1)
-df_id3_dv = filter(x -> x.id == "3", df1)
-df_id4_dv = filter(x -> x.id == "4", df1)
-df_id5_dv = filter(x -> x.id == "5", df1)
-
-@df df_id1_dv plot(:time, :cp, yaxis=:log, linewidth=3, legend=:bottomright,
-              title="Concentration vs Time", label="Pred - 50mg",
-              xlabel="Time (min)", ylabel="Concentration (..)",
-              xticks=[0,5,10,15,20,25,30,35], xlims=(0,35),
-              yticks=[0.001,0.01,0.1,1,10,100], ylims=(0.001,100))
-@df df_id2_dv plot!(:time, :cp, label="Pred - 30mg", linewidth=3)
-@df df_id3_dv plot!(:time, :cp, label="Pred - 10mg", linewidth=3)
-@df df_id4_dv plot!(:time, :cp, label="Pred - 3mg", linewidth=3)
-@df df_id5_dv plot!(:time, :cp, label="Pred - 1mg", linewidth=3)
-@df df1 scatter!(:time, :dv, label="Obs")
+@chain df38 begin
+  dropmissing!(:cp)
+  data(_) *
+  mapping(:time => "Time (min)", :cp => "Concentration", color = :id) *
+  visual(ScatterLines, linewidth = 4, markersize = 12) 
+  draw(axis = (; xticks = 0:5:35, yscale = log10))
+end
 ```
 
 ```julia; echo=false, eval=false

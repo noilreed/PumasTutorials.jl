@@ -22,10 +22,10 @@ using Dates
 call the "necessary" libraries to get started
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
 ```
 
 ### Model
@@ -75,10 +75,10 @@ pk_40            = @model  begin
    end
 
    @dynamics begin
+     Depot'      = Bile*Kempt - Ka*Depot
      Central'    = Ka*Depot - (Cl/Vc)*Central + (Q/Vp)*Peripheral - (Q/Vc)*Central - Klg*Central
      Peripheral' = (Q/Vc)*Central - (Q/Vp)*Peripheral
      Bile'       = Klg*Central - Bile*Kempt
-     Depot'      = Bile*Kempt - Ka*Depot
    end
 
    @derived begin
@@ -95,16 +95,16 @@ end
 
 Parameters are provided for the simulation as below. `tv` represents the typical value for parameters.
 
-  * tvcl - Clearance (L/hr)
-  * tvvc - Central Volume of Distribution (L)
-  * tvvp - Peripheral Volume of Distribution (L)
-  * tvQ  - Intercompartmental Clearance (L/hr)
-  * tvka - Absorption rate Constant (hr⁻¹)
-  * tvklg - Bile Excretion rate constant (hr⁻¹)
-  * tvτ - Typical Value bile emptying Interval (hr)
-  * Kempt - Bile Emptying rate constant (hr⁻¹)
-  * Ω - Between Subject Variability
-  * σ - Residual error
+  * ``tvcl`` - Clearance (L/hr)
+  * ``tvvc`` - Central Volume of Distribution (L)
+  * ``tvvp`` - Peripheral Volume of Distribution (L)
+  * ``tvQ``  - Intercompartmental Clearance (L/hr)
+  * ``tvka`` - Absorption rate Constant (hr⁻¹)
+  * ``tvklg`` - Bile Excretion rate constant (hr⁻¹)
+  * ``tvτ`` - Typical Value bile emptying Interval (hr)
+  * ``Kempt`` - Bile Emptying rate constant (hr⁻¹)
+  * ``Ω`` - Between Subject Variability
+  * ``σ`` - Residual error
 
 ```julia
 param     =  (tvcl    = 0.842102,
@@ -124,8 +124,8 @@ A dose of **5617.3 ug** IV bolus dose is administered at `time 0` and
  drug plasma concentration was measured for `36 hrs`
 
 ```julia
-ev1  = DosageRegimen(5617.3, time=0, cmt=1)
-sub1 = Subject(id=1, events=ev1)
+ev1  = DosageRegimen(5617.3, time = 0, cmt = 1)
+sub1 = Subject(id = 1, events = ev1)
 ```
 
 ### Simulation
@@ -134,8 +134,22 @@ Simulate the plasma concentration after IV administration
 
 ```julia; results="hidden"
 Random.seed!(123)
-sim1 = simobs(pk_40, sub1, param, obstimes=0:0.001:36)
-df1  = DataFrame(sim1)
+sim1 = simobs(pk_40, sub1, param, obstimes = 0:0.1:36)
+```
+
+### Visualization
+
+```julia
+
+f1, a1, p1 = sim_plot(pk_40, [sim1], 
+        observations = :cp, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (
+                xlabel = "Time (hr)", 
+                ylabel = "PK40 Concentrations (μg/L)",
+                xticks = 0:5:40))
+f1                
 ```
 
 ### Dataframe & Plot

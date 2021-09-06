@@ -17,25 +17,19 @@ using Dates
 ![pk39](https://user-images.githubusercontent.com/62236414/81842108-197dc900-9569-11ea-8f79-d6a7216a3ad5.png)
 
 
-### Learning Outcome
-
-In this model, "Two compartment model- Experimental design" issues helps in understanding
- how to fit a model to the observed data and further to assess the impact of the best
- experimental design for estimation.
-
 ### Objectives
 
 In this model you will learn how to build a two compartment model and simulate for a single subject.
 
 ### Libraries
 
-call the "necessary" libraries to get start.
+Call the "necessary" libraries to get start.
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
 ```
 
 ### Model
@@ -95,12 +89,12 @@ end
 
 Parameters provided for simulation. `tv` represents the typical value for parameters.
 
-  * Cl - Clearance (L/kg/hr)
-  * Vc - Volume of Central Compartment (L/kg)
-  * Vp - Volume of Peripheral Compartment (L/kg)
-  * Q - Intercompartmental clearance (L/kg/hr)
-  * Ω - Between Subject Variability
-  * σ - Residual error
+  * ``Cl`` - Clearance (L/kg/hr)
+  * ``Vc`` - Volume of Central Compartment (L/kg)
+  * ``Vp`` - Volume of Peripheral Compartment (L/kg)
+  * ``Q`` - Intercompartmental clearance (L/kg/hr)
+  * ``Ω`` - Between Subject Variability
+  * ``σ`` - Residual error
 
 ```julia
 param = (tvcl    = 0.417793,
@@ -130,26 +124,22 @@ Lets simulate for plasma concentration with the specific observation time points
 ```julia; results="hidden"
 Random.seed!(123)
 sim_sub1 = simobs(pk_39, sub1, param, obstimes=0:0.01:60)
-df1      = DataFrame(sim_sub1)
 ```
 
-### Dataframe and plots
-
-Save the simulated data into a dataframe to plots
+### Visualization
 
 ```julia
-df1_dv = filter(x -> x.time in [0.25,0.5,1,2,3,6,8,9,10,12,18,21,24,24.5,25,26,28,30,32,34,36,42,48,60], df1)
 
-@df df1 plot(:time, :cp,
-              title="Two compartment model - Experimental design issues",label="Pred - Conc",
-              xlabel="Time (hr)",ylabel="Concentration (ug/l)", linewidth=3,
-              xticks=[0,10,20,30,40,50,60], xlims=(-0.2,60), yticks=[0,10,20,30,40,50,60], ylims=(0,60))
-@df df1_dv scatter!(:time,:dv, label="Obs - Conc", color=[:red])
+f1, a1, p1 = sim_plot(pk_39, [sim_sub1], 
+        observations = :cp, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (
+                xlabel = "Time (hr)", 
+                ylabel = "PK39 Concentrations (μg/L)",
+                xticks = 0:10:60))
+f1                
 ```
-
-### Additional notes
-Experimental design in this exercise deals with reducing the 24 observation dataset to 14 observation and 5 observation and fitting the two compartment model to these datasets to estimate final parameters.
-
 
 ```julia; echo=false, eval=false
 par = (tvcl    = 0.417793,
