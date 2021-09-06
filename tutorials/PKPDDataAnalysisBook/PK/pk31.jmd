@@ -25,18 +25,18 @@ In this model, you will learn how to build a two compartment with additional inp
 
 ### Objectives
 
- * To analyze the intavenous datasets with parallel turnover
- * To write multi-compartment model in terms of dfferential equations
+ * To analyze the intravenous datasets with parallel turnover
+ * To write multi-compartment model in terms of differential equations
 
 ### Libraries
 
-call the "necessary" libraries to get start.
+Call the "necessary" libraries to get start.
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
 ```
 
 ### Model
@@ -98,13 +98,13 @@ end
 
 The parameters are as given below. `tv` represents the typical value for parameters.
 
- * Kin -  Basal hormonal input (pmol/hr)
- * Vc  -  Central Volume of Distribution (L)
- * Cl  -  Clearance (L/hr)
- * Q   -  Intercompartmental Clearance (L/hr)
- * Vp  -  Peripheral Volume of Distribution (L)
- * Ω   -  Between Subject Variability,
- * σ   -  Residual error
+ * ``Kin`` -  Basal hormonal input (pmol/hr)
+ * ``Vc``  -  Central Volume of Distribution (L)
+ * ``Cl``  -  Clearance (L/hr)
+ * ``Q``   -  Intercompartmental Clearance (L/hr)
+ * ``Vp``  -  Peripheral Volume of Distribution (L)
+ * ``Ω``   -  Between Subject Variability,
+ * ``σ``   -  Residual error
 
 ```julia
 param = ( tvkin   = 1531.87,
@@ -121,8 +121,8 @@ param = ( tvkin   = 1531.87,
 A single dose of 36630 pmol is given as an IV Infusion
 
 ```julia
-ev1  = DosageRegimen(36630, time=0, cmt=1, duration=0.0166)
-sub1 = Subject(id=1, events=ev1)
+ev1  = DosageRegimen(36630, time = 0, cmt = 1, duration = 0.0166)
+sub1 = Subject(id = 1, events = ev1, observations = (cp = nothing,))
 ```
 
 ### Simulation
@@ -131,23 +131,21 @@ Simulate the plasma concentration profile
 
 ```julia; results="hidden"
 Random.seed!(123)
-sim_sub1 = simobs(pk_31, sub1, param , obstimes=0.01:0.0001:32)
+sim_sub1 = simobs(pk_31, sub1, param , obstimes = 0.01:0.0001:32)
 ```
 
-### Dataframe & Plot
-
-Convert the `simulation` to a _dataframe_ and use it for plotting.
+### Visualization
 
 ```julia
-df1    = DataFrame(sim_sub1)
-df1_dv = filter(x -> x.time in [0.0167,0.1167,0.167,0.25,0.583,0.833,1.083,1.583,2.083,4.083,8.083,12,23.5,24.25,26.75,32], df1)
-
-
-@df df1 plot(:time, :cp, yaxis=:log,
-              label="Pred - Conc",  xlabel="Time (hrs)", ylabel="Concentration (pmol/L)",
-              title="Plasma Concentration vs Time", linewidth=3,
-              xlims=(-0.2,35), xticks=[0,5,10,15,20,25,30,35], yticks=[10,100,1000,10000], ylims=(10,10000))
-@df df1_dv scatter!(:time, :dv, label="Obs - Conc", color=[:red])
+f, a, p = sim_plot(pk_31, [sim_sub1], 
+        observations = :cp, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (xlabel = "Time (hrs)", 
+                ylabel = "PK31 Concentrations (pmol/L)",
+                xticks = 0:5:35, yscale = log10))
+axislegend(a) 
+f 
 ```
 
 

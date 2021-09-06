@@ -20,11 +20,11 @@ using Dates
 
 ### Learning Outcomes
 
-We will learn to analyze data obtained after Multiple infusions of an endogenous compound with non-linear disposition
+We will learn to simulate data for Multiple infusions of an endogenous compound with non-linear disposition
 
 ### Objectives
 
-  * To bulid a one compartment model for an endogenous compound with non-linear disposition
+  * To build a one compartment model for an endogenous compound with non-linear disposition
   * To use final parameter estimates and design a multiple infusion dosage regimen
   * To simulate and plot a single subject with predefined time points.
 
@@ -33,10 +33,10 @@ We will learn to analyze data obtained after Multiple infusions of an endogenous
 Call the "necessary" libraries to get started.
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
 ```
 
 ### Model
@@ -98,12 +98,12 @@ end
 
 The parameters are as given below. `tv` represents the typical value for parameters.
 
-  * Vc  - Volume of Central Compartment (L)
-  * Vmax- Maximum metabolic capacity (μg/min)
-  * Km  - Michaelis- menten constant (μg/L)
-  * Kin - Rate of synthesis,Turnover rate (μg/min)
-  * Ω   - Between Subject Variability
-  * σ   - Residual error
+  * ``Vc``  - Volume of Central Compartment (L)
+  * ``Vmax``- Maximum metabolic capacity (μg/min)
+  * ``Km``  - Michaelis- menten constant (μg/L)
+  * ``Kin`` - Rate of synthesis,Turnover rate (μg/min)
+  * ``Ω``   - Between Subject Variability
+  * ``σ``   - Residual error
 
 
 ```julia
@@ -124,10 +124,10 @@ DosageRegimen (DR) = Three sets of rapid intravenous infusion followed by slow i
   * IV infusion of 1773 μg (Time= 260-261 min) followed by IV infusion of 6300 μg (Time= 260.1-290.1 min)
 
 ```julia
-IVinfRapid = DosageRegimen([1669,1701,1733], time=[0,125,260], cmt=[1,1,1], duration=[0,1,1])
-IVinfSlow  = DosageRegimen([1131.8,1884.4,6300],time=[0,125.2,260.1], cmt=[1,1,1], duration=[30.1,29.1,30])
-DR         = DosageRegimen([IVinfRapid,IVinfSlow])
-sub1       = Subject(id=1, events=DR)
+IVinfRapid = DosageRegimen([1669,1701,1733], time = [0,125,260], cmt = [1,1,1], duration = [0,1,1])
+IVinfSlow  = DosageRegimen([1131.8,1884.4,6300], time = [0,125.2,260.1], cmt = [1,1,1], duration = [30.1,29.1,30])
+DR         = DosageRegimen(IVinfRapid,IVinfSlow)
+sub1       = Subject(id = 1, events = DR)
 ```
 
 ### Simulation
@@ -136,22 +136,22 @@ To simulate plasma concentration for single subject with the specific observatio
  time points for a given dosage regimen 'DR'
 
 ```julia; results="hidden"
-sim  =  simobs(pk_32,sub1,param,obstimes=0:0.01:450)
+Random.seed!(123)
+sim  =  simobs(pk_32, sub1, param, obstimes=0:0.01:450)
 ```
 
-### DataFrame & Plot
+### Visualization
+
 ```julia
-plasmadata    = DataFrame(sim)
-dropmissing!(plasmadata, :cp)
-plasmadata_dv = filter(x -> x.time in [0,2.23,4.2,6.05,8.03,10,15,20,25,30,32,34.1,36.1,38.1,40.1,42,45.1,50,
-  55,60,70,80,90.2,100,110,120,122.8,127,129,131,133,135,140,145.1,150,154,156,158,160,162,164,166,169,174,179,
-  186.8,218,249,250,255,262.2,264.2,265.9,268,270,275.1,280,285,290,292,294.1,296.2,298.1,300,302.4,305.2,310.1,
-  315.2,320,350.1,380,400,450], plasmadata)
-@df plasmadata plot(:time, :cp, color= [:blue], linewidth=4,
-                    label= "cp", ylabel="Concentration(ug/L)", xlabel="Time(min)",
-                    title= "Time Vs Plasma concentration plot")
-@df plasmadata_dv scatter!(:time, :dv,color= [:red], label= "dv",
-                          xticks=[0,50,100,150,200,250,300,350,400,450], xlims=(0,450))
+f, a, p = sim_plot(pk_32, [sim], 
+        observations = :cp, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (xlabel = "Time (min)", 
+                ylabel = "PK32 Concentrations (μg/L)",
+                xticks = 0:50:450, ))
+axislegend(a) 
+f 
 ```
 
 ```julia; echo=false, eval=false

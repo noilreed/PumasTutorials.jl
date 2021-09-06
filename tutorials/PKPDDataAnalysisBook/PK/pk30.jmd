@@ -18,9 +18,9 @@ using Dates
 
 ### Learning Outcome
 
-Since we had subcutaneous dose information, we learnt to discriminate between the clearance
- and the rate of synthesis. Further simplification of the model by assuming bioavailability
- is 100% and `concentration of the endogenous compound equals concentration at baseline` (turnover/clearance)
+With subcutaneous dose information, we learn to discriminate between the clearance
+ and the rate of synthesis. Further simplification of the model is done by assuming bioavailability
+ is 100% and _concentration of the endogenous compound equals concentration at baseline_ (turnover/clearance)
 
 ### Objectives
 
@@ -29,13 +29,13 @@ In this tutorial, you will learn how to build a one compartment PK turnover
 
 ### Libraries
 
-call the "necessary" libraries to get started
+Call the "necessary" libraries to get started
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
 ```
 
 ### Model
@@ -97,12 +97,12 @@ end
 
 The parameters are as given below. tv represents the typical value for parameters.
 
-  * Ka - Absorption rate constant (hr⁻¹)
-  * Cl - Clearance (L/kg/hr)
-  * Synthesis - Turnover Rate (hr⁻¹)
-  * V - Volume of Central Compartment (L/kg)
-  * Ω - Between Subject Variability
-  * σ - Residual error
+  * ``Ka`` - Absorption rate constant (hr⁻¹)
+  * ``Cl`` - Clearance (L/kg/hr)
+  * ``Synthesis`` - Turnover Rate (hr⁻¹)
+  * ``V`` - Volume of Central Compartment (L/kg)
+  * ``Ω`` - Between Subject Variability
+  * ``σ`` - Residual error
 
 ```julia
 param =  ( tvka         = 0.539328,
@@ -118,8 +118,8 @@ param =  ( tvka         = 0.539328,
 A dose of **40 mcg/kg** is given subcutaneously to a Single subject.
 
 ```julia
-ev1  = DosageRegimen(40,time=0,cmt=1)
-sub1 = Subject(id=1, events=ev1)
+ev1  = DosageRegimen(40,time = 0, cmt = 1)
+sub1 = Subject(id = 1, events = ev1)
 ```
 
 ### Simulation
@@ -128,22 +128,21 @@ To simulate plasma concentration with turnover rate after oral administration.
 
 ```julia; results="hidden"
 Random.seed!(1234)
-sim_sub1 = simobs(pk_30, sub1, param, obstimes=0:0.1:72)
-df1      = DataFrame(sim_sub1)
+sim_sub1 = simobs(pk_30, sub1, param, obstimes = 0:0.1:72)
 ```
 
-### Dataframe & Plot
-
-Use the dataframe for plotting
+### Visualization
 
 ```julia
-df1_dv = filter(x -> x.time in [0, 2, 3, 4, 5, 6, 8, 10, 15, 24, 32, 48, 72], df1)
-
-@df df1 plot(:time, :cp,
-             label= "Pred - Conc",  xlabel="Time (hrs)", ylabel="Concentration (mcg/L)",
-             title="Plasma Concentration vs Time", color=[:blue], linewidth=3,
-             xlims=(-0.5,80), xticks=[0,10,20,30,40,50,60,70,80], ylims=(0,250), yticks=[0,50,100,150,200,250])
-@df df1_dv scatter!(:time, :dv, label="Obs - Conc", color=[:red])
+f, a, p = sim_plot(pk_30, [sim_sub1], 
+        observations = :cp, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (xlabel = "Time (hrs)", 
+                ylabel = "PK30 Concentrations (μg/L)",
+                xticks = 0:10:80, yscale = log10))
+axislegend(a) 
+f 
 ```
 
 ```julia; echo=false, eval=false

@@ -11,7 +11,7 @@ using Dates
 
   * Structural model        - One Compartment Model with Linear Elimination
   * Route of administration - IV-Bolus
-  * Dosage Regimen          - 25, 500, 100000 μg adminstered after complete washout
+  * Dosage Regimen          - 25, 500, 100000 μg administered after complete washout
   * Number of Subjects      - 3 species (Mouse, Rat, Human)
 
 ![pk28](https://user-images.githubusercontent.com/62205585/79686352-57831800-825d-11ea-9a4c-109720979489.png)
@@ -19,28 +19,24 @@ using Dates
 ### Learning Outcome
 
   * To learn about Allometry - Elementary Dedrick Plots
-  * To simulatenously fit an allometric model to concentration-time data obtained from three different species
-
-### Objectives
-
-  * To apply the allometric constants a,b,c,d
-  * To obtain Cl based on the typical values of a,b and Body Weight
-  * To obtain V based on the typical values of c,d and Body Weight
+  * To simultaneously simulate an allometric model to concentration-time data obtained from three different species
 
 ### Libraries
 
-call the "necessary" libraries to get started
+Call the "necessary" libraries to get started
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
+using DataFramesMeta
+using AlgebraOfGraphics
 ```
 
 ### Model
 
-The given data follows a One-Compartment Model with linear eliminiation
+The given data follows a One-Compartment Model with linear elimination
 
 ```julia
 pk_28       = @model begin
@@ -75,7 +71,7 @@ pk_28       = @model begin
   end
 
   @dynamics begin
-    Central'= -(Cl/Vc)*Central
+    Central' = -(Cl/Vc)*Central
   end
 
   @derived begin
@@ -84,7 +80,11 @@ pk_28       = @model begin
     Observed Concentration (ug/L)
     """
     dv      ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
-    nca    := @nca cp
+  end
+
+  @observed begin
+    conc = Central / Vc
+    nca    := @nca conc
     AUC     = NCA.auc(nca)
     CL      = NCA.cl(nca)
     V       = NCA.vz(nca)
@@ -116,12 +116,12 @@ param = ( a       = 0.319142230070251,
   * Species 3 (Human) - 100000μg IV-Bolus and bodyweight (70kg)
 
 ```julia
-ev1      = DosageRegimen(25, cmt=1, time=0, route=NCA.IVBolus)
-sub1     = Subject(id="Mouse", events=ev1, covariates=(BW=0.023,), time=[0,0.167,0.5,2,4,6])
-ev2      = DosageRegimen(500, cmt=1, time=0,route=NCA.IVBolus)
-sub2     = Subject(id="Rat", events=ev2, covariates=(BW=0.250,), time=[0,0.167,0.33,0.5,1,2,4,8,12,15])
-ev3      = DosageRegimen(100000, cmt=1, time=0, route=NCA.IVBolus)
-sub3     = Subject(id="Human", events=ev3, covariates=(BW=70,), time=[0,1,2,4,8,12,24,36,48,72])
+ev1      = DosageRegimen(25, cmt = 1, time = 0, route = NCA.IVBolus)
+sub1     = Subject(id="Mouse", events = ev1, covariates = (BW = 0.023, dose = 25), time = [0,0.167,0.5,2,4,6])
+ev2      = DosageRegimen(500, cmt = 1, time = 0,route = NCA.IVBolus)
+sub2     = Subject(id="Rat", events = ev2, covariates = (BW = 0.250, dose = 500), time = [0,0.167,0.33,0.5,1,2,4,8,12,15])
+ev3      = DosageRegimen(100000, cmt = 1, time = 0, route = NCA.IVBolus)
+sub3     = Subject(id="Human", events = ev3, covariates = (BW = 70, dose = 100000), time = [0,1,2,4,8,12,24,36,48,72])
 pop3_sub = [sub1,sub2,sub3]
 ```
 
@@ -130,34 +130,44 @@ pop3_sub = [sub1,sub2,sub3]
 ```julia; results="hidden"
 Random.seed!(123)
 sim_pop3 = simobs(pk_28, pop3_sub, param)
-df1      = DataFrame(sim_pop3)
 ```
 
-### Dataframe and Plotting
+### Visualization
 
 A plot of **Concentration vs Time** data from three different species
 
 ```julia
-@df df1 plot(:time, :cp, yaxis=:log, group=:id, linewidth=3,
-             title="Plasma Concentration vs Time", xlabel="Time (hr)", ylabel="Concentration (ug/L)",
-             yticks=[10,100,1000], ylims=(10,1000),xticks=[0,10,20,30,40,50,60,70,80])
-@df df1 scatter!(:time, :dv, yaxis=:log, label="Obs - Conc" )
+f, a, p = sim_plot(pk_28, sim_pop3, 
+        observations = :cp, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (xlabel = "Time (days)", 
+                ylabel = "PK28 Concentrations (μg/L)",
+                xticks = 0:10:70, yscale = log10))
+axislegend(a) 
+f 
 ```
 
 An **Elementary-Dedrick Plot** of dose and bodyweight normalized plasma concentration vs bodyweight normalized time
 
-```julia
-transform!(groupby(df1, :id), :amt => first => :amt)
-dropmissing!(df1, :cp)
-df1.amt_bw  = df1.amt ./ df1.BW
-df1.yfactor = df1.dv ./ df1.amt_bw
-df1.bw_b    = df1.BW .^(1-0.636)
-df1.xfactor = df1.time ./ df1.bw_b
+```julia; results="hidden"
+pk28df = @chain sim_pop3 begin
+  DataFrame
+  @rtransform @passmissing :dv = round(:dv, sigdigits = 2)
+  @rtransform @passmissing :amt_bw  = :dose / :BW
+  @rtransform @passmissing :yfactor = :dv / :amt_bw
+  @rtransform @passmissing :bw_b    = :BW^(1-0.636)
+  @rtransform @passmissing  :xfactor = :time / :bw_b
+  dropmissing!(:dv)
+end
+```
 
-@df df1 plot(:xfactor, :yfactor, yaxis=:log, group=:id,
-              xlabel="Kallynochrons ( h / (BW^(1-b))", ylabel="Conc / (Dose/BW)",
-              title="Plasma Concentration vs Time", linewidth=3,
-              xticks=[0,2,4,6,8,10,12,14,16,18,20], xlims=(-0.2,20), yticks=[0.01,0.10,1.00], ylims=(0.01,1.00))
+```julia
+plt = data(pk28df) *
+mapping(:xfactor => "Kallynochrons ( h / (BW^(1-b))",
+        :yfactor => "Conc / (Dose/BW)", color = :id) *
+visual(Lines, linewidth = 4) 
+draw(plt, axis = (; yscale = log10, xticks = 0:2:24))
 ```
 
 ```julia; echo=false, eval=false

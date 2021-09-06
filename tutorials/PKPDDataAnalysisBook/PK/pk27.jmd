@@ -91,6 +91,7 @@ pk_27           = @model begin
   end
 
   @dosecontrol begin
+    Vc_          = tvvc * exp(η[9])
     bioav       = (Central = 1/Vc_,)
   end
 
@@ -183,32 +184,36 @@ sim_pop4 = simobs(pk_27, pop4_sub, param, obstimes = 0.1:1:500)
 ### Visualization
 
 ```julia
-f, a, p = sim_plot(pk_27, sim, 
+figure = Figure(; fontsize = 12)
+a1, p1 = sim_plot(figure[1,1], pk_27, sim_pop4, 
         observations = :cp, 
         color = :redsblues,
         linewidth = 4,
-        axis = (xlabel = "Time (days)", 
+        axis = (title = "Ligand", 
+                xlabel = "Time (hr)", 
                 ylabel = "PK27 Concentrations (mg/L)",
-                xticks = 0:10:40, yscale = log10))
-axislegend(a) 
-f 
-```
+                xticks = 0:100:500, yscale = log10))
 
-Convert the simulation to a dataframe and make necessary plots using dataframe
 
-```julia
-df1_dv = filter( x -> x.time in [0.1,1.1,10.1,24.1,72.1,120.1,168.1,240.1,360.1,499.1], df1)
+a2, p2 = sim_plot(figure[1,2], pk_27, sim_pop4, 
+        observations = :rec, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (title = "Receptor", 
+                xlabel = "Time (hr)", 
+                ylabel = "PK27 Concentrations (mg/L)",
+                xticks = 0:100:500, yscale = log10))
 
-@df df1 plot(:time, :cp, yaxis=:log, color=[:blue],
-              yticks=[0.001,0.01,0.1,1,10,100,1000], ylims=(0.001,1000), xlims=(-5,510),
-              legend=:outertopright, legendfontsize=10, titlefontsize=13,
-              xlabel="Time (hr)", ylabel="Concentration (mg/L)", linewidth=2,
-              title="TMDD Model Predicted and Observed Conc Vs Time", label="Pred - Ligand")
-@df df1 plot!(:time, :rec, colour=[:red], label="Pred - Receptor", linewidth=2)
-@df df1 plot!(:time, :com, color=[:green], label="Pred - Complex", linewidth=2)
-@df df1_dv scatter!(:time, :dv_cp, color=[:red], label="Obs - Ligand", markershape=[:circle], markersize=3)
-@df df1_dv scatter!(:time, :dv_rec, color=[:blue], label="Obs - Receptor", markershape=[:square], markersize=2)
-@df df1_dv scatter!(:time, :dv_com, color=[:darkgreen], label="Obs - Complex", markershape=[:utriangle], markersize=2)
+a3, p3 = sim_plot(figure[2,1], pk_27, sim_pop4, 
+        observations = :com, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (title = "Complex", 
+                xlabel = "Time (hr)", 
+                ylabel = "PK27 Concentrations (mg/L)",
+                xticks = 0:100:500, yscale = log10))
+Legend(figure[2, 2], a3, "Doses", tellwidth = false, framevisible = false)
+figure 
 ```
 
 ```julia; echo=false, eval=false

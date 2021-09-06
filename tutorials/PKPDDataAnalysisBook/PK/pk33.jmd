@@ -31,10 +31,10 @@ To build one compartment model with zero-order input and to understand its
 Call the "necessary" libraries to get started.
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
 ```
 
 ### Model
@@ -103,13 +103,13 @@ end
 
 Parameters provided for simulation are as below. `tv` represents the typical value for parameters.
 
-  * CL - Clearance (L/hr),
-  * Vc - Volume of Central Compartment (L)
-  * Dslow - Dose of slow infusion (μg)
-  * Tfast - Duration of fast release (hr)
-  * Tslow - Duration of slow release (hr)
-  * Ω  - Between Subject Variability
-  * σ  - Residual error
+  * ``CL`` - Clearance (L/hr),
+  * ``Vc`` - Volume of Central Compartment (L)
+  * ``Dslow`` - Dose of slow infusion (μg)
+  * ``Tfast`` - Duration of fast release (hr)
+  * ``Tslow`` - Duration of slow release (hr)
+  * ``Ω``  - Between Subject Variability
+  * ``σ``  - Residual error
 
 ```julia
 param = ( tvcl    = 79.8725,
@@ -130,7 +130,7 @@ param = ( tvcl    = 79.8725,
     simultaneously over a period of 6 and 18 hours respectively.
 
 ```julia
-sub1 = Subject(id=1, time=0:0.1:24, observations=(dv=nothing))
+sub1 = Subject(id = 1, time = 0:0.1:24, observations = (cp = nothing, ))
 ```
 
 ### Simulation
@@ -139,22 +139,21 @@ Simulate the plasma concentration
 
 ```julia; results="hidden"
 Random.seed!(123)
-sim_sub1 = simobs(pk_33, sub1, param, obstimes=0:0.1:24)
-df1      = DataFrame(sim_sub1)
+sim_sub1 = simobs(pk_33, sub1, param, obstimes = 0:0.1:24)
 ```
 
-### DataFrame & Plot
-
-Create a dataframe of the simulated data and to plot it.
+### Visualization
 
 ```julia
-df1_dv = filter(x -> x.time in [0,0.5,1,2,3,4,6,8,10,12,14,16,17,18,21,23.37], df1)
-
-@df df1 plot(:time, :cp,
-              title="Plasma Concentration vs Time", label= "Pred - Conc",
-              xlabel= "Time (Hr)", ylabel="Concentration (ug/L)", linewidth=3,
-              xlims=(0,25), xticks=[0,5,10,15,20,25], yticks=[2,4,6,8,10,12,14,16], ylims=(2,16))
-@df df1_dv scatter!(:time, :dv, label="Obs - Conc")
+f, a, p = sim_plot(pk_33, [sim_sub1], 
+        observations = :cp, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (xlabel = "Time (hr)", 
+                ylabel = "PK33 Concentrations (μg/L)",
+                xticks = 0:5:25, ))
+axislegend(a) 
+f 
 ```
 
 ```julia; echo=false, eval=false
