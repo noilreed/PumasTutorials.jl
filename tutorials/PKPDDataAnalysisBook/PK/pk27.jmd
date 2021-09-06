@@ -11,7 +11,7 @@ using Dates
 
   * Structural model        - Target Mediated Drug Disposition Model (TMDD)
   * Route of administration - IV-Bolus
-  * Dosage Regimen          - 1.5, 5, 15, 45 mg/kg adminstered after complete washout
+  * Dosage Regimen          - 1.5, 5, 15, 45 mg/kg administered after complete washout
   * Number of Subjects      - 4
 
 ![pK27](https://user-images.githubusercontent.com/62241298/79561770-84052b80-80c7-11ea-8874-47fc6822dd21.png)
@@ -23,22 +23,21 @@ using Dates
 
 ### Objective
 
-  * The objective of this exericse is to fit the data to a TMDD model
+  * The objective of this exercise is to simulate from a TMDD model
 
 ### Libraries
 
-call the "necessary" libraries to get started
+Call the "necessary" libraries to get started
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
 ```
 
 ### Model
 
-The given data follows a `Target Mediated Drug Disposition Model`
 
 ```julia
 pk_27           = @model begin
@@ -89,7 +88,10 @@ pk_27           = @model begin
     Kout        = tvkout * exp(η[7])
     Kerl        = tvkerl * exp(η[8])
     Vc          = tvvc * exp(η[9])
-    bioav       = (Central = 1/Vc,)
+  end
+
+  @dosecontrol begin
+    bioav       = (Central = 1/Vc_,)
   end
 
   @init begin
@@ -127,15 +129,15 @@ end
 
 The parameters are as given below. tv represents the typical value for parameters.
 
-  * Cl - Clearance of central compartment (L/kg/hr)
-  * Kon - Second oder on rate of ligand (L/mg/hr)
-  * Koff - First order off rate of ligand (1/hr)
-  * Vp - Volume of Peripheral Compartment (L/kg)
-  * Q - Inter-compartmental clearance (L/kg/hr)
-  * Kin - Zero order receptor synthesis process (mg/L/hr)
-  * Kout - First order receptor degenration process (1/hr)
-  * Kerl - First order elimination of complex (1/hr)
-  * Vc - Volume of Central Compartment (L/kg)
+  * ``Cl`` - Clearance of central compartment (L/kg/hr)
+  * ``Kon`` - Second oder on rate of ligand (L/mg/hr)
+  * ``Koff`` - First order off rate of ligand (1/hr)
+  * ``Vp`` - Volume of Peripheral Compartment (L/kg)
+  * ``Q`` - Inter-compartmental clearance (L/kg/hr)
+  * ``Kin`` - Zero order receptor synthesis process (mg/L/hr)
+  * ``Kout`` - First order receptor degeneration process (1/hr)
+  * ``Kerl`` - First order elimination of complex (1/hr)
+  * ``Vc`` - Volume of Central Compartment (L/kg)
 
 ```julia
 param = ( tvcl        = 0.001,
@@ -162,22 +164,35 @@ param = ( tvcl        = 0.001,
 
 ```julia
 dose = [1.5, 5, 15, 45]
-dose_ind(x) = DosageRegimen(dose[x], time=0, cmt=1)
+ids  = ["1.5 mg/kg", "5 mg/kg", "15 mg/kg", "45 mg/kg"]
+dose_ind(x) = DosageRegimen(dose[x], time = 0, cmt = 1)
 
-pop4_sub = map(i -> Subject(id=i, events=dose_ind(i)), 1:4)
+pop4_sub = map(i -> Subject(id = ids[i], events = dose_ind(i), 
+                            observations = (cp = nothing, rec = nothing, com = nothing)), 
+                            1:length(ids))
 ```
 
 ### Simulation
 
-We will simulate the full model and specific time points to be scattered on the data
-
 ```julia; results="hidden"
 Random.seed!(123)
-sim_pop4 = simobs(pk_27, pop4_sub, param, obstimes=0.1:1:500)
-df1      = DataFrame(sim_pop4)
+sim_pop4 = simobs(pk_27, pop4_sub, param, obstimes = 0.1:1:500)
 ```
 
-### Dataframe and Plot
+
+### Visualization
+
+```julia
+f, a, p = sim_plot(pk_27, sim, 
+        observations = :cp, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (xlabel = "Time (days)", 
+                ylabel = "PK27 Concentrations (mg/L)",
+                xticks = 0:10:40, yscale = log10))
+axislegend(a) 
+f 
+```
 
 Convert the simulation to a dataframe and make necessary plots using dataframe
 

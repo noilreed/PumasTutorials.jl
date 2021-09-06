@@ -20,7 +20,7 @@ Following info:
 
 ### Learning Outcomes
 
-This exercise explains about the Multi-compartment model following concentration dependant clearnce.
+This exercise explains about the Multi-compartment model following concentration dependant clearance.
 
 ### Objectives
 
@@ -33,10 +33,10 @@ In this tutorial you will learn:
 Call the "necessary" libraries to get started.
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
 ```
 
 ### Model
@@ -44,11 +44,11 @@ using Random
 This model contains three compartments (Central, shallow and deep) and the clearance is
 dependant on the change in  plasma concentration due to the drug which is known to
 reduce cardiac output and hepatic blood flow with increase in plasma concentration.
-The change in clearance can be accounted by the equation: CL= CLo-A(Central/Vc)
-where A is proportionality constant between CL and C
+The change in clearance can be accounted by the equation: ``CL= CLo-A(Central/Vc)``
+where ``A`` is proportionality constant between ``CL`` and ``C``
 
 ```julia
-PK24                = @model begin
+pk_24                = @model begin
     @metadata begin
         desc = "Three Compartment Model"
         timeu = u"hr"
@@ -108,15 +108,15 @@ end
 The parameters are as given below. `tv` represents the typical value for parameters.
 
 
-  * Vc  - Volume of Central Compartment(L/kg)
-  * CLo - Clearance(L/hr/kg)
-  * Q1  - Inter-compartmental (Shallow) Clearance(L/hr/kg)
-  * Q2  - Inter-compartmental (Deep) Clearance(L/hr/kg)
-  * Vp1 - Volume of Shallow Compartment(L/kg)
-  * Vp2 - Volume of Deep Compartment(L/kg)
-  * A   - proportionality constant Between Cp and CL(L2/hr/μg/kg)
-  * Ω   - Between Subject Variability
-  * σ   - Residual error (for plasma conc)
+  * ``Vc``  - Volume of Central Compartment(L/kg)
+  * ``CLo`` - Clearance(L/hr/kg)
+  * ``Q1``  - Inter-compartmental (Shallow) Clearance(L/hr/kg)
+  * ``Q2``  - Inter-compartmental (Deep) Clearance(L/hr/kg)
+  * ``Vp1`` - Volume of Shallow Compartment(L/kg)
+  * ``Vp2`` - Volume of Deep Compartment(L/kg)
+  * ``A``   - proportionality constant Between Cp and CL(L2/hr/μg/kg)
+  * ``Ω``   - Between Subject Variability
+  * ``σ``   - Residual error (for plasma conc)
 
 ```julia
 param = ( tvvc  = 0.68,
@@ -135,8 +135,8 @@ param = ( tvvc  = 0.68,
 To Build the dosage regimen for one subject given IV infusion of 10mg/kg for 2hrs.
 
 ```julia
-DR = DosageRegimen(10, time= 0, cmt= 1, duration=2)
-s1 = Subject(id=1, events=DR)
+DR = DosageRegimen(10, time = 0, cmt = 1, duration = 2)
+s1 = Subject(id = 1, events = DR)
 ```
 
 ### Simulation
@@ -144,18 +144,21 @@ s1 = Subject(id=1, events=DR)
 To simulate the data with specific data points.
 
 ```julia; results="hidden"
-sim_sub1 = simobs(PK24,s1,param,obstimes= 0.1:0.01:8)
+sim_sub1 = simobs(pk_24, s1, param, obstimes= 0.1:0.01:8)
 ```
 
-### DataFrame & Plot
-
-##### PK Data
+### Visualization
 
 ```julia
-DF    = DataFrame(sim_sub1)
-DF_dv = filter(x -> x.time in [0.25, 0.5, 0.75, 1.05, 1.25, 1.49, 1.75, 1.99, 2.16, 2.35, 2.4, 2.65, 2.81, 2.95, 3.11, 3.56, 4.15, 6, 7],DF)
-@df DF plot(:time, :cp, color= [:blue], linewidth=4, label= "PRED", ylabel="Concentration(ug/L)", xlabel="Time(hr)", title= "Plasma conc vs time")
-@df DF_dv scatter!(:time, :dv,color= [:red], label= "Obs-Cp")
+f, a, p = sim_plot(pk_24, [sim_sub1], 
+        observations = :cp, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (xlabel = "Time (hour)", 
+                ylabel = "PK24 Concentrations (μg/mL)",
+                xticks = 0:2:8))
+axislegend(a) 
+f 
 ```
 
 ```julia; echo = false, eval=false
