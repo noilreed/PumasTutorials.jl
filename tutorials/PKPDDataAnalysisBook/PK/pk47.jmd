@@ -9,7 +9,7 @@ using Dates
 
 ### Background
 
-  * Structrual Model    - Plasma Protein Binding Model
+  * Structural Model    - Plasma Protein Binding Model
   * Number of Subjects  - 4
   * Number of Compounds - 2
 
@@ -33,17 +33,15 @@ using Dates
 call the necessary 'libraries' to get started
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
+using AlgebraOfGraphics
+using DataFramesMeta
 ```
 
 ### Model
-
-In this plasma protein binding model, we have included free drug concentration (dose)
- and total protein concentration (Pt) as a covariate and with the help of a simple
- non-linear fit we will estimate the parameters.
 
 ```julia
 pk_47     = @model begin
@@ -88,8 +86,8 @@ end
 
 The parameters are as given below. `tv` represents the typical value for parameters.
 
-  * tvka - Affinity constant between drug and protein
-  * tvn - Number of binding sites per molecule
+  * ``tvka`` - Affinity constant between drug and protein
+  * ``tvn`` - Number of binding sites per molecule
 
 ```julia; results="hidden"
 ## Compound 1
@@ -112,14 +110,14 @@ Since there is no dosage regimen we will create a dataframe with no events
 
 ```julia; results="hidden"
 ## Compound 1
-df_sub1  = DataFrame(id=1, time=0:1:9999, dv=missing, dose=0.01:0.01:100, Pt=0.3)
-df_sub2  = DataFrame(id=2, time=0:1:9999, dv=missing, dose=0.01:0.01:100, Pt=50)
+df_sub1  = DataFrame(id="0.3mg Protein Conc", time=0:1:9999, dv=missing, dose=0.01:0.01:100, Pt=0.3)
+df_sub2  = DataFrame(id="50mg Protein Conc", time=0:1:9999, dv=missing, dose=0.01:0.01:100, Pt=50)
 df1      = vcat(df_sub1, df_sub2)
 pop1     = read_pumas(df1, observations=[:dv], covariates=[:dose, :Pt], event_data=false)
 
 ## Compound 2
-df_sub3  = DataFrame(id=3, time=0:1:9999, dv=missing, dose=0.01:0.01:100, Pt=0.1)
-df_sub4  = DataFrame(id=4, time=0:1:9999, dv=missing, dose=0.01:0.01:100, Pt=10)
+df_sub3  = DataFrame(id="0.3mg Protein Conc", time=0:1:9999, dv=missing, dose=0.01:0.01:100, Pt=0.1)
+df_sub4  = DataFrame(id="50mg Protein Conc", time=0:1:9999, dv=missing, dose=0.01:0.01:100, Pt=10)
 df2      = vcat(df_sub3, df_sub4)
 pop2     = read_pumas(df2, observations=[:dv], covariates=[:dose, :Pt], event_data=false)
 ```
@@ -132,46 +130,39 @@ We will now simulate the experimental dat for *Compound 1* at two different leve
 ##Compound 1
 Random.seed!(123)
 sim_1    = simobs(pk_47, pop1, param1)
-df1_cmp1 = DataFrame(sim_1)
+df47_cmp1 = DataFrame(sim_1)
 
 ## Compound 2
 Random.seed!(123)
 sim_2    = simobs(pk_47, pop2, param2)
-df2_cmp2 = DataFrame(sim_2)
+df47_cmp2 = DataFrame(sim_2)
 ```
 
-### Dataframe and Plotting
+### Visualization
 
- *Compound 1*
+*Compound 1*
 
 ```julia
-id1 = filter(x -> x.id == "1", df1_cmp1)
-id2 = filter(x -> x.id == "2", df1_cmp1)
-df1_dv_cmp1 = filter(x -> x.dose in [0.01,0.05,0.1,0.5,1,5,10,50,100], df1_cmp1)
-
-@df id1 plot(:dose , :fu, xaxis=:log, linewidth=2,
-              title = "Compound 1 - Free fraction vs Unbound Concentration", label="Pred - 0.3mg Protein Conc",
-              xlabel="Unbound concentration (..)", ylabel="Free Fraction (%)", legend=:topleft,
-              ylims=(-2,120), yticks=[0,20,40,60,80,100,120])
-@df id2 plot!(:dose , :fu, xaxis=:log, label="Pred - 50mg Protein Conc", linewidth=2)
-@df df1_dv_cmp1 scatter!(:dose, :dv, label="Obs")
+@chain df47_cmp1 begin 
+  @rsubset :dose ∈ [0.01,0.05,0.1,0.5,1,5,10,50,100]
+  data(_) *
+  mapping(:dose => "Unbound concentration", :fu => "Free Fraction (%)", color = :id => "") *
+  visual(ScatterLines, linewidth = 4, markersize = 12)
+  draw(axis = (; yticks = 0:20:120, xscale = log10, 
+  title = "Compound 1 - Free fraction vs Unbound Concentration",))
+end
 ```
-
- *Compound 2*
 
 ```julia
-id3 = filter(x -> x.id == "3", df2_cmp2)
-id4 = filter(x -> x.id == "4", df2_cmp2)
-df2_dv_cmp2 = filter(x -> x.dose in [0.01,0.05,0.1,0.5,1,5,10,50,100], df2_cmp2)
-
-@df id3 plot(:dose , :fu, xaxis=:log, linewidth=2,
-              title = "Compound 2 - Free fraction vs Unbound Concentration", label="Pred - 0.3mg Protein Conc", legend=:topleft,
-              xlabel="Unbound concentration (..)", ylabel="Free Fraction (%)",
-              ylims=(-2,120), yticks=[0,20,40,60,80,100,120])
-@df id4 plot!(:dose , :fu, xaxis=:log, label="Pred - 50mg Protein Conc", linewidth=2)
-@df df2_dv_cmp2 scatter!(:dose, :dv, label="Obs")
+@chain df47_cmp2 begin 
+  @rsubset :dose ∈ [0.01,0.05,0.1,0.5,1,5,10,50,100]
+  data(_) *
+  mapping(:dose => "Unbound concentration", :fu => "Free Fraction (%)", color = :id => "") *
+  visual(ScatterLines, linewidth = 4, markersize = 12)
+  draw(axis = (; yticks = 0:20:120, xscale = log10, 
+  title = "Compound 2 - Free fraction vs Unbound Concentration",))
+end
 ```
-
 
 ```julia; echo=false, eval=false
 ## Compound 1

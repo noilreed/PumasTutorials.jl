@@ -19,7 +19,7 @@ using Dates
 ### Learning Outcome
 
 In this model, Multiple absorption routes helps in understanding absorption of
-sublingually administered dose partly from buccal cavity and partly from gatrointestinal tract
+sublingually administered dose partly from buccal cavity and partly from gastrointestinal tract
 
 ### Objectives
 
@@ -28,13 +28,13 @@ that is partly absorbed from buccal and partly from GI and simulate for a single
 
 ### Libraries
 
-call the "necessary" libraries to get start.
+Call the "necessary" libraries to get start.
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
 ```
 
 ### Model
@@ -75,6 +75,9 @@ pk_43        = @model begin
     KaD      = tvkad * exp(η[2])
     V        = tvv * exp(η[3])
     K        = tvk * exp(η[4])
+  end
+
+  @dosecontrol begin
     bioav    = (Buccal=tvfa, Gi= 1-tvfa)
     lags     = (Gi=tvlag,)
   end
@@ -99,14 +102,14 @@ end
 
 Parameters provided for simulation. tv represents the typical value for parameters.
 
-  * Vc - Volume of Central Compartment (L)
-  * K - Elimination rate constant (hr⁻⅟)
-  * Kar - Absorption rate constant(rapid from buccal) (hr⁻⅟)
-  * Kad - Absorption rate constant(delayed from GI) (hr⁻⅟)
-  * Fa - Fraction of drug absorbed
-  * lags - Lagtime (hr)
-  * Ω - Between Subject Variability
-  * σ - Residual error
+  * ``Vc`` - Volume of Central Compartment (L)
+  * ``K`` - Elimination rate constant (hr⁻⅟)
+  * ``Kar`` - Absorption rate constant(rapid from buccal) (hr⁻⅟)
+  * ``Kad`` - Absorption rate constant(delayed from GI) (hr⁻⅟)
+  * ``Fa`` - Fraction of drug absorbed
+  * ``lags`` - Lagtime (hr)
+  * ``Ω`` - Between Subject Variability
+  * ``σ`` - Residual error
 
 ```julia
 param = (tvkar  = 7.62369,
@@ -124,8 +127,8 @@ param = (tvkar  = 7.62369,
 Single subject receiving **2mg** dose given orally (absorbed - Sublingually and remaining from the Gut).
 
 ```julia
-ev1  = DosageRegimen(2000, time=0, cmt=[1,2])
-sub1 = Subject(id=1, events=ev1)
+ev1  = DosageRegimen(2000, time = 0, cmt = [1,2])
+sub1 = Subject(id = 1, events = ev1)
 ```
 
 ### Simulation
@@ -136,23 +139,22 @@ dose considering multiple absorption routes.
 ```julia; results="hidden"
 Random.seed!(123)
 sim_sub1 = simobs(pk_43, sub1, param, obstimes=0.00:0.01:24)
-df1      = DataFrame(sim_sub1)
 ```
 
-### Dataframe and Plot
-
-Simulated data is saved as dataframe and used for plotting.
+### Visualization
 
 ```julia
-df1_dv = filter(x -> x.time in [0.1,0.15,0.25,0.5,0.75,0.8,1,1.25,1.5,2,3,4,5,6,8,12,24], df1)
-
-@df df1 plot(:time, :cp,
-            title="Multiple absorption routes",label="Pred - Conc",
-            xlabel="Time(hr)",ylabel="Conc(mcg/l)", linewidth=3,
-            xticks=[0,5,10,15,20,25], xlim=(-0.1,25), yticks=[10,20,30,40,50,60,70,80], ylim=(10,80))
-@df df1_dv scatter!(:time, :dv, label="Obs - Conc")
+f1, a1, p1 = sim_plot(pk_43, [sim_sub1], 
+        observations = :cp, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (
+                xlabel = "Time (min)", 
+                ylabel = "PK43 Concentrations (μg/L)",
+                xticks = 0:5:25))
+axislegend(a1) 
+f1                
 ```
-
 
 ```julia, echo=false, eval=false
 par = (tvkar  = 7.62369,

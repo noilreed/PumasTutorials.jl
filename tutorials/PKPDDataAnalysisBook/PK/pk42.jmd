@@ -28,18 +28,18 @@ In this tutorial, you will learn to build a multi compartment model for a drug
 
 ### Libraries
 
-call the "necessary" libraries to get started.
+Call the "necessary" libraries to get started.
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
 ```
 
 ### Model
 
-In this multi compartment model,a single subject recieves oral doses of a
+In this multi compartment model,a single subject receives oral doses of a
  compound X at three different occasions which follows non linear absorption
  and linear disposition kinetics.
 
@@ -105,14 +105,14 @@ end
 
 Parameters provided for simulation as below. `tv` represents the typical value for parameters.
 
-  * Vmax - Maximum Metabolic Capacity (ug/min)
-  * Km   - Michaelis-Menten Constant (ug/ml)
-  * Vc   - Volume of Distribution of Central Compartment (L)
-  * Vp   - Volume of Distribution of Peripheral compartment (L)
-  * Q    - Inter Compartmental Clearance (L/min)
-  * CL   - Clearance (L/min)
-  * Ω    - Between Subject Variability
-  * σ    - Residual Error
+  * ``Vmax`` - Maximum Metabolic Capacity (ug/min)
+  * ``Km``   - Michaelis-Menten Constant (ug/ml)
+  * ``Vc``   - Volume of Distribution of Central Compartment (L)
+  * ``Vp``   - Volume of Distribution of Peripheral compartment (L)
+  * ``Q``    - Inter Compartmental Clearance (L/min)
+  * ``CL``   - Clearance (L/min)
+  * ``Ω``    - Between Subject Variability
+  * ``σ``    - Residual Error
 
 ```julia
 param = (tvvmax = 982.453,
@@ -127,13 +127,13 @@ param = (tvvmax = 982.453,
 
 ### Dosage Regimen
 
-A single subject received oral dosing of **10,30,90 mg** on three different ocassions
+A single subject received oral dosing of **10,30,90 mg** on three different occasions
 
 ```julia
 dose_ind = [90000,30000,10000]
-cov_dose1 = ["10 mg","30 mg", "90 mg"]
+ids = ["10 mg","30 mg", "90 mg"]
 ev(x) = DosageRegimen(dose_ind[x], time=0, cmt=1)
-pop     = map(i -> Subject(id=i, events=ev(i), covariates=(Dose=cov_dose1[i],)), 1:3)
+pop     = map(i -> Subject(id=ids[i], events=ev(i)), 1:length(ids))
 ```
 
 ### Simulation
@@ -144,31 +144,21 @@ Simulate the plasma concentration for single subject after an oral dose given
 ```julia; results="hidden"
 Random.seed!(123)
 sim_pop3_sub = simobs(pk_42, pop, param, obstimes=0.1:0.1:360)
-df1          = DataFrame(sim_pop3_sub)
 ```
-
-### Dataframe & Plot
-
-Use the dataframe for plotting
+### Visualization
 
 ```julia
-df1_10 = filter(x -> x.Dose == "10 mg", df1)
-filter!(x -> x.time in [0,5,10,15,20,25,30,35,40,45,50,55,60,70,75,80,85,90,95,105,110,115,120,150,180,210,240,300,360], df1_10)
-df1_30 = filter(x -> x.Dose == "30 mg", df1)
-filter!(x -> x.time in [0,5,10,15,20,25,30,35,40,45,50,55,60,70,75,80,85,90,95,105,110,115,120,150,180,210,240,300,360], df1_30)
-df1_90 = filter(x -> x.Dose == "90 mg", df1)
-filter!(x -> x.time in [0,5,10,15,20,25,30,35,40,45,50,55,60,70,75,80,85,90,95,105,110,115,120,150,180,210,240,300], df1_90)
 
-
-@df df1_10 plot(:time, :cp, yaxis=:log,
-                title="Concentration vs Time", label="Pred - Conc 10 mg",
-                xlabel="Time (mins)", ylabel="Concentration (ug/L)", linewidth=3,
-                xticks = [0,50,100,150,200,250,300,350,400], yticks = [0.1,1,10,100,1000], xlims=(0,450), ylims=(0.1,1000))
-@df df1_30 plot!(:time, :cp, label="Pred - Conc 30mg", linewidth=3)
-@df df1_90 plot!(:time, :cp, label="Pred - Conc 90mg", linewidth=3)
-@df df1_10 scatter!(:time, :dv, label="Obs - Conc 10mg", markershape=[:star4])
-@df df1_30 scatter!(:time, :dv, label="Obs - Conc 30mg", markershape=:diamond)
-@df df1_90 scatter!(:time, :dv, label="Obs - Conc 90 mg")
+f1, a1, p1 = sim_plot(pk_42, sim_pop3_sub, 
+        observations = :cp, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (
+                xlabel = "Time (min)", 
+                ylabel = "PK42 Concentrations (μg/L)",
+                xticks = 0:50:400, yscale = log10))
+axislegend(a1) 
+f1                
 ```
 
 

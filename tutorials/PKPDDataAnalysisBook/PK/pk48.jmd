@@ -22,24 +22,24 @@ using Dates
 In this model, you will learn -
  * To build One Compartment model for the drug given `Intravenous Bolus` dosage,
    following Michaelis Menten Kinetics.
- * To estimate the fundamental parameters involved in building the model.
  * To apply _differential equation_ in the model as per the compartment model.
- * To design the dosage regimen for the subjects and simulate the plot.
 
 ### Objectives
 
 In this tutorial, you will learn how to build One Compartment Michaelis Menten
- Kinetics, with Drug and Metabolite in Urine
+ Kinetics model, with drug and metabolite in urine
 
 ### Libraries
 
-call the "necessary" libraries to get started
+Call the "necessary" libraries to get started
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
+using AlgebraOfGraphics
+using DataFramesMeta
 ```
 
 ### Model
@@ -112,12 +112,12 @@ end
 
 The parameters are as given below. `tv` represents the typical value for parameters.
 
- * Vmax - Maximum rate of metabolism (uM/hr)
- * Km - Michaelis Menten Constant (uM)
- * Clr - Renal Clearance (L/hr)
- * Vc - Central Volume of Distribution (L)
- * Ω - Between Subject Variability
- * σ - Residual error
+ * ``Vmax`` - Maximum rate of metabolism (uM/hr)
+ * ``Km`` - Michaelis Menten Constant (uM)
+ * ``Clr`` - Renal Clearance (L/hr)
+ * ``Vc`` - Central Volume of Distribution (L)
+ * ``Ω`` - Between Subject Variability
+ * ``σ`` - Residual error
 
 ```julia
 param = (tvvmax    = 51.4061,
@@ -133,8 +133,8 @@ param = (tvvmax    = 51.4061,
 Intravenous bolus dosing of **500 micromol** to a single subject at `time=0`.
 
 ```julia
-ev1    = DosageRegimen(500, cmt=1, time=0)
-sub1   = Subject(id=1, events=ev1)
+ev1    = DosageRegimen(500, cmt = 1, time = 0)
+sub1   = Subject(id = 1, events = ev1)
 ```
 
 ### Simulation & Plot
@@ -144,36 +144,21 @@ Lets simulate for plasma concentration with the specific observation time points
 
 ```julia; results="hidden"
 Random.seed!(123)
-sim_sub1 = simobs(pk_48,sub1,param,obstimes=0:0.1:15)
-df1      = DataFrame(sim_sub1)
+sim_sub1 = simobs(pk_48, sub1, param, obstimes=0.1:0.1:15)
 ```
 
-### Dataframe & Plots
-
-Use the dataframe for plotting
-
-  * cp - Predicted drug concentration in plasma
-  * ae_p - Predicted amount excreted in urine (Parent)
-  * ae_m - Predicted amount excreted in urine (Metabolite)
-  * dv - Observed drug concentration in plasma
-  * dv_aep - Observed amount excreted in urine (Parent)
-  * dv_aem - Observed amount excreted in urine (Metabolite)
+### Visualization
 
 ```julia
-df1_dv = filter(x -> x.time in [0,1,2,3,4,5,6,7,8,10,12,14,15], df1)
-df2_dv = filter(x -> x.time in [2,4,6,8,10,12,14,15], df1)
-
-@df df1 plot(:time, :cp, yaxis=:log, legend=:bottomleft, linewidth=3,
-             label="Pred-Parent Plasma Conc", title="Plasma Drug Concentration & Amount Excreted in Urine",
-              xlabel= "Time (Hrs)", ylabel="Concentration (umol/L) & Amount (umol)",
-              xlims=(0,16), xticks=[0,2,4,6,8,10,12,14,16], ylims=[0.1,1000])
-@df df1_dv plot!(:time, :ae_p, label="Pred-Parent Amt", linewidth=3 )
-@df df1_dv plot!(:time, :ae_m, label="Pred-Metabolite Urine Amt",linewidth=3)
-@df df1_dv scatter!(:time, :dv, label="Obs-Conc", color=:red)
-@df df2_dv scatter!(:time, :dv_aep, color=:red, label=false)
-@df df2_dv scatter!(:time, :dv_aem, color=:red, label=false)
+@chain DataFrame(sim_sub1) begin
+  dropmissing!(:cp)
+  @rsubset :time ∈ [0,1,2,3,4,5,6,7,8,10,12,14,15]
+  data(_) *
+  mapping(:time => "Time (hrs)", [:cp, :ae_p, :ae_m]) *
+  visual(ScatterLines, linewidth = 4, markersize = 12)
+  draw(axis = (;yscale = log10, xticks = 0:2:16, ylabel = "PK48 Concentrations (μmol/L) & Amount (μmol)"))
+end
 ```
-
 
 ```julia; echo=false, eval=false
 par   = (tvvmax    = 51.4061,

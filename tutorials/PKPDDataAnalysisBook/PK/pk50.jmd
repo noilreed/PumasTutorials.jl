@@ -28,13 +28,15 @@ To build a sequential PKPD model for a drug considering fraction unbound as a
 
 ### Libraries
 
-call the "necessary" libraries to get started.
+Call the "necessary" libraries to get started.
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
+using AlgebraOfGraphics
+using DataFramesMeta
 ```
 
 ### Model
@@ -111,13 +113,13 @@ end
 
 Parameters provided for simulation are as below. `tv` represents the typical value for parameters.
 
-  * Cl  - Clearance (L/hr)
-  * Vc  - Volume of distribution in central compartment (L)
-  * Vp  - Volume of distribution in Peripheral compartment (L)
-  * Q   - Intercompartmental Clearance (L/hr)
-  * EC50 - Concentration which produces 50% effect (μg/L)
-  * Emax - Maximum Effect
-  * sigma - Sigmoidicity factor
+  * ``Cl``  - Clearance (L/hr)
+  * ``Vc``  - Volume of distribution in central compartment (L)
+  * ``Vp``  - Volume of distribution in Peripheral compartment (L)
+  * ``Q``   - Intercompartmental Clearance (L/hr)
+  * ``EC50`` - Concentration which produces 50% effect (μg/L)
+  * ``Emax`` - Maximum Effect
+  * ``sigma`` - Sigmoidicity factor
 
 ```julia
 param = (tvcl    = 11.4,
@@ -159,27 +161,35 @@ Simulate the data and create a dataframe with specific data points.
 
 ```julia; results="hidden"
 Random.seed!(123)
-sim_pop24_sub = simobs(pk_50, pop24_sub, param, obstimes=[0,0.25,0.5,0.75,1,2,3,4,4.999,5.03,5.08,5.17,5.25,5.5,5.75,6,6.5,7,8,9,10,12,24])
-df1           = DataFrame(sim_pop24_sub)
+sim_pop24_sub = simobs(pk_50, pop24_sub, param, obstimes=[0.1,0.25,0.5,0.75,1,2,3,4,4.999,5.03,5.08,5.17,5.25,5.5,5.75,6,6.5,7,8,9,10,12,24])
+df50           = DataFrame(sim_pop24_sub)
 ```
 
-### Plot
+### Visualization
 
 Plot a graph of **Concentrations vs Time**
 
 ```julia
-@df df1 plot(:time, :cp, yaxis=:log, group=:group,
-              title="Concentration vs Time", xlabel="Time (hrs)", ylabel="Concentration (ug/L)",
-              xticks=[0,5,10,15,20,25], xlims=(0,25), linewidth=2,
-              yticks=[0.001,0.01,0.1,1,10,100], ylims=(0.001,100))
+@chain df50 begin
+  dropmissing!(:cp)
+  data(_) *
+  mapping(:time => "Time (hrs)", :cp => "Concentration (μg/L)", color = :group => "", group = :id) *
+  visual(Lines, linewidth = 2)
+  draw(axis = (; xticks = 0:5:25, yscale = log10), figure = (; fontsize = 22))
+end
 ```
 
 Plot a graph of **Response vs Concentrations**
 
+
 ```julia
-@df df1 plot(:cp, :ef, xaxis=:log, group=:group, linewidth=2,
-              title="Response vs Concentration", xlabel="Concentration (ug/L)", ylabel="Response (..)",
-              xticks=[0.001,0.01,0.1,1,10,100], xlims=(0.001,100))
+@chain df50 begin
+  dropmissing!(:cp)
+  data(_) *
+  mapping( :cp => "Concentration (μg/L)", :ef => "Response", color = :group => "", group = :id) *
+  visual(Lines, linewidth = 2)
+  draw(axis = (;  xscale = log10, ), figure = (; fontsize = 22))
+end
 ```
 
 **Question - 1 and 2**
@@ -191,7 +201,7 @@ Plot a graph of **Response vs Concentrations**
  required to achieve those concentration is **784 μg given as an IV-infusion over 1 hour**
  followed by a **7843 μg given as an IV-infusion over 23 hours**
 
-2. What Infusion rate is needed to remain at the staedy state plasma
+2. What Infusion rate is needed to remain at the steady state plasma
    concentration between 1 and 24 hours?
 
 **Ans:** An infusion rate of **341 μg/hr** is given to achieve the steady-state
@@ -204,27 +214,23 @@ pop12 = Population(map(i -> Subject(id=i, events=ev12, covariates=(fu=1,group="T
 
 ##Simulation
 Random.seed!(123)
-sim12 = simobs(pk_50, pop12, param, obstimes=[0,0.25,0.5,0.75,1,2,3,4,4.999,5.03,5.08,5.17,5.25,5.5,5.75,6,6.5,7,8,9,10,12,24])
+sim12 = simobs(pk_50, pop12, param, obstimes=[0.1,0.25,0.5,0.75,1,2,3,4,4.999,5.03,5.08,5.17,5.25,5.5,5.75,6,6.5,7,8,9,10,12,24])
 df12  = DataFrame(sim12)
 dropmissing!(df12, :cp)
 
-@df df12 plot(:time, :cp, group=:id,
-              title="Concentration vs Time", xlabel="Time (hrs)", ylabel="Concentration (ug/L)",
-              xticks=[0,5,10,15,20,25], xlims=(0,25), linewidth=2, label=false)
-```
-```julia
-@df df12 plot(:time, :cp, yaxis=:log, group=:id,
-              title="Concentration vs Time", xlabel="Time (hrs)", ylabel="Concentration (ug/L)",
-              xticks=[0,5,10,15,20,25], xlims=(0,25), linewidth=2, label=false,
-              yticks=[0.001,0.01,0.1,1,10,100], ylims=(0.001,100))
-
+@chain df12 begin
+  data(_) *
+  mapping(:time => "Time (hrs)", :cp => "Concentration (μg/L)", group = :id) *
+  visual(Lines, linewidth = 2)
+  draw(axis = (; xticks = 0:5:25, yscale = log10), figure = (; fontsize = 22))
+end
 ```
 
 **Question - 3**
 
 3. What unbound plasma concentration are reached (given the range) with the
    infusion rates calculated for the 1+23 hrs regimen? How does the variability
-   seen in the predcited exposure at 1 and 24 hours compare between total
+   seen in the predicted exposure at 1 and 24 hours compare between total
    and unbound concentration?
 
 ```julia
@@ -240,10 +246,13 @@ Random.seed!(12345)
 sim3 = simobs(pk_50, pop_3, param, obstimes=[0.1,0.25,0.5,0.75,1.0,2,3,4,4.999,5.03,5.08,5.17,5.25,5.5,5.75,6,6.5,7,8,9,10,12,24])
 df_sim3 = DataFrame(sim3)
 
-@df df_sim3 plot(:time, :cp, yaxis=:log, group=:group,
-              title="Concentration vs Time", xlabel="Time (hrs)", ylabel="Concentration (ug/L)",
-              xticks=[0,5,10,15,20,25], xlims=(0,25), linewidth=2, label=false,
-              yticks=[0.001,0.01,0.1,1,10,100], ylims=(0.001,100))
+@chain df_sim3 begin
+  dropmissing!(:cp)
+  data(_) *
+  mapping(:time => "Time (hrs)", :cp => "Concentration (μg/L)", color = :group => "", group = :id) *
+  visual(Lines, linewidth = 2)
+  draw(axis = (; xticks = 0:5:25, yscale = log10), figure = (; fontsize = 22))
+end
 ```
 
 **Question - 4**
@@ -255,7 +264,11 @@ df_sim3 = DataFrame(sim3)
  of 30 μg/L will help to achieve repsonse greater than 1 unit.
 
 ```julia
-@df df_sim3 plot(:cp, :ef, group=:group, xaxis=:log, legend=:topleft, linewidth=2,
-                  title="Response vs Concentration", xlabel="Concentration (ug/L)", ylabel="Response (..)",
-                  xticks=[0.001,0.01,0.1,1,10,100], xlims=(0.001,100))
+@chain df_sim3 begin
+  dropmissing!(:cp)
+  data(_) *
+  mapping( :cp => "Concentration (μg/L)", :ef => "Response", color = :group => "", group = :id) *
+  visual(Lines, linewidth = 2)
+  draw(axis = (;  xscale = log10, ), figure = (; fontsize = 22))
+end
 ```

@@ -14,18 +14,18 @@ using Dates
                               superoxide dismutase (r-hSOD)
   * Dosage Regimen          - 20mg/kg IV rapid infusion for 15 seconds in two
                               categories of rats
-  * Number of Subjects      - 1 normal rate, 1 clamped (nephrectomized) rat
+  * Number of Subjects      - 1 normal rat, 1 clamped (nephrectomized) rat
 
 ![Slide1 png](https://user-images.githubusercontent.com/62236054/81700776-c5021d00-9486-11ea-8287-ef2203e7998b.jpg)
 
 In this model, collection of plasma concentration data of parent drug and
- concentration of parent and metabolite in urine, will help you to derive/
- estimate the parameters: Clearance, Volume of Distribution, Km, Vmax.
+concentration of parent and metabolite in urine, will help you to derive/
+the parameters: Clearance, Volume of Distribution, Km, Vmax.
 
 ### Learning Outcome
 
  1. To note that clearance and volume of central compartment are reduced in
-    clamed rats, as removal of the kidneys increased the effective half life
+    clamped rats, as removal of the kidneys increased the effective half life
     from 10mins in normal rats to 90mins in nephrectomized rats.
  2. The time to steady state might differ 9-fold between the two groups.
  3. Importance of kidneys in the elimination of r-hSOD and the impact of kidney
@@ -38,18 +38,16 @@ In this tutorial, you will learn how to construct a simple two compartment model
 
 ### Libraries
 
-call the "necessary" libraries to get started
+Call the "necessary" libraries to get started
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
 ```
 
 ### Model
-
-In this two compartmental model, we administer dose on Central compartment.
 
 ```julia
 pk_52           = @model begin
@@ -101,12 +99,12 @@ end
 
 Parameters are provided for the simulation as below. `tv` represents the typical value for parameters.
 
- * tvcl - Clearance (mL/min/kg)
- * tvvc - Volume of Central Compartment (ml/min/kg)
- * tvvp - Volume of Peripheral CompartmentRenal (ml/min/kg)
- * tq - Intercompartmental Clearance (ml/min/kg)
- * Ω - Between Subject Variability
- * σ - Residual errors
+ * ``tvcl`` - Clearance (mL/min/kg)
+ * ``tvvc`` - Volume of Central Compartment (ml/min/kg)
+ * ``tvvp`` - Volume of Peripheral CompartmentRenal (ml/min/kg)
+ * ``tq`` - Intercompartmental Clearance (ml/min/kg)
+ * ``Ω`` - Between Subject Variability
+ * ``σ`` - Residual errors
 
 ```julia; results="hidden"
 param1 = (tvcl    = 3.0,
@@ -131,9 +129,9 @@ param  = vcat(param1, param2)
 A dose of **20 mg/kg** to a single rat of `2 categories` (normal and clamped)
 
 ```julia
-ev1      = DosageRegimen(20000,cmt=1)
-sub1     = Subject(id=1, events=ev1, covariates=(Rat="Normal_Rat",))
-sub2     = Subject(id=2, events=ev1, covariates=(Rat="Clamped_Rat",))
+ev1      = DosageRegimen(20000, cmt = 1)
+sub1     = Subject(id = "Normal_Rat", events = ev1, covariates = (Rat = "Normal_Rat",))
+sub2     = Subject(id = "Clamped_Rat", events = ev1, covariates = (Rat = "Clamped_Rat",))
 pop2_sub = [sub1,sub2]
 ```
 
@@ -144,29 +142,22 @@ Simulate the plasma concentration after IV infusion
 ```julia; results="hidden"
 Random.seed!(123)
 sim_pop2_sub = map(((subject, param),) -> simobs(pk_52, subject, param, obstimes=0:0.1:500), zip(pop2_sub, param))
-df           = DataFrame(sim_pop2_sub)
 ```
 
-### Dataframe & Plot
-
-Use the dataframe for plotting
-
-  * cp - Predicted concentration
-  * dv - Observed concentration
+### Visualization
 
 ```julia
-df1 = filter(x -> x.id == "1", df)
-df2 = filter(x -> x.id == "2", df)
-df_dv = filter(x-> x.time in [0.2,2.1,4.9,9.5,14.7,29,60,119,239,480],df)
-
-@df df1 plot(:time, :cp, yaxis=:log,
-             title="Simulated impact of disease on r-hSOD kinetics", label= "Pred - Normal Rats",
-             xlabel= "Time (mins)", ylabel="Concentration (ug/mL)", color=[:blue], linewidth=3,
-             xlims=(-1,500), xticks=[0,50,100,150,200,250,300,350,400,450,500], yticks=[0.01,0.1,1,10,100,1000,10000], ylims=(0.01,10000))
-@df df2 plot!(:time, :cp,linewidth=3, label= "Pred - Clamped Rats", color=[:red])
-@df df_dv scatter!(:time, :dv, label = "Obs - Conc")
+f, a, p = sim_plot(pk_52, sim_pop2_sub, 
+        observations = :cp, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (xlabel = "Time (hrs)", 
+                ylabel = "PK52 Concentrations (μg/L)",
+                xticks = 0:50:500, yscale = log10,
+                title="Simulated impact of disease on r-hSOD kinetics"))
+axislegend(a) 
+f 
 ```
-
 
 ```julia; echo = false, eval=false
 par1 =  ( tvcl    = 3.0,

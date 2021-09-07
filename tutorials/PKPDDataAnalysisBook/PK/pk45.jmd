@@ -20,17 +20,17 @@ using Dates
 ### Learning Outcome
 
 In this model, you will learn how to build a two compartment parent and one compartment metabolite model
-with reversible metabolism, while parent and metabolite is admininstered on two different occasions
+with reversible metabolism, while parent and metabolite is administered on two different occasions
 
 ### Libraries
 
-call the "necessary" libraries to get start.
+Call the "necessary" libraries to get start.
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
 ```
 
 ### Model
@@ -106,16 +106,16 @@ end
 
 Parameters provided for simulation. `tv` represents the typical value for parameters.
 
-* tvvcp - Volume of distribution of central compartment of Parent (L/kg)
-* tvvpp - Volume of distribution of peripheral compartment of Parent (L/kg)
-* tvqp  - Intercompartmental clearance of Parent (L/hr/kg)
-* tvclp - Clearance of Parent (L/hr/kg)
-* tvvcm - Volume of distribution of central compartment of Metabolite (L/kg)
-* tvclm - Clearance of Metabolite (L/hr/kg)
-* tvclpm - Conversion of Parent to Metabolite (L/hr/kg)
-* tvclmp - Conversion of Metabolite to Parent (L/hr/kg)
-* Ω - Between Subject Variability,
-* σ - Residual error
+* ``tvvcp`` - Volume of distribution of central compartment of Parent (L/kg)
+* ``tvvpp`` - Volume of distribution of peripheral compartment of Parent (L/kg)
+* ``tvqp``  - Intercompartmental clearance of Parent (L/hr/kg)
+* ``tvclp`` - Clearance of Parent (L/hr/kg)
+* ``tvvcm`` - Volume of distribution of central compartment of Metabolite (L/kg)
+* ``tvclm`` - Clearance of Metabolite (L/hr/kg)
+* ``tvclpm`` - Conversion of Parent to Metabolite (L/hr/kg)
+* ``tvclmp`` - Conversion of Metabolite to Parent (L/hr/kg)
+* ``Ω`` - Between Subject Variability,
+* ``σ`` - Residual error
 
 ```julia
 param = (tvvcp   = 0.563,
@@ -136,10 +136,10 @@ param = (tvvcp   = 0.563,
  * A dose of 5 μmol/kg of the metabolite is administered as a rapid IV Injection over 15 seconds
 
 ```julia
-dr_p  = DosageRegimen(4.3,cmt=1,time=0, duration=0.0041)
-sub_p = Subject(id=1,events=dr_p)
-dr_m  = DosageRegimen(5,cmt=3,time=0,duration=0.0041)
-sub_m = Subject(id=2,events=dr_m)
+dr_p  = DosageRegimen(4.3,cmt = 1,time = 0, duration = 0.0041)
+sub_p = Subject(id = "Parent", events = dr_p)
+dr_m  = DosageRegimen(5, cmt = 3, time = 0, duration = 0.0041)
+sub_m = Subject(id = "Metabolite", events = dr_m)
 sub   = [sub_p, sub_m]
 ```
 
@@ -149,33 +149,33 @@ We are going to simulate parent and metabolite concentration profile
 
 ```julia; results="hidden"
 Random.seed!(123)
-sim_sub = simobs(pk_45,sub,param,obstimes=0:0.001:31)
-df1     = DataFrame(sim_sub)
+sim_sub = simobs(pk_45, sub, param, obstimes = 0.1:0.001:31)
 ```
-
-### Dataframe and Plotting
-
-Convert the simulation to a dataframe and use the necessary for plotting
+### Visualization
 
 ```julia
-df1_par = filter(x -> x.id == "1", df1)
-filter!(x -> x.time in [0.0042,0.0333,0.1667,0.5,1,2,2.75,5,7,24,31], df1_par)
-df1_met = filter(x -> x.id == "2", df1)
-filter!(x -> x.time in [0.0042,0.0333,0.1333,0.25,0.75,2,4,7,12,23], df1_met)
-
-@df df1_par plot(:time, :cp,  yaxis=:log, linewidth=2, legend = :topright,
-                label="Parent [IV.Par]", title="Concentration vs Time",
-                xlabel="Time (hrs)", ylabel="Concentration (uM)",
-                xlims=(0,35), xticks=[0,5,10,15,20,25,30,35], yticks=[0.001,0.01,0.1,1,10], ylims=(0.001,10))
-@df df1_par plot!(:time, :met, label="Metabolite [IV.Par]",linewidth=2)
-@df df1_met plot!(:time, :cp, label="Parent [IV.Met]",linewidth=2)
-@df df1_met plot!(:time, :met, label="Metabolite [IV.Met]]",linewidth=2)
-@df df1_par scatter!(:time, :dv_cp, marker=[:square], label=false, color=:green)
-@df df1_par scatter!(:time, :dv_met, marker=[:square], label=false, color=:green)
-@df df1_met scatter!(:time, :dv_cp, marker=[:circle], label=false, color=:red)
-@df df1_met scatter!(:time, :dv_met, marker=[:circle], label=false, color=:red)
+f1, a1, p1 = sim_plot(pk_45, sim_sub, 
+        observations = :cp, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (xlabel = "Time (hr)", 
+                ylabel = "PK45 Parent Concentrations (μM)",
+                xticks = 0:5:35, yscale = log10))
+axislegend(a1) 
+f1
 ```
 
+```julia
+f2, a2, p2 = sim_plot(pk_45, sim_sub, 
+        observations = :met, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (xlabel = "Time (hr)", 
+                ylabel = "PK45 Metabolite Concentrations (μM)",
+                xticks = 0:5:35, yscale = log10))
+axislegend(a2) 
+f2
+```
 
 ```julia; echo = false, eval=false
 par = (tvvcp   = 0.563,

@@ -27,13 +27,13 @@ To build a model for drug having short half life given as a very long
 
 ### Libraries
 
-call the "necessary" libraries to get started.
+Call the "necessary" libraries to get started.
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
 ```
 
 ### Model
@@ -87,8 +87,8 @@ end
 
 Parameters provided for simulation are as below. `tv` represents the typical value for parameters.
 
- * Vss - Steady state volume (L)
- * CL  - Clearance (L/hr)
+ * ``Vss`` - Steady state volume (L)
+ * ``CL``  - Clearance (L/hr)
 
 ```julia
 param = ( tvvss  = 35.6,
@@ -103,8 +103,8 @@ A dose of **500000 ug** was given as an Intravenous Infusion to a
  single subject for over 3 months.
 
 ```julia
-ev1  = DosageRegimen(500000, time=0, cmt=1, duration=2016)
-sub1 = Subject(id=1, events=ev1)
+ev1  = DosageRegimen(500000, time = 0, cmt = 1, duration = 2016)
+sub1 = Subject(id = 1, events = ev1)
 ```
 
 ### Simulation
@@ -113,23 +113,22 @@ Simulate the data after the administration of Infusion
 
 ```julia; results="hidden"
 Random.seed!(123)
-sim_sub1 = simobs(pk_46,sub1,param,obstimes=0.5:0.1:2100)
-df1      = DataFrame(sim_sub1)
+sim_sub1 = simobs(pk_46, sub1, param, obstimes = 0.5:0.1:2100)
 ```
-### Dataframe & Plot
 
-Use the dataframe for plotting
+### Visualization
 
 ```julia
-df1_dv = filter(x -> x.time in [0.5,24,96,168,672,2016,2016.5,2017,2018], df1)
-
-@df df1 plot(:time, :cp, yaxis=:log, legend=:bottomleft,
-              title="Concentration vs Time", label="Pred - Conc",
-              xlabel="Time (hr)", ylabel="Concentration (ug/L)", linewidth=3,
-              yticks=[0.1,1,10], ylims=(0.1,10), xticks=[0,500,1000,1500,2000], xlims=(-4,2050))
-@df df1_dv scatter!(:time, :dv, label="Obs - Conc")
+f, a, p = sim_plot(pk_46, [sim_sub1], 
+        observations = :cp, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (xlabel = "Time (hrs)", 
+                ylabel = "PK46 Concentrations (μg/L)",
+                xticks = 0:500:2000))
+axislegend(a) 
+f 
 ```
-
 
 ```julia; echo=false, eval=false
 par = ( tvvss  = 35.6,

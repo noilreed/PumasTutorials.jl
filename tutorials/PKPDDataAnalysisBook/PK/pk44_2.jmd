@@ -11,7 +11,7 @@ using Dates
 
  * Structural model   - Estimation of inhibitory rate constant in non-competitive enzyme inhibition model
  * Number of subjects - 1
- * Number of componds - 1
+ * Number of compounds - 1
 
 ### Learning Outcome
 
@@ -20,17 +20,19 @@ using Dates
 
 ### Objectives
 
- * To analyze enzyme data by means of simulteneous nonlinear regression
+ * To analyze enzyme data by means of simultaneous nonlinear regression
 
 ### Libraries
 
 call the necessary 'libraries' to get started
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
+using AlgebraOfGraphics
+using DataFramesMeta
 ```
 
 ### Model - Non-Competitive Inhibitory Model
@@ -83,10 +85,10 @@ end
 
 Parameters provided for simulation are as below.`tv` represents the typical value for parameters.
 
-  * Vmax - Maximum metabolic rate (μM*gm_protein/min)
-  * Km   - Michaelis-Mentons constant (μmol/L)
-  * Ki   - Inhibitory constant (μmol/L)
-  * I    - Inhibitor concentration/Exposure
+  * ``Vmax`` - Maximum metabolic rate (μM*gm_protein/min)
+  * ``Km``   - Michaelis-Mentons constant (μmol/L)
+  * ``Ki``   - Inhibitory constant (μmol/L)
+  * ``I``    - Inhibitor concentration/Exposure
 
 ```julia
 param = ( tvvmax = 122.827,
@@ -120,31 +122,34 @@ We will now simulate the rate of metabolite formation
 ```julia; results="hidden"
 Random.seed!(123)
 sim_sub1 = simobs(pk_44_nim, sub1, param)
-df1      = DataFrame(sim_sub1)
+df44_2      = DataFrame(sim_sub1)
 ```
 
-### Dataframe and Plot
-
-Use the DataFrame for plotting
+### Visualization
 
 ##### Non-Competitive Inhibitory Model
-```julia
-df1_dv = filter(x -> x.conc in [1,5,10,15,26,104,251,502,1000], df1)
 
-@df df1 plot(:conc, :rate_nim, group=:I,
-              title = "Rate of Metabolite formation vs Concentration",
-              xlabel = "Concentration (uM)", ylabel = "Metabolic rate (nmol/min/mg protein)",
-              linewidth=3, legend=:bottomright, labeltitle="Exposure",
-              xticks=[0,100,200,300,400,500,600,700,800,900,1000], xlims=(-5,1010),
-              yticks=[0,20,40,60,80,100,120], ylims=(0,120))
-@df df1_dv scatter!(:conc, :dv_rate_nim, label=false)
+```julia
+@chain df44_2 begin
+  @rsubset :conc ∈ [1,5,10,15,26,104,251,502,1000]
+  data(_) *
+  mapping(:conc => "Concentration (μM)", 
+          :rate_nim => "Metabolic rate (nmol/min/mg protein)", 
+          color = :I => nonnumeric => "Exposure") *
+  visual(ScatterLines, linewidth = 4, markersize = 12)
+  draw(axis = (;xticks = 0:100:1000, yticks = 0:10:100))        
+end
 ```
 
+
 ```julia
-@df df1 plot(:conc, :rate_nim, group=:I, xaxis=:log,
-              title = "Rate of Metabolite formation vs Concentration", labeltitle="Exposure",
-              xlabel = "Concentration (uM)", ylabel = "Metabolic rate (nmol/min/mg protein)",
-              linewidth=3, legend=:topleft, xticks=[1,10,100,1000], xlims=(0.95,1010),
-              yticks=[0,20,40,60,80,100,120], ylims=(0,120))
-@df df1_dv scatter!(:conc, :dv_rate_nim, label=false)
+@chain df44_2 begin
+  @rsubset :conc ∈ [1,5,10,15,26,104,251,502,1000]
+  data(_) *
+  mapping(:conc => "Concentration (μM)", 
+          :rate_nim => "Metabolic rate (nmol/min/mg protein)", 
+          color = :I => nonnumeric => "Exposure") *
+  visual(ScatterLines, linewidth = 4, markersize = 12)
+  draw(axis = (;xscale = log10, yticks = 0:10:100))        
+end
 ```

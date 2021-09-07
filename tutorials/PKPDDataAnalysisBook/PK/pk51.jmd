@@ -30,13 +30,13 @@ In this tutorial, you will learn how to build multi compartment drug/metabolite
 
 ### Libraries
 
-call the "necessary" libraries to get start.
+Call the "necessary" libraries to get start.
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
 ```
 
 ### Model
@@ -95,6 +95,9 @@ pk_51               = @model begin
     Cldm            = tvcldm * exp(η[7])
     Vtm             = tvvtm * exp(η[8])
     Ka              = tvka * exp(η[9])
+  end
+
+  @dosecontrol begin
     bioav           = (Depot = tvf , Metabolite = (1-tvf))
     lags            = (Depot = tvlag,)
   end
@@ -126,19 +129,19 @@ end
 
 The parameters are as given below. `tv` represents the typical value for parameters.
 
-  * Cl - Clearance (L/hr)
-  * Clm - Clearance of metabolite (L/hr)
-  * Cld - Inter Compartmental Clearance (L/hr)
-  * Cldm - Inter Compartmental Clearance of metabolite (L/hr)
-  * Vc - Volume of Central Compartment (L)
-  * Vcm - Volume of Central Compartment of Metabolite (L)
-  * f - Fraction of drug absorbed
-  * lags - Lag time (hr)
-  * Ka - Absorption rate constant (hr⁻¹)
-  * Vt - Volume of Peripheral Compartment (L)
-  * Vtm - Volume of Peripheral Compartment of metabolite (L)
-  * Ω - Between Subject Variability
-  * σ - Residual error
+  * ``Cl`` - Clearance (L/hr)
+  * ``Clm`` - Clearance of metabolite (L/hr)
+  * ``Cld`` - Inter Compartmental Clearance (L/hr)
+  * ``Cldm`` - Inter Compartmental Clearance of metabolite (L/hr)
+  * ``Vc`` - Volume of Central Compartment (L)
+  * ``Vcm`` - Volume of Central Compartment of Metabolite (L)
+  * ``f`` - Fraction of drug absorbed
+  * ``lags`` - Lag time (hr)
+  * ``Ka`` - Absorption rate constant (hr⁻¹)
+  * ``Vt`` - Volume of Peripheral Compartment (L)
+  * ``Vtm`` - Volume of Peripheral Compartment of metabolite (L)
+  * ``Ω`` - Between Subject Variability
+  * ``σ`` - Residual error
 
 ```julia
 param = ( tvvc        = 18.7,
@@ -164,8 +167,8 @@ param = ( tvvc        = 18.7,
 A single dose of **5000 mg** given as a rapid IV injection
 
 ```julia
-ev1  = DosageRegimen(5000, time=0, cmt=2)
-sub1 = Subject(id=1, events=ev1)
+ev1  = DosageRegimen(5000, time = 0, cmt = 2)
+sub1 = Subject(id = 1, events = ev1)
 ```
 ##### ORAL
 
@@ -173,7 +176,7 @@ A single dose of **8000 mg** given orally
 
 ```julia
 ev2      = DosageRegimen(8000, time=0, cmt=1)
-sub2     = Subject(id=2, events=ev2)
+sub2     = Subject(id = 2, events = ev2)
 pop2_sub = [sub1,sub2]
 ```
 
@@ -183,27 +186,33 @@ Simulate using the `simobs` function.
 
 ```julia; results="hidden"
 Random.seed!(123)
-sim_pop2_sub = simobs(pk_51, pop2_sub, param, obstimes=0:0.1:1500)
-df1          = DataFrame(sim_pop2_sub)
+sim_pop2_sub = simobs(pk_51, pop2_sub, param, obstimes = 0.1:0.1:1500)
 ```
 
-### Dataframe & Plot
-
-Use the dataframe for plotting
+### Visualization
 
 ```julia
-df1_dv  = filter(x -> x.time in [2,5,10,15,30,45,60,90,120,180,240,360,480,720,1440], df1)
-df1_id1 = filter(x -> x.id == "1", df1)
-df1_id2 = filter(x -> x.id == "2", df1)
+f1, a1, p1 = sim_plot(pk_51, sim_pop2_sub, 
+        observations = :cp, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (xlabel = "Time (hr)", 
+                ylabel = "PK50 Parent Concentrations",
+                xticks = 0:150:1500))
+axislegend(a1) 
+f1
+```
 
-@df df1_id1 plot(:time, :cp, yaxis=:log, legend=:bottomright,
-                 title="Concentration vs Time",  xlabel="Time (min)", ylabel="Concentration (..)", label="Pred - ID1 Parent", linewidth=3,
-                 yticks=[0.01,0.1,1,10,100,1000], ylims=(0.01,1000), xticks=[0,150,300,450,600,750,900,1050,1200,1350,1500], xlims=(0,1500))
-@df df1_id2 plot!(:time, :cp, label="Pred - ID2 Parent", linewidth=3)
-@df df1_id1 plot!(:time, :met, label="Pred - ID1 Metabolite", linewidth=3)
-@df df1_id2 plot!(:time, :met, label="Pred - ID2 Metabolite", linewidth=3)
-@df df1_dv scatter!(:time, :dv_cp, label="Obs - Parent")
-@df df1_dv scatter!(:time, :dv_met, label="Obs - Metabolite")
+```julia
+f2, a2, p2 = sim_plot(pk_51, sim_pop2_sub, 
+        observations = :met, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (xlabel = "Time (hr)", 
+                ylabel = "PK50 Metabolite Concentrations",
+                xticks = 0:150:1500))
+axislegend(a2) 
+f2
 ```
 
 ```julia; echo=false, eval=false

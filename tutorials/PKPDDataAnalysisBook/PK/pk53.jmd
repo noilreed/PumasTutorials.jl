@@ -26,13 +26,13 @@ In this tutorial, you will learn how to build two compartment turnover model
 
 ### Libraries
 
-call the "necessary" libraries to get started
+Call the "necessary" libraries to get started
 
 ```julia
+using Random
 using Pumas
 using PumasUtilities
-using Random
-
+using CairoMakie
 ```
 
 ### Model
@@ -90,12 +90,12 @@ end
 
 The parameters are as given below. `tv` represents the typical value for parameters.
 
-  * Cl - Clearance (L/hr/kg)
-  * Vc - Volume of Central Compartment (L/kg)
-  * Vp - Volume of Peripheral Compartment (L/kg)
-  * Q  - Intercompartmental CLearance (L/hr/kg)
-  * Ω  - Between Subject Variability
-  * σ  - Residual error
+  * ``Cl`` - Clearance (L/hr/kg)
+  * ``Vc`` - Volume of Central Compartment (L/kg)
+  * ``Vp`` - Volume of Peripheral Compartment (L/kg)
+  * ``Q``  - Intercompartmental CLearance (L/hr/kg)
+  * ``Ω``  - Between Subject Variability
+  * ``σ``  - Residual error
 
 ```julia
 param = (tvvc    = 2.139,
@@ -115,13 +115,13 @@ param = (tvvc    = 2.139,
  * Dose 5:- 771 μmol/kg given as an IV-infusion at `time=288.52`
 
 ```julia
-ev1  = DosageRegimen(0.77,time=0,cmt=1,duration=0.416667)
-ev2  = DosageRegimen(7.7,time=72.17,cmt=1,duration=0.5)
-ev3  = DosageRegimen(77,time=144.17,cmt=1,duration=0.5)
-ev4  = DosageRegimen(257,time=216.6,cmt=1,duration=0.4)
-ev5  = DosageRegimen(771,time=288.52,cmt=1,duration=0.5)
+ev1  = DosageRegimen(0.77, time = 0,      cmt = 1, duration = 0.416667)
+ev2  = DosageRegimen(7.7,  time = 72.17,  cmt = 1, duration = 0.5)
+ev3  = DosageRegimen(77,   time = 144.17, cmt = 1, duration = 0.5)
+ev4  = DosageRegimen(257,  time = 216.6,  cmt = 1, duration = 0.4)
+ev5  = DosageRegimen(771,  time = 288.52, cmt = 1, duration = 0.5)
 ev   = DosageRegimen(ev1,ev2,ev3,ev4,ev5)
-sub1 = Subject(id=1, events=ev)
+sub1 = Subject(id = 1, events = ev)
 ```
 
 ### Simulation
@@ -131,24 +131,24 @@ Lets simulate for plasma concentration with the specific observation time
 
 ```julia; results="hidden"
 Random.seed!(123)
-sim_sub1 = simobs(pk_53,sub1,param,obstimes=0.00:0.01:2000)
+sim_sub1 = simobs(pk_53, sub1, param, obstimes = 0.01:0.01:2000)
 df1      = DataFrame(sim_sub1)
 ```
 
-### Dataframe & Plot
-
-Use the dataframe for plotting
+### Visualization
 
 ```julia
-df1_dv = filter(x -> x.time in [72.67,74.17,78.17,84.17,96.17,120.17,144.17,144.67,146.17,150.17,156.17,168.17,192.17,216.17,217,218.5,222.5,228.5,240.5,264.5,288.5,289.02,290.5,294.5,300.5,312.5,336.5,360.5,483.92,651.25,983.92,1751.92], df1)
-
-@df df1 plot(:time,:cp,yaxis=:log,
-              title="Concentration vs Time", xlabel="Time (hr)", ylabel="Concentration (uM)",
-              label="Pred - Conc", linewidth=3, color=:blue,
-              xticks=[0,200,400,600,800,1000,1200,1400,1600,1800,2000], xlims=(0,2000),
-              yticks=[0.1,1,10,100,1000],ylims=(0.1,1000))
-@df df1_dv scatter!(:time, :dv, label="Obs - Conc", color=[:red])
+f, a, p = sim_plot(pk_53, [sim_sub1], 
+        observations = :cp, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (xlabel = "Time (hrs)", 
+                ylabel = "PK53 Concentrations (μM)",
+                xticks = 0:200:2000, yscale = log10))
+axislegend(a) 
+f 
 ```
+
 
 ```julia; echo = false, eval=false
 par = ( tvvc    = 2.139,
