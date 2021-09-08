@@ -1,0 +1,180 @@
+---
+title : Exercise PK05 - One Compartment Intravenous/Urine 1
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+### Background
+
+  * Structural Model        - One Compartment Model with urinary excretion
+  * Route of Administration - Intravenous Bolus
+  * Dosage Regimen          - 250mg IV Bolus
+  * Subject                 - 1
+
+![PK05 Graphic Model](https://user-images.githubusercontent.com/62239013/78987196-ed76be80-7b4a-11ea-99b6-7b4477750088.png)
+
+### Learning Outcome
+
+In this model,both plasma and urine data is collected and will help to estimate parameters like
+ Clearance, Volume of Distribution and fraction of dose excreted in urine.
+
+### Objectives
+
+In this tutorial, you will learn to build a one compartment model with
+ urinary excretion and simulate the model for one single subject and single dosage regimen
+
+### Libraries
+
+call the "necessary" libraries to get started.
+
+```julia
+using Random
+using Pumas
+using PumasUtilities
+using CairoMakie
+
+```
+
+### Model
+
+In this one compartment model, we administer an IV dose in central compartment.
+
+```julia
+pk_05         = @model begin
+  @metadata begin
+    desc = "One Cmt Model with Urine Cmt"
+    timeu = u"hr"
+  end
+
+  @param begin
+    "Volume of Distribution (L)"
+    tvVc      ∈ RealDomain(lower=0)
+    "Renal Clearance(L/hr)"
+    tvClr     ∈ RealDomain(lower=0)
+    "Non Renal Clearance(L/hr)"
+    tvClnr    ∈ RealDomain(lower=0)
+    Ω         ∈ PDiagDomain(3)
+    "Proportional RUV - Plasma"
+    σ_prop   ∈ RealDomain(lower=0)
+    "Additive RUV - Urine"
+    σ_add     ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η         ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Clr       = tvClr  * exp(η[1])
+    Clnr      = tvClnr * exp(η[2])
+    Vc        = tvVc   * exp(η[3])
+  end
+
+  @dynamics begin
+    Central'  = -(Clnr/Vc)*Central - (Clr/Vc)*Central
+    Urine'    =  (Clr/Vc)*Central
+  end
+
+  @derived begin
+    """
+    PK05 Plasma Concentration (mg/L)"
+    """
+    cp_plasma = @. Central/Vc
+   
+    #"""
+    #PK05 Plasma Concentration (mg/L)"
+    #"""
+    #dp_plasma ~ @. Normal(cp_plasma, abs(cp_plasma)*σ_prop)
+    
+    """
+    PK05 Urine Amount (mg)
+    """
+    cp_urine  = @. Urine
+   
+    #"""
+    #PK05 Urine Amount (mg)
+    #"""
+    #dp_urine  ~ @. Normal(cp_urine,abs(σ_add))
+  end
+end
+```
+
+### Parameters
+
+  * ``Clnr`` - Non renal Clearance(L/hr)
+  * ``Clr``  - Renal Clearance(L/hr)
+  * ``Vc``   - Volume of the Central Compartment(L)
+  * ``Ω``    - Between subject variability
+  * ``σ``    - Residual Error
+
+```julia
+param = (tvVc    = 10.7965,
+         tvClr   = 0.430905,
+         tvClnr  = 0.779591,
+         Ω       = Diagonal([0.0,0.0,0.0]),
+         σ_prop = 0.1,
+         σ_add   = 1)
+```
+
+### Dosage Regimen
+
+A single dose of 250mg given as an Intravenous bolus to single subject.
+
+```julia
+ev1  = DosageRegimen(250, time = 0, cmt = 1)
+sub = Subject(id = 1, events = ev1, observations = (cp_plasma = nothing, cp_urine = nothing))
+```
+
+### Simulation
+
+Lets simulate the plasma concentration and unchanged amount excreted in urine.
+
+```julia; results="hidden"
+Random.seed!(123)
+sim_sub1 = simobs(pk_05, sub, param, obstimes = 0:0.1:26)
+```
+
+### Visualization
+
+```julia
+fig = Figure()
+p1 = sim_plot(fig[1,1], pk_05, [sim_sub1], 
+        observations=:cp_plasma, axis = (title = "PK05 Plasma", ))
+p2 = sim_plot(fig[2,1], pk_05, [sim_sub1], 
+        observations=[:cp_urine], axis = (title = "PK05 Urine", ))
+fig
+
+f, a, p = sim_plot(pk_05, sim_sub1, 
+        observations=[:cp_plasma, :cp_urine],
+        separate = true,
+        linewidth = 4), 
+        color = :redsblues,
+        axis = (xlabel = "Time (hours)", 
+                ylabel = "PK05 Concentrations (mg/L) and Amount (mg)",
+                xticks = 0:6:30,))
+axislegend(a)
+f  
+```
+
+```julia; echo=false, eval=false
+par = (tvVc    = 10.7965,
+       tvClr   = 0.430905,
+       tvClnr  = 0.779591,
+       Ω       = Diagonal([0.04,0.09,0.0225]),
+       σ²_prop = 0.0256,
+       σ_add   = 3.126)
+
+ev1  = DosageRegimen(250, time =0, cmt=1)
+pop  = map(i -> Subject(id=i,events=ev1), 1:55)
+
+Random.seed!(1234)
+pop_sim = simobs(pk_05, pop, par, obstimes=[0.5,1,1.5,2,4,6,8,12,18,24])
+plot(pop_sim)
+
+df_sim = DataFrame(pop_sim)
+
+CSV.write("./data/generated/pk_05.csv", df_sim)
+```

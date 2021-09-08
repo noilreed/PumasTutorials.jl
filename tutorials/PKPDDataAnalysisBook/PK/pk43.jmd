@@ -1,0 +1,179 @@
+---
+title: Exercise PK43 - Multiple absorption routes
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+### Background
+
+  * Structural model        - 1 compartment linear elimination with first order absorption
+  * Route of administration - Sublingual
+  * Dosage Regimen          - 2mg Sublingual dose
+  * Number of Subjects      - 1
+
+![pk43](https://user-images.githubusercontent.com/62236414/81821826-f7c41800-954f-11ea-8aa5-6f0abc9b40d1.png)
+
+### Learning Outcome
+
+In this model, Multiple absorption routes helps in understanding absorption of
+sublingually administered dose partly from buccal cavity and partly from gastrointestinal tract
+
+### Objectives
+
+In this model you will learn how to write differential equation model for a drug
+that is partly absorbed from buccal and partly from GI and simulate for a single subject.
+
+### Libraries
+
+Call the "necessary" libraries to get start.
+
+```julia
+using Random
+using Pumas
+using PumasUtilities
+using CairoMakie
+```
+
+### Model
+
+In this one compartment model, we administer dose Sublingually.
+
+```julia
+pk_43        = @model begin
+  @metadata begin
+    desc     = "Multiple Absorption Model"
+    timeu    = u"hr"
+  end
+
+  @param begin
+    "Absorption rate constant(rapid from buccal) (hr⁻⅟)"
+    tvkar    ∈ RealDomain(lower=0)
+    "Absorption rate constant(delayed from GI) (hr⁻⅟)"
+    tvkad    ∈ RealDomain(lower=0)
+    "Volume of Central Compartment (L)"
+    tvv      ∈ RealDomain(lower=0)
+    "Lagtime (hr)"
+    tvlag    ∈ RealDomain(lower=0)
+    "Fraction of drug absorbed"
+    tvfa     ∈ RealDomain(lower=0)
+    "Elimination rate constant (hr⁻⅟)"
+    tvk      ∈ RealDomain(lower=0)
+    Ω        ∈ PDiagDomain(4)
+    "Additive RUV"
+    σ_add    ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η        ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    KaR      = tvkar * exp(η[1])
+    KaD      = tvkad * exp(η[2])
+    V        = tvv * exp(η[3])
+    K        = tvk * exp(η[4])
+  end
+
+  @dosecontrol begin
+    bioav    = (Buccal=tvfa, Gi= 1-tvfa)
+    lags     = (Gi=tvlag,)
+  end
+
+  @dynamics begin
+    Buccal'  = -KaR*Buccal
+    Gi'      = -KaD*Gi
+    Central' =  KaR*Buccal + KaD*Gi - K*Central
+  end
+
+  @derived begin
+    cp       = @. Central/V
+    """
+    Observed Concentration (mcg/L)
+    """
+    dv       ~ @. Normal(cp, σ_add)
+  end
+end
+```
+
+### Parameters
+
+Parameters provided for simulation. tv represents the typical value for parameters.
+
+  * ``Vc`` - Volume of Central Compartment (L)
+  * ``K`` - Elimination rate constant (hr⁻⅟)
+  * ``Kar`` - Absorption rate constant(rapid from buccal) (hr⁻⅟)
+  * ``Kad`` - Absorption rate constant(delayed from GI) (hr⁻⅟)
+  * ``Fa`` - Fraction of drug absorbed
+  * ``lags`` - Lagtime (hr)
+  * ``Ω`` - Between Subject Variability
+  * ``σ`` - Residual error
+
+```julia
+param = (tvkar  = 7.62369,
+         tvkad  = 1.0751,
+         tvv    = 20.6274,
+         tvk    = 0.0886931,
+         tvfa   = 0.515023,
+         tvlag  = 2.29614,
+         Ω      = Diagonal([0.0,0.0,0.0,0.0]),
+         σ_add  = 0.86145)
+```
+
+### DosageRegimen
+
+Single subject receiving **2mg** dose given orally (absorbed - Sublingually and remaining from the Gut).
+
+```julia
+ev1  = DosageRegimen(2000, time = 0, cmt = [1,2])
+sub1 = Subject(id = 1, events = ev1)
+```
+
+### Simulation
+
+Lets simulate plasma concentration with specific observation times after Sublingual
+dose considering multiple absorption routes.
+
+```julia; results="hidden"
+Random.seed!(123)
+sim_sub1 = simobs(pk_43, sub1, param, obstimes=0.00:0.01:24)
+```
+
+### Visualization
+
+```julia
+f1, a1, p1 = sim_plot(pk_43, [sim_sub1], 
+        observations = :cp, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (
+                xlabel = "Time (min)", 
+                ylabel = "PK43 Concentrations (μg/L)",
+                xticks = 0:5:25))
+axislegend(a1) 
+f1                
+```
+
+```julia, echo=false, eval=false
+par = (tvkar  = 7.62369,
+       tvkad  = 1.0751,
+       tvv    = 20.6274,
+       tvk    = 0.0886931,
+       tvfa   = 0.515023,
+       tvlag  = 2.29614,
+       Ω      = Diagonal([0.0635,0.0125,0.03651,0.0198]),
+       σ_add  = 1.86145)
+
+ev1  = DosageRegimen(2000, time=0, cmt=[1,2])
+pop  = map(i -> Subject(id=i, events=ev1), 1:68)
+
+Random.seed!(1234)
+sim_pop = simobs(pk_43, pop, par, obstimes=[0.1,0.15,0.25,0.5,0.75,0.8,1,1.25,1.5,2,3,4,5,6,8,12,24])
+plot(sim_pop)
+
+df_sim  = DataFrame(sim_pop)
+
+CSV.write("./data/generated/pk_43.csv", df_sim)
+```

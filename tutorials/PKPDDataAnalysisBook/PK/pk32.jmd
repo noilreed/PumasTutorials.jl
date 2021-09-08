@@ -1,0 +1,180 @@
+---
+title: Exercise PK32 - Turnover III Nonlinear disposition
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+### Background
+
+  * Structural model - One compartment with zero order input and non linear elimination
+  * Route of administration - IV infusion
+  * Dosage Regimen - Multiple intravenous infusions (Three sets of Rapid iv infusion followed by slow iv infusion)
+  * Number of Subjects - 1
+
+
+![PK32](https://user-images.githubusercontent.com/62258227/79696711-06464900-829c-11ea-8235-c8dfd4b2b35b.png)
+
+
+### Learning Outcomes
+
+We will learn to simulate data for Multiple infusions of an endogenous compound with non-linear disposition
+
+### Objectives
+
+  * To build a one compartment model for an endogenous compound with non-linear disposition
+  * To use final parameter estimates and design a multiple infusion dosage regimen
+  * To simulate and plot a single subject with predefined time points.
+
+### Libraries
+
+Call the "necessary" libraries to get started.
+
+```julia
+using Random
+using Pumas
+using PumasUtilities
+using CairoMakie
+```
+
+### Model
+
+One compartment model for an endogenous compound with non-linear disposition
+
+```julia
+pk_32        = @model begin
+  @metadata begin
+    desc     = "Non-linear Elimination Model"
+    timeu    = u"minute"
+  end
+
+  @param begin
+    "Volume of Central Compartment (L)"
+    tvvc     ∈ RealDomain(lower=0)
+    "Maximum metabolic capacity (μg/min)"
+    tvvmax   ∈ RealDomain(lower=0)
+    "Michaelis-Menten constant (μg/L)"
+    tvkm     ∈ RealDomain(lower=0)
+    "Rate of synthesis (μg/min)"
+    tvkin    ∈ RealDomain(lower=0)
+    Ω        ∈ PDiagDomain(4)
+    "Proportional RUV"
+    σ²_prop  ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η        ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Vc       = tvvc*exp(η[1])
+    Vmax     = tvvmax*exp(η[2])
+    Km       = tvkm*exp(η[3])
+    Kin      = tvkin*exp(η[4])
+    #CL      = Vmax/(Km+(Central/Vc))
+  end
+
+  @init begin
+    Central  = Kin/((Vmax/Km)/Vc)
+  end
+
+  @dynamics begin
+    Central' = Kin - (Vmax/(Km+Central/Vc))*(Central/Vc)
+  end
+
+  @derived begin
+    cp       = @. Central/Vc
+    """
+    Observed Concentration (ug/L)
+    """
+    dv       ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
+  end
+end
+```
+
+### Parameters
+
+The parameters are as given below. `tv` represents the typical value for parameters.
+
+  * ``Vc``  - Volume of Central Compartment (L)
+  * ``Vmax``- Maximum metabolic capacity (μg/min)
+  * ``Km``  - Michaelis- menten constant (μg/L)
+  * ``Kin`` - Rate of synthesis,Turnover rate (μg/min)
+  * ``Ω``   - Between Subject Variability
+  * ``σ``   - Residual error
+
+
+```julia
+param = (tvvc    = 5.94952,
+         tvvmax  = 361.502,
+         tvkm    = 507.873 ,
+         tvkin   = 14.9684,
+         Ω       = Diagonal([0.00,0.00,0.00,0.00]),
+         σ²_prop = 0.05)
+```
+
+### Dosage Regimen
+
+DosageRegimen (DR) = Three sets of rapid intravenous infusion followed by slow intravenous infusion as followed
+
+  * IV bolus of 1669 μg (Time=0 min) followed by IV infusion of 1131.8 μg (Time= 0-30.1 min)
+  * IV infusion of 1701 μg (Time= 0-30.1 min) followed by IV infusion of 1884.4 μg (Time= 125.2-154.3 min)
+  * IV infusion of 1773 μg (Time= 260-261 min) followed by IV infusion of 6300 μg (Time= 260.1-290.1 min)
+
+```julia
+IVinfRapid = DosageRegimen([1669,1701,1733], time = [0,125,260], cmt = [1,1,1], duration = [0,1,1])
+IVinfSlow  = DosageRegimen([1131.8,1884.4,6300], time = [0,125.2,260.1], cmt = [1,1,1], duration = [30.1,29.1,30])
+DR         = DosageRegimen(IVinfRapid,IVinfSlow)
+sub1       = Subject(id = 1, events = DR)
+```
+
+### Simulation
+
+To simulate plasma concentration for single subject with the specific observation
+ time points for a given dosage regimen 'DR'
+
+```julia; results="hidden"
+Random.seed!(123)
+sim  =  simobs(pk_32, sub1, param, obstimes=0:0.01:450)
+```
+
+### Visualization
+
+```julia
+f, a, p = sim_plot(pk_32, [sim], 
+        observations = :cp, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (xlabel = "Time (min)", 
+                ylabel = "PK32 Concentrations (μg/L)",
+                xticks = 0:50:450, ))
+axislegend(a) 
+f 
+```
+
+```julia; echo=false, eval=false
+par   = (tvvc   = 5.94952,
+         tvvmax = 361.502,
+         tvkm   = 507.873 ,
+         tvkin  = 14.9684,
+         Ω      = Diagonal([0.04,0.04,0.059,0.04]),
+         σ      = 0.05)
+
+IVinfRapid = DosageRegimen([1669,1701,1733], time=[0,125,260], cmt=[1,1,1], duration=[0,1,1])
+IVinfSlow  = DosageRegimen([1131.8,1884.4,6300],time=[0,125.2,260.1], cmt=[1,1,1], duration=[30.1,29.1,30])
+DR         = DosageRegimen([IVinfRapid,IVinfSlow])
+pop        = map(i -> Subject(id=i, events=DR), 1:85)
+
+Random.seed!(1234)
+sim_pop = simobs(pk_32,pop,param,obstimes = [0,2.23,4.2,6.05,8.03,10,15,20,25,30,32,34.1,36.1,38.1,40.1,42,45.1,50,
+  55,60,70,80,90.2,100,110,120,122.8,127,129,131,133,135,140,145.1,150,154,156,158,160,162,164,166,169,174,179,
+  186.8,218,249,250,255,262.2,264.2,265.9,268,270,275.1,280,285,290,292,294.1,296.2,298.1,300,302.4,305.2,310.1,
+  315.2,320,350.1,380,400,450])
+plot(sim_pop)
+
+df_sim = DataFrame(sim_pop)
+
+CSV.write("./data/pharma_data/pk_32.csv", df_sim)
+```

@@ -1,0 +1,222 @@
+---
+title : Exercise PK19 - Capacity III - Metabolite Kinetics
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+### Background
+
+  * Structural model        - Two Compartment model with a Metabolite Compartment
+  * Route of administration - IV Bolus
+  * Dosage Regimen          - 10μmol/kg, 50μmol/kg, 300μmol/kg
+  * Number of Subjects      - 3
+
+
+![PK19 Graphic Model](https://user-images.githubusercontent.com/62239013/79724526-57d6ee00-8305-11ea-848c-956b090a0177.png)
+
+### Learning Outcome
+
+In this model, 3 different dose of the drug given as an IV Bolus to 3 different subjects,
+ will help you estimate metabolite formation rate and elimination rate.
+
+### Objectives
+
+In this tutorial, you will learn how to build two compartment model, a drug undergoing
+ capacity limited metabolite kinetics.
+
+### Libraries
+
+Call the "necessary" libraries to get start.
+
+```julia
+using Random
+using Pumas
+using PumasUtilities
+using CairoMakie
+```
+
+### Model
+
+In this two compartment model, we administer 3 different doses in 3 different
+ subjects of a drug that undergoes metabolite kinetics.
+
+```julia
+pk_19           = @model begin
+  @metadata begin
+    desc = "Non-linear formation of Metabolite Model"
+    timeu = u"hr"
+  end
+
+  @param begin
+    "Volume of Central Compartment (L/kg)"
+    tvvc        ∈ RealDomain(lower=0)
+    "Volume of Perpheral Compartment (L/kg)"
+    tvvp        ∈ RealDomain(lower=0)
+    "Inter-Compartmental Clearance (L/min)"
+    tvq         ∈ RealDomain(lower=0)
+    "Maximum Velocity of Reaction (μmol/min/kg)"
+    tvvmax      ∈ RealDomain(lower=0)
+    "Michaelis-Menten constant (μmol/L)"
+    tvkm        ∈ RealDomain(lower=0)
+    "Rate of Elimination of Metabolite (min⁻¹)"
+    tvkme       ∈ RealDomain(lower=0)
+    "Volume of Metabolite Compartment (L/kg)"
+    tvvme       ∈ RealDomain(lower=0)
+    Ω           ∈ PDiagDomain(7)
+    "Proportional RUV - Plasma"
+    σ_prop_cp  ∈ RealDomain(lower=0)
+    "Proportional RUV - Metabolite"
+    σ_prop_met ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η           ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Vc          = tvvc * exp(η[1])
+    Vp          = tvvp * exp(η[2])
+    Q           = tvq * exp(η[3])
+    Vmax        = tvvmax * exp(η[4])
+    Km          = tvkm * exp(η[5])
+    Kme         = tvkme * exp(η[6])
+    Vme         = tvvme * exp(η[7])
+  end
+
+  @vars begin
+    VMKM       := Vmax/(Km+(Central/Vc))
+  end
+
+  @dynamics begin
+    Central'    = -VMKM*(Central/Vc) - (Q/Vc)*Central + (Q/Vp)*Peripheral
+    Peripheral' = (Q/Vc)*Central - (Q/Vp)*Peripheral
+    Metabolite' = VMKM*(Central/Vc) - Kme*Metabolite
+  end
+
+  @derived begin
+    cp          = @. Central/Vc
+    """
+    Observed Plasma Concentration (μmol/L)
+    """
+    dv_cp       ~ @. Normal(cp, cp*σ_prop_cp)
+    met         = @. Metabolite/Vme
+    """
+    Observed Metabolite Concentration (μmol/L)
+    """
+    dv_met      ~ @. Normal(met, met*σ_prop_met)
+  end
+end
+```
+
+### Parameters
+
+The parameters are as given below. tv represents the typical value for parameters.
+
+  * ``Vc`` - Volume of Central Compartment (L/kg)
+  * ``Vp`` - Volume of Peripheral Compartment (L/kg)
+  * ``Q`` - Inter-Compartmental Clearance (L/min)
+  * ``Vmax`` - Maximum Velocity of Reaction (μmol/min/kg)
+  * ``Km`` - Michaelis-Menten constant (μmol/L)
+  * ``Kme`` - Rate of Elimination of Metabolite (min⁻¹)
+  * ``Vme`` - Volume of Metabolite Compartment (L/kg)
+  * ``Ω`` - Between Subject Variability
+  * ``σ`` - Residual error
+
+```julia
+param = ( tvvc        = 1.06405,
+          tvvp        = 2.00748,
+          tvq         = 0.128792,
+          tvvmax      = 1.64429,
+          tvkm        = 54.794,
+          tvkme       = 0.145159,
+          tvvme       = 0.290811,
+          Ω           = Diagonal([0.0,0.0,0.0,0.0,0.0,0.0,0.0]),
+          σ_prop_cp  = 0.12,
+          σ_prop_met = 0.12)
+```
+
+### Dosage Regimen
+
+Three Subjects were adminitered with three different doses of **10μmol/kg, 50μmol/kg and 300μmol/kg**.
+
+```julia
+dose  = [10, 50, 300]
+ids   = ["ID:1 Dose 10", "ID:2 Dose 50", "ID:3 Dose 300"]
+ev(x) = DosageRegimen(dose[x], cmt = 1, time = 0)
+
+pop = map(zip(1:3, ids)) do (i, id)
+  return Subject(id = id, events = ev(i), observations = (cp = nothing, met = nothing))
+end
+```
+### Simulation
+
+We will simulate the parent plasma concentration and metabolite plasma concentration.
+
+```julia; results="hidden"
+Random.seed!(123)
+sim_pop3_sub = simobs(pk_19, pop, param, obstimes = 0.1:1:300)
+```
+
+### Visualization
+
+```julia
+fig = Figure()
+ax, p1 = sim_plot(fig[1,1], pk_19, 
+        sim_pop3_sub, 
+        observations = :cp, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (xlabel = "Time (minute)", 
+                ylabel = "PK19 Parent Concentrations (μmol/L)",
+                xticks = 0:50:300, yscale = log10))
+            
+axislegend(ax) 
+fig
+```
+
+```julia
+fig = Figure()
+ax, p1 = sim_plot(fig[1,1], pk_19, 
+        sim_pop3_sub, 
+        observations = :met, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (xlabel = "Time (minute)", 
+                ylabel = "PK19 Metabolite Concentrations (μmol/L)",
+                xticks = 0:50:300, yscale = log10))
+            
+axislegend(ax) 
+fig
+```
+
+```julia; echo=false, eval=false
+par = ( tvvc        = 1.06405,
+        tvvp        = 2.00748,
+        tvq         = 0.128792,
+        tvvmax      = 1.64429,
+        tvkm        = 54.794,
+        tvkme       = 0.145159,
+        tvvme       = 0.290811,
+        Ω           = Diagonal([0.042,0.0125,0.0924,0.0625,0.0358,0.0111,0.0498]),
+        σ²_prop_cp  = 0.04587,
+        σ²_prop_met = 0.0625)
+
+ev1      = DosageRegimen(10, cmt=1, time=0)
+pop1     = map(i -> Subject(id=i, events=ev1), 1:20)
+ev2      = DosageRegimen(50, cmt=1, time=0)
+pop2     = map(i -> Subject(id=i, events=ev2), 21:40)
+ev3      = DosageRegimen(300, cmt=1, time=0)
+pop3     = map(i -> Subject(id=i, events=ev3), 41:60)
+pop      = [pop1;pop2;pop3]
+
+Random.seed!(1234)
+sim_pop  = simobs(pk_19, pop, par, obstimes=[0,5,10,20,30,60,90,120,180,300])
+plot(sim_pop)
+
+df_sim = DataFrame(sim_pop)
+
+CSV.write("./data/generated/pk_19.csv", df_sim)
+```

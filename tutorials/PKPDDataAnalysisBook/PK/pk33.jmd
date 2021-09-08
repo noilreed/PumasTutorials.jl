@@ -1,0 +1,178 @@
+---
+title: Exercise 33 - Transdermal input and kinetics
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+### Background
+
+* Structural model        - One compartment linear elimination with zero-order input
+* Route of administration - Transdermal
+* Dosage Regimen          - 15,890 μg per patch. The patch was applied for 16 hours for 5 consecutive days
+* Number of Subjects      - 1
+
+![Graphical representation of the model](https://user-images.githubusercontent.com/54361239/82178874-b094a900-98fa-11ea-943b-b64d959c922a.png)
+
+### Learning Outcome
+
+To understand the kinetics of a given drug using Transdermal input following
+ 2 different input rates
+
+### Objectives
+
+To build one compartment model with zero-order input and to understand its
+ function using transdermal delivery system.
+
+### Libraries
+
+Call the "necessary" libraries to get started.
+
+```julia
+using Random
+using Pumas
+using PumasUtilities
+using CairoMakie
+```
+
+### Model
+
+To build one compartment model with zero-order input following transdermal
+ drug administration
+
+```julia
+pk_33         = @model begin
+  @metadata begin
+    desc      = "One Compartment Model"
+    timeu     = u"hr"
+  end
+
+  @param begin
+    "Clearance (L/hr)"
+    tvcl      ∈ RealDomain(lower=0)
+    "Volume of Central Compartment (L)"
+    tvvc      ∈ RealDomain(lower=0)
+    "Dose of slow infusion (μg)"
+    tvdslow   ∈ RealDomain(lower=0)
+    "Duration of fast release (hr)"
+    tvtfast   ∈ RealDomain(lower=0)
+    "Duration of slow release (hr)"
+    tvtslow   ∈ RealDomain(lower=0)
+    Ω         ∈ PDiagDomain(5)
+    "Proportional RUV"
+    σ²_prop   ∈ RealDomain(lower=0)
+    "Additional RUV"
+    σ_add     ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η         ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Cl        = tvcl * exp(η[1])
+    Vc        = tvvc * exp(η[2])
+    Dose_slow = tvdslow * exp(η[3])
+    Tfast     = tvtfast * exp(η[4])
+    Tslow     = tvtslow * exp(η[5])
+    Ffast     = (t<=Tfast) * (15890-Dose_slow)/Tfast
+    Fslow     = (t<=Tslow) * Dose_slow/Tslow
+  end
+
+  @init begin
+    Central  = 2*Vc
+  end
+
+  @dynamics begin
+    Central'  =  Ffast + Fslow -(Cl/Vc)*Central
+  end
+
+  @derived begin
+    cp        = @. Central/Vc
+    """
+    Observed Concentration (ug/L)
+    """
+    dv        ~ @. Normal(cp, sqrt((cp^2*σ²_prop) + σ_add^2))
+  end
+end
+```
+
+### Parameters
+
+Parameters provided for simulation are as below. `tv` represents the typical value for parameters.
+
+  * ``CL`` - Clearance (L/hr),
+  * ``Vc`` - Volume of Central Compartment (L)
+  * ``Dslow`` - Dose of slow infusion (μg)
+  * ``Tfast`` - Duration of fast release (hr)
+  * ``Tslow`` - Duration of slow release (hr)
+  * ``Ω``  - Between Subject Variability
+  * ``σ``  - Residual error
+
+```julia
+param = ( tvcl    = 79.8725,
+          tvvc    = 239.94,
+          tvdslow = 11184.3,
+          tvtfast = 7.54449,
+          tvtslow = 19.3211,
+          Ω       = Diagonal([0.0,0.0,0.0,0.0,0.0]),
+          σ²_prop = 0.005,
+          σ_add   = 0.01)
+```
+
+### DosageRegimen
+
+  * 15,890 μg per patch.
+  * The patch is applied for 16 hours, for 5 consecutive days
+  * The patch releases the drug at two different rate processes, fast and slow
+    simultaneously over a period of 6 and 18 hours respectively.
+
+```julia
+sub1 = Subject(id = 1, time = 0:0.1:24, observations = (cp = nothing, ))
+```
+
+### Simulation
+
+Simulate the plasma concentration
+
+```julia; results="hidden"
+Random.seed!(123)
+sim_sub1 = simobs(pk_33, sub1, param, obstimes = 0:0.1:24)
+```
+
+### Visualization
+
+```julia
+f, a, p = sim_plot(pk_33, [sim_sub1], 
+        observations = :cp, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (xlabel = "Time (hr)", 
+                ylabel = "PK33 Concentrations (μg/L)",
+                xticks = 0:5:25, ))
+axislegend(a) 
+f 
+```
+
+```julia; echo=false, eval=false
+par = ( tvcl    = 79.8725,
+        tvvc    = 239.94,
+        tvdslow = 11184.3,
+        tvtfast = 7.54449,
+        tvtslow = 19.3211,
+        Ω       = Diagonal([0.012,0.024,0.012,0.0,0.012]),
+        σ_prop  = 0.008)
+
+ev1  = DosageRegimen([15890,15890], time=0, cmt = [1,2], rate=[-2,-2])
+pop = map(i -> Subject(id=i, events=ev1), 1:24)
+
+Random.seed!(1234)
+sim_pop = simobs(pk_33, pop, par, obstimes=[0,0.5,1,2,3,4,6,8,10,12,14,16,17,18,21,23.37])
+plot(sim_pop)
+
+df_sim = DataFrame(sim_pop)
+
+CSV.write("./data/generated/pk_33.csv", df_sim)
+```

@@ -1,0 +1,180 @@
+---
+title: Exercise PK15 - Toxicokinetics
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+### Background
+
+ * Structure               - Non Compartmental Analysis
+ * Route of administration - Oral
+ * Dosage Regimen          - 10, 56 and 320 μmol/kg/day
+ * Number of Subjects      - 30
+ * Study Period            - 12 month safety study in male and female dogs
+
+### Learning Outcome
+
+Application of Non-Compartmental data analysis
+
+### Objectives
+
+ * To analyze the kinetics by means of Non-compartmental Analysis (NCA)
+ * To analyze the exposure to test compounds by means of Cmax and AUC.
+
+### Libraries
+
+Call the "necessary" libraries to get start
+
+```julia
+using Random
+using Pumas
+using PumasUtilities
+using CairoMakie
+using AlgebraOfGraphics
+using HTTP
+using CSV
+using DataFramesMeta
+```
+
+### Import the Dataset
+
+Import the dataset and perform data-wrangling to make the dataset ready for **`read_nca`**
+
+ * Time = hrs
+ * Conc = μmol/kg
+ * Dose_grp = μmol/kg
+ * Period = weeks
+
+```julia; results="hidden"
+
+f = CSV.File(HTTP.get("https://bit.ly/pkpdbook_nca15").body, 
+             missingstrings = ["", "NA", ".", "Missing"], datarow = 3)
+
+df = DataFrame(f)
+
+##sort by Subject ID, Period and Time
+sort!(df, [:Subject_ID,:Period,:Time])
+
+##remove rows containing other Periods and Dose_grp
+filter!(x -> x.Period .∈ Ref([11, 26, 52]), df)
+filter!(x -> x.Dose_grp .∈ Ref([10, 56, 320]), df)
+
+## Add new column for Route of administration - extravascular
+df[!, :route] .= "ev"
+```
+
+```julia
+@chain df begin
+    groupby(:Subject_ID)
+    @transform :occ = [fill(1, 9)..., fill(2, 9)...]
+end
+```
+
+### NCA Analysis
+
+Setup the dataset for NCA analysis
+
+```julia
+timeu = u"hr"
+concu = u"μmol/kg"
+amtu  = u"μmol/kg"
+
+nca_df = read_nca(df,
+                        id    = :Subject_ID,
+                        time  = :Time,
+                        observations  = :Conc,
+                        route = :route,
+                        amt   = :Dose,
+                        group = [:Period,:Gender],
+                        timeu = timeu,
+                        concu = concu,
+                        amtu  = amtu)
+```
+
+### Visualization
+
+```julia
+fig = data(df) * 
+    mapping(:Time => "Time (hr)", :Conc => "Concentration (μM)",
+            color = :Dose_grp => nonnumeric,
+            row = :Gender, col = :Period => nonnumeric) * visual(Lines)
+draw(fig)            
+```
+
+```julia
+figures =
+    observations_vs_time(
+        nca_df;
+        axis = (
+            xlabel = "Time (hours)",
+            ylabel = "Concentration (μM)",
+        ),
+        paginate = true,
+        facet = (combinelabels = true,),
+    )
+```
+
+```julia
+figures[1]
+```
+
+```julia
+figures[10]
+```
+
+```julia
+summary_observations_vs_time(
+    nca_df,
+    figure = (
+        fontsize = 10,
+    ),
+    axis = (
+        xlabel = "Time (hr)",
+        ylabel = "Concentration (μM)",
+    ),
+    facet = (combinelabels = true,),
+)
+```
+
+
+```julia
+report_nca  = run_nca(nca_df, sigdig=3)
+```
+
+```julia
+first(report_nca.reportdf, 20)
+```
+
+```julia
+figs = 
+    subject_fits(
+        report_nca;
+        paginate = true,
+        separate = true,
+        figure = (
+            fontsize = 12,
+        ),
+        axis = (
+            xlabel = "Time (hr)",
+            ylabel = "Concentration (μM)"
+        ),
+        facet = (combinelabels = true,),
+    )
+```
+
+```julia
+figs[1]
+```
+
+
+```julia
+figs[10]
+```
+
+
+```julia; echo=false, eval=false
+CSV.write("./data/generated/pk_15_report.csv", report_nca)
+```

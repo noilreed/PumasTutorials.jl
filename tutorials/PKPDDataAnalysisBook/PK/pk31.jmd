@@ -1,0 +1,170 @@
+---
+title  : Exercise - PK31 Turnover II - Intravenous dosing of hormone
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+### Background
+
+ * Structural model        -  Two compartment with additional input for basal hormone synthesis
+                              in the central compartment
+ * Route of administration -  IV infusion (1 minute)
+ * Dosage Regimen          -  36,630 pmol
+ * Number of Subjects      -  1
+
+![PK31](https://user-images.githubusercontent.com/62255720/79684476-52b76780-824f-11ea-8d41-9b141149bb13.png)
+
+### Learning Outcome
+
+In this model, you will learn how to build a two compartment with additional input for
+ basal hormone level. This model will help to simulate the plasma concentration
+ profile after IV administration considering basal hormone input.
+
+### Objectives
+
+ * To analyze the intravenous datasets with parallel turnover
+ * To write multi-compartment model in terms of differential equations
+
+### Libraries
+
+Call the "necessary" libraries to get start.
+
+```julia
+using Random
+using Pumas
+using PumasUtilities
+using CairoMakie
+```
+
+### Model
+
+In this one compartment model PK31, we administer IV infusion dose to central compartment.
+
+```julia
+pk_31           = @model begin
+  @metadata begin
+    desc        = "Two Compartment Model"
+    timeu       = u"hr"
+  end
+
+  @param begin
+    "Basal hormonal input (pmol/hr)"
+    tvkin       ∈ RealDomain(lower=0)
+    "Central Volume of Distribution (L)"
+    tvvc        ∈ RealDomain(lower=0)
+    "Clearance (L/hr)"
+    tvcl        ∈ RealDomain(lower=0)
+    "Intercompartmental Clearance (L/hr)"
+    tvq         ∈ RealDomain(lower=0)
+    "Peripheral Volume of Distribution (L)"
+    tvvp        ∈ RealDomain(lower=0)
+    Ω           ∈ PDiagDomain(5)
+    "Proportional RUV"
+    σ²_prop     ∈ RealDomain(lower=0)
+
+  end
+
+  @random begin
+    η           ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    Kin         = tvkin * exp(η[1])
+    Vc          = tvvc* exp(η[2])
+    Cl          = tvcl * exp(η[3])
+    Q           = tvq  * exp(η[4])
+    Vp          = tvvp * exp(η[5])
+  end
+
+  @dynamics begin
+    Central'    =  Kin  - (Cl/Vc)*Central - (Q/Vc)*Central + (Q/Vp)*Peripheral
+    Peripheral' = (Q/Vc)*Central - (Q/Vp)*Peripheral
+  end
+
+  @derived begin
+    cp          = @. Central/Vc
+    """
+    Observed Concentration ((pmol/L)
+    """
+    dv          ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
+  end
+end
+```
+
+### Parameters
+
+The parameters are as given below. `tv` represents the typical value for parameters.
+
+ * ``Kin`` -  Basal hormonal input (pmol/hr)
+ * ``Vc``  -  Central Volume of Distribution (L)
+ * ``Cl``  -  Clearance (L/hr)
+ * ``Q``   -  Intercompartmental Clearance (L/hr)
+ * ``Vp``  -  Peripheral Volume of Distribution (L)
+ * ``Ω``   -  Between Subject Variability,
+ * ``σ``   -  Residual error
+
+```julia
+param = ( tvkin   = 1531.87,
+          tvvc    = 8.8455,
+          tvcl    = 76.5987,
+          tvq     = 56.8775,
+          tvvp    = 58.8033,
+          Ω       = Diagonal([0.0,0.0,0.0,0.0,0.0]),
+          σ²_prop = 0.015)
+```
+
+### Dosage Regimen
+
+A single dose of 36630 pmol is given as an IV Infusion
+
+```julia
+ev1  = DosageRegimen(36630, time = 0, cmt = 1, duration = 0.0166)
+sub1 = Subject(id = 1, events = ev1, observations = (cp = nothing,))
+```
+
+### Simulation
+
+Simulate the plasma concentration profile
+
+```julia; results="hidden"
+Random.seed!(123)
+sim_sub1 = simobs(pk_31, sub1, param , obstimes = 0.01:0.0001:32)
+```
+
+### Visualization
+
+```julia
+f, a, p = sim_plot(pk_31, [sim_sub1], 
+        observations = :cp, 
+        color = :redsblues,
+        linewidth = 4,
+        axis = (xlabel = "Time (hrs)", 
+                ylabel = "PK31 Concentrations (pmol/L)",
+                xticks = 0:5:35, yscale = log10))
+axislegend(a) 
+f 
+```
+
+
+```julia; echo=false, eval=false
+par = ( tvkin   = 1531.87,
+        tvvc    = 8.8455,
+        tvcl    = 76.5987,
+        tvq     = 56.8775,
+        tvvp    = 58.8033,
+        Ω       = Diagonal([0.09,0.0125,0.0225,0.04,0.0365]),
+        σ²_prop = 0.0612144)
+
+ev1  = DosageRegimen(36630, time=0, cmt=1, duration=0.0166)
+pop  = map(i -> Subject(id=i, events=ev1), 1:85)
+
+sim_pop = simobs(pk_31, pop, par , obstimes=[0.0167,0.1167,0.167,0.25,0.583,0.833,1.083,1.583,2.083,4.083,8.083,12,23.5,24.25,26.75,32])
+plot(sim_pop, yaxis=:log)
+
+df_sim = DataFrame(sim_pop)
+
+CSV.write("./data/generated/pk_31.csv", df_sim)
+```

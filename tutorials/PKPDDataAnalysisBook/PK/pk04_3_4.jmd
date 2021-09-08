@@ -1,0 +1,174 @@
+---
+title: Exercise PK04 - One compartment oral dosing
+date: `j Date(now())`
+---
+
+```julia; echo = false
+using Dates
+```
+
+### Background
+
+  * Structural model        - One compartment linear elimination with first order absorption.
+  * Route of administration - Oral, Multiple dosing
+  * Dosage Regimen          - 352.3 μg
+  * Number of Subjects      - 1
+
+![pko4 Graphic Model](https://user-images.githubusercontent.com/62241298/78966448-90184880-7b1d-11ea-9b64-58dbeb7f910f.png)
+
+### Learning Outcome
+
+This is a one compartment multiple oral dosing model. In the exercise pk04,
+ four models are compared.
+
+ * Model 1 - One compartment model without lag-time, **distinct parameters Ka and K**
+ * Model 2 - One compartment model with lag time, **distinct parameters Ka and K**
+ * Model 3 - One compartment model without lag time, **Ka = K = K¹**
+ * Model 4 - One compartment model with lag time, **Ka = K = K¹**
+
+### Objectives
+
+In this tutorial, you will learn how to build one compartment model for
+ multiple oral dosing and to simulate the model for a single subject.
+
+### Libraries
+
+call the "necessary" libraries to get start.
+
+```julia
+using Random
+using Pumas
+using PumasUtilities
+using CairoMakie
+
+```
+
+### Model 3 & 4
+
+In this one compartment model, we administer multiple doses orally.
+
+```julia
+pk_04_3_4    = @model begin
+  @metadata begin
+    desc = "One Compartment Model"
+    timeu = u"hr"
+  end
+
+  @param begin
+    "Absoprtion & Elimination Rate Constant (1/hr)"
+    tvk¹     ∈ RealDomain(lower=0)
+    "Volume of Distribution (L)"
+    tvvc     ∈ RealDomain(lower=0)
+    "Lag-time (hr)"
+    tvlag    ∈ RealDomain(lower=0)
+    Ω        ∈ PDiagDomain(2)
+    "Proportional RUV" 
+    σ²_prop  ∈ RealDomain(lower=0)
+  end
+
+  @random begin
+    η        ~ MvNormal(Ω)
+  end
+
+  @pre begin
+    K¹       = tvk¹ * exp(η[1])
+    Vc       = tvvc * exp(η[2])
+    lags     = (Depot = tvlag,)
+  end
+
+  @dynamics begin
+    Depot'   = -K¹*Depot
+    Central' =  K¹*Depot - K¹*Central
+  end
+
+  @derived begin
+    """
+    PK04 Concentration (ug/L)
+    """
+    cp       = @. Central/Vc
+    """
+    PK04 Concentration (ug/L)
+    """
+    dv       ~ @. Normal(cp, sqrt(cp^2*σ²_prop))
+  end
+end
+```
+
+### Parameters
+
+The parameters are as given below. `tv` represents the typical value for parameters.
+
+  * ``K¹`` - Absorption and Elimination Rate Constant (hr⁻¹)
+  * ``Vc`` - Volume of Central Compartment(L)
+  * ``Ω`` - Between Subject Variability
+  * ``σ`` - Residual error
+
+```julia
+param = [
+          (tvk¹    = 0.14,
+          tvvc    = 56.3,
+          tvlag   = 0,
+          Ω       = Diagonal([0.0,0.0,0.0]),
+          σ²_prop = 0.015), 
+
+          (tvk¹    = 0.15,
+          tvvc    = 52.3,
+          tvlag   = 0.68,
+          Ω       = Diagonal([0.0,0.0,0.0]),
+          σ²_prop = 0.01)
+        ] 
+```
+
+
+### Dosage Regimen
+
+Subject received 352.3 μg of oral dose once a day for 10 days.
+
+```julia; results="hidden"
+ev1  = DosageRegimen(352.3, time = 0, ii = 24, addl = 9, cmt = 1)
+pop  = map(i -> Subject(id = i, events = ev1, observations = (cp = nothing,)), ["1: No Lag", "1: With Lag"])
+```
+
+### Simulation
+
+Simulation the plasma concentration of the drug after multiple oral dosing
+
+```julia; results="hidden"
+Random.seed!(123)
+sim = map(zip(pop, param)) do (subj, p)
+  return simobs(pk_04_3_4, subj, p, obstimes = 0:0.1:240)
+end
+```
+
+### Visualize results
+
+```julia
+f, a, p = sim_plot(pk_04_3_4, sim, 
+        observations=:cp,
+        linewidth = 4, 
+        color = :redsblues,
+        axis = (xlabel = "Time (hours)", 
+                ylabel = "PK04 Concentrations (ug/L)",
+                xticks = 0:24:240,))
+axislegend(a)
+f  
+```
+
+```julia; echo=false, eval=false
+par4 = (tvk¹    = 0.15,
+        tvvc    = 52.3,
+        tvlag   = 0.68,
+        Ω       = Diagonal([0.0326,0.0,0.0289]),
+        σ²_prop = 0.02)
+
+ev1  = DosageRegimen(352.3, time=0, ii=24, addl=9, cmt=1)
+pop  = map(i -> Subject(id=1,events=ev1), 1:40)
+
+Random.seed!(1234)
+sim_pop = simobs(pk_04_3_4,pop,par4,obstimes=[1,2,3,4,5,6,7,8,10,12,14,24,216,216.5,217,218,219,220,221,222,223,224,226,228,230,240])
+plot(sim_pop)
+
+df_sim = DataFrame(sim_pop)
+
+CSV.write("./data/generated/pk04_2.csv", df_sim)
+```
