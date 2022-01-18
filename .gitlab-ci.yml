@@ -11,7 +11,7 @@ variables:
 cache:
   paths:
     - .julia/compiled/
-
+    - html/
 
 test-pumastutorials:
   stage: test
@@ -24,15 +24,30 @@ test-pumastutorials:
     - julia --depwarn=error --project -e 'using Pkg;
           Pkg.test();'
   interruptible: true
-  artifacts:
-    paths:
-      - html
-    expire_in: 90 days
-  only:
-  - master
-  - tags
-  - external
-  - pushes
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "pipeline"'
+      when: never
+    - if: '$CI_COMMIT_BRANCH || $CI_COMMIT_TAG'
+    - if: '$CI_PIPELINE_SOURCE == "external"'
+
+upstream:
+  stage: test
+  script:
+    - mkdir -p html
+    - mkdir -p html/DataWranglingInJulia
+    - mkdir -p html/PlottingInJulia
+    - mkdir -p html/DiveIntoPumas
+    - 'curl --location --output DataWranglingInJulia.zip --fail --header "JOB-TOKEN: $CI_JOB_TOKEN" "https://gitlab.com/api/v4/projects/32887173/jobs/artifacts/main/download?job=test"'
+    - 'curl --location --output PlottingInJulia.zip      --fail --header "JOB-TOKEN: $CI_JOB_TOKEN" "https://gitlab.com/api/v4/projects/32887755/jobs/artifacts/main/download?job=test"'
+    - 'curl --location --output DiveIntoPumas.zip        --fail --header "JOB-TOKEN: $CI_JOB_TOKEN" "https://gitlab.com/api/v4/projects/32887812/jobs/artifacts/main/download?job=test"'
+    - unzip DataWranglingInJulia.zip -d DataWranglingInJulia
+    - unzip PlottingInJulia.zip -d PlottingInJulia
+    - unzip DiveIntoPumas.zip -d DiveIntoPumas
+    - cp -r DataWranglingInJulia/output/* html/DataWranglingInJulia
+    - cp -r PlottingInJulia/output/* html/PlottingInJulia
+    - cp -r DiveIntoPumas/output/* html/DiveIntoPumas
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "pipeline"'
 
 pages:
   stage: deploy
@@ -45,5 +60,6 @@ pages:
   artifacts:
     paths:
       - public
-  only:
-  - tags
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "pipeline"'
+    - if: '$CI_COMMIT_TAG'
