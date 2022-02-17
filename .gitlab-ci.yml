@@ -32,20 +32,18 @@ test-pumastutorials:
 
 upstream:
   stage: test
+  before_script:
+    - apt-get --allow-releaseinfo-change update -yqq
+    - apt-get install -y zip unzip
   script:
+    - echo $UPSTREAM_PROJECT
+    - echo $UPSTREAM_PROJECT_ID
     - mkdir -p html
-    - mkdir -p html/DataWranglingInJulia
-    - mkdir -p html/PlottingInJulia
-    - mkdir -p html/DiveIntoPumas
-    - 'curl --location --output DataWranglingInJulia.zip --fail --header "JOB-TOKEN: $CI_JOB_TOKEN" "https://gitlab.com/api/v4/projects/32887173/jobs/artifacts/main/download?job=test"'
-    - 'curl --location --output PlottingInJulia.zip      --fail --header "JOB-TOKEN: $CI_JOB_TOKEN" "https://gitlab.com/api/v4/projects/32887755/jobs/artifacts/main/download?job=test"'
-    - 'curl --location --output DiveIntoPumas.zip        --fail --header "JOB-TOKEN: $CI_JOB_TOKEN" "https://gitlab.com/api/v4/projects/32887812/jobs/artifacts/main/download?job=test"'
-    - unzip DataWranglingInJulia.zip -d DataWranglingInJulia
-    - unzip PlottingInJulia.zip -d PlottingInJulia
-    - unzip DiveIntoPumas.zip -d DiveIntoPumas
-    - cp -r DataWranglingInJulia/output/* html/DataWranglingInJulia
-    - cp -r PlottingInJulia/output/* html/PlottingInJulia
-    - cp -r DiveIntoPumas/output/* html/DiveIntoPumas
+    - mkdir -p html/$UPSTREAM_PROJECT
+    - 'curl --location --output $UPSTREAM_PROJECT.zip --fail --header "JOB-TOKEN: $CI_JOB_TOKEN" "https://gitlab.com/api/v4/projects/$UPSTREAM_PROJECT_ID/jobs/artifacts/main/download?job=test"'
+    - unzip $UPSTREAM_PROJECT.zip -d $UPSTREAM_PROJECT
+    - cp -r $UPSTREAM_PROJECT/output/* html/$UPSTREAM_PROJECT
+    - ls html/$UPSTREAM_PROJECT
   rules:
     - if: '$CI_PIPELINE_SOURCE == "pipeline"'
 
